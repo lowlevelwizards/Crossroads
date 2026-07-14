@@ -1,6 +1,6 @@
 "use strict";
 
-// Foundation 2B.1: coordinator factory. Existing render calls remain untouched.
+// Foundation 2D: active coordinator factory. The battle renderer now runs through one ordered pipeline.
 window.CrossroadsRefresh = Object.freeze({
   create(steps = []) {
     const pipeline = [...steps];
