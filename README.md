@@ -1,19 +1,12 @@
-# CROSSROADS — Foundation 2B.2 Data Peelaways
+# CROSSROADS — Foundation 2B.2R
 
-Flat-root GitHub Pages build. Upload every file in this folder to the repository root.
+Resilient flat-root data peelaway.
 
-## Active external data
+Upload every file in this folder to the repository root.
 
-- `build-info.js` — build metadata
-- `stage.js` — stage metadata and feature flags
-- `weapons.js` — weapon profiles
-- `terrain.js` — terrain definitions
-- `unit-types.js` — reusable unit templates
+The game prefers `weapons.js`, `terrain.js`, and `unit-types.js`, but keeps
+matching inline fallbacks so a missing or stale GitHub Pages asset cannot stop
+battle startup. The top diagnostic shows `data 3/3` when all three external
+data files loaded successfully.
 
-## Reserved seams
-
-- `commands.js`
-- `dom.js`
-- `refresh.js`
-
-No gameplay, rendering, or rules behavior was intentionally changed.
+This is intentionally reversible and does not change gameplay rules.

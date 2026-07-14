@@ -4491,13 +4491,28 @@ that no visual behavior changes. These banners identify the effective systems:
       mmgRange: 36
     };
 
-    const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES;
+    const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES ?? Object.freeze({
+      rifle: Object.freeze({ key: "rifle", label: "Rifle", short: "R", range: 24, shots: 1, assault: false, fixed: false }),
+      smg: Object.freeze({ key: "smg", label: "SMG", short: "S", range: 12, shots: 2, assault: true, fixed: false }),
+      lmg: Object.freeze({ key: "lmg", label: "LMG", short: "L", range: 36, shots: 4, assault: false, fixed: false }),
+      pistol: Object.freeze({ key: "pistol", label: "Pistol", short: "P", range: 6, shots: 1, assault: true, fixed: false }),
+      mmg: Object.freeze({ key: "mmg", label: "MMG", short: "MMG", range: 36, shots: 5, reducedShots: 2, crewRequired: 2, crewWeapon: true, assault: false, fixed: true })
+    });
 
-    const TERRAIN = window.CROSSROADS_TERRAIN;
+    const TERRAIN = window.CROSSROADS_TERRAIN ?? Object.freeze({
+      woods: Object.freeze({ id: "woods", label: "woods", type: "soft", x: 15, y: 28, width: 18, height: 14, save: 5 }),
+      wall: Object.freeze({ id: "wall", label: "low wall", type: "hard", x: 38, y: 30, width: 17, height: 2.5, save: 4 }),
+      building: Object.freeze({ id: "building", label: "farmhouse", type: "blocking", x: 28, y: 4, width: 13, height: 13 })
+    });
 
 
     // Centralized unit templates now live in unit-types.js.
-    const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
+    const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES ?? Object.freeze({
+      officer: Object.freeze({ role: "officer", name: "Officer", soldiers: 2, morale: 9, weapons: Object.freeze({ pistol: 2 }), casualtyOrder: Object.freeze(["pistol"]) }),
+      rifleSquad: Object.freeze({ role: "line", name: "Rifle Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 5, lmg: 1 }), casualtyOrder: Object.freeze(["rifle", "lmg"]) }),
+      assaultSquad: Object.freeze({ role: "assault", name: "Assault Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 3, smg: 3 }), casualtyOrder: Object.freeze(["rifle", "smg"]) }),
+      mmgTeam: Object.freeze({ role: "support", name: "MMG Team", soldiers: 3, morale: 9, weapons: Object.freeze({ mmg: 1 }), casualtyOrder: Object.freeze([]) })
+    });
 
     const CORE_SCENARIO_12A = Object.freeze({
       id: "take_the_crossroads_core",
@@ -5089,8 +5104,13 @@ that no visual behavior changes. These banners identify the effective systems:
       if (!mobileDiagnostic) return;
       const unitCount =
         document.getElementById("battlefield")?.querySelectorAll(".unit").length ?? 0;
+      const externalDataCount = [
+        window.CROSSROADS_WEAPON_PROFILES,
+        window.CROSSROADS_TERRAIN,
+        window.CROSSROADS_UNIT_TYPES
+      ].filter(Boolean).length;
       mobileDiagnostic.textContent =
-        `${BUILD_INFO.version} · ${unitCount} units · ${zoomReadout.textContent}`;
+        `${BUILD_INFO.version} · ${unitCount} units · data ${externalDataCount}/3 · ${zoomReadout.textContent}`;
     }
 
     function renderDeploymentUnitTray() {
