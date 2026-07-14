@@ -1,14 +1,19 @@
-# CROSSROADS Foundation 2B — First Peelaways
+# CROSSROADS — Foundation 2B.2 Data Peelaways
 
-Upload the entire folder structure to the GitHub Pages repository root.
+Flat-root GitHub Pages build. Upload every file in this folder to the repository root.
 
-## Active extractions
-- `data/build-info.js` supplies `BUILD_INFO`
-- `data/stage.js` supplies `STAGE` and `FEATURES`
+## Active external data
 
-## Prepared but not yet adopted
-- `src/commands.js` introduces `makeCommand()`
-- `src/dom.js` introduces gradual DOM lookup helpers
-- `src/refresh.js` introduces a future refresh-pipeline factory
+- `build-info.js` — build metadata
+- `stage.js` — stage metadata and feature flags
+- `weapons.js` — weapon profiles
+- `terrain.js` — terrain definitions
+- `unit-types.js` — reusable unit templates
 
-No gameplay paths were intentionally migrated in this pass.
+## Reserved seams
+
+- `commands.js`
+- `dom.js`
+- `refresh.js`
+
+No gameplay, rendering, or rules behavior was intentionally changed.

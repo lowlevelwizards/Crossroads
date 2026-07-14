@@ -4278,6 +4278,9 @@ that no visual behavior changes. These banners identify the effective systems:
   <!-- Foundation 2B.1: first low-risk external peelaways. -->
   <script src="build-info.js"></script>
   <script src="stage.js"></script>
+  <script src="weapons.js"></script>
+  <script src="terrain.js"></script>
+  <script src="unit-types.js"></script>
   <script src="commands.js"></script>
   <script src="dom.js"></script>
   <script src="refresh.js"></script>
@@ -4488,28 +4491,13 @@ that no visual behavior changes. These banners identify the effective systems:
       mmgRange: 36
     };
 
-    const WEAPON_PROFILES = {
-      rifle: { key: "rifle", label: "Rifle", short: "R", range: 24, shots: 1, assault: false, fixed: false },
-      smg: { key: "smg", label: "SMG", short: "S", range: 12, shots: 2, assault: true, fixed: false },
-      lmg: { key: "lmg", label: "LMG", short: "L", range: 36, shots: 4, assault: false, fixed: false },
-      pistol: { key: "pistol", label: "Pistol", short: "P", range: 6, shots: 1, assault: true, fixed: false },
-      mmg: { key: "mmg", label: "MMG", short: "MMG", range: 36, shots: 5, reducedShots: 2, crewRequired: 2, crewWeapon: true, assault: false, fixed: true }
-    };
+    const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES;
 
-    const TERRAIN = {
-      woods: { id: "woods", label: "woods", type: "soft", x: 15, y: 28, width: 18, height: 14, save: 5 },
-      wall: { id: "wall", label: "low wall", type: "hard", x: 38, y: 30, width: 17, height: 2.5, save: 4 },
-      building: { id: "building", label: "farmhouse", type: "blocking", x: 28, y: 4, width: 13, height: 13 }
-    };
+    const TERRAIN = window.CROSSROADS_TERRAIN;
 
 
-    // Centralized unit templates. Scenario force entries instantiate these definitions.
-    const UNIT_TYPES = Object.freeze({
-      officer: Object.freeze({ role: "officer", name: "Officer", soldiers: 2, morale: 9, weapons: { pistol: 2 }, casualtyOrder: ["pistol"] }),
-      rifleSquad: Object.freeze({ role: "line", name: "Rifle Squad", soldiers: 6, morale: 9, weapons: { rifle: 5, lmg: 1 }, casualtyOrder: ["rifle", "lmg"] }),
-      assaultSquad: Object.freeze({ role: "assault", name: "Assault Squad", soldiers: 6, morale: 9, weapons: { rifle: 3, smg: 3 }, casualtyOrder: ["rifle", "smg"] }),
-      mmgTeam: Object.freeze({ role: "support", name: "MMG Team", soldiers: 3, morale: 9, weapons: { mmg: 1 }, casualtyOrder: [] })
-    });
+    // Centralized unit templates now live in unit-types.js.
+    const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
 
     const CORE_SCENARIO_12A = Object.freeze({
       id: "take_the_crossroads_core",
