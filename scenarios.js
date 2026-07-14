@@ -13,7 +13,7 @@
   Scenario execution remains in index.html.
 */
 
-const CORE_SCENARIO_12A = Object.freeze({
+window.CROSSROADS_CORE_SCENARIO_12A = Object.freeze({
       id: "take_the_crossroads_core",
       title: "Take the Crossroads",
       factions: { blue: { name: "Blue Force" }, red: { name: "Red Force" } },
@@ -33,7 +33,7 @@ const CORE_SCENARIO_12A = Object.freeze({
       }
     });
 
-const SCENARIOS = Object.freeze({
+window.CROSSROADS_SCENARIOS = Object.freeze({
       take_the_crossroads: Object.freeze({
         id: "take_the_crossroads",
         title: "Take the Crossroads",
@@ -161,5 +161,3 @@ const SCENARIOS = Object.freeze({
       })
     });
 
-window.CROSSROADS_CORE_SCENARIO_12A = CORE_SCENARIO_12A;
-window.CROSSROADS_SCENARIOS = SCENARIOS;

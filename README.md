@@ -1,18 +1,30 @@
-# CROSSROADS — Foundation 2B.3R
+# CROSSROADS — Foundation 2B.3S
 
-This correction makes versioning trustworthy.
+## Actual 2B.3 startup regression
 
-The previous 2B.3 package had the correct version in `build-info.js`, but the
-static HTML fallback still said `Foundation 2A`. The battle engine normally
-replaced that at the end of startup. If startup failed or an external file was
-stale, the obsolete 2A fallback remained visible.
+`scenarios.js` declared top-level classic-script constants named
+`CORE_SCENARIO_12A` and `SCENARIOS`.
 
-2B.3R now:
+The inline battle engine then declared constants with those same names as
+aliases to the external data. Classic browser scripts share one global lexical
+environment, so the duplicate declarations caused a startup SyntaxError before
+the engine could initialize.
 
-- uses `Foundation 2B.3R` in the static HTML
-- applies `build-info.js` immediately, before the battle engine
-- shows `data 4/4` when weapons, terrain, unit types, and scenarios loaded
-- keeps the scenario-data extraction unchanged
+That explains:
 
-Upload every file to the repository root. Do not test until the visible badge
-reads `Foundation 2B.3R`.
+- no units
+- nonfunctional camera controls
+- no deployment initialization
+- `Loading board…` remaining visible
+
+## Fix
+
+`scenarios.js` now assigns its data directly to:
+
+- `window.CROSSROADS_CORE_SCENARIO_12A`
+- `window.CROSSROADS_SCENARIOS`
+
+It no longer creates colliding top-level `const` bindings.
+
+Upload every file to the repository root and wait until the visible badge says
+`Foundation 2B.3S`.
