@@ -1,43 +1,25 @@
-# CROSSROADS — Gameplay 2.4A+B
+# CROSSROADS — Gameplay 2.4C
 
-Staged MMG fixed-weapon doctrine and presentation.
+Battlefield Readability Pass.
 
-## Quality cleanup
+## Included
 
-The large quality cards are replaced by edge stripes:
+- Quality is integrated into the unit nameplate.
+- Mapping:
+  - 1 green stripe — Inexperienced
+  - 2 yellow stripes — Regular
+  - 3 orange stripes — Veteran
+- Close zoom adds remaining men to the nameplate.
+- Duplicate persistent center order markers are removed.
+- Pins are compacted beside the nameplate.
+- Eligible units pulse throughout the choose-unit phase.
+- Eligible farmhouse occupants pulse and show READY.
+- Packed and deployed MMGs use distinct visual formations.
+- Deployed MMG barrel/tripod rotates with facing.
+- MMG field of fire is a lighter dashed wedge.
+- Officer command rings only appear while command support is relevant.
+- Diagnostics include `READ OK`.
 
-- 1 orange stripe — Inexperienced
-- 2 yellow stripes — Regular
-- 3 green stripes — Veteran
+Upload every file to the repository root and wait for the badge:
 
-## 2.4A — MMG doctrine
-
-- MMGs begin packed.
-- The first Fire order deploys the MMG and consumes the activation.
-- Deployed MMGs may Fire or use Ambush.
-- Run or Advance packs the MMG.
-- 3 crew: 5 shots.
-- 2 crew: 2 shots.
-- 1 crew: cannot fire.
-- Advance never permits MMG fire.
-
-## 2.4B — Facing and field of fire
-
-- A selected deployed MMG shows a 90° field-of-fire arc.
-- MMGs show PACKED / DEPLOYED and a facing arrow.
-- Mobile controls provide Face ◀ and Face ▶ in 45° steps.
-- Normal Fire may traverse toward the chosen target.
-- Ambush is restricted to the current arc.
-
-Upload every file to the repository root and wait until the badge says
-`Gameplay 2.4A+B`.
-
-Recommended tests:
-
-1. Confirm an undeployed MMG shows Deploy MMG instead of Fire.
-2. Deploy and verify the activation ends.
-3. On a later activation, rotate and Fire.
-4. Set Ambush, then move enemies inside and outside the arc.
-5. Run or Advance and verify PACKED.
-6. Test at 3, 2, and 1 surviving crew.
-7. Confirm quality uses compact colored stripes.
+`Gameplay 2.4C`
