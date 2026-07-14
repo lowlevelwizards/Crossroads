@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2E</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2E.1</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2E · BUILDING INTEGRATION</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2E.1 · MOBILE ENTRY FIX</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2E externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2E.1 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,7 +4573,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Foundation 2E after a full-reference audit confirmed that
+    // Removed in Foundation 2E.1 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -9444,6 +9444,30 @@ that no visual behavior changes. These banners identify the effective systems:
       return { x: TERRAIN.building.x - 0.6, y: TERRAIN.building.y + TERRAIN.building.height * 0.5 };
     }
 
+    function buildingApproachPoint() {
+      const door = buildingDoorPoint();
+      return { x: door.x - 1.8, y: door.y };
+    }
+
+    function buildingEntryAnalysis(unit) {
+      if (!unit || unit.inBuilding || buildingOccupant()) {
+        return {
+          legal: false,
+          reason: buildingOccupant()
+            ? "The farmhouse is already occupied."
+            : "The selected unit cannot enter the farmhouse."
+        };
+      }
+
+      const approach = buildingApproachPoint();
+      return analyzeMovementPath(
+        unit,
+        [unit, approach],
+        "Advance",
+        unit.id
+      );
+    }
+
     function buildingWindowPointToward(target) {
       const b = TERRAIN.building;
       const c = buildingCenterPoint();
@@ -9460,14 +9484,13 @@ that no visual behavior changes. These banners identify the effective systems:
     }
 
     function unitCanEnterBuilding(unit) {
-      if (!unit || unit.inBuilding || buildingOccupant()) return false;
-      return distanceBetweenPoints(unit, buildingDoorPoint()) <= BUILDING_RULES.entryDistance + .001;
+      return Boolean(buildingEntryAnalysis(unit).legal);
     }
 
     function occupyBuilding(unit, options = {}) {
       if (!unit || (!options.fromAssault && !unitCanEnterBuilding(unit))) return false;
       const center = buildingCenterPoint();
-      if (!options.fromAssault) {
+      if (!options.fromAssault && !options.preserveEntry) {
         unit.buildingEntryX = unit.x;
         unit.buildingEntryY = unit.y;
       }
@@ -9481,7 +9504,8 @@ that no visual behavior changes. These banners identify the effective systems:
 
     function buildingCommand(unit, presentation = "desktop") {
       const exiting = Boolean(unit?.inBuilding);
-      const entering = Boolean(unitCanEnterBuilding(unit));
+      const entryAnalysis = exiting ? null : buildingEntryAnalysis(unit);
+      const entering = Boolean(entryAnalysis?.legal);
       const enabled = phase === "choose-order" && Boolean(unit) && (exiting || entering);
       const label = exiting ? "Exit Farmhouse" : "Enter Farmhouse";
 
@@ -9493,8 +9517,8 @@ that no visual behavior changes. These banners identify the effective systems:
         reason: enabled
           ? exiting
             ? "Leave the farmhouse through its doorway."
-            : "Enter and occupy the farmhouse using an Advance order test."
-          : "The selected unit cannot interact with the farmhouse.",
+            : `Advance ${entryAnalysis.cost.toFixed(1)}″ to the doorway and occupy the farmhouse.`
+          : entryAnalysis?.reason ?? "The selected unit cannot interact with the farmhouse.",
         meta: {
           presentation,
           className: "tray-confirm tray-wide building-action"
@@ -9507,8 +9531,11 @@ that no visual behavior changes. These banners identify the effective systems:
       if (phase !== "choose-order" || !unitCanEnterBuilding(unit)) return;
       chosenOrder = "Enter Building";
       if (!attemptOrder(unit, "Advance")) return;
-      occupyBuilding(unit);
-      addLog(`${capitalize(unit.faction)} ${unit.name} enters and occupies the farmhouse.`, "terrain");
+      const approach = buildingApproachPoint();
+      unit.buildingEntryX = approach.x;
+      unit.buildingEntryY = approach.y;
+      occupyBuilding(unit, { preserveEntry: true });
+      addLog(`${capitalize(unit.faction)} ${unit.name} advances through the doorway and occupies the farmhouse.`, "terrain");
       showBattleAnnouncement("FARMHOUSE OCCUPIED", `${activeScenario.factions[unit.faction].name} takes defensive positions`, unit.faction, 1100);
       completeActivation("Enter Building");
     }
@@ -9518,10 +9545,13 @@ that no visual behavior changes. These banners identify the effective systems:
       if (phase !== "choose-order" || !unit?.inBuilding) return;
       chosenOrder = "Exit Building";
       if (!attemptOrder(unit, "Advance")) return;
-      const door = buildingDoorPoint();
+      const exitPoint = {
+        x: unit.buildingEntryX ?? buildingApproachPoint().x,
+        y: unit.buildingEntryY ?? buildingApproachPoint().y
+      };
       unit.inBuilding = null;
-      unit.x = door.x - 1.8;
-      unit.y = door.y;
+      unit.x = exitPoint.x;
+      unit.y = exitPoint.y;
       unit.buildingEntryX = null;
       unit.buildingEntryY = null;
       queueUnitEffect(unit.id, "move");

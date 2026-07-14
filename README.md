@@ -1,46 +1,29 @@
-# CROSSROADS — Foundation 2E
+# CROSSROADS — Foundation 2E.1
 
-## Building prototype integration
+## Why Enter/Exit did not appear
 
-This pass keeps the existing farmhouse gameplay but removes its late function
-replacement wrappers.
+The first integrated building command only appeared when a unit was within
+3.5 inches of the farmhouse door. Because the building footprint blocks normal
+movement, tapping or running directly into the farmhouse correctly showed red,
+but gave no clear way to enter it.
 
-### Explicit integrations
+## Fix
 
-- `restartBattle()` now clears invalid occupancy directly.
-- `orderAvailability()` directly blocks Run, Advance, and Assault while inside.
-- desktop Enter/Exit uses the shared `buildingCommand()`.
-- mobile Enter/Exit uses the same shared `buildingCommand()`.
-- `renderBuildingState()` remains part of the Foundation 2D render coordinator.
-- startup diagnostics include `BLDG OK:<occupant>`.
+- Farmhouse entry now uses a legal exterior approach point.
+- Entry availability uses the existing Advance movement path rules.
+- `Enter Farmhouse` appears when the selected unit can legally Advance to the
+  doorway in the current activation.
+- The mobile tray and desktop button use the same command.
+- Entering stores the doorway approach as the unit's later exit point.
+- Running directly into the building footprint remains invalid by design.
 
-### Removed
+## Test
 
-- `restartBattle = function restartBattleWithBuildings(...)`
-- `updateAdaptiveUI = function updateAdaptiveUIWithBuildings(...)`
-- `orderAvailability = function orderAvailabilityWithBuildings(...)`
+1. Wait for `Foundation 2E.1`.
+2. Move a unit within one legal Advance of the farmhouse doorway.
+3. On its next order die, select the unit.
+4. `Enter Farmhouse` should appear in the mobile tray.
+5. Tap it; the unit should occupy the farmhouse.
+6. On a later activation, `Exit Farmhouse` should appear.
 
-### Gameplay intentionally unchanged
-
-- one farmhouse occupant
-- Enter/Exit consumes an Advance-style activation
-- occupant renders as a compact counter
-- enemy occupancy blocks entry
-- Run, Advance, and Assault require exiting first
-
-Upload every file to the repository root. Wait until the badge says
-`Foundation 2E`.
-
-A healthy diagnostic includes:
-
-`DOM OK · CMD OK/SHARED · RENDER OK · BLDG OK:none`
-
-Recommended test:
-
-1. Restart both scenarios and confirm occupancy resets.
-2. Deploy a unit near the farmhouse door.
-3. Confirm Enter Farmhouse appears on desktop and phone.
-4. Enter, then confirm Exit Farmhouse appears.
-5. Confirm Run, Advance, and Assault are unavailable while inside.
-6. Fire or Rally from inside.
-7. Restart and verify the farmhouse is empty.
+Upload every file to the repository root.
