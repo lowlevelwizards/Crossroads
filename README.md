@@ -1,28 +1,35 @@
-# CROSSROADS — Foundation 2B.4
+# CROSSROADS — Foundation 2C.1
 
-## Changes
+## DOM consolidation
 
-- Audited `INITIAL_UNITS`.
-- Confirmed it had no runtime references.
-- Removed the dead legacy force array.
-- Added a stronger startup diagnostic containing:
-  - build version
-  - external data count
-  - active scenario
-  - runtime/rendered unit counts
-  - deployment/phase state
-  - zoom state
-- Exposed the same information as:
-  - `window.CROSSROADS_STARTUP_DIAGNOSTIC`
+This pass centralizes 71 existing DOM references into one frozen
+`DOM` object while preserving every old variable name as a compatibility alias.
 
-## Upload
+Example:
 
-Extract this ZIP and upload every file to the repository root.
+```js
+const DOM = Object.freeze({
+  battlefield: document.getElementById("battlefield")
+});
 
-Do not test until the visible badge says:
+const battlefield = DOM.battlefield;
+```
 
-`Foundation 2B.4`
+## Diagnostics
 
-A healthy startup diagnostic should resemble:
+Startup diagnostics now include DOM health:
 
-`Foundation 2B.4 · data 4/4 · take_the_crossroads · 8/8 units · deploy · FIT`
+- `DOM OK` — every required cached element was found
+- `DOM MISS` — one or more cached elements were missing
+
+The exact missing keys are also available in:
+
+```js
+window.CROSSROADS_STARTUP_DIAGNOSTIC.domMissing
+```
+
+No event bindings, gameplay rules, camera logic, rendering, deployment, or
+startup order were intentionally changed.
+
+Upload every file to the repository root and wait until the badge says
+`Foundation 2C.1`.

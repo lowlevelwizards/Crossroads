@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2B.4</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2C.1</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2B.4 · DIAGNOSTICS</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2C.1 · DOM CONSOLIDATION</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2B.4 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2C.1 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,7 +4573,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Foundation 2B.4 after a full-reference audit confirmed that
+    // Removed in Foundation 2C.1 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5117,6 +5117,7 @@ that no visual behavior changes. These banners identify the effective systems:
         runtimeUnits: units.length,
         renderedUnits: renderedUnitCount,
         deployment: deploymentState,
+        domMissing: missingDOMReferences(),
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5128,6 +5129,7 @@ that no visual behavior changes. These banners identify the effective systems:
       mobileDiagnostic.textContent =
         `${diagnostic.build} · data ${diagnostic.externalData} · ` +
         `${diagnostic.scenario} · ${diagnostic.runtimeUnits}/${diagnostic.renderedUnits} units · ` +
+        `DOM ${diagnostic.domMissing.length ? "MISS" : "OK"} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -5143,81 +5145,237 @@ that no visual behavior changes. These banners identify the effective systems:
     // BATTLE ENGINE DOM REFERENCES
     // Cached battlefield, control, report, and overlay elements.
     // =========================================================================
-    const battlefield = document.getElementById("battlefield");
-    const rangeRing = document.getElementById("rangeRing");
-    const traceLine = document.getElementById("traceLine");
-    const traceLabel = document.getElementById("traceLabel");
-    const routeLayer = document.getElementById("routeLayer");
-    const waypointMarker = document.getElementById("waypointMarker");
-    const cursorReadout = document.getElementById("cursorReadout");
-    const drawnDie = document.getElementById("drawnDie");
-    const targetReadout = document.getElementById("targetReadout");
-    const orderDiePop = document.getElementById("orderDiePop");
-    const orderDiePopFace = document.getElementById("orderDiePopFace");
-    const orderDiePopText = document.getElementById("orderDiePopText");
-    const startBattleButton = document.getElementById("startBattleButton");
-    const drawButton = document.getElementById("drawButton");
-    const nextRoundButton = document.getElementById("nextRoundButton");
-    const restartButton = document.getElementById("restartButton");
-    const cancelButton = document.getElementById("cancelButton");
-    const finishAdvanceButton = document.getElementById("finishAdvanceButton");
-    const clearWaypointButton = document.getElementById("clearWaypointButton");
-    const orderButtons = [...document.querySelectorAll(".orderButton")];
-    const ambushOrderButton = document.getElementById("ambushOrderButton");
-    const assaultOrderButton = document.getElementById("assaultOrderButton");
-    const statusPanel = document.getElementById("statusPanel");
-    const previewCard = document.getElementById("previewCard");
-    const reactionPanel = document.getElementById("reactionPanel");
-    const reactionHeading = document.getElementById("reactionHeading");
-    const reactionText = document.getElementById("reactionText");
-    const reactionPrimaryButton = document.getElementById("reactionPrimaryButton");
-    const reactionSecondaryButton = document.getElementById("reactionSecondaryButton");
-    const log = document.getElementById("log");
-    const blueScore = document.getElementById("blueScore");
-    const redScore = document.getElementById("redScore");
-    const roundReadout = document.getElementById("roundReadout");
-    const objectiveOwner = document.getElementById("objectiveOwner");
-    const blueObjectiveDistance = document.getElementById("blueObjectiveDistance");
-    const redObjectiveDistance = document.getElementById("redObjectiveDistance");
-    const objectiveLabel = document.getElementById("objectiveLabel");
-    const farmhouseTerrain = document.getElementById("farmhouseTerrain");
-    const buildingOccupancyBadge = document.getElementById("buildingOccupancyBadge");
-    const buildingActionButton = document.getElementById("buildingActionButton");
-    const objectiveRing = document.getElementById("objectiveRing");
-    const objectiveMarker = document.getElementById("objectiveMarker");
-    const exitZoneElement = document.getElementById("exitZone");
-    const briefingModal = document.getElementById("briefingModal");
-    const briefingTitle = document.getElementById("briefingTitle");
-    const briefingDescription = document.getElementById("briefingDescription");
-    const briefingMeta = document.getElementById("briefingMeta");
-    const briefingIntelLine = document.getElementById("briefingIntelLine");
-    const briefingMissionStrip = document.getElementById("briefingMissionStrip");
-    const briefingBlueForce = document.getElementById("briefingBlueForce");
-    const briefingRedForce = document.getElementById("briefingRedForce");
-    const briefingObjectives = document.getElementById("briefingObjectives");
-    const briefingRules = document.getElementById("briefingRules");
-    const briefingBeginButton = document.getElementById("briefingBeginButton");
-    const briefingCloseButton = document.getElementById("briefingCloseButton");
-    const afterActionModal = document.getElementById("afterActionModal");
-    const aarTitle = document.getElementById("aarTitle");
-    const aarResultBanner = document.getElementById("aarResultBanner");
-    const aarScoreline = document.getElementById("aarScoreline");
-    const aarStats = document.getElementById("aarStats");
-    const aarUnitTable = document.getElementById("aarUnitTable");
-    const aarBattleLog = document.getElementById("aarBattleLog");
-    const copyStatus = document.getElementById("copyStatus");
-    const showBriefingButton = document.getElementById("showBriefingButton");
-    const showReportButton = document.getElementById("showReportButton");
-    const copyLogButton = document.getElementById("copyLogButton");
-    const aarCloseButton = document.getElementById("aarCloseButton");
-    const aarRestartButton = document.getElementById("aarRestartButton");
-    const featureList = document.getElementById("featureList");
-    const stageRules = document.getElementById("stageRules");
-    const scaleNote = document.getElementById("scaleNote");
 
-    // =========================================================================
+    const DOM = Object.freeze({
+      battlefield: document.getElementById("battlefield"),
+      rangeRing: document.getElementById("rangeRing"),
+      traceLine: document.getElementById("traceLine"),
+      traceLabel: document.getElementById("traceLabel"),
+      routeLayer: document.getElementById("routeLayer"),
+      waypointMarker: document.getElementById("waypointMarker"),
+      cursorReadout: document.getElementById("cursorReadout"),
+      drawnDie: document.getElementById("drawnDie"),
+      targetReadout: document.getElementById("targetReadout"),
+      orderDiePop: document.getElementById("orderDiePop"),
+      orderDiePopFace: document.getElementById("orderDiePopFace"),
+      orderDiePopText: document.getElementById("orderDiePopText"),
+      startBattleButton: document.getElementById("startBattleButton"),
+      drawButton: document.getElementById("drawButton"),
+      nextRoundButton: document.getElementById("nextRoundButton"),
+      restartButton: document.getElementById("restartButton"),
+      cancelButton: document.getElementById("cancelButton"),
+      finishAdvanceButton: document.getElementById("finishAdvanceButton"),
+      clearWaypointButton: document.getElementById("clearWaypointButton"),
+      orderButtons: [...document.querySelectorAll(".orderButton")],
+      ambushOrderButton: document.getElementById("ambushOrderButton"),
+      assaultOrderButton: document.getElementById("assaultOrderButton"),
+      statusPanel: document.getElementById("statusPanel"),
+      previewCard: document.getElementById("previewCard"),
+      reactionPanel: document.getElementById("reactionPanel"),
+      reactionHeading: document.getElementById("reactionHeading"),
+      reactionText: document.getElementById("reactionText"),
+      reactionPrimaryButton: document.getElementById("reactionPrimaryButton"),
+      reactionSecondaryButton: document.getElementById("reactionSecondaryButton"),
+      log: document.getElementById("log"),
+      blueScore: document.getElementById("blueScore"),
+      redScore: document.getElementById("redScore"),
+      roundReadout: document.getElementById("roundReadout"),
+      objectiveOwner: document.getElementById("objectiveOwner"),
+      blueObjectiveDistance: document.getElementById("blueObjectiveDistance"),
+      redObjectiveDistance: document.getElementById("redObjectiveDistance"),
+      objectiveLabel: document.getElementById("objectiveLabel"),
+      farmhouseTerrain: document.getElementById("farmhouseTerrain"),
+      buildingOccupancyBadge: document.getElementById("buildingOccupancyBadge"),
+      buildingActionButton: document.getElementById("buildingActionButton"),
+      objectiveRing: document.getElementById("objectiveRing"),
+      objectiveMarker: document.getElementById("objectiveMarker"),
+      exitZoneElement: document.getElementById("exitZone"),
+      briefingModal: document.getElementById("briefingModal"),
+      briefingTitle: document.getElementById("briefingTitle"),
+      briefingDescription: document.getElementById("briefingDescription"),
+      briefingMeta: document.getElementById("briefingMeta"),
+      briefingIntelLine: document.getElementById("briefingIntelLine"),
+      briefingMissionStrip: document.getElementById("briefingMissionStrip"),
+      briefingBlueForce: document.getElementById("briefingBlueForce"),
+      briefingRedForce: document.getElementById("briefingRedForce"),
+      briefingObjectives: document.getElementById("briefingObjectives"),
+      briefingRules: document.getElementById("briefingRules"),
+      briefingBeginButton: document.getElementById("briefingBeginButton"),
+      briefingCloseButton: document.getElementById("briefingCloseButton"),
+      afterActionModal: document.getElementById("afterActionModal"),
+      aarTitle: document.getElementById("aarTitle"),
+      aarResultBanner: document.getElementById("aarResultBanner"),
+      aarScoreline: document.getElementById("aarScoreline"),
+      aarStats: document.getElementById("aarStats"),
+      aarUnitTable: document.getElementById("aarUnitTable"),
+      aarBattleLog: document.getElementById("aarBattleLog"),
+      copyStatus: document.getElementById("copyStatus"),
+      showBriefingButton: document.getElementById("showBriefingButton"),
+      showReportButton: document.getElementById("showReportButton"),
+      copyLogButton: document.getElementById("copyLogButton"),
+      aarCloseButton: document.getElementById("aarCloseButton"),
+      aarRestartButton: document.getElementById("aarRestartButton"),
+      featureList: document.getElementById("featureList"),
+      stageRules: document.getElementById("stageRules"),
+      scaleNote: document.getElementById("scaleNote")
+    });
+
+    const DOM_REQUIRED_KEYS = Object.freeze([
+      "battlefield",
+      "rangeRing",
+      "traceLine",
+      "traceLabel",
+      "routeLayer",
+      "waypointMarker",
+      "cursorReadout",
+      "drawnDie",
+      "targetReadout",
+      "orderDiePop",
+      "orderDiePopFace",
+      "orderDiePopText",
+      "startBattleButton",
+      "drawButton",
+      "nextRoundButton",
+      "restartButton",
+      "cancelButton",
+      "finishAdvanceButton",
+      "clearWaypointButton",
+      "orderButtons",
+      "ambushOrderButton",
+      "assaultOrderButton",
+      "statusPanel",
+      "previewCard",
+      "reactionPanel",
+      "reactionHeading",
+      "reactionText",
+      "reactionPrimaryButton",
+      "reactionSecondaryButton",
+      "log",
+      "blueScore",
+      "redScore",
+      "roundReadout",
+      "objectiveOwner",
+      "blueObjectiveDistance",
+      "redObjectiveDistance",
+      "objectiveLabel",
+      "farmhouseTerrain",
+      "buildingOccupancyBadge",
+      "buildingActionButton",
+      "objectiveRing",
+      "objectiveMarker",
+      "exitZoneElement",
+      "briefingModal",
+      "briefingTitle",
+      "briefingDescription",
+      "briefingMeta",
+      "briefingIntelLine",
+      "briefingMissionStrip",
+      "briefingBlueForce",
+      "briefingRedForce",
+      "briefingObjectives",
+      "briefingRules",
+      "briefingBeginButton",
+      "briefingCloseButton",
+      "afterActionModal",
+      "aarTitle",
+      "aarResultBanner",
+      "aarScoreline",
+      "aarStats",
+      "aarUnitTable",
+      "aarBattleLog",
+      "copyStatus",
+      "showBriefingButton",
+      "showReportButton",
+      "copyLogButton",
+      "aarCloseButton",
+      "aarRestartButton",
+      "featureList",
+      "stageRules",
+      "scaleNote"
+    ]);
+
+    function missingDOMReferences() {
+      return DOM_REQUIRED_KEYS.filter(key => !DOM[key]);
+    }
+
+    // Compatibility aliases keep all existing engine code unchanged.
+    const battlefield = DOM.battlefield;
+    const rangeRing = DOM.rangeRing;
+    const traceLine = DOM.traceLine;
+    const traceLabel = DOM.traceLabel;
+    const routeLayer = DOM.routeLayer;
+    const waypointMarker = DOM.waypointMarker;
+    const cursorReadout = DOM.cursorReadout;
+    const drawnDie = DOM.drawnDie;
+    const targetReadout = DOM.targetReadout;
+    const orderDiePop = DOM.orderDiePop;
+    const orderDiePopFace = DOM.orderDiePopFace;
+    const orderDiePopText = DOM.orderDiePopText;
+    const startBattleButton = DOM.startBattleButton;
+    const drawButton = DOM.drawButton;
+    const nextRoundButton = DOM.nextRoundButton;
+    const restartButton = DOM.restartButton;
+    const cancelButton = DOM.cancelButton;
+    const finishAdvanceButton = DOM.finishAdvanceButton;
+    const clearWaypointButton = DOM.clearWaypointButton;
+    const orderButtons = DOM.orderButtons;
+    const ambushOrderButton = DOM.ambushOrderButton;
+    const assaultOrderButton = DOM.assaultOrderButton;
+    const statusPanel = DOM.statusPanel;
+    const previewCard = DOM.previewCard;
+    const reactionPanel = DOM.reactionPanel;
+    const reactionHeading = DOM.reactionHeading;
+    const reactionText = DOM.reactionText;
+    const reactionPrimaryButton = DOM.reactionPrimaryButton;
+    const reactionSecondaryButton = DOM.reactionSecondaryButton;
+    const log = DOM.log;
+    const blueScore = DOM.blueScore;
+    const redScore = DOM.redScore;
+    const roundReadout = DOM.roundReadout;
+    const objectiveOwner = DOM.objectiveOwner;
+    const blueObjectiveDistance = DOM.blueObjectiveDistance;
+    const redObjectiveDistance = DOM.redObjectiveDistance;
+    const objectiveLabel = DOM.objectiveLabel;
+    const farmhouseTerrain = DOM.farmhouseTerrain;
+    const buildingOccupancyBadge = DOM.buildingOccupancyBadge;
+    const buildingActionButton = DOM.buildingActionButton;
+    const objectiveRing = DOM.objectiveRing;
+    const objectiveMarker = DOM.objectiveMarker;
+    const exitZoneElement = DOM.exitZoneElement;
+    const briefingModal = DOM.briefingModal;
+    const briefingTitle = DOM.briefingTitle;
+    const briefingDescription = DOM.briefingDescription;
+    const briefingMeta = DOM.briefingMeta;
+    const briefingIntelLine = DOM.briefingIntelLine;
+    const briefingMissionStrip = DOM.briefingMissionStrip;
+    const briefingBlueForce = DOM.briefingBlueForce;
+    const briefingRedForce = DOM.briefingRedForce;
+    const briefingObjectives = DOM.briefingObjectives;
+    const briefingRules = DOM.briefingRules;
+    const briefingBeginButton = DOM.briefingBeginButton;
+    const briefingCloseButton = DOM.briefingCloseButton;
+    const afterActionModal = DOM.afterActionModal;
+    const aarTitle = DOM.aarTitle;
+    const aarResultBanner = DOM.aarResultBanner;
+    const aarScoreline = DOM.aarScoreline;
+    const aarStats = DOM.aarStats;
+    const aarUnitTable = DOM.aarUnitTable;
+    const aarBattleLog = DOM.aarBattleLog;
+    const copyStatus = DOM.copyStatus;
+    const showBriefingButton = DOM.showBriefingButton;
+    const showReportButton = DOM.showReportButton;
+    const copyLogButton = DOM.copyLogButton;
+    const aarCloseButton = DOM.aarCloseButton;
+    const aarRestartButton = DOM.aarRestartButton;
+    const featureList = DOM.featureList;
+    const stageRules = DOM.stageRules;
+    const scaleNote = DOM.scaleNote;
+
+    // Existing non-element declarations retained from the original section.
+// =========================================================================
     // FEATURE AND RULES REFERENCE UI
     // Populates the current feature list, rule summary, and scale guidance.
+
     // =========================================================================
     function configureStageUI() {
       ambushOrderButton.hidden = !FEATURES.ambush;
