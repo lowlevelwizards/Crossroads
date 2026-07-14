@@ -3900,32 +3900,90 @@ that no visual behavior changes. These banners identify the effective systems:
       opacity: .88;
     }
 
-    .physical-order-chit.quality {
-      background: #ded8c8;
-      border-color: #655f50;
+    .quality-edge-stripes {
+      position: absolute;
+      left: -7px;
+      top: 50%;
+      z-index: 12;
+      display: grid;
+      gap: 2px;
+      width: 12px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      filter: drop-shadow(0 1px 0 rgba(0,0,0,.28));
     }
-    .physical-order-chit.quality-inexperienced {
-      background: #e7d6bd;
-      border-color: #8a6542;
+    .quality-edge-stripes i {
+      display: block;
+      height: 3px;
+      border: 1px solid rgba(63,55,43,.72);
+      border-radius: 3px;
+      background: #c9823d;
     }
-    .physical-order-chit.quality-veteran {
-      background: #d5dfcf;
-      border-color: #536b4c;
+    .quality-edge-stripes.quality-regular i { background: #d2b54f; }
+    .quality-edge-stripes.quality-veteran i { background: #6f9a63; }
+    body.camera-far .quality-edge-stripes {
+      left: -4px;
+      gap: 1px;
+      width: 8px;
     }
-    .physical-order-chit.quality b {
-      min-width: 28px;
-      font-size: 7px;
+    body.camera-far .quality-edge-stripes i {
+      height: 2px;
+      border-width: 0;
     }
-    .building-occupancy-quality {
-      font-size: 8px;
-      font-weight: 900;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      opacity: .78;
+
+    .mmg-state-marker {
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 25px);
+      z-index: 11;
+      transform: translateX(-50%);
+      padding: 2px 5px;
+      border: 1px solid #665d4f;
+      border-radius: 4px;
+      background: rgba(240,232,211,.94);
+      font: 900 7px/1 ui-monospace, SFMono-Regular, monospace;
+      white-space: nowrap;
+      pointer-events: none;
     }
-    body.camera-far .physical-order-chit.quality span,
-    body.camera-normal .physical-order-chit.quality span {
-      display: none;
+    .mmg-state-marker.deployed {
+      background: #d7e1c9;
+      border-color: #526848;
+    }
+    .mmg-facing-arrow {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%) rotate(var(--mmg-facing));
+      transform-origin: center;
+      color: #3f392f;
+      font-size: 14px;
+      text-shadow: 0 1px 0 #fff;
+      pointer-events: none;
+    }
+    .mmg-fire-arc {
+      position: absolute;
+      z-index: 2;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(var(--mmg-facing));
+      transform-origin: center;
+      pointer-events: none;
+      opacity: .36;
+      background: conic-gradient(from -45deg, rgba(65,95,120,.42) 0deg 90deg, transparent 90deg 360deg);
+      clip-path: circle(50%);
+    }
+    .mmg-fire-arc.red {
+      background: conic-gradient(from -45deg, rgba(140,70,63,.42) 0deg 90deg, transparent 90deg 360deg);
+    }
+    body.camera-far .mmg-state-marker { display: none; }
+    body.camera-far .mmg-facing-arrow {
+      width: 12px;
+      height: 12px;
+      font-size: 10px;
     }
 
     .building-occupancy-order {
@@ -4132,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.3</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.4A+B</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4337,7 +4395,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.3 · UNIT QUALITY</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.4A+B · MMG DOCTRINE</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4475,7 +4533,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.4A+B externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4603,7 +4661,9 @@ that no visual behavior changes. These banners identify the effective systems:
         exitPoints: unit.exitPoints ?? 0,
         inBuilding: unit.inBuilding ?? null,
         buildingEntryX: unit.buildingEntryX ?? null,
-        buildingEntryY: unit.buildingEntryY ?? null
+        buildingEntryY: unit.buildingEntryY ?? null,
+        mmgDeployed: unit.mmgDeployed ?? false,
+        mmgFacing: unit.mmgFacing ?? (unit.faction === "blue" ? 90 : -90)
       };
     }
 
@@ -4740,7 +4800,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.3 after a full-reference audit confirmed that
+    // Removed in Gameplay 2.4A+B after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5305,6 +5365,13 @@ that no visual behavior changes. These banners identify the effective systems:
           Boolean(window.CROSSROADS_UNIT_QUALITY) &&
           units.every(unit => Boolean(UNIT_QUALITY[unit.quality])),
         qualities: [...new Set(units.map(unit => unit.quality))].sort().join("/"),
+        mmgSystem:
+          typeof deployMMG === "function" &&
+          typeof targetInsideMMGArc === "function",
+        mmgStates: units
+          .filter(isMMGTeam)
+          .map(unit => `${unit.id}:${unit.mmgDeployed ? "D" : "P"}/${unit.soldiers}`)
+          .join(","),
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5324,6 +5391,7 @@ that no visual behavior changes. These banners identify the effective systems:
         `${diagnostic.buildingCombat ? "/COMBAT" : ""}:${diagnostic.buildingOccupant}` +
         `${diagnostic.buildingCardVisible ? "/CARD" : "/MISMATCH"} · ` +
         `QUAL ${diagnostic.qualitySystem ? "OK" : "MISS"}:${diagnostic.qualities} · ` +
+        `MMG ${diagnostic.mmgSystem ? "OK" : "MISS"}:${diagnostic.mmgStates} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -5684,6 +5752,63 @@ that no visual behavior changes. These banners identify the effective systems:
       return groups.length ? Math.max(...groups.map(group => group.profile.range)) : 0;
     }
 
+    const MMG_RULES = Object.freeze({
+      arcDegrees: 90,
+      facingStep: 45,
+      fullCrew: 3,
+      reducedCrew: 2
+    });
+
+    function isMMGTeam(unit) {
+      return Boolean(unit?.weapons?.mmg);
+    }
+
+    function normalizeDegrees(value) {
+      let angle = value % 360;
+      if (angle < 0) angle += 360;
+      return angle;
+    }
+
+    function facingToward(from, to) {
+      return normalizeDegrees(Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI);
+    }
+
+    function smallestAngleDifference(a, b) {
+      const diff = Math.abs(normalizeDegrees(a) - normalizeDegrees(b));
+      return Math.min(diff, 360 - diff);
+    }
+
+    function targetInsideMMGArc(unit, target) {
+      if (!isMMGTeam(unit) || !unit.mmgDeployed) return true;
+      return smallestAngleDifference(unit.mmgFacing, facingToward(unit, target)) <= MMG_RULES.arcDegrees / 2 + 0.001;
+    }
+
+    function deployMMG(unit) {
+      unit.mmgDeployed = true;
+      const nearestEnemy = livingUnits()
+        .filter(other => other.faction !== unit.faction)
+        .sort((a, b) => distanceBetweenUnits(unit, a) - distanceBetweenUnits(unit, b))[0];
+      if (nearestEnemy) unit.mmgFacing = facingToward(unit, nearestEnemy);
+      addLog(`${capitalize(unit.faction)} ${unit.name} deploys its MMG facing ${Math.round(unit.mmgFacing)}°.`, "terrain");
+      showBattleAnnouncement("MMG DEPLOYED", `${unit.name} establishes a firing position`, unit.faction, 1000);
+    }
+
+    function undeployMMG(unit, reason = "movement") {
+      if (!isMMGTeam(unit) || !unit.mmgDeployed) return;
+      unit.mmgDeployed = false;
+      addLog(`${capitalize(unit.faction)} ${unit.name} packs up its MMG for ${reason}.`, "terrain");
+    }
+
+    function rotateMMGFacing(unit, delta) {
+      if (!isMMGTeam(unit) || !unit.mmgDeployed || phase !== "choose-order") return;
+      unit.mmgFacing = normalizeDegrees(unit.mmgFacing + delta);
+      setStatus(
+        `${unit.name} facing ${Math.round(unit.mmgFacing)}°.`,
+        `MMG field of fire is ${MMG_RULES.arcDegrees}°. Rotation does not consume the activation.`
+      );
+      renderUnits();
+    }
+
     function availableFireGroups(unit, distance, moving = false, enforceRange = true) {
       const groups = [];
 
@@ -5698,9 +5823,10 @@ that no visual behavior changes. These banners identify the effective systems:
 
         if (profile.crewWeapon) {
           models = 1;
-          shots = unit.soldiers >= profile.crewRequired
-            ? profile.shots
-            : profile.reducedShots;
+          if (profile.fixed && !unit.mmgDeployed) shots = 0;
+          else if (unit.soldiers >= MMG_RULES.fullCrew) shots = profile.shots;
+          else if (unit.soldiers >= MMG_RULES.reducedCrew) shots = profile.reducedShots;
+          else shots = 0;
         }
 
         if (shots <= 0) continue;
@@ -5727,7 +5853,16 @@ that no visual behavior changes. These banners identify the effective systems:
         if (count <= 0) continue;
         const profile = WEAPON_PROFILES[key];
         if (!profile) continue;
-        if (profile.crewWeapon) parts.push(`${profile.label} (${unit.soldiers} crew)`);
+        if (profile.crewWeapon) {
+          const state = unit.mmgDeployed ? "deployed" : "packed";
+          const shots =
+            unit.soldiers >= MMG_RULES.fullCrew
+              ? profile.shots
+              : unit.soldiers >= MMG_RULES.reducedCrew
+                ? profile.reducedShots
+                : 0;
+          parts.push(`${profile.label} (${unit.soldiers} crew · ${state} · ${shots} shots)`);
+        }
         else parts.push(`${count} ${profile.label}${count === 1 ? "" : "s"}`);
       }
       return parts.join(" · ") || "Unarmed";
@@ -5758,14 +5893,20 @@ that no visual behavior changes. These banners identify the effective systems:
           }
         }
       }
+
+      if (isMMGTeam(unit) && unit.soldiers < MMG_RULES.reducedCrew) {
+        undeployMMG(unit, "crew losses");
+      }
+
       if (unit.soldiers <= 0 && unit.outcome === UNIT_OUTCOME.ACTIVE) {
         setUnitOutcome(unit, UNIT_OUTCOME.DESTROYED, {
           reason: "casualties"
         });
       }
+
+      reconcileBuildingAfterUnitChange(unit);
       return casualties;
-          reconcileBuildingAfterUnitChange(unit);
-}
+    }
 
     function destroyUnit(unit, reason = "destroyed") {
       unit.soldiers = 0;
@@ -6113,7 +6254,10 @@ that no visual behavior changes. These banners identify the effective systems:
         commandSupport(unit)
           ? `<span class="ascii-chit physical-order-chit command"><b>★</b><span>CMD</span></span>`
           : "",
-        `<span class="ascii-chit physical-order-chit quality quality-${unit.quality}"><b>${qualityProfile(unit).short}</b><span>${qualityLabel(unit).toUpperCase()}</span></span>`
+        `<span class="quality-edge-stripes quality-${unit.quality}" aria-label="${qualityLabel(unit)}">${Array.from(
+          { length: unit.quality === "veteran" ? 3 : unit.quality === "regular" ? 2 : 1 },
+          () => "<i></i>"
+        ).join("")}</span>`
       ].filter(Boolean).join("");
 
       return `
@@ -6122,6 +6266,10 @@ that no visual behavior changes. These banners identify the effective systems:
           ${models}
           ${pinScatterHtml(unit)}
           <span class="unit-role-chit">${roleAscii(unit)}</span>
+          ${isMMGTeam(unit)
+            ? `<span class="mmg-state-marker ${unit.mmgDeployed ? "deployed" : "packed"}">${unit.mmgDeployed ? "DEPLOYED" : "PACKED"}</span>
+               <span class="mmg-facing-arrow" style="--mmg-facing:${unit.mmgFacing}deg">➤</span>`
+            : ""}
         </span>
         <span class="unit-label">${unit.name}</span>
         <span class="unit-state-line">${stateChits}</span>
@@ -6156,8 +6304,20 @@ that no visual behavior changes. These banners identify the effective systems:
     }
 
     function renderUnitLayer() {
-      battlefield.querySelectorAll(".unit, .command-ring").forEach(el => el.remove());
+      battlefield.querySelectorAll(".unit, .command-ring, .mmg-fire-arc").forEach(el => el.remove());
       const shooter = getUnit(selectedUnitId);
+
+      const selectedMMG = getUnit(selectedUnitId);
+      if (selectedMMG && isMMGTeam(selectedMMG) && selectedMMG.mmgDeployed && !selectedMMG.inBuilding) {
+        const arc = document.createElement("div");
+        arc.className = `mmg-fire-arc ${selectedMMG.faction}`;
+        arc.style.left = `${(selectedMMG.x / RULES.tableWidth) * 100}%`;
+        arc.style.top = `${(selectedMMG.y / RULES.tableHeight) * 100}%`;
+        arc.style.width = `${inchesToPixels(WEAPON_PROFILES.mmg.range * 2)}px`;
+        arc.style.height = `${inchesToPixels(WEAPON_PROFILES.mmg.range * 2)}px`;
+        arc.style.setProperty("--mmg-facing", `${selectedMMG.mmgFacing}deg`);
+        battlefield.appendChild(arc);
+      }
 
       for (const officer of livingUnits().filter(unit => unit.role === "officer")) {
         const ring = document.createElement("div");
@@ -6806,6 +6966,15 @@ that no visual behavior changes. These banners identify the effective systems:
       touchWaypointArmed = false;
       setOrderButtonsDisabled();
 
+      // An undeployed MMG spends its Fire order establishing a fixed position.
+      if (order === "Fire" && isMMGTeam(unit) && !unit.mmgDeployed) {
+        if (!attemptOrder(unit, "Fire")) return;
+        deployMMG(unit);
+        unit.order = "MMG Deployed";
+        completeActivation("Deploy MMG");
+        return;
+      }
+
       // Fire begins as a reversible targeting mode. No Order Test or dice roll
       // occurs until a legal target is explicitly confirmed.
       if (order === "Fire") {
@@ -7154,6 +7323,7 @@ that no visual behavior changes. These banners identify the effective systems:
       for (const ambusher of ambushers) {
         for (const sample of samples) {
           if (sample.pathDistance <= movement.minPathDistance + 0.01) continue;
+          if (isMMGTeam(ambusher) && !targetInsideMMGArc(ambusher, sample.point)) continue;
           const trace = analyzeShotAtPoint(ambusher, { ...sample.point, down: mover.down });
           if (trace.inRange && !trace.blocked) {
             const candidate = { ambusherId: ambusher.id, triggerPoint: sample.point, pathDistance: sample.pathDistance, trace };
@@ -7275,6 +7445,7 @@ that no visual behavior changes. These banners identify the effective systems:
       const cost = pendingMovement.analysis.cost;
       const details = pendingMovement.analysis.details;
 
+      if (isMMGTeam(unit)) undeployMMG(unit, order.toLowerCase());
       addLog(`${capitalize(unit.faction)} ${unit.name} completes ${order} movement for ${cost.toFixed(1)}″ of movement cost${details.length ? ` (${details.join(", ")})` : ""}.`);
       if (unitIsOnObjective(unit)) addLog(`${capitalize(unit.faction)} ${unit.name} is within 3″ of the objective.`, "objective");
 
@@ -7319,6 +7490,9 @@ that no visual behavior changes. These banners identify the effective systems:
       }
       if (target.faction === shooter.faction) return setStatus("Choose an enemy target.");
 
+      if (isMMGTeam(shooter) && shooter.mmgDeployed && chosenOrder === "Fire") {
+        shooter.mmgFacing = facingToward(shooter, target);
+      }
       const trace = analyzeShot(shooter, target);
       const moving = chosenOrder === "Advance";
       const groups = availableFireGroups(shooter, trace.distance, moving, true);
@@ -8625,6 +8799,17 @@ that no visual behavior changes. These banners identify the effective systems:
         };
       }
       if (order === "Rally" && unit.pins === 0) return { available: false, reason: "Unit has no Pins." };
+      if (isMMGTeam(unit)) {
+        if (unit.soldiers < MMG_RULES.reducedCrew && ["Fire", "Ambush"].includes(order)) {
+          return { available: false, reason: "The MMG requires at least 2 surviving crew to fire." };
+        }
+        if (order === "Fire" && !unit.mmgDeployed) {
+          return { available: true, reason: "Use this activation to deploy the fixed MMG." };
+        }
+        if (order === "Ambush" && !unit.mmgDeployed) {
+          return { available: false, reason: "Deploy the MMG before setting Ambush." };
+        }
+      }
       if (order === "Ambush" && availableFireGroups(unit, Infinity, false, false).length === 0) return { available: false, reason: "Unit has no weapon capable of firing." };
       if (order === "Fire" && availableFireGroups(unit, Infinity, false, false).length === 0) return { available: false, reason: "Unit has no surviving ranged weapon." };
       if (order === "Assault") {
@@ -8651,9 +8836,14 @@ that no visual behavior changes. These banners identify the effective systems:
         mobile: order
       });
 
+      const commandLabel =
+        isMMGTeam(unit) && order === "Fire" && !unit.mmgDeployed
+          ? "Deploy MMG"
+          : labels[presentation] ?? labels.desktop;
+
       return window.CrossroadsCommands.makeCommand({
         id: `order-${order.toLowerCase()}`,
-        label: labels[presentation] ?? labels.desktop,
+        label: commandLabel,
         enabled: availability.available,
         execute: () => chooseOrder(order),
         reason: availability.reason,
@@ -8985,6 +9175,15 @@ that no visual behavior changes. These banners identify the effective systems:
       } else if (phase === "choose-order" && selected) {
         const structureCommand = buildingCommand(selected, "mobile");
         if (structureCommand.enabled) addTrayCommand(structureCommand);
+
+        if (isMMGTeam(selected) && selected.mmgDeployed) {
+          addTrayAction("Face ◀", () => rotateMMGFacing(selected, -MMG_RULES.facingStep), {
+            title: "Rotate the MMG field of fire 45° left."
+          });
+          addTrayAction("Face ▶", () => rotateMMGFacing(selected, MMG_RULES.facingStep), {
+            title: "Rotate the MMG field of fire 45° right."
+          });
+        }
 
         const primaryOrders = ["Run", "Advance", "Fire", "Assault"]
           .filter(order => order !== "Assault" || FEATURES.assault);

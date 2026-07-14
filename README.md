@@ -1,32 +1,43 @@
-# CROSSROADS — Gameplay 2.3
+# CROSSROADS — Gameplay 2.4A+B
 
-Staged integration of Unit Quality, 2.3A–2.3E.
+Staged MMG fixed-weapon doctrine and presentation.
 
-## Rules
+## Quality cleanup
 
-- Inexperienced: Morale 8, shooting is +1 harder, assault damage on 5+
-- Regular: Morale 9, normal shooting, assault damage on 4+
-- Veteran: Morale 10, shooting is -1 easier, assault damage on 3+
+The large quality cards are replaced by edge stripes:
 
-Officer support, Pins, movement penalties, fixed-weapon rules, cover, building
-rules, and reaction fire remain unchanged.
+- 1 orange stripe — Inexperienced
+- 2 yellow stripes — Regular
+- 3 green stripes — Veteran
 
-## Scenario assignments
+## 2.4A — MMG doctrine
 
-- Crossroads: mirrored mixed-quality forces
-- Hold the Farm: steadier defenders versus a veteran attacking assault element
-- Breakthrough: veteran Blue defenders versus veteran Red command/assault units
+- MMGs begin packed.
+- The first Fire order deploys the MMG and consumes the activation.
+- Deployed MMGs may Fire or use Ambush.
+- Run or Advance packs the MMG.
+- 3 crew: 5 shots.
+- 2 crew: 2 shots.
+- 1 crew: cannot fire.
+- Advance never permits MMG fire.
 
-## Display
+## 2.4B — Facing and field of fire
 
-Quality appears in unit previews, tabletop chits, farmhouse cards, accessible
-labels, and the After Action Report.
+- A selected deployed MMG shows a 90° field-of-fire arc.
+- MMGs show PACKED / DEPLOYED and a facing arrow.
+- Mobile controls provide Face ◀ and Face ▶ in 45° steps.
+- Normal Fire may traverse toward the chosen target.
+- Ambush is restricted to the current arc.
 
-## Upload
+Upload every file to the repository root and wait until the badge says
+`Gameplay 2.4A+B`.
 
-Upload every file to the repository root, including the new `unit-quality.js`.
-Wait until the badge says `Gameplay 2.3`.
+Recommended tests:
 
-A healthy diagnostic includes:
-
-`data 5/5 · QUAL OK:inexperienced/regular/veteran`
+1. Confirm an undeployed MMG shows Deploy MMG instead of Fire.
+2. Deploy and verify the activation ends.
+3. On a later activation, rotate and Fire.
+4. Set Ambush, then move enemies inside and outside the arc.
+5. Run or Advance and verify PACKED.
+6. Test at 3, 2, and 1 surviving crew.
+7. Confirm quality uses compact colored stripes.
