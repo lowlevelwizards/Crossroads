@@ -3358,7 +3358,7 @@
 
 
 
-    /* ===== CROSSROADS 1.7D + 1.9 MINIATURES UPDATE ===== */
+    /* ===== CROSSROADS 1.7D + 2.0 BUILDINGS UPDATE ===== */
     :root {
       --board-paper: rgba(246,235,205,.12);
       --table-shadow: rgba(38,31,23,.33);
@@ -3772,6 +3772,73 @@
       body.camera-inspection .brick-soldier { animation: none !important; }
     }
 
+
+
+    /* ===== CROSSROADS 2.0: buildings and defensive positions ===== */
+    .building-occupancy-badge {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 12;
+      min-width: 72px;
+      padding: 6px 8px;
+      transform: translate(-50%, -50%) rotate(-2deg);
+      border: 2px solid #51483c;
+      border-radius: 7px;
+      background: rgba(246,240,227,.96);
+      box-shadow: 3px 5px 0 rgba(0,0,0,.24);
+      font: 1000 9px/1.15 ui-monospace, monospace;
+      text-align: center;
+      pointer-events: none;
+    }
+    .building-occupancy-badge.blue { border-color: var(--blue-dark); box-shadow: 0 0 0 4px rgba(83,125,165,.32), 3px 5px 0 rgba(0,0,0,.24); }
+    .building-occupancy-badge.red { border-color: var(--red-dark); box-shadow: 0 0 0 4px rgba(169,87,79,.32), 3px 5px 0 rgba(0,0,0,.24); }
+    .terrain.building.occupied-blue { outline: 5px solid rgba(83,125,165,.55); outline-offset: 3px; }
+    .terrain.building.occupied-red { outline: 5px solid rgba(169,87,79,.55); outline-offset: 3px; }
+    .unit.in-building {
+      width: 66px !important;
+      min-height: 46px !important;
+      z-index: 15 !important;
+    }
+    .unit.in-building .unit-formation { display: none !important; }
+    .unit.in-building .far-unit-counter {
+      display: grid !important;
+      grid-template-columns: auto auto;
+      gap: 2px 6px;
+      min-width: 48px;
+      padding: 5px 7px;
+      border: 2px solid;
+      border-radius: 7px;
+      color: white;
+      box-shadow: 0 4px 0 rgba(0,0,0,.22);
+      font: 1000 10px/1 ui-monospace, monospace;
+    }
+    .unit.in-building.blue .far-unit-counter { background: var(--blue); border-color: var(--blue-dark); }
+    .unit.in-building.red .far-unit-counter { background: var(--red); border-color: var(--red-dark); }
+    .unit.in-building .unit-label { display: block !important; margin-top: 3px; }
+    .unit.in-building::after {
+      content: "⌂";
+      position: absolute;
+      right: -4px;
+      top: 4px;
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border: 1px solid #5b5043;
+      border-radius: 4px;
+      background: #efe3c8;
+      box-shadow: 1px 2px 0 rgba(0,0,0,.18);
+      font-weight: 1000;
+    }
+    .building-action { background:#d7e1c9; border-color:#506244; }
+    .building-fire-line { filter: drop-shadow(0 0 3px rgba(255,255,255,.55)); }
+    .defensive-position-readout {
+      position:absolute; z-index:13; padding:3px 5px; border:1px solid #655b4e; border-radius:4px;
+      background:rgba(246,240,227,.94); font:900 8px/1 ui-monospace,monospace; pointer-events:none;
+    }
+    body.building-targeting .terrain.building { filter: drop-shadow(0 0 10px rgba(201,154,66,.7)); }
+
 </style>
 </head>
 <body class="menu-open">
@@ -3926,8 +3993,9 @@
 
         <div class="terrain woods" title="Woods: soft cover and rough ground"><span class="terrain-label" data-full="Soft cover · rough ground">WOODS</span></div>
         <div class="terrain wall" title="Low wall: hard cover and +2 inch crossing cost"><span class="terrain-label" data-full="Hard cover · +2″ crossing">WALL</span></div>
-        <div class="terrain building">
-          <span class="terrain-label" data-full="Blocks LOS · impassable">FARMHOUSE</span>
+        <div class="terrain building" id="farmhouseTerrain">
+          <span class="terrain-label" data-full="Occupiable · hard cover">FARMHOUSE</span>
+          <span id="buildingOccupancyBadge" class="building-occupancy-badge" hidden></span>
           <span class="building-door"></span>
           <span class="building-window one"></span>
           <span class="building-window two"></span>
@@ -4004,6 +4072,7 @@
           <button class="orderButton" data-order="Assault" id="assaultOrderButton" disabled>Assault · 12″</button>
           <button class="orderButton wide" data-order="Rally" disabled>Rally · Clear Pins</button>
         </div>
+        <button id="buildingActionButton" class="building-action" hidden>Enter Farmhouse</button>
         <button id="finishAdvanceButton" class="finish" hidden>Finish Advance Without Shooting</button>
         <button id="clearWaypointButton" class="finish" hidden>Clear Waypoint</button>
         <button id="cancelButton" class="cancel" disabled>Cancel Order / Reselect Unit</button>
@@ -4070,7 +4139,7 @@
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div class="visual-build-stamp">1.9 MINIATURES UPDATE</div>
+      <div class="visual-build-stamp">2.0 BUILDINGS UPDATE</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4212,7 +4281,10 @@
         outcomeReason: unit.outcomeReason ?? null,
         exitRound: unit.exitRound ?? null,
         exitZoneId: unit.exitZoneId ?? null,
-        exitPoints: unit.exitPoints ?? 0
+        exitPoints: unit.exitPoints ?? 0,
+        inBuilding: unit.inBuilding ?? null,
+        buildingEntryX: unit.buildingEntryX ?? null,
+        buildingEntryY: unit.buildingEntryY ?? null
       };
     }
 
@@ -4330,7 +4402,10 @@
             ambush: false,
             outcome: UNIT_OUTCOME.ACTIVE,
             outcomeRound: null,
-            outcomeReason: null
+            outcomeReason: null,
+            inBuilding: null,
+            buildingEntryX: null,
+            buildingEntryY: null
           });
         }
       }
@@ -4903,6 +4978,9 @@
     const blueObjectiveDistance = document.getElementById("blueObjectiveDistance");
     const redObjectiveDistance = document.getElementById("redObjectiveDistance");
     const objectiveLabel = document.getElementById("objectiveLabel");
+    const farmhouseTerrain = document.getElementById("farmhouseTerrain");
+    const buildingOccupancyBadge = document.getElementById("buildingOccupancyBadge");
+    const buildingActionButton = document.getElementById("buildingActionButton");
     const objectiveRing = document.getElementById("objectiveRing");
     const objectiveMarker = document.getElementById("objectiveMarker");
     const exitZoneElement = document.getElementById("exitZone");
@@ -5509,7 +5587,7 @@
 
       for (const unit of livingUnits()) {
         const el = document.createElement("button");
-        el.className = `unit ${unit.faction} ${unit.type}`;
+        el.className = `unit ${unit.faction} ${unit.type}${unit.inBuilding ? " in-building" : ""}`;
         el.style.left = `${(unit.x / RULES.tableWidth) * 100}%`;
         el.style.top = `${(unit.y / RULES.tableHeight) * 100}%`;
         el.dataset.unitId = unit.id;
@@ -5620,6 +5698,7 @@
         battlefield.appendChild(el);
       }
 
+      renderBuildingState();
       renderRangeRing();
       renderWaypoint();
       renderExitZone();
@@ -5739,7 +5818,7 @@
         ? "blocked"
         : trace.cover.saveTarget !== null ? "protected" : "legal";
 
-      drawTrace(shooter, target, state,
+      drawTrace(trace.shooterPoint ?? shooter, trace.targetPoint ?? target, state,
         !trace.inRange ? `${trace.distance.toFixed(1)}″ · OUT OF RANGE`
           : trace.blocked ? `${trace.distance.toFixed(1)}″ · BLOCKED`
           : noAvailableWeapons ? `${trace.distance.toFixed(1)}″ · NO WEAPON`
@@ -5848,14 +5927,22 @@
     function analyzeShot(shooter, target) { return analyzeShotAtPoint(shooter, target); }
 
     function analyzeShotAtPoint(shooter, targetPoint) {
-      const distance = distanceBetweenPoints(shooter, targetPoint);
+      const shooterPoint = shooter?.inBuilding ? buildingWindowPointToward(targetPoint) : shooter;
+      const targetUnit = targetPoint?.id ? targetPoint : null;
+      const targetAimPoint = targetUnit?.inBuilding ? buildingCenterPoint() : targetPoint;
+      const distance = distanceBetweenPoints(shooterPoint, targetAimPoint);
       const range = weaponRange(shooter, false);
       const inRange = distance <= range + 0.001;
-      const buildingHit = segmentRectClip(shooter, targetPoint, TERRAIN.building);
+
+      let buildingHit = segmentRectClip(shooterPoint, targetAimPoint, TERRAIN.building);
+      if (shooter?.inBuilding || targetUnit?.inBuilding) buildingHit = null;
       const blocked = buildingHit !== null;
       const blockReason = blocked ? "the farmhouse completely blocks line of sight." : "";
-      const cover = blocked ? { label: "No shot", saveTarget: null, sources: [] } : determineLineCover(shooter, targetPoint);
-      return { distance, range, inRange, blocked, blockReason, cover };
+      let cover = blocked ? { label: "No shot", saveTarget: null, sources: [] } : determineLineCover(shooterPoint, targetAimPoint);
+      if (!blocked && targetUnit?.inBuilding) {
+        cover = { label: "Hard cover inside farmhouse", saveTarget: 3, sources: ["target occupies the farmhouse"] };
+      }
+      return { distance, range, inRange, blocked, blockReason, cover, shooterPoint, targetPoint: targetAimPoint };
     }
 
     function determineLineCover(shooter, target) {
@@ -5970,7 +6057,7 @@
     }
 
     function snapshotUnit(unit) {
-      return { unitId: unit.id, x: unit.x, y: unit.y, pins: unit.pins, down: unit.down, activated: unit.activated, order: unit.order, ambush: unit.ambush };
+      return { unitId: unit.id, x: unit.x, y: unit.y, pins: unit.pins, down: unit.down, activated: unit.activated, order: unit.order, ambush: unit.ambush, inBuilding: unit.inBuilding, buildingEntryX: unit.buildingEntryX, buildingEntryY: unit.buildingEntryY };
     }
 
     function restoreSnapshot() {
@@ -6691,6 +6778,17 @@
     }
 
     function analyzeAssault(attacker, defender) {
+      if (defender?.inBuilding) {
+        const door = buildingDoorPoint();
+        const distance = distanceBetweenPoints(attacker, door);
+        if (attacker?.inBuilding) return { legal:false, reason:"Exit the farmhouse before assaulting.", distance };
+        if (distance > RULES.assaultDistance + 0.001) return { legal:false, reason:`Doorway is ${distance.toFixed(1)}″ away; assault range is 12″.`, distance };
+        const pathAnalysis = analyzeMovementPath(attacker, [attacker, door], "Run", defender.id);
+        if (!pathAnalysis.legal) return { legal:false, reason:pathAnalysis.reason, distance };
+        const shotTrace = analyzeShot(defender, attacker);
+        const reactionFire = !defender.down && shotTrace.inRange && !shotTrace.blocked;
+        return { legal:true, reason:"", distance, pathAnalysis, reactionFire, ambushReaction:defender.ambush, defensivePosition:true, buildingAssault:true, shotTrace };
+      }
       const distance = distanceBetweenUnits(attacker, defender);
       if (distance > RULES.assaultDistance + 0.001) return { legal: false, reason: `Out of assault range: ${distance.toFixed(1)}″ exceeds 12″.`, distance };
 
@@ -6809,7 +6907,12 @@
         const safe = findSafeAssaultPosition(attacker, defenderPosition, attackerStart);
         attacker.x = safe.x;
         attacker.y = safe.y;
-        addLog(`${capitalize(attacker.faction)} ${attacker.name} wins; ${defender.name} is destroyed and the attacker occupies the position.`, "assault");
+        if (analysis.buildingAssault) {
+          occupyBuilding(attacker, { fromAssault: true });
+          addLog(`${capitalize(attacker.faction)} ${attacker.name} clears and occupies the farmhouse.`, "assault");
+        } else {
+          addLog(`${capitalize(attacker.faction)} ${attacker.name} wins; ${defender.name} is destroyed and the attacker occupies the position.`, "assault");
+        }
         completeActivation("Assault");
       } else if (winner === "defender") {
         const removed = attacker.soldiers;
@@ -8882,6 +8985,140 @@
       });
     }
 
+
+
+    // ===== CROSSROADS 2.0A-D staged building module =====
+    const BUILDING_RULES = Object.freeze({
+      id: "farmhouse",
+      capacity: 1,
+      entryDistance: 3.5,
+      hardCoverSave: 3
+    });
+
+    function buildingCenterPoint() {
+      return { x: TERRAIN.building.x + TERRAIN.building.width / 2, y: TERRAIN.building.y + TERRAIN.building.height / 2 };
+    }
+
+    function buildingDoorPoint() {
+      return { x: TERRAIN.building.x - 0.6, y: TERRAIN.building.y + TERRAIN.building.height * 0.5 };
+    }
+
+    function buildingWindowPointToward(target) {
+      const b = TERRAIN.building;
+      const c = buildingCenterPoint();
+      const dx = (target?.x ?? c.x) - c.x;
+      const dy = (target?.y ?? c.y) - c.y;
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        return { x: dx < 0 ? b.x - .15 : b.x + b.width + .15, y: clamp(target?.y ?? c.y, b.y + 2, b.y + b.height - 2) };
+      }
+      return { x: clamp(target?.x ?? c.x, b.x + 2, b.x + b.width - 2), y: dy < 0 ? b.y - .15 : b.y + b.height + .15 };
+    }
+
+    function buildingOccupant() {
+      return livingUnits().find(unit => unit.inBuilding === BUILDING_RULES.id) ?? null;
+    }
+
+    function unitCanEnterBuilding(unit) {
+      if (!unit || unit.inBuilding || buildingOccupant()) return false;
+      return distanceBetweenPoints(unit, buildingDoorPoint()) <= BUILDING_RULES.entryDistance + .001;
+    }
+
+    function occupyBuilding(unit, options = {}) {
+      if (!unit || (!options.fromAssault && !unitCanEnterBuilding(unit))) return false;
+      const center = buildingCenterPoint();
+      if (!options.fromAssault) {
+        unit.buildingEntryX = unit.x;
+        unit.buildingEntryY = unit.y;
+      }
+      unit.inBuilding = BUILDING_RULES.id;
+      unit.x = center.x;
+      unit.y = center.y;
+      unit.down = false;
+      queueUnitEffect(unit.id, "move");
+      return true;
+    }
+
+    function enterBuildingAction() {
+      const unit = getUnit(selectedUnitId);
+      if (phase !== "choose-order" || !unitCanEnterBuilding(unit)) return;
+      chosenOrder = "Enter Building";
+      if (!attemptOrder(unit, "Advance")) return;
+      occupyBuilding(unit);
+      addLog(`${capitalize(unit.faction)} ${unit.name} enters and occupies the farmhouse.`, "terrain");
+      showBattleAnnouncement("FARMHOUSE OCCUPIED", `${activeScenario.factions[unit.faction].name} takes defensive positions`, unit.faction, 1100);
+      completeActivation("Enter Building");
+    }
+
+    function exitBuildingAction() {
+      const unit = getUnit(selectedUnitId);
+      if (phase !== "choose-order" || !unit?.inBuilding) return;
+      chosenOrder = "Exit Building";
+      if (!attemptOrder(unit, "Advance")) return;
+      const door = buildingDoorPoint();
+      unit.inBuilding = null;
+      unit.x = door.x - 1.8;
+      unit.y = door.y;
+      unit.buildingEntryX = null;
+      unit.buildingEntryY = null;
+      queueUnitEffect(unit.id, "move");
+      addLog(`${capitalize(unit.faction)} ${unit.name} exits the farmhouse through the doorway.`, "terrain");
+      completeActivation("Exit Building");
+    }
+
+    function renderBuildingState() {
+      const occupant = buildingOccupant();
+      if (farmhouseTerrain) {
+        farmhouseTerrain.classList.toggle("occupied-blue", occupant?.faction === "blue");
+        farmhouseTerrain.classList.toggle("occupied-red", occupant?.faction === "red");
+      }
+      if (buildingOccupancyBadge) {
+        buildingOccupancyBadge.hidden = !occupant;
+        buildingOccupancyBadge.className = `building-occupancy-badge ${occupant?.faction ?? ""}`;
+        buildingOccupancyBadge.innerHTML = occupant ? `⌂ ${occupant.name}<br>${occupant.soldiers} men · ${occupant.pins} pin${occupant.pins === 1 ? "" : "s"}` : "";
+      }
+      updateBuildingActionButton();
+    }
+
+    function updateBuildingActionButton() {
+      if (!buildingActionButton) return;
+      const unit = getUnit(selectedUnitId);
+      const canShow = phase === "choose-order" && unit && (unit.inBuilding || unitCanEnterBuilding(unit));
+      buildingActionButton.hidden = !canShow;
+      if (!canShow) return;
+      buildingActionButton.textContent = unit.inBuilding ? "Exit Farmhouse" : "Enter Farmhouse";
+      buildingActionButton.onclick = unit.inBuilding ? exitBuildingAction : enterBuildingAction;
+    }
+
+    function clearInvalidBuildingOccupancy() {
+      const occupants = livingUnits().filter(unit => unit.inBuilding === BUILDING_RULES.id);
+      occupants.slice(1).forEach(unit => { unit.inBuilding = null; });
+    }
+
+    const originalRestartBattle20 = restartBattle;
+    restartBattle = function restartBattleWithBuildings() {
+      originalRestartBattle20();
+      clearInvalidBuildingOccupancy();
+      renderBuildingState();
+    };
+
+    // Mobile building action injection.
+    const originalUpdateAdaptiveUI20 = updateAdaptiveUI;
+    updateAdaptiveUI = function updateAdaptiveUIWithBuildings() {
+      originalUpdateAdaptiveUI20();
+      if (!adaptiveTouchActive() || phase !== "choose-order") return;
+      const unit = getUnit(selectedUnitId);
+      if (!unit || (!unit.inBuilding && !unitCanEnterBuilding(unit))) return;
+      addTrayAction(unit.inBuilding ? "Exit Farmhouse" : "Enter Farmhouse", unit.inBuilding ? exitBuildingAction : enterBuildingAction, { className: "tray-confirm tray-wide" });
+    };
+
+    // Building occupants may not Run or Advance while inside; they must exit first.
+    const originalOrderAvailability20 = orderAvailability;
+    orderAvailability = function orderAvailabilityWithBuildings(unit, order) {
+      if (unit?.inBuilding && ["Run", "Advance", "Assault"].includes(order)) {
+        return { available:false, reason:"Exit the farmhouse before moving or assaulting." };
+      }
+      return originalOrderAvailability20(unit, order);
+    };
 
     // ===== CROSSROADS 1.7D + 1.8 V1 presentation controller =====
     const referenceLauncher = document.getElementById("referenceLauncher");
