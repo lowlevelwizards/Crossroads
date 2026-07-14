@@ -57,7 +57,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         objectives: [{ id: "crossroads", x: 36, y: 24, radius: 3, label: "Crossroads" }],
         scoring: { roundControl: 1, finalControl: 0 },
         victory: { elimination: true, tiebreaker: "survivingUnits" },
-        forces: CORE_SCENARIO_12A.forces
+        forces: window.CROSSROADS_CORE_SCENARIO_12A.forces
       }),
       hold_the_farm: Object.freeze({
         id: "hold_the_farm",

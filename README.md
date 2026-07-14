@@ -1,30 +1,30 @@
-# CROSSROADS — Foundation 2B.3S
+# CROSSROADS — Foundation 2B.3T
 
-## Actual 2B.3 startup regression
+## Remaining scenario extraction bug fixed
 
-`scenarios.js` declared top-level classic-script constants named
-`CORE_SCENARIO_12A` and `SCENARIOS`.
+2B.3S removed the duplicate global declarations correctly, but one expression
+inside `scenarios.js` still referred to the old local identifier:
 
-The inline battle engine then declared constants with those same names as
-aliases to the external data. Classic browser scripts share one global lexical
-environment, so the duplicate declarations caused a startup SyntaxError before
-the engine could initialize.
+```js
+CORE_SCENARIO_12A.forces
+```
 
-That explains:
+After changing the export to `window.CROSSROADS_CORE_SCENARIO_12A`, that local
+identifier no longer existed. `scenarios.js` therefore threw a ReferenceError
+while creating the Crossroads scenario, and `window.CROSSROADS_SCENARIOS` was
+never assigned.
 
-- no units
-- nonfunctional camera controls
-- no deployment initialization
-- `Loading board…` remaining visible
+This explains why:
 
-## Fix
+- camera controls began working in 2B.3S
+- units and deployment still did not initialize
+- the page remained at `Loading board…`
 
-`scenarios.js` now assigns its data directly to:
+The reference now correctly reads:
 
-- `window.CROSSROADS_CORE_SCENARIO_12A`
-- `window.CROSSROADS_SCENARIOS`
+```js
+window.CROSSROADS_CORE_SCENARIO_12A.forces
+```
 
-It no longer creates colliding top-level `const` bindings.
-
-Upload every file to the repository root and wait until the visible badge says
-`Foundation 2B.3S`.
+Upload every file to the repository root and wait for the badge to say
+`Foundation 2B.3T`.
