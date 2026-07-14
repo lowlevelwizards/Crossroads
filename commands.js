@@ -1,6 +1,6 @@
 "use strict";
 
-// Foundation 2C.3: shared command vocabulary. Desktop and mobile order controls now consume the same order-command descriptions.
+// Foundation 2C.2: shared command vocabulary. The mobile Details action is the first active adopter.
 window.CrossroadsCommands = Object.freeze({
   makeCommand({ id, label, enabled = true, execute = null, reason = "", meta = {} }) {
     if (!id || !label) throw new Error("Command requires id and label.");
