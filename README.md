@@ -1,29 +1,42 @@
-# CROSSROADS — Foundation 2E.1
+# CROSSROADS — Gameplay 2.2A
 
-## Why Enter/Exit did not appear
+Building UI polish staged as one pass.
 
-The first integrated building command only appeared when a unit was within
-3.5 inches of the farmhouse door. Because the building footprint blocks normal
-movement, tapping or running directly into the farmhouse correctly showed red,
-but gave no clear way to enter it.
+## Included
 
-## Fix
+### 2.2A.1 — Occupancy card
+- Occupied squads no longer render their full miniature formation inside.
+- One compact occupancy card represents faction, unit, men, pins, and order.
+- Card detail adapts across far, medium, and close zoom.
 
-- Farmhouse entry now uses a legal exterior approach point.
-- Entry availability uses the existing Advance movement path rules.
-- `Enter Farmhouse` appears when the selected unit can legally Advance to the
-  doorway in the current activation.
-- The mobile tray and desktop button use the same command.
-- Entering stores the doorway approach as the unit's later exit point.
-- Running directly into the building footprint remains invalid by design.
+### 2.2A.2 — Label cleanup
+- FARMHOUSE is now a horizontal plaque along the top edge.
+- Vertical text no longer collides with the occupant.
+
+### 2.2A.3 — Selection and doorway presentation
+- Occupied faction outline remains.
+- Selected occupant gives the farmhouse a stronger gold highlight.
+- A doorway approach marker appears when Enter Farmhouse is available.
+- Tapping the farmhouse or occupancy card selects its occupant.
+
+### 2.2A.4 — Mobile command priority
+- Enter/Exit Farmhouse remains the first command.
+- It spans the full mobile tray width.
+- Run, Advance, and Assault remain hidden while occupied because they are illegal.
+
+### 2.2A.5 — Feedback
+- FARMHOUSE OCCUPIED announcement retained and strengthened.
+- FARMHOUSE CLEARED announcement added on exit.
+- Diagnostics now report `/CARD` when occupancy and card rendering agree.
 
 ## Test
 
-1. Wait for `Foundation 2E.1`.
-2. Move a unit within one legal Advance of the farmhouse doorway.
-3. On its next order die, select the unit.
-4. `Enter Farmhouse` should appear in the mobile tray.
-5. Tap it; the unit should occupy the farmhouse.
-6. On a later activation, `Exit Farmhouse` should appear.
+Wait for the visible badge: `Gameplay 2.2A`.
 
-Upload every file to the repository root.
+Then test:
+1. Enter with Blue and Red.
+2. Inspect at roughly 75%, 150%, and 200% zoom.
+3. Tap the card and building to select the occupant.
+4. Confirm Exit is first and full-width on mobile.
+5. Exit and confirm the card and faction outline clear.
+6. Restart and confirm `BLDG OK:none/CARD`.
