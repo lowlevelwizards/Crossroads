@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2C.1</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2C.2</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2C.1 · DOM CONSOLIDATION</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2C.2 · COMMAND MODEL</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2C.1 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2C.2 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,7 +4573,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Foundation 2C.1 after a full-reference audit confirmed that
+    // Removed in Foundation 2C.2 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5118,6 +5118,7 @@ that no visual behavior changes. These banners identify the effective systems:
         renderedUnits: renderedUnitCount,
         deployment: deploymentState,
         domMissing: missingDOMReferences(),
+        commandModel: Boolean(window.CrossroadsCommands?.makeCommand),
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5130,6 +5131,7 @@ that no visual behavior changes. These banners identify the effective systems:
         `${diagnostic.build} · data ${diagnostic.externalData} · ` +
         `${diagnostic.scenario} · ${diagnostic.runtimeUnits}/${diagnostic.renderedUnits} units · ` +
         `DOM ${diagnostic.domMissing.length ? "MISS" : "OK"} · ` +
+        `CMD ${diagnostic.commandModel ? "OK" : "MISS"} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -8604,6 +8606,28 @@ that no visual behavior changes. These banners identify the effective systems:
       return button;
     }
 
+    function addTrayCommand(command) {
+      if (!command) throw new Error("Tray command is required.");
+      return addTrayAction(command.label, command.execute ?? (() => {}), {
+        disabled: !command.enabled,
+        className: command.meta.className ?? "",
+        title: command.reason || command.meta.title || ""
+      });
+    }
+
+    function mobileDetailsCommand(options = {}) {
+      return window.CrossroadsCommands.makeCommand({
+        id: "mobile-details",
+        label: "Details",
+        enabled: true,
+        execute: toggleMobileDetails,
+        reason: "Open the current unit, status, and preview details.",
+        meta: {
+          className: options.className ?? ""
+        }
+      });
+    }
+
     function trayPhaseTitle() {
       const selected = getUnit(selectedUnitId);
       if (phase === "deployment") return deploymentUnitId ? `Deploy ${getUnit(deploymentUnitId)?.name ?? "unit"}` : "Deployment";
@@ -8665,13 +8689,13 @@ that no visual behavior changes. These banners identify the effective systems:
           addTrayAction("Select a unit on the table", () => {}, { disabled: true, className: "tray-wide" });
         }
         addTrayAction(startBattleButton.textContent || "Confirm Deployment", () => startBattleButton.click(), { disabled: startBattleButton.disabled, className: "tray-confirm" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "ready-to-draw") {
         addTrayAction("Draw Die", drawDie, { className: "tray-confirm tray-wide" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-unit") {
         addTrayAction(`Choose an unused ${capitalize(currentFaction ?? "")} unit`, () => {}, { disabled: true, className: "tray-wide" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-order" && selected) {
         const primaryOrders = [
           ["Run", "Run"],
@@ -8739,7 +8763,7 @@ that no visual behavior changes. These banners identify the effective systems:
         });
         addTrayAction("Confirm", confirmPendingTouchMovement, { disabled: !pendingTouchMovement || pendingTouchMovement.state === "blocked", className: "tray-confirm tray-wide" });
         addTrayAction("Cancel", cancelAndReselect, { disabled: Boolean(transactionLockReason), className: "tray-danger" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-target") {
         addTrayAction(pendingTouchTargetId ? "Confirm Fire" : "Tap enemy", confirmPendingTouchTarget, { disabled: !pendingTouchTargetId, className: "tray-confirm tray-wide" });
         if (chosenOrder === "Advance") {
@@ -8755,18 +8779,18 @@ that no visual behavior changes. These banners identify the effective systems:
         addTrayAction(pendingTouchTargetId ? "Confirm Assault" : "Tap enemy", confirmPendingTouchTarget, { disabled: !pendingTouchTargetId, className: "tray-confirm tray-wide" });
         addTrayAction("Retarget", clearPendingTouchTarget, { disabled: !pendingTouchTargetId });
         addTrayAction("Cancel", cancelAndReselect, { disabled: Boolean(transactionLockReason), className: "tray-danger" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "ambush-reaction") {
         addTrayAction("Fire Ambush", resolveAmbushFire, { className: "tray-ambush tray-wide" });
         addTrayAction("Hold Fire", holdAmbushFire);
       } else if (phase === "round-complete") {
         addTrayAction("Continue", scoreRoundAndContinue, { className: "tray-confirm tray-wide" });
-        addTrayAction("Details", toggleMobileDetails);
+        addTrayCommand(mobileDetailsCommand());
       } else if (phase === "game-over") {
         addTrayAction("Report", showAfterActionReport, { className: "tray-confirm tray-wide" });
         addTrayAction("Restart", restartBattle);
       } else {
-        addTrayAction("Details", toggleMobileDetails, { className: "tray-full" });
+        addTrayCommand(mobileDetailsCommand({ className: "tray-full" }));
       }
 
       const unitText = selected

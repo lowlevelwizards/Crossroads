@@ -1,35 +1,30 @@
-# CROSSROADS — Foundation 2C.1
+# CROSSROADS — Foundation 2C.2
 
-## DOM consolidation
+## First command-model adoption
 
-This pass centralizes 71 existing DOM references into one frozen
-`DOM` object while preserving every old variable name as a compatibility alias.
+The existing `makeCommand()` vocabulary is now used by one deliberately
+low-risk action: the mobile **Details** button.
 
-Example:
+This pass adds:
 
-```js
-const DOM = Object.freeze({
-  battlefield: document.getElementById("battlefield")
-});
+- `addTrayCommand(command)`
+- `mobileDetailsCommand()`
+- command metadata for label, enabled state, handler, reason, and CSS class
+- `CMD OK` / `CMD MISS` in the startup diagnostic
 
-const battlefield = DOM.battlefield;
-```
+Migrated Details button occurrences: 7
 
-## Diagnostics
+Everything else still uses the established action path:
 
-Startup diagnostics now include DOM health:
+- Draw Die
+- deployment
+- Run / Advance / Fire
+- Down / Rally / Ambush / Assault
+- movement confirmation
+- targeting and reactions
+- round flow
 
-- `DOM OK` — every required cached element was found
-- `DOM MISS` — one or more cached elements were missing
+No gameplay rule or order behavior was intentionally changed.
 
-The exact missing keys are also available in:
-
-```js
-window.CROSSROADS_STARTUP_DIAGNOSTIC.domMissing
-```
-
-No event bindings, gameplay rules, camera logic, rendering, deployment, or
-startup order were intentionally changed.
-
-Upload every file to the repository root and wait until the badge says
-`Foundation 2C.1`.
+Upload every file to the repository root and wait until the visible badge says
+`Foundation 2C.2`. A healthy diagnostic includes both `DOM OK` and `CMD OK`.
