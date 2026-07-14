@@ -1,33 +1,47 @@
-# CROSSROADS — Gameplay 2.4C.2
+# CROSSROADS — Gameplay 2.4C.3
 
-Visual stability and MMG cleanup.
+A deliberate simplification of battlefield unit information.
 
-## MMG corrections
+## Far zoom
 
-- Packed MMGs now use only the gun already held by the gunner.
-- No second carried weapon is layered across the formation.
-- Deployed MMGs use only the ground-mounted weapon.
-- Deployed receiver, barrel, tripod, and crew layout are substantially smaller.
-- The gun remains aligned with `mmgFacing`.
+Each unit shows only:
 
-## Layout consistency
+- quality stripes
+- abbreviated role: MG / SMG / R / ★
+- surviving men
+- Pins only when present
 
-- Medium and close zoom always show the unit nameplate and quality stripes.
-- Formation containers explicitly allow heads and weapons to overflow safely.
-- Weapon role tabs are smaller and consistently anchored.
-- Legacy central order and pin-scatter visuals are forcibly hidden.
-- Far counters use a stable quality / role / men / Pins layout.
+## Medium and close zoom
 
-## Building occupancy
+Each unit shows only:
 
-- Occupied buildings gain a persistent exterior faction/unit tab.
-- The tab can select the occupant.
-- It pulses when that occupant is eligible for the current die.
+- the miniature formation
+- one nameplate underneath
+- quality stripes inside the nameplate
+- one compact P/D suffix for packed or deployed MMGs
+- one order chit below the nameplate after activation
+- compact Pins only when present
 
-Upload every file and wait until the badge says:
+Removed from medium/close:
 
-`Gameplay 2.4C.2`
+- floating weapon-role tags
+- duplicate strength numbers
+- floating far-counter letters and numbers
+- CMD chits
+- separate PACKED / DEPLOYED cards
+- duplicate central order markers
+
+## Layout
+
+- Rifle and assault squads use a stable 3-by-2 formation.
+- MMG crews use a small triangle.
+- Officers use a simple two-person formation.
+- The deployed MMG is reduced again in size.
+
+Upload every file and wait for:
+
+`Gameplay 2.4C.3`
 
 A healthy diagnostic includes:
 
-`READ OK/STABLE`
+`READ OK/STABLE/SIMPLE`

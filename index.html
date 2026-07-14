@@ -4082,7 +4082,7 @@ that no visual behavior changes. These banners identify the effective systems:
       .building-approach-marker { animation: none !important; }
     }
 
-    /* ===== Gameplay 2.4C.2: battlefield readability ===== */
+    /* ===== Gameplay 2.4C.3: battlefield readability ===== */
 
     .unit-label {
       display: inline-flex !important;
@@ -4311,7 +4311,7 @@ that no visual behavior changes. These banners identify the effective systems:
       }
     }
 
-    /* ===== Gameplay 2.4C.2: visual stability ===== */
+    /* ===== Gameplay 2.4C.3: visual stability ===== */
 
     /* Keep formations from clipping heads or weapons. */
     .unit,
@@ -4462,6 +4462,191 @@ that no visual behavior changes. These banners identify the effective systems:
       display: none !important;
     }
 
+    /* ===== Gameplay 2.4C.3: simple unit information hierarchy ===== */
+
+    /* Far counters must never leak into medium or close zoom. */
+    .far-unit-counter {
+      display: none !important;
+    }
+
+    body.camera-far .far-unit-counter {
+      display: grid !important;
+      min-width: 48px;
+      padding: 6px 8px;
+      grid-template-columns: 1fr;
+      gap: 2px;
+      place-items: center;
+      border-radius: 9px;
+      font: 900 10px/1.05 ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .far-counter-top,
+    .far-counter-bottom {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+    }
+
+    .far-counter-bottom {
+      font-size: 11px;
+    }
+
+    .far-counter-bottom .counter-pins {
+      font-size: 7px;
+      opacity: .86;
+    }
+
+    body:not(.camera-far) .unit-formation {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    body.camera-far .unit-formation,
+    body.camera-far .unit-label,
+    body.camera-far .unit-state-line,
+    body.camera-far .unit-nameplate-pins {
+      display: none !important;
+    }
+
+    /* Medium and close show only the miniatures and one identity nameplate. */
+    body.camera-normal .unit-label,
+    body.camera-close .unit-label,
+    body.camera-inspection .unit-label {
+      display: inline-flex !important;
+      left: 50% !important;
+      top: calc(100% + 5px) !important;
+      bottom: auto !important;
+      transform: translateX(-50%) !important;
+      min-width: 0;
+      max-width: 126px;
+      padding: 4px 7px;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      visibility: visible !important;
+      opacity: 1 !important;
+      white-space: nowrap;
+    }
+
+    .unit-label-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .unit-label-men,
+    .unit-role-chit,
+    .mmg-state-marker {
+      display: none !important;
+    }
+
+    .unit-label-state {
+      display: inline-grid;
+      place-items: center;
+      min-width: 14px;
+      height: 14px;
+      margin-left: 2px;
+      border-left: 1px solid rgba(72,66,56,.28);
+      color: #5d574c;
+      font: 1000 7px/1 ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .quality-nameplate-stripes {
+      display: inline-grid !important;
+      position: static !important;
+      width: 10px;
+      flex: 0 0 10px;
+      gap: 1px;
+      margin: 0 2px 0 0;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    /* One order marker, always below the nameplate. */
+    body:not(.camera-far) .unit-state-line {
+      display: flex !important;
+      left: 50% !important;
+      top: calc(100% + 31px) !important;
+      bottom: auto !important;
+      transform: translateX(-50%) !important;
+      justify-content: center;
+      width: max-content;
+      max-width: 110px;
+    }
+
+    body:not(.camera-far) .unit-state-line:empty {
+      display: none !important;
+    }
+
+    .physical-order-chit.command {
+      display: none !important;
+    }
+
+    /* Pins stay compact and attached to identity. */
+    .unit-nameplate-pins {
+      left: calc(50% + 48px) !important;
+      top: calc(100% + 8px) !important;
+      transform: none !important;
+      font-size: 7px !important;
+    }
+
+    /* Stable miniature footprint. */
+    .unit {
+      overflow: visible !important;
+    }
+
+    .unit-formation {
+      width: 88px !important;
+      height: 82px !important;
+      min-width: 88px !important;
+      min-height: 82px !important;
+      overflow: visible !important;
+    }
+
+    .model-wrap,
+    .brick-soldier,
+    .brick-head,
+    .brick-helmet {
+      overflow: visible !important;
+    }
+
+    /* MMG remains a unit, not a giant centerpiece. */
+    .mmg-deployed-formation {
+      inset: 16px 20px 18px !important;
+      transform: rotate(var(--mmg-facing)) scale(.55) !important;
+    }
+
+    .mmg-receiver {
+      width: 16px !important;
+      height: 5px !important;
+    }
+
+    .mmg-barrel {
+      width: 23px !important;
+      height: 3px !important;
+      transform: translate(6px, -50%) !important;
+    }
+
+    .mmg-tripod i {
+      width: 15px !important;
+      height: 2px !important;
+    }
+
+    /* Packed MMG uses only the gun held by its gunner. */
+    .mmg-carried-body,
+    .mmg-carried-tripod {
+      display: none !important;
+    }
+
+    /* Do not show any old floating role/strength fragments. */
+    body:not(.camera-far) .far-counter-top,
+    body:not(.camera-far) .far-counter-bottom {
+      display: none !important;
+    }
+
 </style>
 </head>
 <body class="menu-open">
@@ -4570,7 +4755,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.4C.2</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.4C.3</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4776,7 +4961,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.4C.2 · VISUAL STABILITY</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.4C.3 · SIMPLE UNIT UI</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4914,7 +5099,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.4C.2 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.4C.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -5181,7 +5366,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.4C.2 after a full-reference audit confirmed that
+    // Removed in Gameplay 2.4C.3 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5760,6 +5945,9 @@ that no visual behavior changes. These banners identify the effective systems:
         visualStability:
           Boolean(buildingOccupancyTab) &&
           typeof qualityStripeHtml === "function",
+        simpleUnitUI:
+          typeof farCounterHtml === "function" &&
+          typeof compactPinHtml === "function",
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5781,7 +5969,8 @@ that no visual behavior changes. These banners identify the effective systems:
         `QUAL ${diagnostic.qualitySystem ? "OK" : "MISS"}:${diagnostic.qualities} · ` +
         `MMG ${diagnostic.mmgSystem ? "OK" : "MISS"}:${diagnostic.mmgStates} · ` +
         `READ ${diagnostic.readabilityPass ? "OK" : "MISS"}` +
-        `${diagnostic.visualStability ? "/STABLE" : ""} · ` +
+        `${diagnostic.visualStability ? "/STABLE" : ""}` +
+        `${diagnostic.simpleUnitUI ? "/SIMPLE" : ""} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -6544,10 +6733,14 @@ that no visual behavior changes. These banners identify the effective systems:
     function farCounterHtml(unit) {
       return `
         <span class="far-unit-counter" aria-hidden="true">
-          ${qualityStripeHtml(unit)}
-          <span>${roleAscii(unit)}</span>
-          <span>${unit.soldiers}</span>
-          <span class="counter-pins">${unit.pins > 0 ? `P${unit.pins}` : ""}</span>
+          <span class="far-counter-top">
+            ${qualityStripeHtml(unit)}
+            <strong>${roleAscii(unit)}</strong>
+          </span>
+          <span class="far-counter-bottom">
+            <strong>${unit.soldiers}</strong>
+            ${unit.pins > 0 ? `<span class="counter-pins">P${unit.pins}</span>` : ""}
+          </span>
         </span>
       `;
     }
@@ -6577,10 +6770,10 @@ that no visual behavior changes. These banners identify the effective systems:
 
     function formationSlots(unit) {
       const presets = {
-        officer: [[48,24],[61,61]],
-        support: [[46,28],[31,64],[66,66]],
-        assault: [[49,20],[30,43],[67,45],[19,72],[49,70],[79,73]],
-        line: [[45,22],[61,31],[27,43],[75,55],[37,69],[62,76]]
+        officer: [[38,44],[63,58]],
+        support: [[50,34],[32,66],[68,66]],
+        assault: [[25,35],[50,35],[75,35],[25,70],[50,70],[75,70]],
+        line: [[25,35],[50,35],[75,35],[25,70],[50,70],[75,70]]
       };
       return presets[unit.role] ?? presets.line;
     }
@@ -6706,9 +6899,6 @@ that no visual behavior changes. These banners identify the effective systems:
       const stateChits = [
         order
           ? `<span class="ascii-chit physical-order-chit ${order.cls}"><b>${order.symbol}</b><span>${order.label}</span></span>`
-          : "",
-        commandSupport(unit)
-          ? `<span class="ascii-chit physical-order-chit command"><b>★</b><span>CMD</span></span>`
           : ""
       ].filter(Boolean).join("");
 
@@ -6716,15 +6906,13 @@ that no visual behavior changes. These banners identify the effective systems:
         ${farCounterHtml(unit)}
         <span class="unit-formation" style="--model-count:${unit.soldiers}">
           ${models}
-          <span class="unit-role-chit">${roleAscii(unit)}</span>
-          ${isMMGTeam(unit)
-            ? `<span class="mmg-state-marker ${unit.mmgDeployed ? "deployed" : "packed"}">${unit.mmgDeployed ? "DEPLOYED" : "PACKED"}</span>`
-            : ""}
         </span>
         <span class="unit-label">
           ${qualityStripeHtml(unit)}
           <span class="unit-label-name">${unit.name}</span>
-          <span class="unit-label-men">${unit.soldiers}</span>
+          ${isMMGTeam(unit)
+            ? `<span class="unit-label-state">${unit.mmgDeployed ? "D" : "P"}</span>`
+            : ""}
         </span>
         ${compactPinHtml(unit)}
         <span class="unit-state-line">${stateChits}</span>
@@ -10682,25 +10870,3 @@ that no visual behavior changes. These banners identify the effective systems:
 </body>
 </html>
 
-<style>
-  .mmg-carried-body.compact {
-    left: 50%;
-    top: 47%;
-    width: 32px;
-    height: 5px;
-    opacity: .9;
-  }
-  .mmg-carried-tripod { display: none !important; }
-
-  .far-unit-counter .quality-nameplate-stripes {
-    position: static;
-    width: 7px;
-    flex: 0 0 7px;
-    margin: 0 2px 0 0;
-    gap: 0;
-  }
-  .far-unit-counter .quality-nameplate-stripes i {
-    height: 2px;
-    border-width: 0;
-  }
-</style>
