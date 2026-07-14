@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <title>Crossroads 1939–1945 — Infantry Core 1.7A</title>
+  <title>Crossroads 1939–1945 — Infantry Core 1.7C</title>
   <style>
 :root {
       --bg: #e7dfcd;
@@ -3221,94 +3221,242 @@
       .main-menu-play { font-size: 14px !important; }
     }
 
-    /* ===== CROSSROADS 1.7A DIAGNOSTIC D1 ===== */
-    .diagnostic-build-marker {
-      position: fixed;
-      top: max(5px, env(safe-area-inset-top));
-      left: max(5px, env(safe-area-inset-left));
-      z-index: 2147483647;
-      padding: 5px 8px;
-      border: 2px solid #fff;
-      border-radius: 6px;
-      background: #b52f2b;
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(0,0,0,.35);
-      font: 1000 11px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
-      pointer-events: none;
-    }
-    .main-menu-overlay {
+    /* ===== CROSSROADS 1.7B–1.7C: scenario flow + mission briefing ===== */
+    .main-menu-overlay,
+    .scenario-menu-overlay {
       z-index: 2147483000 !important;
       pointer-events: auto !important;
       touch-action: manipulation;
     }
+
     .main-menu-card,
     .main-menu-actions,
-    .main-menu-actions button {
+    .main-menu-actions button,
+    .scenario-menu-card,
+    .scenario-card,
+    .scenario-card button {
       position: relative;
       pointer-events: auto !important;
       touch-action: manipulation;
+    }
+
+    .scenario-menu-overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      overflow-y: auto;
+      background:
+        linear-gradient(rgba(31,29,25,.82), rgba(31,29,25,.88)),
+        repeating-linear-gradient(90deg, transparent 0 49px, rgba(255,255,255,.025) 49px 50px),
+        #282722;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .scenario-menu-overlay[hidden] { display: none !important; }
+
+    .scenario-menu-card {
+      width: min(900px, 100%);
+      padding: clamp(18px, 4vw, 34px);
+      border: 3px solid #746b5d;
+      border-radius: 14px;
+      background: #f3ecdc;
+      box-shadow: 0 14px 0 rgba(0,0,0,.25);
+    }
+
+    .scenario-menu-heading { text-align: center; margin-bottom: 20px; }
+    .scenario-menu-heading .modal-kicker { margin-bottom: 8px; }
+    .scenario-menu-heading h2 { margin: 0; font-size: clamp(28px, 6vw, 48px); line-height: 1; }
+    .scenario-menu-heading p { margin: 9px auto 0; max-width: 590px; color: #62594c; line-height: 1.4; }
+
+    .scenario-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .scenario-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 310px;
+      padding: 17px;
+      border: 3px solid #7c715f;
+      border-radius: 11px;
+      background: #e8deca;
+      box-shadow: 4px 6px 0 rgba(0,0,0,.16);
+    }
+
+    .scenario-card.crossroads { border-top: 10px solid #c99a42; }
+    .scenario-card.breakthrough { border-top: 10px solid #8f3d36; }
+
+    .scenario-card-symbol {
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      margin-bottom: 13px;
+      border: 3px solid #5d5447;
+      border-radius: 10px;
+      background: #f6edd8;
+      font: 1000 27px/1 ui-monospace, monospace;
+      transform: rotate(-2deg);
+      box-shadow: 2px 3px 0 rgba(0,0,0,.17);
+    }
+
+    .scenario-card h3 { margin: 0 0 4px; font-size: 25px; line-height: 1.05; }
+    .scenario-card-tag { margin-bottom: 11px; font-size: 12px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; color: #766a59; }
+    .scenario-card p { margin: 0 0 12px; line-height: 1.45; }
+    .scenario-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; margin-bottom: 12px; }
+    .scenario-card-meta span { padding: 4px 7px; border: 1px solid #928674; border-radius: 999px; background: #f4ead5; font-size: 11px; font-weight: 850; }
+    .scenario-card button { margin: 0; min-height: 50px; background: #d8e2c8; border-color: #506244; font-size: 15px; }
+
+    .scenario-menu-back {
+      width: auto;
+      min-width: 150px;
+      margin: 15px 0 0;
+      background: #e3dbca;
+    }
+
+    .briefing-mission-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 13px 0;
+    }
+
+    .briefing-role {
+      padding: 12px;
+      border: 2px solid #958a77;
+      border-radius: 8px;
+      background: #e9dfcc;
+      line-height: 1.4;
+    }
+    .briefing-role.blue { border-left: 8px solid var(--blue-dark); }
+    .briefing-role.red { border-left: 8px solid var(--red-dark); }
+    .briefing-role strong { display: block; margin-bottom: 3px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .briefing-intel-line {
+      margin: 11px 0;
+      padding: 10px 12px;
+      border-left: 7px solid #c99a42;
+      border-radius: 6px;
+      background: #e4dac5;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 700px) {
+      .scenario-menu-overlay { place-items: start center; }
+      .scenario-menu-card { padding: 15px; }
+      .scenario-card-grid { grid-template-columns: 1fr; }
+      .scenario-card { min-height: 0; }
+      .briefing-mission-strip { grid-template-columns: 1fr; }
     }
 
 </style>
 </head>
 <body class="menu-open">
 
-  <div class="diagnostic-build-marker">DIAGNOSTIC D1 · JULY 14</div>
-
   <div id="mainMenuOverlay" class="main-menu-overlay" role="dialog" aria-modal="true" aria-labelledby="mainMenuTitle">
     <section class="main-menu-card">
-      <div class="main-menu-kicker">DIAGNOSTIC D1 · INFANTRY CORE 1.7A</div>
-      <h1 id="mainMenuTitle" class="main-menu-title">CROSSROADS D1</h1>
+      <div class="main-menu-kicker">INFANTRY CORE 1.7C</div>
+      <h1 id="mainMenuTitle" class="main-menu-title">CROSSROADS</h1>
       <div class="main-menu-years">1939–1945</div>
       <div class="main-menu-actions">
-        <button id="mainMenuPlayButton" class="main-menu-play" type="button" onclick="document.getElementById('mainMenuOverlay').style.display='none'; document.body.classList.remove('menu-open'); this.textContent='PLAY WORKED';">PLAY</button>
-        <button id="mainMenuHowToButton" type="button" aria-expanded="false" onclick="var panel=document.getElementById('mainMenuHowToPanel'); var opening=panel.style.display!=='block'; panel.style.display=opening?'block':'none'; panel.hidden=false; this.setAttribute('aria-expanded', opening?'true':'false'); this.textContent=opening?'CLOSE HOW TO PLAY':'HOW TO PLAY';">HOW TO PLAY</button>
+        <button id="mainMenuPlayButton" class="main-menu-play" type="button" onclick="window.CrossroadsFlow.showScenarios();">PLAY</button>
+        <button id="mainMenuHowToButton" type="button" aria-expanded="false" onclick="window.CrossroadsFlow.toggleHowToPlay(this);">HOW TO PLAY</button>
         <button class="main-menu-continue" type="button" disabled>CONTINUE</button>
       </div>
       <div id="mainMenuHowToPanel" class="how-to-panel" hidden>
-        <strong>Lead both infantry forces through six rounds.</strong>
+        <strong>Lead infantry through six tense rounds.</strong>
         <p>Draw an order die, choose an eligible unit of that colour, then issue Run, Advance, Fire, Down, Rally, Ambush, or Assault.</p>
-        <p>Use drag or swipe to pan. Pinch, the mouse wheel, or the +/− controls zoom the table. The mission briefing explains deployment and victory conditions.</p>
+        <p>Use drag or swipe to pan. Pinch, the mouse wheel, or the +/− controls zoom the table. Each mission briefing explains deployment, scoring, and victory.</p>
       </div>
-      <p class="main-menu-note">A small, stable presentation layer over Infantry Core 1.6.</p>
+      <p class="main-menu-note">A living tabletop infantry game.</p>
+    </section>
+  </div>
+
+  <div id="scenarioMenuOverlay" class="scenario-menu-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="scenarioMenuTitle">
+    <section class="scenario-menu-card">
+      <div class="scenario-menu-heading">
+        <div class="modal-kicker">Choose Scenario</div>
+        <h2 id="scenarioMenuTitle">Select a Mission</h2>
+        <p>Two battles, two different tactical problems. Both use the same infantry core.</p>
+      </div>
+      <div class="scenario-card-grid">
+        <article class="scenario-card crossroads">
+          <div class="scenario-card-symbol">◇</div>
+          <h3>Take the Crossroads</h3>
+          <div class="scenario-card-tag">Control the center</div>
+          <p>A meeting engagement. Both forces race to seize and hold the central crossroads while preserving enough strength to survive the counterattack.</p>
+          <div class="scenario-card-meta"><span>6 rounds</span><span>Symmetric</span><span>Player deployment</span></div>
+          <button type="button" onclick="window.CrossroadsFlow.selectScenario('take_the_crossroads');">SELECT CROSSROADS</button>
+        </article>
+        <article class="scenario-card breakthrough">
+          <div class="scenario-card-symbol">⇥</div>
+          <h3>Breakthrough</h3>
+          <div class="scenario-card-tag">Escape the cordon</div>
+          <p>An asymmetric battle. Red must force surviving units through the Blue edge while Blue delays, pins, and contains the attack.</p>
+          <div class="scenario-card-meta"><span>6 rounds</span><span>Asymmetric</span><span>Player deployment</span></div>
+          <button type="button" onclick="window.CrossroadsFlow.selectScenario('breakthrough');">SELECT BREAKTHROUGH</button>
+        </article>
+      </div>
+      <button class="scenario-menu-back" type="button" onclick="window.CrossroadsFlow.backToMainMenu();">BACK</button>
     </section>
   </div>
 
   <script>
-    // CROSSROADS 1.7A MENU BOOTSTRAP
-    // Kept independent from the battle engine so the front door cannot be
-    // disabled by an unrelated initialization or rendering error.
+    // Kept independent from the battle engine. These controls work even if a
+    // later rendering path fails, and scenario cards only drive the proven
+    // scenario selector underneath.
     (() => {
-      const overlay = document.getElementById("mainMenuOverlay");
-      const playButton = document.getElementById("mainMenuPlayButton");
-      const howToButton = document.getElementById("mainMenuHowToButton");
+      const main = document.getElementById("mainMenuOverlay");
+      const scenarios = document.getElementById("scenarioMenuOverlay");
       const howToPanel = document.getElementById("mainMenuHowToPanel");
 
-      function closeMenu() {
-        if (overlay) overlay.style.display = "none";
+      function showScenarios() {
+        if (main) main.style.display = "none";
+        if (scenarios) scenarios.hidden = false;
+        document.body.classList.add("menu-open");
+      }
+
+      function backToMainMenu() {
+        if (scenarios) scenarios.hidden = true;
+        if (main) main.style.display = "grid";
+        document.body.classList.add("menu-open");
+      }
+
+      function toggleHowToPlay(button) {
+        if (!howToPanel || !button) return;
+        const opening = howToPanel.hidden;
+        howToPanel.hidden = !opening;
+        button.setAttribute("aria-expanded", String(opening));
+        button.textContent = opening ? "CLOSE HOW TO PLAY" : "HOW TO PLAY";
+      }
+
+      function selectScenario(id) {
+        const select = document.getElementById("scenarioSelect");
+        if (!select) return;
+        select.value = id;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        if (scenarios) scenarios.hidden = true;
         document.body.classList.remove("menu-open");
       }
 
-      function toggleHowToPlay() {
-        if (!howToPanel || !howToButton) return;
-        const opening = howToPanel.hidden;
-        howToPanel.hidden = !opening;
-        howToButton.setAttribute("aria-expanded", String(opening));
-        howToButton.textContent = opening
-          ? "CLOSE HOW TO PLAY"
-          : "HOW TO PLAY";
-      }
-
-      playButton?.addEventListener("click", closeMenu);
-      howToButton?.addEventListener("click", toggleHowToPlay);
-
-      // Exposed only as a simple escape hatch for testing and future menu use.
-      window.CrossroadsMenu = Object.freeze({ close: closeMenu, toggleHowToPlay });
+      window.CrossroadsFlow = Object.freeze({
+        showScenarios,
+        backToMainMenu,
+        toggleHowToPlay,
+        selectScenario
+      });
     })();
   </script>
 
   <header>
-    <h1>Infantry Core 1.6 — Breakthrough <span class="build-badge">1.6</span></h1>
+    <h1>CROSSROADS — Infantry Core <span class="build-badge">1.7C</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -3521,6 +3669,8 @@
       <h2 id="briefingTitle">Battle Briefing</h2>
       <p id="briefingDescription" class="modal-description"></p>
       <div id="briefingMeta" class="brief-meta"></div>
+      <div id="briefingIntelLine" class="briefing-intel-line"></div>
+      <div id="briefingMissionStrip" class="briefing-mission-strip"></div>
       <div class="brief-grid">
         <article id="briefingBlueForce" class="brief-box force-card blue"></article>
         <article id="briefingRedForce" class="brief-box force-card red"></article>
@@ -4301,6 +4451,8 @@
     const briefingTitle = document.getElementById("briefingTitle");
     const briefingDescription = document.getElementById("briefingDescription");
     const briefingMeta = document.getElementById("briefingMeta");
+    const briefingIntelLine = document.getElementById("briefingIntelLine");
+    const briefingMissionStrip = document.getElementById("briefingMissionStrip");
     const briefingBlueForce = document.getElementById("briefingBlueForce");
     const briefingRedForce = document.getElementById("briefingRedForce");
     const briefingObjectives = document.getElementById("briefingObjectives");
@@ -6684,6 +6836,14 @@
     }
 
     function scenarioScoringSummary() {
+      if (scenarioIsBreakthrough()) {
+        return [
+          "Red scores 2 points immediately for each unit that exits through the Blue edge.",
+          "At battle end, Blue scores 1 point for each Red unit that did not exit.",
+          "The higher score wins; tied scores use surviving soldiers as the tiebreaker."
+        ];
+      }
+
       const pieces = [];
       const roundPoints = activeScenario.scoring.roundControl ?? 0;
       const finalPoints = activeScenario.scoring.finalControl ?? 0;
@@ -6695,22 +6855,34 @@
     }
 
     function renderBriefing() {
+      const objective = scenarioObjective();
       briefingTitle.textContent = activeScenario.title;
       briefingDescription.textContent = activeScenario.description;
       briefingMeta.innerHTML = [
         `${activeScenario.rounds} rounds`,
         `${activeScenario.table.width}″ × ${activeScenario.table.height}″ table`,
         activeScenario.deployment.mode === "fixed" ? "Fixed deployment" : "Player deployment",
-        `${scenarioObjective().label} objective · ${scenarioObjective().radius}″ control radius`
+        scenarioIsBreakthrough()
+          ? "Exit objective · Blue table edge"
+          : `${objective.label} · ${objective.radius}″ control radius`
       ].map(item => `<span class="brief-chip">${item}</span>`).join("");
+
+      briefingIntelLine.textContent = scenarioIsBreakthrough()
+        ? "MISSION: Red must break through the Blue line. Every unit that exits survives and scores immediately; every unit contained strengthens Blue's final score."
+        : "MISSION: Seize the crossroads, deny it to the enemy, and keep enough combat power intact to hold it through the final round.";
+
+      briefingMissionStrip.innerHTML = scenarioIsBreakthrough()
+        ? `<div class="briefing-role blue"><strong>Blue mission</strong>Delay, pin, and contain Red before units enter the 3″ exit strip.</div><div class="briefing-role red"><strong>Red mission</strong>Move surviving units through the Blue table edge. Each exit scores 2 points.</div>`
+        : `<div class="briefing-role blue"><strong>Blue mission</strong>Control the central objective at round end and deny Red access.</div><div class="briefing-role red"><strong>Red mission</strong>Control the central objective at round end and deny Blue access.</div>`;
 
       briefingBlueForce.innerHTML = factionForceSummary("blue");
       briefingRedForce.innerHTML = factionForceSummary("red");
       briefingObjectives.innerHTML = scenarioIsBreakthrough()
-        ? `<h3>Objectives</h3><p><strong>${activeScenario.factions.blue.name}:</strong> Stop Red units entering the 3″ exit strip. At battle end, score 1 point per Red unit that did not exit.</p><p><strong>${activeScenario.factions.red.name}:</strong> Enter the exit strip on the Blue edge. Each exited unit survives and scores 2 points immediately.</p>`
-        : `<h3>Objectives</h3><p><strong>${activeScenario.factions.blue.name}:</strong> Control the objective, preserve combat power, and finish with the higher score.</p><p><strong>${activeScenario.factions.red.name}:</strong> Control the objective, preserve combat power, and finish with the higher score.</p>`;
+        ? `<h3>Deployment & Objective</h3><p><strong>${activeScenario.factions.blue.name}:</strong> Deploy within the 18″ Blue zone and build a blocking position.</p><p><strong>${activeScenario.factions.red.name}:</strong> Deploy within the 12″ Red zone and reach the marked exit edge.</p>`
+        : `<h3>Deployment & Objective</h3><p>Both forces deploy within 12″ of their own table edge. The objective at the center is controlled by an uncontested active unit within 3″.</p>`;
       briefingRules.innerHTML = `<h3>Scoring & Victory</h3><ul>${scenarioScoringSummary().map(rule => `<li>${rule}</li>`).join("")}</ul>`;
-      briefingBeginButton.textContent = activeScenario.deployment.mode === "fixed" ? "Begin Battle" : "Begin Deployment";
+      briefingBeginButton.textContent = activeScenario.deployment.mode === "fixed" ? "BEGIN BATTLE" : "BEGIN DEPLOYMENT";
+      briefingCloseButton.textContent = "CHANGE SCENARIO";
       configureResponsiveModalSections(briefingModal, true);
     }
 
@@ -8146,7 +8318,11 @@
         setStatus("Fixed deployment loaded. Press “Draw Order Die.”");
       }
     });
-    briefingCloseButton.addEventListener("click", () => { hideBriefing(); requestAnimationFrame(() => { requestAnimationFrame(() => { fitTable(); renderUnits(); }); }); });
+    briefingCloseButton.addEventListener("click", () => {
+      hideBriefing();
+      document.body.classList.add("menu-open");
+      document.getElementById("scenarioMenuOverlay").hidden = false;
+    });
     showBriefingButton.addEventListener("click", showBriefing);
     showReportButton.addEventListener("click", showAfterActionReport);
     copyLogButton.addEventListener("click", copyBattleLog);
