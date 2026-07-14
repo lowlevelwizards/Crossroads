@@ -3358,7 +3358,7 @@
 
 
 
-    /* ===== CROSSROADS 1.7D + 1.8 VISUAL PASS V1 ===== */
+    /* ===== CROSSROADS 1.7D + 1.9 MINIATURES UPDATE ===== */
     :root {
       --board-paper: rgba(246,235,205,.12);
       --table-shadow: rgba(38,31,23,.33);
@@ -3583,6 +3583,195 @@
       .reference-launcher { top: auto; bottom: max(7px, env(safe-area-inset-bottom)); right: calc(158px + env(safe-area-inset-right)); }
       body.adaptive-touch .camera-hud { right: calc(205px + env(safe-area-inset-right)) !important; }
     }
+
+
+    /* ===== CROSSROADS 1.9 — THE MINIATURES UPDATE ===== */
+    :root {
+      --camera-relative-zoom: 1;
+      --miniature-scale: 1;
+    }
+
+    /* The board zoom and miniature inspection scale are deliberately separate. */
+    body:not(.camera-far) .unit-formation {
+      scale: var(--miniature-scale);
+      transform-origin: 50% 58%;
+    }
+    body:not(.camera-far) .unit-label,
+    body:not(.camera-far) .unit-state-line,
+    body:not(.camera-far) .physical-state-marker {
+      scale: clamp(.96, var(--miniature-scale), 1.18);
+      transform-origin: center top;
+    }
+
+    body.camera-close .unit {
+      width: 112px !important;
+      min-height: 116px !important;
+    }
+    body.camera-close .unit-formation {
+      position: relative;
+      display: block;
+      width: 106px;
+      height: 90px;
+      min-height: 90px;
+      margin: 0 auto;
+      padding: 0;
+      overflow: visible;
+    }
+    body.camera-close .unit-formation .formation-slot {
+      position: absolute;
+      left: var(--slot-x);
+      top: var(--slot-y);
+      width: 25px;
+      height: 34px;
+      transform: translate(-50%, -50%);
+    }
+    body.camera-close .unit-formation .brick-soldier {
+      transform: translateX(-50%) scale(1.08);
+    }
+    body.camera-inspection .unit-formation .brick-soldier {
+      transform: translateX(-50%) scale(1.18);
+    }
+    body.camera-close .unit.role-officer .unit-formation,
+    body.camera-close .unit.officer .unit-formation { width: 76px; }
+
+    /* One broad squad shadow makes formations read as tabletop pieces. */
+    body.camera-close .unit-formation::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 58%;
+      width: 78%;
+      height: 34%;
+      transform: translate(-50%, -50%) rotate(-3deg);
+      border-radius: 50%;
+      background: rgba(39,31,23,.20);
+      filter: blur(4px);
+      z-index: -2;
+    }
+    body.camera-close .unit.selected .unit-formation::before {
+      transform: translate(-50%, -42%) rotate(-3deg) scale(1.08);
+      opacity: .78;
+    }
+
+    /* Authored silhouettes: support teams sit low, assault teams lean forward. */
+    body.camera-close .unit.support .unit-formation { height: 80px; }
+    body.camera-close .unit.assault .unit-formation { transform: rotate(-1deg); }
+    body.camera-close .unit.officer .unit-role-chit { transform: rotate(-2deg); }
+
+    /* Physical order cards replace debug-like text strips. */
+    .physical-order-chit {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 3px;
+      min-height: 18px;
+      padding: 2px 5px 2px 3px !important;
+      border-width: 1px !important;
+      border-radius: 4px !important;
+      background: #eee2c8 !important;
+      box-shadow: 2px 3px 0 rgba(42,34,26,.20) !important;
+      transform: rotate(-2deg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .physical-order-chit b {
+      display: grid;
+      place-items: center;
+      min-width: 15px;
+      height: 14px;
+      border-radius: 2px;
+      background: rgba(71,61,49,.12);
+      font-size: 11px;
+      line-height: 1;
+    }
+    .physical-order-chit span { font-size: 8px; letter-spacing: .05em; }
+    body.camera-close .physical-order-chit { padding: 3px 6px 3px 4px !important; }
+    body.camera-close .physical-order-chit span { font-size: 9px; }
+    body.camera-far .physical-order-chit { display: none !important; }
+
+    /* Pins are separate pieces, not UI text. */
+    body.camera-close .pin-scatter { inset: -12px -16px -8px; }
+    body.camera-close .pin-x {
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(109,31,27,.78);
+      border-radius: 3px;
+      background: #f1dfc3;
+      box-shadow: 2px 3px 0 rgba(0,0,0,.20);
+      font-size: 18px;
+      text-shadow: none;
+    }
+    body.camera-close .pin-count {
+      right: -7px;
+      bottom: -8px;
+      height: 19px;
+      min-width: 22px;
+      box-shadow: 2px 3px 0 rgba(0,0,0,.20);
+    }
+
+    /* Selection looks like a miniature being lifted from the table. */
+    body.camera-close .unit.selected .unit-formation {
+      translate: 0 -7px;
+      filter: drop-shadow(0 10px 5px rgba(0,0,0,.28));
+    }
+    body.camera-close .unit.selected::before {
+      width: 96%;
+      height: 48%;
+      top: 43%;
+      background: rgba(255,214,95,.18);
+      box-shadow: 0 0 24px rgba(255,196,55,.48);
+    }
+    .unit.activated { opacity: .80 !important; filter: grayscale(.24) !important; }
+
+    /* Short physical result cards reuse the existing effect queue. */
+    .unit-feedback-card {
+      position: absolute;
+      left: 50%;
+      top: -9px;
+      z-index: 35;
+      padding: 4px 7px;
+      border: 1px solid #5d5142;
+      border-radius: 4px;
+      background: #f4e8cf;
+      color: #302b26;
+      box-shadow: 2px 3px 0 rgba(0,0,0,.22);
+      font: 1000 9px/1 ui-monospace, monospace;
+      letter-spacing: .04em;
+      white-space: nowrap;
+      pointer-events: none;
+      animation: miniatureFeedback .82s ease-out both;
+    }
+    .feedback-pin, .feedback-hit, .feedback-casualty { border-color: #8d332d; color: #7b2924; }
+    .feedback-fire { border-color: #8b6b29; }
+    @keyframes miniatureFeedback {
+      0% { opacity: 0; transform: translate(-50%, 7px) scale(.72) rotate(-3deg); }
+      24% { opacity: 1; transform: translate(-50%, 0) scale(1.05) rotate(1deg); }
+      75% { opacity: 1; transform: translate(-50%, -5px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -11px) scale(.94); }
+    }
+
+    /* Rare, tiny close-view weight shifts: calm rather than constant bobbing. */
+    body.camera-inspection .unit:not(.activated):not(.selected) .model-wrap:nth-child(2n) .brick-soldier {
+      animation: miniatureIdleA 5.8s ease-in-out infinite;
+      animation-delay: -1.7s;
+    }
+    body.camera-inspection .unit:not(.activated):not(.selected) .model-wrap:nth-child(2n+1) .brick-soldier {
+      animation: miniatureIdleB 7.1s ease-in-out infinite;
+    }
+    @keyframes miniatureIdleA {
+      0%, 84%, 100% { translate: 0 0; rotate: 0deg; }
+      89% { translate: 0 -1px; rotate: -1.2deg; }
+      94% { translate: 0 0; rotate: .8deg; }
+    }
+    @keyframes miniatureIdleB {
+      0%, 88%, 100% { translate: 0 0; rotate: 0deg; }
+      92% { translate: 1px 0; rotate: 1deg; }
+      96% { translate: 0 0; rotate: -.6deg; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .unit-feedback-card,
+      body.camera-inspection .brick-soldier { animation: none !important; }
+    }
+
 </style>
 </head>
 <body class="menu-open">
@@ -3881,7 +4070,7 @@
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div class="visual-build-stamp">1.8 VISUAL PASS V1</div>
+      <div class="visual-build-stamp">1.9 MINIATURES UPDATE</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4318,12 +4507,30 @@
           ? boardZoom / fittedBoardZoom
           : 1;
 
+      // Publish a continuous miniature scale as well as the broad LOD bands.
+      // The board already zooms; this extra scale makes close inspection reveal
+      // genuinely larger, more legible miniatures rather than only more board.
+      const miniatureScale = clamp(
+        0.90 + Math.max(0, relativeZoom - 0.82) * 0.48,
+        0.90,
+        1.82
+      );
+      document.documentElement.style.setProperty(
+        "--camera-relative-zoom",
+        relativeZoom.toFixed(3)
+      );
+      document.documentElement.style.setProperty(
+        "--miniature-scale",
+        miniatureScale.toFixed(3)
+      );
+
       document.body.classList.toggle("camera-far", relativeZoom < 0.82);
       document.body.classList.toggle(
         "camera-normal",
         relativeZoom >= 0.82 && relativeZoom < 1.65
       );
       document.body.classList.toggle("camera-close", relativeZoom >= 1.65);
+      document.body.classList.toggle("camera-inspection", relativeZoom >= 2.25);
       document.body.classList.toggle("camera-rotated", cameraIsRotated());
     }
 
@@ -5160,17 +5367,28 @@
       if (unit.role === "support") return index === 0 ? "mmg" : "loader";
       if (unit.role === "assault") return "smg";
 
-      const lmgCount = unit.loadout?.lmg ?? 0;
+      const lmgCount = unit.weapons?.lmg ?? 0;
       if (lmgCount > 0 && index === 0) return "lmg";
       if (lmgCount > 0 && index === 1) return "loader";
       return "rifle";
     }
 
+    function formationSlots(unit) {
+      const presets = {
+        officer: [[48,24],[61,61]],
+        support: [[46,28],[31,64],[66,66]],
+        assault: [[49,20],[30,43],[67,45],[19,72],[49,70],[79,73]],
+        line: [[45,22],[61,31],[27,43],[75,55],[37,69],[62,76]]
+      };
+      return presets[unit.role] ?? presets.line;
+    }
+
     function brickSoldierHtml(unit, index) {
       const role = soldierRole(unit, index);
-      const muzzle = role === "officer" ? "" : "";
+      const slots = formationSlots(unit);
+      const slot = slots[index] ?? [20 + (index % 3) * 29, 34 + Math.floor(index / 3) * 36];
       return `
-        <span class="model-wrap" aria-hidden="true">
+        <span class="model-wrap formation-slot slot-${index + 1}" style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%" aria-hidden="true">
           <span class="model-shadow"></span>
           <span class="brick-soldier role-${role}">
             <span class="brick-legs"></span>
@@ -5180,7 +5398,6 @@
             <span class="brick-helmet"></span>
             <span class="brick-arm"></span>
             <span class="brick-weapon"></span>
-            ${muzzle}
           </span>
         </span>
       `;
@@ -5211,17 +5428,17 @@
     }
 
     function orderAscii(unit) {
-      if (unit.ambush) return { symbol: "[A]", label: "AMBUSH", cls: "order-ambush" };
-      if (unit.down) return { symbol: "[D]", label: "DOWN", cls: "order-down" };
+      if (unit.ambush) return { symbol: "A", label: "AMBUSH", cls: "order-ambush" };
+      if (unit.down) return { symbol: "↓", label: "DOWN", cls: "order-down" };
 
       const order = unit.order ?? "";
       const map = {
-        Fire: { symbol: "[*]", label: "FIRE", cls: "order-fire" },
-        Run: { symbol: "[>>]", label: "RUN", cls: "order-run" },
-        Advance: { symbol: "[>·]", label: "ADV", cls: "order-advance" },
-        Assault: { symbol: "[!]", label: "ASSAULT", cls: "order-assault" },
-        Rally: { symbol: "[+]", label: "RALLY", cls: "order-rally" },
-        Down: { symbol: "[D]", label: "DOWN", cls: "order-down" }
+        Fire: { symbol: "✦", label: "FIRE", cls: "order-fire" },
+        Run: { symbol: "≫", label: "RUN", cls: "order-run" },
+        Advance: { symbol: "›", label: "ADV", cls: "order-advance" },
+        Assault: { symbol: "!", label: "ASSAULT", cls: "order-assault" },
+        Rally: { symbol: "+", label: "RALLY", cls: "order-rally" },
+        Down: { symbol: "↓", label: "DOWN", cls: "order-down" }
       };
       return map[order] ?? null;
     }
@@ -5235,10 +5452,10 @@
       const order = orderAscii(unit);
       const stateChits = [
         order
-          ? `<span class="ascii-chit ${order.cls}">${order.symbol} ${order.label}</span>`
+          ? `<span class="ascii-chit physical-order-chit ${order.cls}"><b>${order.symbol}</b><span>${order.label}</span></span>`
           : "",
         commandSupport(unit)
-          ? `<span class="ascii-chit command">[CMD]</span>`
+          ? `<span class="ascii-chit physical-order-chit command"><b>★</b><span>CMD</span></span>`
           : ""
       ].filter(Boolean).join("");
 
@@ -5306,6 +5523,21 @@
         const visualEffects = consumeUnitEffects(unit.id);
         for (const effectName of visualEffects) {
           el.classList.add(`effect-${effectName}`);
+        }
+
+        const feedbackPriority = [
+          ["casualty", "CASUALTY"],
+          ["pin", "+ PIN"],
+          ["hit", "HIT"],
+          ["fire", "FIRE"],
+          ["move", chosenOrder === "Assault" ? "ASSAULT" : "MOVE"]
+        ];
+        const feedback = feedbackPriority.find(([effect]) => visualEffects.has(effect));
+        if (feedback) {
+          const card = document.createElement("span");
+          card.className = `unit-feedback-card feedback-${feedback[0]}`;
+          card.textContent = feedback[1];
+          el.appendChild(card);
         }
 
         if (visualEffects.has("move")) {
