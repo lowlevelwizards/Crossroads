@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2A</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2B.3R</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2A</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2B.3R · VERSION BOOTSTRAP</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4277,6 +4277,21 @@ that no visual behavior changes. These banners identify the effective systems:
 
   <!-- Foundation 2B.1: first low-risk external peelaways. -->
   <script src="build-info.js"></script>
+  <script>
+    // Apply the version before the battle engine starts. This keeps the visible
+    // badge trustworthy even if a later startup error prevents full bootstrap.
+    (() => {
+      const info = window.CROSSROADS_BUILD_INFO;
+      if (!info) return;
+      document.title = `CROSSROADS — ${info.engine} ${info.version}`;
+      const menu = document.getElementById("mainMenuBuildLabel");
+      const badge = document.getElementById("headerBuildBadge");
+      const stamp = document.getElementById("referenceBuildStamp");
+      if (menu) menu.textContent = `${info.engine.toUpperCase()} · ${info.version.toUpperCase()}`;
+      if (badge) badge.textContent = info.version;
+      if (stamp) stamp.textContent = `${info.version.toUpperCase()} · ${info.codename.toUpperCase()}`;
+    })();
+  </script>
   <script src="stage.js"></script>
   <script src="weapons.js"></script>
   <script src="terrain.js"></script>
@@ -4312,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2A centralizes build metadata and runtime registries. Gameplay,
+    Foundation 2B.3R externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -5093,10 +5108,11 @@ that no visual behavior changes. These banners identify the effective systems:
       const externalDataCount = [
         window.CROSSROADS_WEAPON_PROFILES,
         window.CROSSROADS_TERRAIN,
-        window.CROSSROADS_UNIT_TYPES
+        window.CROSSROADS_UNIT_TYPES,
+        window.CROSSROADS_SCENARIOS
       ].filter(Boolean).length;
       mobileDiagnostic.textContent =
-        `${BUILD_INFO.version} · ${unitCount} units · data ${externalDataCount}/3 · ${zoomReadout.textContent}`;
+        `${BUILD_INFO.version} · ${unitCount} units · data ${externalDataCount}/4 · ${zoomReadout.textContent}`;
     }
 
     function renderDeploymentUnitTray() {

@@ -1,28 +1,18 @@
-# CROSSROADS — Foundation 2B.3
+# CROSSROADS — Foundation 2B.3R
 
-Flat-root scenario-data peelaway.
+This correction makes versioning trustworthy.
 
-## Upload
+The previous 2B.3 package had the correct version in `build-info.js`, but the
+static HTML fallback still said `Foundation 2A`. The battle engine normally
+replaced that at the end of startup. If startup failed or an external file was
+stale, the obsolete 2A fallback remained visible.
 
-Extract the ZIP and upload every file to the repository root. The new required
-file is:
+2B.3R now:
 
-- `scenarios.js`
+- uses `Foundation 2B.3R` in the static HTML
+- applies `build-info.js` immediately, before the battle engine
+- shows `data 4/4` when weapons, terrain, unit types, and scenarios loaded
+- keeps the scenario-data extraction unchanged
 
-## Active extraction
-
-`scenarios.js` now owns:
-
-- the shared Crossroads force definition
-- Crossroads scenario data
-- Hold the Farm validation scenario data
-- Breakthrough scenario data
-- deployment zones
-- terrain layouts
-- objective definitions
-- scoring and victory configuration
-
-Scenario execution, deployment logic, scoring functions, combat, rendering,
-camera, and startup remain in `index.html`.
-
-The visible build badge must say `Foundation 2B.3` before testing.
+Upload every file to the repository root. Do not test until the visible badge
+reads `Foundation 2B.3R`.
