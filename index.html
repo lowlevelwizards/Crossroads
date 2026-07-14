@@ -1,10 +1,49 @@
 <!doctype html>
+<!--
+==============================================================================
+CROSSROADS 1939–1945 — INFANTRY CORE ENGINE
+FOUNDATION PASS 1: ARCHITECTURAL SKELETON
+
+This remains a single-file, dependency-free browser game. Phase 1 changes only
+source navigation and documentation. Runtime behavior, rules, rendering, input,
+and startup order are intentionally unchanged.
+
+DOCUMENT LAYOUT
+  1. Document Head and Styles
+  2. Main Menu and Scenario Flow
+  3. Battlefield and Desktop Interface
+  4. Reference, Mobile, and Modal Interface
+  5. Battle Engine
+  6. Bootstrap
+==============================================================================
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Crossroads 1939–1945 — Infantry Core 1.7C</title>
   <style>
+/*
+==============================================================================
+STYLESHEET ARCHITECTURE
+
+The stylesheet remains in historical cascade order during Foundation Pass 1 so
+that no visual behavior changes. These banners identify the effective systems:
+
+  THEME & BASE                 palette, typography, buttons
+  BATTLEFIELD & TERRAIN       table, roads, cover, objectives, traces
+  MINIATURES                  formations, soldiers, pins, state markers
+  PANELS & REPORTS            desktop panels, briefing, after-action report
+  RESPONSIVE SHELL            mobile/tablet layout and camera presentation
+  MENU & SCENARIO FLOW        front door and mission selection
+  PLAYER-FACING PRESENTATION  reference drawer and visual polish
+  BUILDING PROTOTYPE          occupancy presentation hooks
+==============================================================================
+*/
+
+/* ==========================================================================
+   THEME, BASE ELEMENTS, AND DESKTOP LAYOUT
+   ========================================================================== */
 :root {
       --bg: #e7dfcd;
       --panel: #f6f0e3;
@@ -3843,6 +3882,10 @@
 </head>
 <body class="menu-open">
 
+  <!-- ======================================================================
+       MAIN MENU AND SCENARIO SELECTION
+       ====================================================================== -->
+
   <div id="mainMenuOverlay" class="main-menu-overlay" role="dialog" aria-modal="true" aria-labelledby="mainMenuTitle">
     <section class="main-menu-card">
       <div class="main-menu-kicker">INFANTRY CORE 1.8 V1</div>
@@ -3937,6 +3980,10 @@
       });
     })();
   </script>
+
+  <!-- ======================================================================
+       BATTLEFIELD APPLICATION SHELL
+       ====================================================================== -->
 
   <header>
     <h1>CROSSROADS — Infantry Core <span class="build-badge">1.8 V1</span></h1>
@@ -4128,6 +4175,10 @@
 
 
 
+  <!-- ======================================================================
+       REFERENCE DRAWER AND MOBILE COMMAND INTERFACE
+       ====================================================================== -->
+
   <button id="referenceLauncher" class="reference-launcher" type="button" aria-label="Open menu and reference">REFERENCE</button>
   <div id="referenceDrawer" class="reference-drawer" hidden>
     <section class="reference-sheet" role="dialog" aria-modal="true" aria-labelledby="referenceTitle">
@@ -4172,6 +4223,10 @@
     <button id="mobileUnitPickerClose" type="button">Close</button>
   </section>
 
+
+  <!-- ======================================================================
+       BRIEFING AND AFTER-ACTION MODALS
+       ====================================================================== -->
 
   <div id="briefingModal" class="modal-backdrop" hidden>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="briefingTitle">
@@ -4224,6 +4279,34 @@
 "use strict";
 
     /*
+    =========================================================================
+    CROSSROADS BATTLE ENGINE — ARCHITECTURE MAP
+
+      FOUNDATION CONTRACTS     outcomes, scenario objective registry
+      CONFIGURATION & DATA      rules, weapons, terrain, units
+      RUNTIME STATE             battle and activation transaction state
+      CAMERA & INPUT            zoom, rotation, pan, pointer conversion
+      CORE HELPERS              units, geometry, dice, formatting
+      BREAKTHROUGH SYSTEM       exit objective and containment scoring
+      RENDERING & FEEDBACK      miniatures, overlays, previews, effects
+      TURN & ORDER FLOW         bag draw, order choice, cancellation
+      MOVEMENT & AMBUSH         paths, terrain costs, interruptions
+      SHOOTING & ASSAULT        combat resolution and casualties
+      ACTION COMPLETION         activation, round, elimination
+      SCENARIO SYSTEM           definitions, deployment, scoring, victory
+      REPORTING                 briefing, statistics, after-action report
+      ADAPTIVE UI               mobile tray, touch targeting, gestures
+      PUBLIC API                stable integration surface
+      BUILDING PROTOTYPE        current experimental occupancy extension
+      PRESENTATION CONTROLLER   reference drawer and player-facing shell
+      BOOTSTRAP                 final initialization sequence
+
+    Foundation Pass 1 adds navigation comments only. Execution order and all
+    existing function bodies are intentionally preserved.
+    =========================================================================
+    */
+
+    /*
       INFANTRY CORE 1.5E — FOUNDATION CONTRACTS
 
       DATA       definitions only
@@ -4238,6 +4321,10 @@
       scenario IDs inside movement, combat, rendering, or reporting.
     */
 
+    // =========================================================================
+    // FOUNDATION CONTRACTS
+    // Formal unit outcomes and extensible scenario-objective handlers.
+    // =========================================================================
     const UNIT_OUTCOME = Object.freeze({
       ACTIVE: "active",
       EXITED: "exited",
@@ -4304,6 +4391,10 @@
       queue rather than order-specific DOM mutations.
     */
 
+    // =========================================================================
+    // BUILD CONFIGURATION AND STATIC RULE DATA
+    // Feature flags, rules, weapon profiles, terrain, unit templates, forces.
+    // =========================================================================
     const STAGE = {"filename": "order_bag_infantry_core_1_0.html", "number": "1.1", "title": "Infantry Core 1.1", "subtitle": "Infantry Core 1.0 combines the consolidated engine, scenario definitions, staged deployment, reusable victory rules, and the battlefield interaction pass in one stable standalone build.", "features": {"ambush": true, "assault": true, "movementIntegrity": true, "unitTypes": true}};
     const FEATURES = STAGE.features;
 
@@ -4412,6 +4503,10 @@
       return result;
     }
 
+    // =========================================================================
+    // LEGACY INITIAL FORCE DATA
+    // Preserved for compatibility while scenarios instantiate current forces.
+    // =========================================================================
     const INITIAL_UNITS = [
       { id: "blue-officer", faction: "blue", type: "officer", role: "officer", name: "Officer", x: 6, y: 6, soldiers: 2, maxSoldiers: 2, weapons: { pistol: 2 }, casualtyOrder: ["pistol"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
       { id: "blue-rifle", faction: "blue", type: "rifle-squad", role: "line", name: "Rifle Squad", x: 8, y: 17, soldiers: 6, maxSoldiers: 6, weapons: { rifle: 5, lmg: 1 }, casualtyOrder: ["rifle", "lmg"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
@@ -4423,6 +4518,10 @@
       { id: "red-mmg", faction: "red", type: "mmg-team", role: "support", name: "MMG Team", x: 66, y: 41, soldiers: 3, maxSoldiers: 3, weapons: { mmg: 1 }, casualtyOrder: [], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false }
     ];
 
+    // =========================================================================
+    // RUNTIME BATTLE STATE
+    // Match, activation, overlay, movement, reaction, and deployment state.
+    // =========================================================================
     let units = [];
     let round = 1;
     let scores = { blue: 0, red: 0 };
@@ -4444,6 +4543,10 @@
 
     let transactionLockReason = null;
 
+    // -------------------------------------------------------------------------
+    // ACTIVATION TRANSACTIONS
+    // Owns reversible unit selection until an action becomes committed.
+    // -------------------------------------------------------------------------
     function beginActivationTransaction(unit) {
       activationSnapshot = snapshotUnit(unit);
       transactionLockReason = null;
@@ -4464,6 +4567,10 @@
       updateTransactionBadge();
     }
 
+    // =========================================================================
+    // CAMERA AND VIEWPORT SYSTEM
+    // Owns fit, zoom, rotation, centering, panning, and camera detail levels.
+    // =========================================================================
 /* ===== Infantry Core 1.4.2: free-pan camera stage ===== */
     const battlefieldViewport = document.getElementById("battlefieldViewport");
     const battlefieldSurface = document.getElementById("battlefieldSurface");
@@ -4941,6 +5048,10 @@
     }
 
 
+    // =========================================================================
+    // BATTLE ENGINE DOM REFERENCES
+    // Cached battlefield, control, report, and overlay elements.
+    // =========================================================================
     const battlefield = document.getElementById("battlefield");
     const rangeRing = document.getElementById("rangeRing");
     const traceLine = document.getElementById("traceLine");
@@ -5013,6 +5124,10 @@
     const stageRules = document.getElementById("stageRules");
     const scaleNote = document.getElementById("scaleNote");
 
+    // =========================================================================
+    // FEATURE AND RULES REFERENCE UI
+    // Populates the current feature list, rule summary, and scale guidance.
+    // =========================================================================
     function configureStageUI() {
       ambushOrderButton.hidden = !FEATURES.ambush;
       assaultOrderButton.hidden = !FEATURES.assault;
@@ -5050,6 +5165,10 @@
         : "This stage keeps direct movement so its featured combat system can be tested without the additional movement-planning layer.";
     }
 
+    // =========================================================================
+    // CORE UNIT, DICE, MEASUREMENT, AND LOADOUT HELPERS
+    // Shared queries and calculations used throughout the rules engine.
+    // =========================================================================
     function livingUnits() {
       return units.filter(unitIsActive);
     }
@@ -5250,6 +5369,10 @@
       }
     });
 
+    // =========================================================================
+    // BREAKTHROUGH OBJECTIVE SYSTEM
+    // Owns exit-zone eligibility, exit outcomes, progress, and containment.
+    // =========================================================================
     function scenarioIsBreakthrough() {
       return activeScenario.id === "breakthrough";
     }
@@ -5343,6 +5466,10 @@
       };
     }
 
+    // =========================================================================
+    // OBJECTIVE QUERIES AND TRANSIENT BATTLEFIELD FEEDBACK
+    // Owns objective state, announcements, target readouts, and effect queues.
+    // =========================================================================
     function objectiveState() {
       if (scenarioIsBreakthrough()) return "none";
       const objective = scenarioObjective();
@@ -5418,6 +5545,10 @@
       );
     }
 
+    // =========================================================================
+    // MINIATURE PRESENTATION BUILDERS
+    // Produces counters, formations, soldiers, pins, labels, and state chits.
+    // =========================================================================
     function farCounterHtml(unit) {
       return `
         <span class="far-unit-counter" aria-hidden="true">
@@ -5550,6 +5681,11 @@
       `;
     }
 
+    // =========================================================================
+    // BATTLEFIELD RENDERING
+    // Rebuilds exit zones, units, range rings, routes, traces, and waypoints.
+    // Gameplay decisions should remain outside this presentation layer.
+    // =========================================================================
     function renderExitZone() {
       if (!exitZoneElement) return;
       const objective = exitObjective();
@@ -5798,6 +5934,10 @@
 
     function clearRouteLines() { routeLayer.innerHTML = ""; }
 
+    // =========================================================================
+    // PREVIEW AND TARGET ANALYSIS PRESENTATION
+    // Converts movement, shooting, and assault analysis into player feedback.
+    // =========================================================================
     function showUnitPreview(unit) {
       const support = commandSupport(unit);
       const roleText = { officer: "Officer team", line: "Line infantry", assault: "Assault infantry", support: "Crew-served support" }[unit.role] ?? "Infantry";
@@ -5924,6 +6064,10 @@
       }
     }
 
+    // =========================================================================
+    // SHOOTING ANALYSIS AND COVER
+    // Determines legal fire, range, line of sight, and intervening protection.
+    // =========================================================================
     function analyzeShot(shooter, target) { return analyzeShotAtPoint(shooter, target); }
 
     function analyzeShotAtPoint(shooter, targetPoint) {
@@ -5987,6 +6131,10 @@
 
 
 
+    // =========================================================================
+    // UNIT SELECTION, ORDER BAG, AND ORDER CHOICE
+    // Owns activation selection, cancellation, die draw, and order commitment.
+    // =========================================================================
     function selectUnit(unitId) {
       const unit = getUnit(unitId);
       if (!unit || unit.soldiers <= 0) return;
@@ -6278,6 +6426,10 @@
       return true;
     }
 
+    // =========================================================================
+    // BATTLEFIELD COMMAND ROUTING
+    // Directs clicks to deployment, movement, shooting, or assault contexts.
+    // =========================================================================
     function handleBattlefieldClick(event) {
       if (gestureSuppressed()) return;
       const point = eventToTablePoint(event);
@@ -6333,6 +6485,10 @@
       beginMovement(unit, path, analysis);
     }
 
+    // =========================================================================
+    // MOVEMENT, TERRAIN COSTS, COLLISION, AND AMBUSH INTERRUPTION
+    // Analyzes paths, begins movement, and resolves reaction opportunities.
+    // =========================================================================
     function clearWaypoint() {
       if (phase !== "plan-movement") return;
       movementWaypoint = null;
@@ -6672,6 +6828,10 @@
       completeActivation("Advance");
     }
 
+    // =========================================================================
+    // SHOOTING RESOLUTION
+    // Applies fire groups, hit rolls, saves, pins, casualties, and statistics.
+    // =========================================================================
     function chooseTarget(targetId) {
       if (phase !== "choose-target" || !selectedUnitId || battleEnded) return;
       const shooter = getUnit(selectedUnitId);
@@ -6777,6 +6937,10 @@
       return { destroyed: target.soldiers === 0, hits: totalHits, casualties, shots: totalShots };
     }
 
+    // =========================================================================
+    // ASSAULT ANALYSIS AND CLOSE COMBAT
+    // Owns charge legality, reaction fire, combat dice, and post-combat position.
+    // =========================================================================
     function analyzeAssault(attacker, defender) {
       if (defender?.inBuilding) {
         const door = buildingDoorPoint();
@@ -6957,6 +7121,10 @@
       return clampPoint(attackerStart);
     }
 
+    // =========================================================================
+    // ACTION COMPLETION, ROUND FLOW, AND ELIMINATION
+    // Clears transient state, completes activations, and advances the battle.
+    // =========================================================================
     function clearActionOverlays() {
       overlayMode = null;
       rangeRing.hidden = true;
@@ -7120,6 +7288,10 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    // =========================================================================
+    // GENERIC GEOMETRY, PATH, DICE, AND FORMATTING HELPERS
+    // Low-level calculations shared by movement, cover, LOS, and rendering.
+    // =========================================================================
     function samplePath(path, step) {
       const samples = [];
       let cumulative = 0;
@@ -7191,6 +7363,10 @@
 
 
 
+    // =========================================================================
+    // DATA-DRIVEN SCENARIO DEFINITIONS
+    // Forces, deployment, objectives, scoring, victory, and briefing content.
+    // =========================================================================
     const SCENARIOS = Object.freeze({
       take_the_crossroads: Object.freeze({
         id: "take_the_crossroads",
@@ -7319,6 +7495,10 @@
       })
     });
 
+    // =========================================================================
+    // ACTIVE SCENARIO AND REPORTING STATE
+    // Current scenario, deployment progress, battle statistics, and result.
+    // =========================================================================
     let activeScenarioId = "take_the_crossroads";
     let activeScenario = SCENARIOS[activeScenarioId];
     let deploymentFactionIndex = 0;
@@ -7330,6 +7510,10 @@
     let battleHasBegun = false;
 
 
+    // =========================================================================
+    // BATTLE STATISTICS AND AFTER-ACTION DATA
+    // Records orders, casualties, destruction, scoring, and unit survival.
+    // =========================================================================
     function emptyFactionStats() {
       return {
         unitsStarted: 0,
@@ -7441,6 +7625,10 @@
       return pieces;
     }
 
+    // =========================================================================
+    // BRIEFING AND AFTER-ACTION REPORT UI
+    // Renders mission information and the completed battle record.
+    // =========================================================================
     function renderBriefing() {
       const objective = scenarioObjective();
       briefingTitle.textContent = activeScenario.title;
@@ -7573,6 +7761,10 @@
       }
     }
 
+    // =========================================================================
+    // SCENARIO LOADING AND TERRAIN PRESENTATION
+    // Applies the active definition and creates its runtime unit state.
+    // =========================================================================
     function scenarioObjective() { return activeScenario.objectives[0]; }
 
     function buildUnitsForActiveScenario() {
@@ -7633,6 +7825,10 @@
       createRulerLabels();
     }
 
+    // =========================================================================
+    // DEPLOYMENT SYSTEM
+    // Owns faction sequence, legal zones, placement, confirmation, and start.
+    // =========================================================================
     function currentDeploymentFaction() {
       return activeScenario.deployment.order[deploymentFactionIndex] ?? null;
     }
@@ -7762,6 +7958,10 @@
       updateDeploymentProgress();
     }
 
+    // =========================================================================
+    // SCENARIO STATUS, ROUND SCORING, VICTORY, AND RESTART
+    // Keeps scenario presentation synchronized with authoritative battle state.
+    // =========================================================================
     function updateScenarioUI() {
       blueScore.textContent = scores.blue;
       redScore.textContent = scores.red;
@@ -8046,6 +8246,10 @@
 
 
 
+    // =========================================================================
+    // ORDER AVAILABILITY, GHOSTS, AND HOVER PREVIEWS
+    // Explains legal actions before a player commits them.
+    // =========================================================================
     let lastMovementPreview = null;
 
     function orderAvailability(unit, order) {
@@ -8224,6 +8428,10 @@
       renderUnits();
     }
 
+    // =========================================================================
+    // ADAPTIVE TOUCH UI AND CONTEXTUAL COMMAND TRAY
+    // Mobile action rendering, confirmations, unit picking, and gestures.
+    // =========================================================================
 /* ===== Touch interaction and contextual command tray ===== */
     const mobileCommandTray = document.getElementById("mobileCommandTray");
     const mobileCommandSummary = document.getElementById("mobileCommandSummary");
@@ -8818,6 +9026,10 @@
     document.getElementById("mobileUnitPickerClose").addEventListener("click", () => { mobileUnitPicker.hidden = true; });
 
 /* ===== Orientation and viewport preservation ===== */
+    // =========================================================================
+    // RESPONSIVE VIEWPORT AND MODAL PRESERVATION
+    // Preserves camera state across layout and orientation changes.
+    // =========================================================================
     let lastViewportState = null;
     function captureViewportState() {
       if (!battlefieldViewport || !battlefieldSurface) return null;
@@ -8871,6 +9083,10 @@
     }
 
 
+    // =========================================================================
+    // PUBLIC ENGINE API
+    // Stable integration surface for diagnostics and future modular extraction.
+    // =========================================================================
     const InfantryCore = Object.freeze({
       data: Object.freeze({ weapons: WEAPON_PROFILES, unitTypes: UNIT_TYPES, scenarios: SCENARIOS }),
       state: Object.freeze({
@@ -8968,6 +9184,10 @@
     document.getElementById("scenarioSelect").addEventListener("change", restartBattle);
     document.getElementById("restoreDeploymentButton").addEventListener("click", restoreStartingPositions);
     document.getElementById("clearDeploymentButton").addEventListener("click", clearCurrentDeployment);
+    // =========================================================================
+    // MOBILE PANEL CONFIGURATION
+    // Adds collapsible behavior and touch-friendly report organization.
+    // =========================================================================
     function configureMobilePanels() {
       document.querySelectorAll(".side > .panel").forEach((panel, index) => {
         const heading = panel.querySelector(":scope > h2");
@@ -8988,6 +9208,11 @@
 
 
     // ===== CROSSROADS 2.0A-D staged building module =====
+    // =========================================================================
+    // BUILDING OCCUPANCY PROTOTYPE
+    // Current experimental farmhouse state, actions, rendering, and wrappers.
+    // Kept visibly isolated for later architectural integration.
+    // =========================================================================
     const BUILDING_RULES = Object.freeze({
       id: "farmhouse",
       capacity: 1,
@@ -9121,6 +9346,10 @@
     };
 
     // ===== CROSSROADS 1.7D + 1.8 V1 presentation controller =====
+    // =========================================================================
+    // PLAYER-FACING PRESENTATION CONTROLLER
+    // Owns the reference drawer and moves development panels out of normal play.
+    // =========================================================================
     const referenceLauncher = document.getElementById("referenceLauncher");
     const referenceDrawer = document.getElementById("referenceDrawer");
     const referenceCloseButton = document.getElementById("referenceCloseButton");
@@ -9179,6 +9408,11 @@
       }
     }
 
+    // =========================================================================
+    // BOOTSTRAP AND EVENT BINDING
+    // Final section: binds presentation controls and starts the existing game.
+    // Startup order is intentionally unchanged in Foundation Pass 1.
+    // =========================================================================
     referenceLauncher?.addEventListener("click", openReferenceDrawer);
     referenceCloseButton?.addEventListener("click", closeReferenceDrawer);
     referenceDrawer?.addEventListener("click", event => {
