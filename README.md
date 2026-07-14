@@ -1,38 +1,32 @@
-# CROSSROADS — Gameplay 2.2B
+# CROSSROADS — Gameplay 2.3
 
-Combined building combat audit and cleanup.
+Staged integration of Unit Quality, 2.3A–2.3E.
 
-## Included
+## Rules
 
-- Occupancy card and farmhouse plaque remain screen-readable at any table rotation.
-- Building shooting context helper:
-  - firing from farmhouse window
-  - target in farmhouse hard cover
-  - target Down
-  - Ambush fire
-- Building assault feedback:
-  - defender strikes first announcement when available
-  - farmhouse cleared announcement when attacker takes the position
-- Edge-case reconciliation:
-  - destroyed/routed/empty occupants are removed from the farmhouse
-  - stale building selection is cleared
-  - occupancy state is reconciled after unit outcome/casualty changes
-- Diagnostics now show:
-  - `BLDG OK/COMBAT:<occupant>/CARD`
+- Inexperienced: Morale 8, shooting is +1 harder, assault damage on 5+
+- Regular: Morale 9, normal shooting, assault damage on 4+
+- Veteran: Morale 10, shooting is -1 easier, assault damage on 3+
 
-## Gameplay rules
+Officer support, Pins, movement penalties, fixed-weapon rules, cover, building
+rules, and reaction fire remain unchanged.
 
-This pass preserves the existing building rules rather than inventing new ones.
+## Scenario assignments
 
-## Recommended test
+- Crossroads: mirrored mixed-quality forces
+- Hold the Farm: steadier defenders versus a veteran attacking assault element
+- Breakthrough: veteran Blue defenders versus veteran Red command/assault units
 
-1. Fire out of the farmhouse in multiple directions.
-2. Fire into the farmhouse and verify hard-cover behavior.
-3. Put the occupant Down, then fire at it.
-4. Set Ambush inside and assault the building.
-5. Destroy the occupant by shooting.
-6. Win a building assault with one surviving attacker.
-7. Restart while occupied.
-8. Confirm the card stays horizontal at rotated/close table views.
+## Display
 
-Wait until the visible badge says `Gameplay 2.2B`.
+Quality appears in unit previews, tabletop chits, farmhouse cards, accessible
+labels, and the After Action Report.
+
+## Upload
+
+Upload every file to the repository root, including the new `unit-quality.js`.
+Wait until the badge says `Gameplay 2.3`.
+
+A healthy diagnostic includes:
+
+`data 5/5 · QUAL OK:inexperienced/regular/veteran`

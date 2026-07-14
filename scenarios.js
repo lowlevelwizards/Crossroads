@@ -19,16 +19,16 @@ window.CROSSROADS_CORE_SCENARIO_12A = Object.freeze({
       factions: { blue: { name: "Blue Force" }, red: { name: "Red Force" } },
       forces: {
         blue: [
-          { id: "blue-officer", unitType: "officer", x: 6, y: 6 },
-          { id: "blue-rifle", unitType: "rifleSquad", x: 8, y: 17 },
-          { id: "blue-assault", unitType: "assaultSquad", x: 8, y: 29 },
-          { id: "blue-mmg", unitType: "mmgTeam", x: 6, y: 41 }
+          { id: "blue-officer", unitType: "officer", quality: "veteran", x: 6, y: 6 },
+          { id: "blue-rifle", unitType: "rifleSquad", quality: "regular", x: 8, y: 17 },
+          { id: "blue-assault", unitType: "assaultSquad", quality: "veteran", x: 8, y: 29 },
+          { id: "blue-mmg", unitType: "mmgTeam", quality: "inexperienced", x: 6, y: 41 }
         ],
         red: [
-          { id: "red-officer", unitType: "officer", x: 66, y: 6 },
-          { id: "red-rifle", unitType: "rifleSquad", x: 64, y: 17 },
-          { id: "red-assault", unitType: "assaultSquad", x: 64, y: 29 },
-          { id: "red-mmg", unitType: "mmgTeam", x: 66, y: 41 }
+          { id: "red-officer", unitType: "officer", quality: "veteran", x: 66, y: 6 },
+          { id: "red-rifle", unitType: "rifleSquad", quality: "regular", x: 64, y: 17 },
+          { id: "red-assault", unitType: "assaultSquad", quality: "veteran", x: 64, y: 29 },
+          { id: "red-mmg", unitType: "mmgTeam", quality: "inexperienced", x: 66, y: 41 }
         ]
       }
     });
@@ -84,16 +84,16 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         victory: { elimination: true, tiebreaker: "survivingSoldiers" },
         forces: {
           blue: [
-            { id: "blue-officer", unitType: "officer", x: 24, y: 16 },
-            { id: "blue-rifle", unitType: "rifleSquad", x: 25, y: 25 },
-            { id: "blue-assault", unitType: "assaultSquad", x: 22, y: 35 },
-            { id: "blue-mmg", unitType: "mmgTeam", x: 26, y: 8 }
+            { id: "blue-officer", unitType: "officer", quality: "veteran", x: 24, y: 16 },
+            { id: "blue-rifle", unitType: "rifleSquad", quality: "veteran", x: 25, y: 25 },
+            { id: "blue-assault", unitType: "assaultSquad", quality: "regular", x: 22, y: 35 },
+            { id: "blue-mmg", unitType: "mmgTeam", quality: "regular", x: 26, y: 8 }
           ],
           red: [
-            { id: "red-officer", unitType: "officer", x: 64, y: 8 },
-            { id: "red-rifle", unitType: "rifleSquad", x: 62, y: 18 },
-            { id: "red-assault", unitType: "assaultSquad", x: 61, y: 30 },
-            { id: "red-mmg", unitType: "mmgTeam", x: 65, y: 40 }
+            { id: "red-officer", unitType: "officer", quality: "regular", x: 64, y: 8 },
+            { id: "red-rifle", unitType: "rifleSquad", quality: "inexperienced", x: 62, y: 18 },
+            { id: "red-assault", unitType: "assaultSquad", quality: "veteran", x: 61, y: 30 },
+            { id: "red-mmg", unitType: "mmgTeam", quality: "regular", x: 65, y: 40 }
           ]
         }
       }),
@@ -145,17 +145,17 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         },
         forces: {
           blue: [
-            { id: "blue-officer", unitType: "officer", x: 12, y: 7 },
-            { id: "blue-rifle-a", unitType: "rifleSquad", x: 13, y: 18 },
-            { id: "blue-rifle-b", unitType: "rifleSquad", x: 13, y: 31 },
-            { id: "blue-mmg", unitType: "mmgTeam", x: 10, y: 41 }
+            { id: "blue-officer", unitType: "officer", quality: "regular", x: 12, y: 7 },
+            { id: "blue-rifle-a", unitType: "rifleSquad", quality: "veteran", x: 13, y: 18 },
+            { id: "blue-rifle-b", unitType: "rifleSquad", quality: "veteran", x: 13, y: 31 },
+            { id: "blue-mmg", unitType: "mmgTeam", quality: "veteran", x: 10, y: 41 }
           ],
           red: [
-            { id: "red-officer", unitType: "officer", x: 66, y: 6 },
-            { id: "red-rifle-a", unitType: "rifleSquad", x: 64, y: 15 },
-            { id: "red-rifle-b", unitType: "rifleSquad", x: 64, y: 25 },
-            { id: "red-assault", unitType: "assaultSquad", x: 64, y: 35 },
-            { id: "red-mmg", unitType: "mmgTeam", x: 66, y: 43 }
+            { id: "red-officer", unitType: "officer", quality: "veteran", x: 66, y: 6 },
+            { id: "red-rifle-a", unitType: "rifleSquad", quality: "regular", x: 64, y: 15 },
+            { id: "red-rifle-b", unitType: "rifleSquad", quality: "regular", x: 64, y: 25 },
+            { id: "red-assault", unitType: "assaultSquad", quality: "veteran", x: 64, y: 35 },
+            { id: "red-mmg", unitType: "mmgTeam", quality: "inexperienced", x: 66, y: 43 }
           ]
         }
       })

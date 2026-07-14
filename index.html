@@ -3899,6 +3899,35 @@ that no visual behavior changes. These banners identify the effective systems:
       font-size: 8px;
       opacity: .88;
     }
+
+    .physical-order-chit.quality {
+      background: #ded8c8;
+      border-color: #655f50;
+    }
+    .physical-order-chit.quality-inexperienced {
+      background: #e7d6bd;
+      border-color: #8a6542;
+    }
+    .physical-order-chit.quality-veteran {
+      background: #d5dfcf;
+      border-color: #536b4c;
+    }
+    .physical-order-chit.quality b {
+      min-width: 28px;
+      font-size: 7px;
+    }
+    .building-occupancy-quality {
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      opacity: .78;
+    }
+    body.camera-far .physical-order-chit.quality span,
+    body.camera-normal .physical-order-chit.quality span {
+      display: none;
+    }
+
     .building-occupancy-order {
       justify-self: center;
       margin-top: 2px;
@@ -4103,7 +4132,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.2B</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.3</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4308,7 +4337,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.2B · BUILDING COMBAT AUDIT</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.3 · UNIT QUALITY</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4413,6 +4442,7 @@ that no visual behavior changes. These banners identify the effective systems:
   <script src="stage.js"></script>
   <script src="weapons.js"></script>
   <script src="terrain.js"></script>
+  <script src="unit-quality.js"></script>
   <script src="unit-types.js"></script>
   <script src="scenarios.js"></script>
   <script src="commands.js"></script>
@@ -4445,7 +4475,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.2B externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4641,12 +4671,29 @@ that no visual behavior changes. These banners identify the effective systems:
     };
 
 
+    const UNIT_QUALITY = window.CROSSROADS_UNIT_QUALITY;
+    if (!UNIT_QUALITY) {
+      throw new Error("unit-quality.js did not load. Upload unit-quality.js beside index.html.");
+    }
+
+    function qualityProfile(unitOrQuality) {
+      const qualityId =
+        typeof unitOrQuality === "string"
+          ? unitOrQuality
+          : unitOrQuality?.quality;
+      return UNIT_QUALITY[qualityId] ?? UNIT_QUALITY.regular;
+    }
+
+    function qualityLabel(unit) {
+      return qualityProfile(unit).label;
+    }
+
     // Centralized unit templates now live in unit-types.js.
     const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES ?? Object.freeze({
-      officer: Object.freeze({ role: "officer", name: "Officer", soldiers: 2, morale: 9, weapons: Object.freeze({ pistol: 2 }), casualtyOrder: Object.freeze(["pistol"]) }),
-      rifleSquad: Object.freeze({ role: "line", name: "Rifle Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 5, lmg: 1 }), casualtyOrder: Object.freeze(["rifle", "lmg"]) }),
-      assaultSquad: Object.freeze({ role: "assault", name: "Assault Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 3, smg: 3 }), casualtyOrder: Object.freeze(["rifle", "smg"]) }),
-      mmgTeam: Object.freeze({ role: "support", name: "MMG Team", soldiers: 3, morale: 9, weapons: Object.freeze({ mmg: 1 }), casualtyOrder: Object.freeze([]) })
+      officer: Object.freeze({ quality: "regular", role: "officer", name: "Officer", soldiers: 2, morale: 9, weapons: Object.freeze({ pistol: 2 }), casualtyOrder: Object.freeze(["pistol"]) }),
+      rifleSquad: Object.freeze({ quality: "regular", role: "line", name: "Rifle Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 5, lmg: 1 }), casualtyOrder: Object.freeze(["rifle", "lmg"]) }),
+      assaultSquad: Object.freeze({ quality: "regular", role: "assault", name: "Assault Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 3, smg: 3 }), casualtyOrder: Object.freeze(["rifle", "smg"]) }),
+      mmgTeam: Object.freeze({ quality: "regular", role: "support", name: "MMG Team", soldiers: 3, morale: 9, weapons: Object.freeze({ mmg: 1 }), casualtyOrder: Object.freeze([]) })
     });
 
     const CORE_SCENARIO_12A = window.CROSSROADS_CORE_SCENARIO_12A;
@@ -4673,7 +4720,8 @@ that no visual behavior changes. These banners identify the effective systems:
             weapons: { ...template.weapons },
             casualtyOrder: [...template.casualtyOrder],
             pins: 0,
-            morale: template.morale,
+            quality: entry.quality ?? template.quality ?? "regular",
+            morale: qualityProfile(entry.quality ?? template.quality ?? "regular").morale,
             down: false,
             activated: false,
             order: null,
@@ -4692,7 +4740,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.2B after a full-reference audit confirmed that
+    // Removed in Gameplay 2.3 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5219,6 +5267,7 @@ that no visual behavior changes. These banners identify the effective systems:
         window.CROSSROADS_WEAPON_PROFILES,
         window.CROSSROADS_TERRAIN,
         window.CROSSROADS_UNIT_TYPES,
+        window.CROSSROADS_UNIT_QUALITY,
         window.CROSSROADS_SCENARIOS
       ].filter(Boolean).length;
       const scenarioId = activeScenario?.id ?? scenarioSelect?.value ?? "none";
@@ -5231,7 +5280,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
       return Object.freeze({
         build: BUILD_INFO.version,
-        externalData: `${externalDataCount}/4`,
+        externalData: `${externalDataCount}/5`,
         scenario: scenarioId,
         runtimeUnits: units.length,
         renderedUnits: renderedUnitCount,
@@ -5252,6 +5301,10 @@ that no visual behavior changes. These banners identify the effective systems:
           typeof reconcileBuildingAfterUnitChange === "function",
         buildingOccupant: buildingOccupant()?.id ?? "none",
         buildingCardVisible: Boolean(buildingOccupant()) === !buildingOccupancyBadge.hidden,
+        qualitySystem:
+          Boolean(window.CROSSROADS_UNIT_QUALITY) &&
+          units.every(unit => Boolean(UNIT_QUALITY[unit.quality])),
+        qualities: [...new Set(units.map(unit => unit.quality))].sort().join("/"),
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5270,6 +5323,7 @@ that no visual behavior changes. These banners identify the effective systems:
         `BLDG ${diagnostic.buildingSystem ? "OK" : "MISS"}` +
         `${diagnostic.buildingCombat ? "/COMBAT" : ""}:${diagnostic.buildingOccupant}` +
         `${diagnostic.buildingCardVisible ? "/CARD" : "/MISMATCH"} · ` +
+        `QUAL ${diagnostic.qualitySystem ? "OK" : "MISS"}:${diagnostic.qualities} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -6058,7 +6112,8 @@ that no visual behavior changes. These banners identify the effective systems:
           : "",
         commandSupport(unit)
           ? `<span class="ascii-chit physical-order-chit command"><b>★</b><span>CMD</span></span>`
-          : ""
+          : "",
+        `<span class="ascii-chit physical-order-chit quality quality-${unit.quality}"><b>${qualityProfile(unit).short}</b><span>${qualityLabel(unit).toUpperCase()}</span></span>`
       ].filter(Boolean).join("");
 
       return `
@@ -6117,14 +6172,14 @@ that no visual behavior changes. These banners identify the effective systems:
       for (const unit of livingUnits()) {
         if (unit.inBuilding) continue;
         const el = document.createElement("button");
-        el.className = `unit ${unit.faction} ${unit.type}${unit.inBuilding ? " in-building" : ""}`;
+        el.className = `unit ${unit.faction} ${unit.type} quality-${unit.quality}${unit.inBuilding ? " in-building" : ""}`;
         el.style.left = `${(unit.x / RULES.tableWidth) * 100}%`;
         el.style.top = `${(unit.y / RULES.tableHeight) * 100}%`;
         el.dataset.unitId = unit.id;
 
         el.setAttribute(
           "aria-label",
-          `${unit.name}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
+          `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
         );
         el.innerHTML = unitFormationHtml(unit);
 
@@ -6359,7 +6414,12 @@ that no visual behavior changes. These banners identify the effective systems:
         : support
           ? `Supported by ${support.name}: +${RULES.commandMoraleBonus} Morale on Order Tests.`
           : "Outside officer command range.";
-      setPreview("legal", `${capitalize(unit.faction)} ${unit.name}`, `${roleText} · ${unit.soldiers}/${unit.maxSoldiers} men · Morale ${unit.morale}.`, `${fullLoadout(unit)} · ${commandText}`);
+      setPreview(
+        "legal",
+        `${capitalize(unit.faction)} ${unit.name}`,
+        `${qualityLabel(unit)} ${roleText} · ${unit.soldiers}/${unit.maxSoldiers} men · Morale ${unit.morale}.`,
+        `${fullLoadout(unit)} · Shooting ${qualityProfile(unit).shootingTargetModifier > 0 ? "+1 harder" : qualityProfile(unit).shootingTargetModifier < 0 ? "+1 easier" : "standard"} · Assault ${qualityProfile(unit).assaultDamageTarget}+ · ${commandText}`
+      );
     }
 
     function showShotPreview(shooter, target) {
@@ -6394,9 +6454,10 @@ that no visual behavior changes. These banners identify the effective systems:
       }
 
       const totalShots = groups.reduce((sum, group) => sum + group.shots, 0);
-      let hitTarget = RULES.baseHitTarget;
+      let hitTarget = RULES.baseHitTarget + qualityProfile(shooter).shootingTargetModifier;
       if (moving && !groups.every(group => group.profile.assault)) hitTarget += 1;
       if (shooter.pins > 0) hitTarget += 1;
+      hitTarget = clamp(hitTarget, 2, 7);
       hitTarget = Math.min(7, hitTarget);
 
       showTargetReadout(
@@ -6429,6 +6490,8 @@ that no visual behavior changes. These banners identify the effective systems:
       if (result.reactionFire) details.push(result.ambushReaction ? "Ambush reaction fire" : "Defensive reaction fire");
       else details.push("No reaction fire");
       details.push(result.defensivePosition ? "Defender strikes first" : "Combat is simultaneous");
+      details.push(`${qualityLabel(attacker)} attacks on ${qualityProfile(attacker).assaultDamageTarget}+`);
+      details.push(`${qualityLabel(defender)} defends on ${qualityProfile(defender).assaultDamageTarget}+`);
 
       setPreview("assault", `${attacker.name} assaults ${defender.name}`, `${result.distance.toFixed(1)}″ legal charge.`, details.join(" · "));
 
@@ -6819,7 +6882,7 @@ that no visual behavior changes. These banners identify the effective systems:
       const passed = total <= target;
       recordOrderTest(unit, passed);
 
-      addLog(`${capitalize(unit.faction)} ${unit.name} Order Test for ${order}: ${dice[0]} + ${dice[1]} = ${total}, needs ${target} or less${officer ? ` (Officer +${officerBonus})` : ""}${ignoresPins ? " (Rally ignores Pins)" : ""}.`, passed ? "morale" : "fail");
+      addLog(`${capitalize(unit.faction)} ${unit.name} (${qualityLabel(unit)}) Order Test for ${order}: ${dice[0]} + ${dice[1]} = ${total}, needs ${target} or less${officer ? ` (Officer +${officerBonus})` : ""}${ignoresPins ? " (Rally ignores Pins)" : ""}.`, passed ? "morale" : "fail");
 
       if (!passed) {
         unit.down = true;
@@ -7293,9 +7356,14 @@ that no visual behavior changes. These banners identify the effective systems:
       for (const group of groups) {
         let hitTarget = RULES.baseHitTarget;
         const modifiers = [];
+        const qualityShotModifier = qualityProfile(shooter).shootingTargetModifier;
+        if (qualityShotModifier !== 0) {
+          hitTarget += qualityShotModifier;
+          modifiers.push(qualityShotModifier > 0 ? "Inexperienced" : "Veteran");
+        }
         if (options.movingPenalty && !group.profile.assault) { hitTarget += 1; modifiers.push("fired on the move"); }
         if (shooter.pins > 0) { hitTarget += 1; modifiers.push("firer still pinned"); }
-        hitTarget = Math.min(7, hitTarget);
+        hitTarget = clamp(hitTarget, 2, 7);
 
         const rolls = rollDice(group.shots);
         const hits = hitTarget > 6 ? 0 : rolls.filter(value => value >= hitTarget).length;
@@ -7438,30 +7506,34 @@ that no visual behavior changes. These banners identify the effective systems:
 
         if (analysis.defensivePosition && combatRound === 1) {
           const defenderRolls = rollDice(defender.soldiers);
-          defenderKills = defenderRolls.filter(value => value >= RULES.regularDamageTarget).length;
+          const defenderAssaultTarget = qualityProfile(defender).assaultDamageTarget;
+          defenderKills = defenderRolls.filter(value => value >= defenderAssaultTarget).length;
           defenderKills = applyCasualties(attacker, defenderKills);
           recordCasualties(defender.faction, attacker.faction, defenderKills);
-          addLog(`Defender strikes first: ${defenderRolls.join(", ")} → ${defenderKills} attacker casualt${defenderKills === 1 ? "y" : "ies"}.`, "assault");
+          addLog(`Defender strikes first (${qualityLabel(defender)}, ${qualityProfile(defender).assaultDamageTarget}+): ${defenderRolls.join(", ")} → ${defenderKills} attacker casualt${defenderKills === 1 ? "y" : "ies"}.`, "assault");
 
           if (attacker.soldiers > 0) {
             const attackerRolls = rollDice(attacker.soldiers);
-            attackerKills = attackerRolls.filter(value => value >= RULES.regularDamageTarget).length;
+            const attackerAssaultTarget = qualityProfile(attacker).assaultDamageTarget;
+            attackerKills = attackerRolls.filter(value => value >= attackerAssaultTarget).length;
             attackerKills = applyCasualties(defender, attackerKills);
             recordCasualties(attacker.faction, defender.faction, attackerKills);
-            addLog(`Surviving attackers strike: ${attackerRolls.join(", ")} → ${attackerKills} defender casualt${attackerKills === 1 ? "y" : "ies"}.`, "assault");
+            addLog(`Surviving attackers strike (${qualityLabel(attacker)}, ${qualityProfile(attacker).assaultDamageTarget}+): ${attackerRolls.join(", ")} → ${attackerKills} defender casualt${attackerKills === 1 ? "y" : "ies"}.`, "assault");
           }
         } else {
           const attackerDice = attacker.soldiers;
           const defenderDice = defender.soldiers;
           const attackerRolls = rollDice(attackerDice);
           const defenderRolls = rollDice(defenderDice);
-          attackerKills = attackerRolls.filter(value => value >= RULES.regularDamageTarget).length;
-          defenderKills = defenderRolls.filter(value => value >= RULES.regularDamageTarget).length;
+          const attackerAssaultTarget = qualityProfile(attacker).assaultDamageTarget;
+          attackerKills = attackerRolls.filter(value => value >= attackerAssaultTarget).length;
+          const defenderAssaultTarget = qualityProfile(defender).assaultDamageTarget;
+          defenderKills = defenderRolls.filter(value => value >= defenderAssaultTarget).length;
           defenderKills = applyCasualties(attacker, defenderKills);
           attackerKills = applyCasualties(defender, attackerKills);
           recordCasualties(defender.faction, attacker.faction, defenderKills);
           recordCasualties(attacker.faction, defender.faction, attackerKills);
-          addLog(`Simultaneous attacks — attacker: ${attackerRolls.join(", ")} → ${attackerKills}; defender: ${defenderRolls.join(", ")} → ${defenderKills}.`, "assault");
+          addLog(`Simultaneous attacks — attacker ${qualityLabel(attacker)} ${qualityProfile(attacker).assaultDamageTarget}+: ${attackerRolls.join(", ")} → ${attackerKills}; defender ${qualityLabel(defender)} ${qualityProfile(defender).assaultDamageTarget}+: ${defenderRolls.join(", ")} → ${defenderKills}.`, "assault");
         }
 
         if (attacker.soldiers === 0 && defender.soldiers === 0) winner = "mutual";
@@ -8006,9 +8078,9 @@ that no visual behavior changes. These banners identify the effective systems:
         const alive = unit.soldiers > 0;
         const status = alive ? `Survived with ${unit.soldiers}` : `Destroyed in Round ${history?.destroyedRound ?? round}`;
         const cause = alive ? "—" : (history?.destroyedCause || "Destroyed");
-        return `<tr><td data-label="Force">${activeScenario.factions[unit.faction].name}</td><td data-label="Unit">${unit.name}</td><td data-label="Started">${history?.started ?? unit.maxSoldiers}</td><td data-label="Remaining">${Math.max(0, unit.soldiers)}</td><td data-label="Outcome">${status}</td><td data-label="Cause">${cause}</td></tr>`;
+        return `<tr><td data-label="Force">${activeScenario.factions[unit.faction].name}</td><td data-label="Unit">${unit.name}</td><td data-label="Quality">${qualityLabel(unit)}</td><td data-label="Started">${history?.started ?? unit.maxSoldiers}</td><td data-label="Remaining">${Math.max(0, unit.soldiers)}</td><td data-label="Outcome">${status}</td><td data-label="Cause">${cause}</td></tr>`;
       }).join("");
-      return `<table class="unit-report-table"><thead><tr><th>Force</th><th>Unit</th><th>Started</th><th>Remaining</th><th>Outcome</th><th>Cause</th></tr></thead><tbody>${rows}</tbody></table>`;
+      return `<table class="unit-report-table"><thead><tr><th>Force</th><th>Unit</th><th>Quality</th><th>Started</th><th>Remaining</th><th>Outcome</th><th>Cause</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
     function buildBattleLogText() {
@@ -9752,6 +9824,7 @@ that no visual behavior changes. These banners identify the effective systems:
         buildingOccupancyBadge.innerHTML = occupant
           ? `<span class="building-occupancy-faction">${activeScenario.factions[occupant.faction].name}</span>
              <strong class="building-occupancy-name">${occupant.name}</strong>
+             <span class="building-occupancy-quality">${qualityLabel(occupant)}</span>
              <span class="building-occupancy-stats">${occupant.faction === "blue" ? "B" : "R"} · ${occupant.soldiers} men · ${occupant.pins} pin${occupant.pins === 1 ? "" : "s"}</span>
              <span class="building-occupancy-order">${buildingOrderLabel(occupant)}</span>`
           : "";
