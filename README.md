@@ -1,30 +1,28 @@
-# CROSSROADS — Foundation 2B.3T
+# CROSSROADS — Foundation 2B.4
 
-## Remaining scenario extraction bug fixed
+## Changes
 
-2B.3S removed the duplicate global declarations correctly, but one expression
-inside `scenarios.js` still referred to the old local identifier:
+- Audited `INITIAL_UNITS`.
+- Confirmed it had no runtime references.
+- Removed the dead legacy force array.
+- Added a stronger startup diagnostic containing:
+  - build version
+  - external data count
+  - active scenario
+  - runtime/rendered unit counts
+  - deployment/phase state
+  - zoom state
+- Exposed the same information as:
+  - `window.CROSSROADS_STARTUP_DIAGNOSTIC`
 
-```js
-CORE_SCENARIO_12A.forces
-```
+## Upload
 
-After changing the export to `window.CROSSROADS_CORE_SCENARIO_12A`, that local
-identifier no longer existed. `scenarios.js` therefore threw a ReferenceError
-while creating the Crossroads scenario, and `window.CROSSROADS_SCENARIOS` was
-never assigned.
+Extract this ZIP and upload every file to the repository root.
 
-This explains why:
+Do not test until the visible badge says:
 
-- camera controls began working in 2B.3S
-- units and deployment still did not initialize
-- the page remained at `Loading board…`
+`Foundation 2B.4`
 
-The reference now correctly reads:
+A healthy startup diagnostic should resemble:
 
-```js
-window.CROSSROADS_CORE_SCENARIO_12A.forces
-```
-
-Upload every file to the repository root and wait for the badge to say
-`Foundation 2B.3T`.
+`Foundation 2B.4 · data 4/4 · take_the_crossroads · 8/8 units · deploy · FIT`

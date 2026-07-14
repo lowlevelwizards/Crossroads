@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2B.3T</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2B.4</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2B.3T · SCENARIO REFERENCE FIX</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2B.4 · DIAGNOSTICS</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2B.3T externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2B.4 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,18 +4573,10 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Preserved for compatibility while scenarios instantiate current forces.
+    // Removed in Foundation 2B.4 after a full-reference audit confirmed that
+    // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
-    const INITIAL_UNITS = [
-      { id: "blue-officer", faction: "blue", type: "officer", role: "officer", name: "Officer", x: 6, y: 6, soldiers: 2, maxSoldiers: 2, weapons: { pistol: 2 }, casualtyOrder: ["pistol"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "blue-rifle", faction: "blue", type: "rifle-squad", role: "line", name: "Rifle Squad", x: 8, y: 17, soldiers: 6, maxSoldiers: 6, weapons: { rifle: 5, lmg: 1 }, casualtyOrder: ["rifle", "lmg"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "blue-assault", faction: "blue", type: "assault-squad", role: "assault", name: "Assault Squad", x: 8, y: 29, soldiers: 6, maxSoldiers: 6, weapons: { rifle: 3, smg: 3 }, casualtyOrder: ["rifle", "smg"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "blue-mmg", faction: "blue", type: "mmg-team", role: "support", name: "MMG Team", x: 6, y: 41, soldiers: 3, maxSoldiers: 3, weapons: { mmg: 1 }, casualtyOrder: [], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "red-officer", faction: "red", type: "officer", role: "officer", name: "Officer", x: 66, y: 6, soldiers: 2, maxSoldiers: 2, weapons: { pistol: 2 }, casualtyOrder: ["pistol"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "red-rifle", faction: "red", type: "rifle-squad", role: "line", name: "Rifle Squad", x: 64, y: 17, soldiers: 6, maxSoldiers: 6, weapons: { rifle: 5, lmg: 1 }, casualtyOrder: ["rifle", "lmg"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "red-assault", faction: "red", type: "assault-squad", role: "assault", name: "Assault Squad", x: 64, y: 29, soldiers: 6, maxSoldiers: 6, weapons: { rifle: 3, smg: 3 }, casualtyOrder: ["rifle", "smg"], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false },
-      { id: "red-mmg", faction: "red", type: "mmg-team", role: "support", name: "MMG Team", x: 66, y: 41, soldiers: 3, maxSoldiers: 3, weapons: { mmg: 1 }, casualtyOrder: [], pins: 0, morale: 9, down: false, activated: false, order: null, ambush: false }
-    ];
+
 
     // =========================================================================
     // RUNTIME BATTLE STATE
@@ -5101,9 +5093,8 @@ that no visual behavior changes. These banners identify the effective systems:
     const deploymentUnitTray = document.getElementById("deploymentUnitTray");
     const deploymentUnitTrayButtons = document.getElementById("deploymentUnitTrayButtons");
 
-    function updateMobileDiagnostic() {
-      if (!mobileDiagnostic) return;
-      const unitCount =
+    function startupDiagnosticSnapshot() {
+      const renderedUnitCount =
         document.getElementById("battlefield")?.querySelectorAll(".unit").length ?? 0;
       const externalDataCount = [
         window.CROSSROADS_WEAPON_PROFILES,
@@ -5111,8 +5102,34 @@ that no visual behavior changes. These banners identify the effective systems:
         window.CROSSROADS_UNIT_TYPES,
         window.CROSSROADS_SCENARIOS
       ].filter(Boolean).length;
+      const scenarioId = activeScenario?.id ?? scenarioSelect?.value ?? "none";
+      const deploymentState =
+        phase === "deployment"
+          ? "deploy"
+          : phase === "ready-to-draw"
+            ? "ready"
+            : phase;
+
+      return Object.freeze({
+        build: BUILD_INFO.version,
+        externalData: `${externalDataCount}/4`,
+        scenario: scenarioId,
+        runtimeUnits: units.length,
+        renderedUnits: renderedUnitCount,
+        deployment: deploymentState,
+        zoom: zoomReadout?.textContent ?? "—"
+      });
+    }
+
+    function updateMobileDiagnostic() {
+      if (!mobileDiagnostic) return;
+      const diagnostic = startupDiagnosticSnapshot();
+      window.CROSSROADS_STARTUP_DIAGNOSTIC = diagnostic;
       mobileDiagnostic.textContent =
-        `${BUILD_INFO.version} · ${unitCount} units · data ${externalDataCount}/4 · ${zoomReadout.textContent}`;
+        `${diagnostic.build} · data ${diagnostic.externalData} · ` +
+        `${diagnostic.scenario} · ${diagnostic.runtimeUnits}/${diagnostic.renderedUnits} units · ` +
+        `${diagnostic.deployment} · ${diagnostic.zoom}`;
+      mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
 
     function renderDeploymentUnitTray() {
@@ -9385,7 +9402,13 @@ that no visual behavior changes. These banners identify the effective systems:
     createRulerLabels();
     restartBattle();
     updateAdaptiveUI();
-    requestAnimationFrame(() => { requestAnimationFrame(() => { fitTable(); renderUnits(); }); });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fitTable();
+        renderUnits();
+        updateMobileDiagnostic();
+      });
+    });
 
 
 
