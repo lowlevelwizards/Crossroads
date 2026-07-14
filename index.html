@@ -1214,6 +1214,25 @@ that no visual behavior changes. These banners identify the effective systems:
       .unit small { font-size: 8px; }
     }
 
+
+    /* Keep building UI screen-readable even when the tabletop is rotated. */
+    .building-occupancy-badge,
+    .building-title-plaque,
+    .building-approach-marker {
+      rotate: calc(-1 * var(--table-rotation, 0deg));
+      transform-origin: center;
+    }
+
+
+    .preview-building-note {
+      margin-top: 7px;
+      padding: 6px 8px;
+      border: 1px solid #766a59;
+      border-radius: 6px;
+      background: rgba(235,225,201,.84);
+      font: 800 11px/1.25 ui-monospace, SFMono-Regular, monospace;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .01ms !important;
@@ -4084,7 +4103,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.2A</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.2B</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4289,7 +4308,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.2A · BUILDING UI POLISH</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.2B · BUILDING COMBAT AUDIT</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4426,7 +4445,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.2A externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.2B externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4540,7 +4559,8 @@ that no visual behavior changes. These banners identify the effective systems:
       unit.outcome = outcome;
       unit.outcomeRound = metadata.round ?? round;
       unit.outcomeReason = metadata.reason ?? null;
-    }
+          reconcileBuildingAfterUnitChange(unit);
+}
 
     function normalizeUnitRuntimeState(unit) {
       return {
@@ -4672,7 +4692,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.2A after a full-reference audit confirmed that
+    // Removed in Gameplay 2.2B after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5227,6 +5247,9 @@ that no visual behavior changes. These banners identify the effective systems:
         buildingSystem:
           typeof buildingCommand === "function" &&
           typeof renderBuildingState === "function",
+        buildingCombat:
+          typeof buildingCombatContext === "function" &&
+          typeof reconcileBuildingAfterUnitChange === "function",
         buildingOccupant: buildingOccupant()?.id ?? "none",
         buildingCardVisible: Boolean(buildingOccupant()) === !buildingOccupancyBadge.hidden,
         zoom: zoomReadout?.textContent ?? "—"
@@ -5244,7 +5267,8 @@ that no visual behavior changes. These banners identify the effective systems:
         `CMD ${diagnostic.commandModel ? "OK" : "MISS"}` +
         `${diagnostic.sharedOrderCommands ? "/SHARED" : ""} · ` +
         `RENDER ${diagnostic.renderCoordinator ? "OK" : "MISS"} · ` +
-        `BLDG ${diagnostic.buildingSystem ? "OK" : "MISS"}:${diagnostic.buildingOccupant}` +
+        `BLDG ${diagnostic.buildingSystem ? "OK" : "MISS"}` +
+        `${diagnostic.buildingCombat ? "/COMBAT" : ""}:${diagnostic.buildingOccupant}` +
         `${diagnostic.buildingCardVisible ? "/CARD" : "/MISMATCH"} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
@@ -5686,7 +5710,8 @@ that no visual behavior changes. These banners identify the effective systems:
         });
       }
       return casualties;
-    }
+          reconcileBuildingAfterUnitChange(unit);
+}
 
     function destroyUnit(unit, reason = "destroyed") {
       unit.soldiers = 0;
@@ -7461,6 +7486,7 @@ that no visual behavior changes. These banners identify the effective systems:
         attacker.y = safe.y;
         if (analysis.buildingAssault) {
           occupyBuilding(attacker, { fromAssault: true });
+      showBattleAnnouncement("FARMHOUSE CLEARED", `${attacker.name} takes the position`, attacker.faction, 1200);
           addLog(`${capitalize(attacker.faction)} ${attacker.name} clears and occupies the farmhouse.`, "assault");
         } else {
           addLog(`${capitalize(attacker.faction)} ${attacker.name} wins; ${defender.name} is destroyed and the attacker occupies the position.`, "assault");
@@ -9665,6 +9691,26 @@ that no visual behavior changes. These banners identify the effective systems:
       completeActivation("Exit Building");
     }
 
+    function buildingCombatContext(attacker, target) {
+      const attackerInside = Boolean(attacker?.inBuilding);
+      const targetInside = Boolean(target?.inBuilding);
+      const parts = [];
+
+      if (attackerInside) parts.push("Firing from farmhouse window");
+      if (targetInside) parts.push("Target inside farmhouse · hard cover");
+      if (targetInside && target?.down) parts.push("Target is Down");
+      if (attackerInside && attacker?.ambush) parts.push("Ambush fire");
+
+      return parts;
+    }
+
+    function buildingDefenseLabel(target) {
+      if (!target?.inBuilding) return "";
+      return target.down
+        ? "Farmhouse hard cover + Down"
+        : "Farmhouse hard cover";
+    }
+
     function buildingOrderLabel(unit) {
       if (!unit) return "";
       if (unit.ambush) return "AMBUSH";
@@ -9755,6 +9801,30 @@ that no visual behavior changes. These banners identify the effective systems:
       const occupants = livingUnits().filter(unit => unit.inBuilding === BUILDING_RULES.id);
       occupants.slice(1).forEach(unit => { unit.inBuilding = null; });
     }
+
+    function reconcileBuildingAfterUnitChange(unit) {
+      if (!unit) {
+        clearInvalidBuildingOccupancy();
+        return;
+      }
+
+      const noLongerActive =
+        unit.outcome && unit.outcome !== UNIT_OUTCOME.ACTIVE;
+      const noSoldiers = Number(unit.soldiers) <= 0;
+
+      if (unit.inBuilding && (noLongerActive || noSoldiers)) {
+        unit.inBuilding = null;
+        unit.buildingEntryX = null;
+        unit.buildingEntryY = null;
+      }
+
+      clearInvalidBuildingOccupancy();
+
+      if (selectedUnitId === unit.id && (noLongerActive || noSoldiers)) {
+        selectedUnitId = null;
+      }
+    }
+
 
     // Building behavior is integrated explicitly into restartBattle(),
     // orderAvailability(), the shared command model, and the render coordinator.
