@@ -1,12 +1,20 @@
-# CROSSROADS — Foundation 2B.2R
+# CROSSROADS — Foundation 2B.2S
 
-Resilient flat-root data peelaway.
+Flat-root data peelaway with the terrain mutability regression fixed.
+
+## What failed in 2B.2 / 2B.2R
+
+`terrain.js` froze the terrain records. The existing scenario loader intentionally
+updates those records with `Object.assign(...)` when Crossroads or Breakthrough
+loads. That threw during `restartBattle()` before units were instantiated and
+before deployment was initialized.
+
+## This build
+
+- Keeps `weapons.js` external and immutable.
+- Keeps `unit-types.js` external and immutable.
+- Keeps `terrain.js` external but mutable.
+- Keeps the inline terrain fallback mutable too.
+- Changes no gameplay rules.
 
 Upload every file in this folder to the repository root.
-
-The game prefers `weapons.js`, `terrain.js`, and `unit-types.js`, but keeps
-matching inline fallbacks so a missing or stale GitHub Pages asset cannot stop
-battle startup. The top diagnostic shows `data 3/3` when all three external
-data files loaded successfully.
-
-This is intentionally reversible and does not change gameplay rules.
