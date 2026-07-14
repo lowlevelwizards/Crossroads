@@ -3221,18 +3221,48 @@
       .main-menu-play { font-size: 14px !important; }
     }
 
+    /* ===== CROSSROADS 1.7A DIAGNOSTIC D1 ===== */
+    .diagnostic-build-marker {
+      position: fixed;
+      top: max(5px, env(safe-area-inset-top));
+      left: max(5px, env(safe-area-inset-left));
+      z-index: 2147483647;
+      padding: 5px 8px;
+      border: 2px solid #fff;
+      border-radius: 6px;
+      background: #b52f2b;
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(0,0,0,.35);
+      font: 1000 11px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      pointer-events: none;
+    }
+    .main-menu-overlay {
+      z-index: 2147483000 !important;
+      pointer-events: auto !important;
+      touch-action: manipulation;
+    }
+    .main-menu-card,
+    .main-menu-actions,
+    .main-menu-actions button {
+      position: relative;
+      pointer-events: auto !important;
+      touch-action: manipulation;
+    }
+
 </style>
 </head>
 <body class="menu-open">
 
+  <div class="diagnostic-build-marker">DIAGNOSTIC D1 · JULY 14</div>
+
   <div id="mainMenuOverlay" class="main-menu-overlay" role="dialog" aria-modal="true" aria-labelledby="mainMenuTitle">
     <section class="main-menu-card">
-      <div class="main-menu-kicker">INFANTRY CORE · 1.7A</div>
-      <h1 id="mainMenuTitle" class="main-menu-title">CROSSROADS</h1>
+      <div class="main-menu-kicker">DIAGNOSTIC D1 · INFANTRY CORE 1.7A</div>
+      <h1 id="mainMenuTitle" class="main-menu-title">CROSSROADS D1</h1>
       <div class="main-menu-years">1939–1945</div>
       <div class="main-menu-actions">
-        <button id="mainMenuPlayButton" class="main-menu-play" type="button">PLAY</button>
-        <button id="mainMenuHowToButton" type="button" aria-expanded="false">HOW TO PLAY</button>
+        <button id="mainMenuPlayButton" class="main-menu-play" type="button" onclick="document.getElementById('mainMenuOverlay').style.display='none'; document.body.classList.remove('menu-open'); this.textContent='PLAY WORKED';">PLAY</button>
+        <button id="mainMenuHowToButton" type="button" aria-expanded="false" onclick="var panel=document.getElementById('mainMenuHowToPanel'); var opening=panel.style.display!=='block'; panel.style.display=opening?'block':'none'; panel.hidden=false; this.setAttribute('aria-expanded', opening?'true':'false'); this.textContent=opening?'CLOSE HOW TO PLAY':'HOW TO PLAY';">HOW TO PLAY</button>
         <button class="main-menu-continue" type="button" disabled>CONTINUE</button>
       </div>
       <div id="mainMenuHowToPanel" class="how-to-panel" hidden>
@@ -3243,6 +3273,39 @@
       <p class="main-menu-note">A small, stable presentation layer over Infantry Core 1.6.</p>
     </section>
   </div>
+
+  <script>
+    // CROSSROADS 1.7A MENU BOOTSTRAP
+    // Kept independent from the battle engine so the front door cannot be
+    // disabled by an unrelated initialization or rendering error.
+    (() => {
+      const overlay = document.getElementById("mainMenuOverlay");
+      const playButton = document.getElementById("mainMenuPlayButton");
+      const howToButton = document.getElementById("mainMenuHowToButton");
+      const howToPanel = document.getElementById("mainMenuHowToPanel");
+
+      function closeMenu() {
+        if (overlay) overlay.style.display = "none";
+        document.body.classList.remove("menu-open");
+      }
+
+      function toggleHowToPlay() {
+        if (!howToPanel || !howToButton) return;
+        const opening = howToPanel.hidden;
+        howToPanel.hidden = !opening;
+        howToButton.setAttribute("aria-expanded", String(opening));
+        howToButton.textContent = opening
+          ? "CLOSE HOW TO PLAY"
+          : "HOW TO PLAY";
+      }
+
+      playButton?.addEventListener("click", closeMenu);
+      howToButton?.addEventListener("click", toggleHowToPlay);
+
+      // Exposed only as a simple escape hatch for testing and future menu use.
+      window.CrossroadsMenu = Object.freeze({ close: closeMenu, toggleHowToPlay });
+    })();
+  </script>
 
   <header>
     <h1>Infantry Core 1.6 — Breakthrough <span class="build-badge">1.6</span></h1>
@@ -3307,8 +3370,8 @@
           <span class="building-window three"></span>
         </div>
 
-        <div class="objective-ring"></div>
-        <div class="objective-marker"></div>
+        <div id="objectiveRing" class="objective-ring"></div>
+        <div id="objectiveMarker" class="objective-marker"></div>
         <div id="objectiveLabel" class="objective-label">OBJECTIVE · 3″</div>
 
         <div id="rangeRing" class="range-ring" hidden></div>
@@ -4231,6 +4294,8 @@
     const blueObjectiveDistance = document.getElementById("blueObjectiveDistance");
     const redObjectiveDistance = document.getElementById("redObjectiveDistance");
     const objectiveLabel = document.getElementById("objectiveLabel");
+    const objectiveRing = document.getElementById("objectiveRing");
+    const objectiveMarker = document.getElementById("objectiveMarker");
     const exitZoneElement = document.getElementById("exitZone");
     const briefingModal = document.getElementById("briefingModal");
     const briefingTitle = document.getElementById("briefingTitle");
@@ -8164,31 +8229,6 @@
     requestAnimationFrame(() => { requestAnimationFrame(() => { fitTable(); renderUnits(); }); });
 
 
-    // CROSSROADS 1.7A menu: presentation only. The 1.6 engine initializes normally beneath it.
-    const mainMenuOverlay = document.getElementById("mainMenuOverlay");
-    const mainMenuPlayButton = document.getElementById("mainMenuPlayButton");
-    const mainMenuHowToButton = document.getElementById("mainMenuHowToButton");
-    const mainMenuHowToPanel = document.getElementById("mainMenuHowToPanel");
-
-    function closeMainMenu() {
-      mainMenuOverlay.hidden = true;
-      document.body.classList.remove("menu-open");
-      requestAnimationFrame(() => {
-        syncCameraViewportBox();
-        requestAnimationFrame(() => {
-          fitTable();
-          renderUnits();
-        });
-      });
-    }
-
-    mainMenuPlayButton.addEventListener("click", closeMainMenu);
-    mainMenuHowToButton.addEventListener("click", () => {
-      const opening = mainMenuHowToPanel.hidden;
-      mainMenuHowToPanel.hidden = !opening;
-      mainMenuHowToButton.setAttribute("aria-expanded", String(opening));
-      mainMenuHowToButton.textContent = opening ? "CLOSE HOW TO PLAY" : "HOW TO PLAY";
-    });
 
 </script>
 </body>
