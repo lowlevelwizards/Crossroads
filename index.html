@@ -4082,7 +4082,7 @@ that no visual behavior changes. These banners identify the effective systems:
       .building-approach-marker { animation: none !important; }
     }
 
-    /* ===== Gameplay 2.4C: battlefield readability ===== */
+    /* ===== Gameplay 2.4C.1: battlefield readability ===== */
 
     .unit-label {
       display: inline-flex !important;
@@ -4419,7 +4419,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.4C</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.4C.1</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4624,7 +4624,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.4C · BATTLEFIELD READABILITY</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.4C.1 · READABILITY HOTFIX</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4762,7 +4762,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.4C externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.4C.1 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -5029,7 +5029,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.4C after a full-reference audit confirmed that
+    // Removed in Gameplay 2.4C.1 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -6151,11 +6151,11 @@ that no visual behavior changes. These banners identify the effective systems:
     function unitIsEligibleForCurrentDie(unit) {
       return Boolean(
         phase === "choose-unit" &&
-        currentDie &&
+        currentFaction &&
         unit &&
-        unit.faction === currentDie &&
+        unit.faction === currentFaction &&
         unit.outcome === UNIT_OUTCOME.ACTIVE &&
-        !unit.used
+        !unit.activated
       );
     }
 
@@ -6385,6 +6385,7 @@ that no visual behavior changes. These banners identify the effective systems:
     function farCounterHtml(unit) {
       return `
         <span class="far-unit-counter" aria-hidden="true">
+          ${qualityStripeHtml(unit)}
           <span>${roleAscii(unit)}</span>
           <span>${unit.soldiers}</span>
           <span class="counter-pins">${unit.pins > 0 ? `P${unit.pins}` : ""}</span>
@@ -6486,16 +6487,14 @@ that no visual behavior changes. These banners identify the effective systems:
     }
 
     function packedMMGFormationHtml(unit) {
-      const crew = Array.from({ length: Math.max(1, unit.soldiers) }, (_, index) =>
-        brickSoldierHtml(unit, index)
+      const crew = Array.from(
+        { length: Math.max(1, unit.soldiers) },
+        (_, index) => brickSoldierHtml(unit, index)
       ).join("");
 
       return `
-        <span class="mmg-packed-formation">
-          ${crew}
-          <span class="mmg-carried-body"></span>
-          <span class="mmg-carried-tripod"></span>
-        </span>
+        ${crew}
+        <span class="mmg-carried-body compact"></span>
       `;
     }
 
@@ -10511,3 +10510,26 @@ that no visual behavior changes. These banners identify the effective systems:
 </script>
 </body>
 </html>
+
+<style>
+  .mmg-carried-body.compact {
+    left: 50%;
+    top: 47%;
+    width: 32px;
+    height: 5px;
+    opacity: .9;
+  }
+  .mmg-carried-tripod { display: none !important; }
+
+  .far-unit-counter .quality-nameplate-stripes {
+    position: static;
+    width: 7px;
+    flex: 0 0 7px;
+    margin: 0 2px 0 0;
+    gap: 0;
+  }
+  .far-unit-counter .quality-nameplate-stripes i {
+    height: 2px;
+    border-width: 0;
+  }
+</style>

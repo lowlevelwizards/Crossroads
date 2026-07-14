@@ -1,25 +1,34 @@
-# CROSSROADS — Gameplay 2.4C
+# CROSSROADS — Gameplay 2.4C.1
 
-Battlefield Readability Pass.
+Corrective hotfix for the first 2.4C build.
 
-## Included
+## Critical fix
 
-- Quality is integrated into the unit nameplate.
-- Mapping:
-  - 1 green stripe — Inexperienced
-  - 2 yellow stripes — Regular
-  - 3 orange stripes — Veteran
-- Close zoom adds remaining men to the nameplate.
-- Duplicate persistent center order markers are removed.
-- Pins are compacted beside the nameplate.
-- Eligible units pulse throughout the choose-unit phase.
-- Eligible farmhouse occupants pulse and show READY.
-- Packed and deployed MMGs use distinct visual formations.
-- Deployed MMG barrel/tripod rotates with facing.
-- MMG field of fire is a lighter dashed wedge.
-- Officer command rings only appear while command support is relevant.
-- Diagnostics include `READ OK`.
+The persistent eligibility renderer referenced two names that do not exist in
+the current engine:
 
-Upload every file to the repository root and wait for the badge:
+- `currentDie`
+- `unit.used`
 
-`Gameplay 2.4C`
+The actual engine uses:
+
+- `currentFaction`
+- `unit.activated`
+
+During deployment the bad expression was short-circuited. After drawing a die,
+the renderer evaluated `currentDie`, threw a ReferenceError, and stopped after
+clearing the old unit elements. That is why every unit disappeared.
+
+## Presentation corrections
+
+- Far counters now retain quality stripes.
+- Packed MMGs return to the proven triangular crew formation.
+- The carried MMG silhouette is smaller and less visually disruptive.
+- The extra packed tripod mark is removed.
+
+Upload every file and wait until the badge says:
+
+`Gameplay 2.4C.1`
+
+Test deployment, draw a die, select a unit, and confirm eligible units remain
+visible and pulse.
