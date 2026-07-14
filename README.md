@@ -1,30 +1,42 @@
-# CROSSROADS — Foundation 2C.2
+# CROSSROADS — Foundation 2C.3
 
-## First command-model adoption
+## Shared order-command descriptions
 
-The existing `makeCommand()` vocabulary is now used by one deliberately
-low-risk action: the mobile **Details** button.
+Desktop order buttons and the mobile choose-order tray now consume the same
+command factory:
 
-This pass adds:
+- `orderCommand(unit, order, presentation)`
+- `availableOrderCommands(unit, orders, presentation)`
 
-- `addTrayCommand(command)`
-- `mobileDetailsCommand()`
-- command metadata for label, enabled state, handler, reason, and CSS class
-- `CMD OK` / `CMD MISS` in the startup diagnostic
+The shared command owns:
 
-Migrated Details button occurrences: 7
+- order id
+- desktop/mobile label
+- enabled state
+- execution handler
+- unavailable reason
+- tooltip metadata
 
-Everything else still uses the established action path:
+The underlying order rules remain in the existing `orderAvailability()` and
+`chooseOrder()` functions. This pass does not rewrite movement, shooting,
+assault, rally, Down, or Ambush behavior.
 
-- Draw Die
-- deployment
-- Run / Advance / Fire
-- Down / Rally / Ambush / Assault
-- movement confirmation
-- targeting and reactions
-- round flow
+## Diagnostic
 
-No gameplay rule or order behavior was intentionally changed.
+A healthy startup line includes:
 
-Upload every file to the repository root and wait until the visible badge says
-`Foundation 2C.2`. A healthy diagnostic includes both `DOM OK` and `CMD OK`.
+`CMD OK/SHARED`
+
+## Upload
+
+Extract and upload every file to the repository root. Wait until the visible
+badge says `Foundation 2C.3` before testing.
+
+Recommended test:
+
+1. Complete deployment.
+2. Draw a die.
+3. Select a unit.
+4. Confirm desktop order buttons enable correctly.
+5. On phone, confirm the same legal orders appear in the tray.
+6. Test at least Run, Fire, Rally with pins, and an unavailable Assault case.

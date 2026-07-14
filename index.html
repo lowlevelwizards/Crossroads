@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2C.2</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2C.3</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2C.2 · COMMAND MODEL</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2C.3 · SHARED ORDER COMMANDS</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2C.2 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2C.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,7 +4573,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Foundation 2C.2 after a full-reference audit confirmed that
+    // Removed in Foundation 2C.3 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5119,6 +5119,9 @@ that no visual behavior changes. These banners identify the effective systems:
         deployment: deploymentState,
         domMissing: missingDOMReferences(),
         commandModel: Boolean(window.CrossroadsCommands?.makeCommand),
+        sharedOrderCommands:
+          typeof orderCommand === "function" &&
+          typeof availableOrderCommands === "function",
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5131,7 +5134,8 @@ that no visual behavior changes. These banners identify the effective systems:
         `${diagnostic.build} · data ${diagnostic.externalData} · ` +
         `${diagnostic.scenario} · ${diagnostic.runtimeUnits}/${diagnostic.renderedUnits} units · ` +
         `DOM ${diagnostic.domMissing.length ? "MISS" : "OK"} · ` +
-        `CMD ${diagnostic.commandModel ? "OK" : "MISS"} · ` +
+        `CMD ${diagnostic.commandModel ? "OK" : "MISS"}` +
+        `${diagnostic.sharedOrderCommands ? "/SHARED" : ""} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -8392,16 +8396,60 @@ that no visual behavior changes. These banners identify the effective systems:
       return { available: true, reason: "Available." };
     }
 
+    const ORDER_COMMAND_LABELS = Object.freeze({
+      Run: Object.freeze({ desktop: "Run · 12″", mobile: "Run" }),
+      Advance: Object.freeze({ desktop: "Advance · 6″", mobile: "Adv" }),
+      Fire: Object.freeze({ desktop: "Fire", mobile: "Fire" }),
+      Down: Object.freeze({ desktop: "Down", mobile: "Down" }),
+      Ambush: Object.freeze({ desktop: "Ambush", mobile: "Amb" }),
+      Assault: Object.freeze({ desktop: "Assault · 12″", mobile: "Charge" }),
+      Rally: Object.freeze({ desktop: "Rally · Clear Pins", mobile: "Rally" })
+    });
+
+    function orderCommand(unit, order, presentation = "desktop") {
+      const availability = orderAvailability(unit, order);
+      const labels = ORDER_COMMAND_LABELS[order] ?? Object.freeze({
+        desktop: order,
+        mobile: order
+      });
+
+      return window.CrossroadsCommands.makeCommand({
+        id: `order-${order.toLowerCase()}`,
+        label: labels[presentation] ?? labels.desktop,
+        enabled: availability.available,
+        execute: () => chooseOrder(order),
+        reason: availability.reason,
+        meta: {
+          order,
+          presentation,
+          title: availability.available
+            ? `${order} is available.`
+            : `${order} unavailable — ${availability.reason}`
+        }
+      });
+    }
+
+    function availableOrderCommands(unit, orders, presentation = "mobile") {
+      return orders
+        .map(order => orderCommand(unit, order, presentation))
+        .filter(command => command.enabled);
+    }
+
     function setOrderButtonsFor(unit) {
-      const reasonBox = document.getElementById("orderReasons");
+      const reasonBox = DOM.orderReasons;
       const rows = [];
+
       for (const button of orderButtons) {
-        const order = button.dataset.order;
-        const result = orderAvailability(unit, order);
-        button.disabled = !result.available;
-        button.title = result.available ? `${order} is available.` : `${order} unavailable — ${result.reason}`;
-        rows.push(`<div class="order-reason ${result.available ? "ok" : "no"}"><strong>${order}:</strong> ${result.reason}</div>`);
+        const command = orderCommand(unit, button.dataset.order, "desktop");
+        button.textContent = command.label;
+        button.disabled = !command.enabled;
+        button.title = command.meta.title;
+        rows.push(
+          `<div class="order-reason ${command.enabled ? "ok" : "no"}">` +
+          `<strong>${command.meta.order}:</strong> ${command.reason}</div>`
+        );
       }
+
       if (reasonBox) reasonBox.innerHTML = rows.join("");
     }
 
@@ -8697,33 +8745,18 @@ that no visual behavior changes. These banners identify the effective systems:
         addTrayAction(`Choose an unused ${capitalize(currentFaction ?? "")} unit`, () => {}, { disabled: true, className: "tray-wide" });
         addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-order" && selected) {
-        const primaryOrders = [
-          ["Run", "Run"],
-          ["Advance", "Adv"],
-          ["Fire", "Fire"],
-          ["Assault", "Charge"]
-        ];
-
-        const secondaryOrders = [
-          ["Down", "Down"],
-          ["Ambush", "Amb"],
-          ["Rally", "Rally"]
-        ];
+        const primaryOrders = ["Run", "Advance", "Fire", "Assault"]
+          .filter(order => order !== "Assault" || FEATURES.assault);
+        const secondaryOrders = ["Down", "Ambush", "Rally"]
+          .filter(order => order !== "Ambush" || FEATURES.ambush);
 
         if (!mobileMoreOrdersOpen) {
-          for (const [order, label] of primaryOrders) {
-            if (order === "Assault" && !FEATURES.assault) continue;
-            const availability = orderAvailability(selected, order);
-            if (!availability.available) continue;
-            addTrayAction(label, () => chooseOrder(order), {
-              title: availability.reason
-            });
+          for (const command of availableOrderCommands(selected, primaryOrders)) {
+            addTrayCommand(command);
           }
 
-          const hasSecondary = secondaryOrders.some(([order]) => {
-            if (order === "Ambush" && !FEATURES.ambush) return false;
-            return orderAvailability(selected, order).available;
-          });
+          const hasSecondary =
+            availableOrderCommands(selected, secondaryOrders).length > 0;
 
           if (hasSecondary) {
             addTrayAction("More", () => {
@@ -8737,13 +8770,8 @@ that no visual behavior changes. These banners identify the effective systems:
             className: "tray-danger"
           });
         } else {
-          for (const [order, label] of secondaryOrders) {
-            if (order === "Ambush" && !FEATURES.ambush) continue;
-            const availability = orderAvailability(selected, order);
-            if (!availability.available) continue;
-            addTrayAction(label, () => chooseOrder(order), {
-              title: availability.reason
-            });
+          for (const command of availableOrderCommands(selected, secondaryOrders)) {
+            addTrayCommand(command);
           }
 
           addTrayAction("Main", () => {
