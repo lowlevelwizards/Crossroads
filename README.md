@@ -1,20 +1,28 @@
-# CROSSROADS — Foundation 2B.2S
+# CROSSROADS — Foundation 2B.3
 
-Flat-root data peelaway with the terrain mutability regression fixed.
+Flat-root scenario-data peelaway.
 
-## What failed in 2B.2 / 2B.2R
+## Upload
 
-`terrain.js` froze the terrain records. The existing scenario loader intentionally
-updates those records with `Object.assign(...)` when Crossroads or Breakthrough
-loads. That threw during `restartBattle()` before units were instantiated and
-before deployment was initialized.
+Extract the ZIP and upload every file to the repository root. The new required
+file is:
 
-## This build
+- `scenarios.js`
 
-- Keeps `weapons.js` external and immutable.
-- Keeps `unit-types.js` external and immutable.
-- Keeps `terrain.js` external but mutable.
-- Keeps the inline terrain fallback mutable too.
-- Changes no gameplay rules.
+## Active extraction
 
-Upload every file in this folder to the repository root.
+`scenarios.js` now owns:
+
+- the shared Crossroads force definition
+- Crossroads scenario data
+- Hold the Farm validation scenario data
+- Breakthrough scenario data
+- deployment zones
+- terrain layouts
+- objective definitions
+- scoring and victory configuration
+
+Scenario execution, deployment logic, scoring functions, combat, rendering,
+camera, and startup remain in `index.html`.
+
+The visible build badge must say `Foundation 2B.3` before testing.
