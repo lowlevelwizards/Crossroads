@@ -3986,7 +3986,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2D</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 2E</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -4190,7 +4190,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2D · RENDER COORDINATOR</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 2E · BUILDING INTEGRATION</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -4327,7 +4327,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Foundation 2D externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Foundation 2E externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -4573,7 +4573,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Foundation 2D after a full-reference audit confirmed that
+    // Removed in Foundation 2E after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
@@ -5125,6 +5125,10 @@ that no visual behavior changes. These banners identify the effective systems:
         renderCoordinator:
           typeof renderGame === "function" &&
           typeof renderUnitLayer === "function",
+        buildingSystem:
+          typeof buildingCommand === "function" &&
+          typeof renderBuildingState === "function",
+        buildingOccupant: buildingOccupant()?.id ?? "none",
         zoom: zoomReadout?.textContent ?? "—"
       });
     }
@@ -5140,6 +5144,7 @@ that no visual behavior changes. These banners identify the effective systems:
         `CMD ${diagnostic.commandModel ? "OK" : "MISS"}` +
         `${diagnostic.sharedOrderCommands ? "/SHARED" : ""} · ` +
         `RENDER ${diagnostic.renderCoordinator ? "OK" : "MISS"} · ` +
+        `BLDG ${diagnostic.buildingSystem ? "OK" : "MISS"}:${diagnostic.buildingOccupant} · ` +
         `${diagnostic.deployment} · ${diagnostic.zoom}`;
       mobileDiagnostic.title = JSON.stringify(diagnostic);
     }
@@ -8344,6 +8349,7 @@ that no visual behavior changes. These banners identify the effective systems:
       activeScenario = SCENARIOS[activeScenarioId];
       applyScenarioDefinition();
       units = cloneInitialUnits();
+      clearInvalidBuildingOccupancy();
       round = 1;
       scores = { blue: 0, red: 0 };
       bag = [];
@@ -8409,6 +8415,12 @@ that no visual behavior changes. These banners identify the effective systems:
 
     function orderAvailability(unit, order) {
       if (!unit) return { available: false, reason: "No unit selected." };
+      if (unit.inBuilding && ["Run", "Advance", "Assault"].includes(order)) {
+        return {
+          available: false,
+          reason: "Exit the farmhouse before moving or assaulting."
+        };
+      }
       if (order === "Rally" && unit.pins === 0) return { available: false, reason: "Unit has no Pins." };
       if (order === "Ambush" && availableFireGroups(unit, Infinity, false, false).length === 0) return { available: false, reason: "Unit has no weapon capable of firing." };
       if (order === "Fire" && availableFireGroups(unit, Infinity, false, false).length === 0) return { available: false, reason: "Unit has no surviving ranged weapon." };
@@ -8768,6 +8780,9 @@ that no visual behavior changes. These banners identify the effective systems:
         addTrayAction(`Choose an unused ${capitalize(currentFaction ?? "")} unit`, () => {}, { disabled: true, className: "tray-wide" });
         addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-order" && selected) {
+        const structureCommand = buildingCommand(selected, "mobile");
+        if (structureCommand.enabled) addTrayCommand(structureCommand);
+
         const primaryOrders = ["Run", "Advance", "Fire", "Assault"]
           .filter(order => order !== "Assault" || FEATURES.assault);
         const secondaryOrders = ["Down", "Ambush", "Rally"]
@@ -9411,8 +9426,8 @@ that no visual behavior changes. These banners identify the effective systems:
     // ===== CROSSROADS 2.0A-D staged building module =====
     // =========================================================================
     // BUILDING OCCUPANCY PROTOTYPE
-    // Current experimental farmhouse state, actions, rendering, and wrappers.
-    // Kept visibly isolated for later architectural integration.
+    // Owns farmhouse occupancy, Enter/Exit commands, and occupancy rendering.
+    // Integrated through explicit engine seams; no function replacement wrappers.
     // =========================================================================
     const BUILDING_RULES = Object.freeze({
       id: "farmhouse",
@@ -9464,6 +9479,29 @@ that no visual behavior changes. These banners identify the effective systems:
       return true;
     }
 
+    function buildingCommand(unit, presentation = "desktop") {
+      const exiting = Boolean(unit?.inBuilding);
+      const entering = Boolean(unitCanEnterBuilding(unit));
+      const enabled = phase === "choose-order" && Boolean(unit) && (exiting || entering);
+      const label = exiting ? "Exit Farmhouse" : "Enter Farmhouse";
+
+      return window.CrossroadsCommands.makeCommand({
+        id: exiting ? "exit-farmhouse" : "enter-farmhouse",
+        label,
+        enabled,
+        execute: exiting ? exitBuildingAction : enterBuildingAction,
+        reason: enabled
+          ? exiting
+            ? "Leave the farmhouse through its doorway."
+            : "Enter and occupy the farmhouse using an Advance order test."
+          : "The selected unit cannot interact with the farmhouse.",
+        meta: {
+          presentation,
+          className: "tray-confirm tray-wide building-action"
+        }
+      });
+    }
+
     function enterBuildingAction() {
       const unit = getUnit(selectedUnitId);
       if (phase !== "choose-order" || !unitCanEnterBuilding(unit)) return;
@@ -9507,12 +9545,12 @@ that no visual behavior changes. These banners identify the effective systems:
 
     function updateBuildingActionButton() {
       if (!buildingActionButton) return;
-      const unit = getUnit(selectedUnitId);
-      const canShow = phase === "choose-order" && unit && (unit.inBuilding || unitCanEnterBuilding(unit));
-      buildingActionButton.hidden = !canShow;
-      if (!canShow) return;
-      buildingActionButton.textContent = unit.inBuilding ? "Exit Farmhouse" : "Enter Farmhouse";
-      buildingActionButton.onclick = unit.inBuilding ? exitBuildingAction : enterBuildingAction;
+      const command = buildingCommand(getUnit(selectedUnitId), "desktop");
+      buildingActionButton.hidden = !command.enabled;
+      buildingActionButton.disabled = !command.enabled;
+      buildingActionButton.textContent = command.label;
+      buildingActionButton.title = command.reason;
+      buildingActionButton.onclick = command.enabled ? command.execute : null;
     }
 
     function clearInvalidBuildingOccupancy() {
@@ -9520,31 +9558,8 @@ that no visual behavior changes. These banners identify the effective systems:
       occupants.slice(1).forEach(unit => { unit.inBuilding = null; });
     }
 
-    const originalRestartBattle20 = restartBattle;
-    restartBattle = function restartBattleWithBuildings() {
-      originalRestartBattle20();
-      clearInvalidBuildingOccupancy();
-      renderBuildingState();
-    };
-
-    // Mobile building action injection.
-    const originalUpdateAdaptiveUI20 = updateAdaptiveUI;
-    updateAdaptiveUI = function updateAdaptiveUIWithBuildings() {
-      originalUpdateAdaptiveUI20();
-      if (!adaptiveTouchActive() || phase !== "choose-order") return;
-      const unit = getUnit(selectedUnitId);
-      if (!unit || (!unit.inBuilding && !unitCanEnterBuilding(unit))) return;
-      addTrayAction(unit.inBuilding ? "Exit Farmhouse" : "Enter Farmhouse", unit.inBuilding ? exitBuildingAction : enterBuildingAction, { className: "tray-confirm tray-wide" });
-    };
-
-    // Building occupants may not Run or Advance while inside; they must exit first.
-    const originalOrderAvailability20 = orderAvailability;
-    orderAvailability = function orderAvailabilityWithBuildings(unit, order) {
-      if (unit?.inBuilding && ["Run", "Advance", "Assault"].includes(order)) {
-        return { available:false, reason:"Exit the farmhouse before moving or assaulting." };
-      }
-      return originalOrderAvailability20(unit, order);
-    };
+    // Building behavior is integrated explicitly into restartBattle(),
+    // orderAvailability(), the shared command model, and the render coordinator.
 
     // ===== CROSSROADS 1.7D + 1.8 V1 presentation controller =====
     // =========================================================================

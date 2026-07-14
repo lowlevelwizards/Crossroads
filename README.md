@@ -1,48 +1,46 @@
-# CROSSROADS — Foundation 2D
+# CROSSROADS — Foundation 2E
 
-## Render coordinator
+## Building prototype integration
 
-The existing battlefield presentation now runs through one ordered pipeline:
+This pass keeps the existing farmhouse gameplay but removes its late function
+replacement wrappers.
 
-1. `beforeRender` hooks
-2. unit layer
-3. building state
-4. range ring
-5. waypoint and route
-6. exit zone
-7. scenario UI
-8. targeting mode
-9. activation transaction badge
-10. cancel-button label
-11. deployment tray
-12. startup diagnostic
-13. adaptive UI queue
-14. `afterRender` hooks
+### Explicit integrations
 
-The former `renderUnits()` API remains as a compatibility wrapper, so all
-existing gameplay callers continue to work unchanged.
+- `restartBattle()` now clears invalid occupancy directly.
+- `orderAvailability()` directly blocks Run, Advance, and Assault while inside.
+- desktop Enter/Exit uses the shared `buildingCommand()`.
+- mobile Enter/Exit uses the same shared `buildingCommand()`.
+- `renderBuildingState()` remains part of the Foundation 2D render coordinator.
+- startup diagnostics include `BLDG OK:<occupant>`.
 
-## What changed internally
+### Removed
 
-- old unit-building body renamed to `renderUnitLayer()`
-- orchestration moved into `renderGame`
-- `renderGame` is created by `CrossroadsRefresh.create(...)`
-- existing hook infrastructure is now active around complete renders
-- startup diagnostic now includes `RENDER OK`
+- `restartBattle = function restartBattleWithBuildings(...)`
+- `updateAdaptiveUI = function updateAdaptiveUIWithBuildings(...)`
+- `orderAvailability = function orderAvailabilityWithBuildings(...)`
 
-## What did not change
+### Gameplay intentionally unchanged
 
-- combat rules
-- movement rules
-- camera behavior
-- deployment
-- scenario logic
-- order flow
-- visual ordering
+- one farmhouse occupant
+- Enter/Exit consumes an Advance-style activation
+- occupant renders as a compact counter
+- enemy occupancy blocks entry
+- Run, Advance, and Assault require exiting first
 
-Upload every file to the repository root and wait until the visible badge says
-`Foundation 2D`.
+Upload every file to the repository root. Wait until the badge says
+`Foundation 2E`.
 
 A healthy diagnostic includes:
 
-`DOM OK · CMD OK/SHARED · RENDER OK`
+`DOM OK · CMD OK/SHARED · RENDER OK · BLDG OK:none`
+
+Recommended test:
+
+1. Restart both scenarios and confirm occupancy resets.
+2. Deploy a unit near the farmhouse door.
+3. Confirm Enter Farmhouse appears on desktop and phone.
+4. Enter, then confirm Exit Farmhouse appears.
+5. Confirm Run, Advance, and Assault are unavailable while inside.
+6. Fire or Rally from inside.
+7. Restart and verify the farmhouse is empty.
