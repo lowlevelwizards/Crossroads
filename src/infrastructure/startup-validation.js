@@ -13,6 +13,7 @@
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
     ["CrossroadsUnitPresentation", "src/presentation/units.js"],
+    ["CrossroadsPresentationEffects", "src/presentation/effects.js"],
     ["CrossroadsBattlefieldPresentation", "src/presentation/battlefield.js"],
     ["CrossroadsCamera", "src/camera/camera.js"],
     ["CrossroadsCoordinates", "src/camera/coordinates.js"],
