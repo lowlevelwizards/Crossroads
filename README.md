@@ -1,30 +1,19 @@
-# CROSSROADS — Gameplay 2.5.2
+# CROSSROADS — Gameplay 2.5.3
 
-Selection Visual Reset.
+Orientation and Scale Hotfix.
 
-## What changed
+## Fixed
 
-The detached selection square has been removed entirely.
+- Portrait/rotated-table units counter-rotate as one complete object.
+- Soldiers, nameplates, order chits, selection glow, and hit areas now share
+  the same orientation.
+- The horizontal 72 × 48 table uses a smaller formation canvas.
+- Horizontal miniatures, labels, Pins, and order chits are reduced together.
+- Portrait formations remain slightly larger, but no longer inherit the
+  oversized 92 px canvas.
+- Selection still changes only glow and border treatment; it does not move or
+  resize geometry.
 
-Selection now uses only:
+Upload all files and wait until the badge says:
 
-- a gold glow directly on the selected miniatures
-- a gold accent around the selected unit nameplate
-- a gold outline around far-zoom counters
-
-No selection, hover, or eligibility state is allowed to move:
-
-- the unit root
-- the formation canvas
-- formation slots
-- soldiers
-- model shadows
-- labels
-
-Eligibility now pulses the nameplate only, without changing geometry.
-
-## Upload
-
-Upload all files and wait until the visible badge says:
-
-`Gameplay 2.5.2`
+`Gameplay 2.5.3`

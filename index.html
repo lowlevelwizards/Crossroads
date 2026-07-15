@@ -4082,7 +4082,7 @@ that no visual behavior changes. These banners identify the effective systems:
       .building-approach-marker { animation: none !important; }
     }
 
-    /* ===== Gameplay 2.5.2: battlefield readability ===== */
+    /* ===== Gameplay 2.5.3: battlefield readability ===== */
 
     .unit-label {
       display: inline-flex !important;
@@ -4311,7 +4311,7 @@ that no visual behavior changes. These banners identify the effective systems:
       }
     }
 
-    /* ===== Gameplay 2.5.2: visual stability ===== */
+    /* ===== Gameplay 2.5.3: visual stability ===== */
 
     /* Keep formations from clipping heads or weapons. */
     .unit,
@@ -4462,7 +4462,7 @@ that no visual behavior changes. These banners identify the effective systems:
       display: none !important;
     }
 
-    /* ===== Gameplay 2.5.2: simple unit information hierarchy ===== */
+    /* ===== Gameplay 2.5.3: simple unit information hierarchy ===== */
 
     /* Far counters must never leak into medium or close zoom. */
     .far-unit-counter {
@@ -4647,7 +4647,7 @@ that no visual behavior changes. These banners identify the effective systems:
       display: none !important;
     }
 
-    /* ===== Gameplay 2.5.2: dedicated zoom representations ===== */
+    /* ===== Gameplay 2.5.3: dedicated zoom representations ===== */
     .unit-representation {
       position:absolute;
       inset:0;
@@ -4769,7 +4769,7 @@ that no visual behavior changes. These banners identify the effective systems:
     .mmg-carried-body,
     .mmg-carried-tripod { display:none !important; }
 
-    /* ===== Gameplay 2.5.2.1: selection alignment and visual coherence ===== */
+    /* ===== Gameplay 2.5.3.1: selection alignment and visual coherence ===== */
 
     /*
       Legacy selection rules moved the root unit, the formation, and every
@@ -4869,7 +4869,7 @@ that no visual behavior changes. These banners identify the effective systems:
       transform: none !important;
     }
 
-    /* ===== Gameplay 2.5.2: selection visual reset ===== */
+    /* ===== Gameplay 2.5.3: selection visual reset ===== */
 
     /*
       Selection no longer creates a separate plate or moves any geometry.
@@ -4980,6 +4980,126 @@ that no visual behavior changes. These banners identify the effective systems:
       transform: translate(-50%, -50%) !important;
     }
 
+    /* ===== Gameplay 2.5.3: orientation and scale normalization ===== */
+
+    /*
+      The battlefield itself rotates 90 degrees in portrait table mode.
+      Units must counter-rotate as a complete object so soldiers, labels,
+      selection, and interaction geometry all share one orientation.
+    */
+    body.camera-rotated .unit,
+    body.camera-rotated .unit.selected,
+    body.camera-rotated .unit:hover,
+    body.camera-rotated .unit:focus-visible {
+      transform: translate(-50%, -52%) rotate(-90deg) !important;
+    }
+
+    /*
+      Never rotate individual representation children. The root unit owns
+      orientation; every child stays aligned to the same local canvas.
+    */
+    body.camera-rotated .unit-representation,
+    body.camera-rotated .unit-formation,
+    body.camera-rotated .unit-label,
+    body.camera-rotated .unit-state-line,
+    body.camera-rotated .far-unit-counter {
+      rotate: 0deg !important;
+    }
+
+    /*
+      A fixed 92 px formation was oversized when the 72 x 48 board was shown
+      horizontally. Use a smaller authored canvas in the unrotated table view.
+    */
+    body:not(.camera-rotated) .unit-representation-medium .unit-formation,
+    body:not(.camera-rotated) .unit-representation-close .unit-formation {
+      width: 68px !important;
+      height: 62px !important;
+      min-width: 68px !important;
+      min-height: 62px !important;
+    }
+
+    body:not(.camera-rotated) .unit-representation-medium .formation-slot,
+    body:not(.camera-rotated) .unit-representation-close .formation-slot {
+      transform: translate(-50%, -50%) scale(.74) !important;
+      transform-origin: center center !important;
+    }
+
+    body:not(.camera-rotated) .unit-representation-medium .unit-label,
+    body:not(.camera-rotated) .unit-representation-close .unit-label {
+      top: calc(50% + 39px) !important;
+      max-width: 104px !important;
+      padding: 3px 6px !important;
+      font-size: 9px !important;
+    }
+
+    body:not(.camera-rotated) .unit-representation-close .unit-state-line {
+      top: calc(50% + 61px) !important;
+      transform: translateX(-50%) scale(.82) !important;
+      transform-origin: top center !important;
+    }
+
+    body:not(.camera-rotated) .unit-representation-close .unit-nameplate-pins {
+      left: calc(50% + 39px) !important;
+      top: calc(50% + 40px) !important;
+      transform: scale(.82) !important;
+    }
+
+    /*
+      Portrait/rotated table mode keeps a slightly larger formation because
+      the board has more screen height, but remains below the former 92 px.
+    */
+    body.camera-rotated .unit-representation-medium .unit-formation,
+    body.camera-rotated .unit-representation-close .unit-formation {
+      width: 78px !important;
+      height: 70px !important;
+      min-width: 78px !important;
+      min-height: 70px !important;
+    }
+
+    body.camera-rotated .unit-representation-medium .formation-slot,
+    body.camera-rotated .unit-representation-close .formation-slot {
+      transform: translate(-50%, -50%) scale(.86) !important;
+      transform-origin: center center !important;
+    }
+
+    body.camera-rotated .unit-representation-medium .unit-label,
+    body.camera-rotated .unit-representation-close .unit-label {
+      top: calc(50% + 44px) !important;
+      max-width: 116px !important;
+      padding: 3px 7px !important;
+      font-size: 9px !important;
+    }
+
+    body.camera-rotated .unit-representation-close .unit-state-line {
+      top: calc(50% + 67px) !important;
+      transform: translateX(-50%) scale(.88) !important;
+      transform-origin: top center !important;
+    }
+
+    body.camera-rotated .unit-representation-close .unit-nameplate-pins {
+      left: calc(50% + 44px) !important;
+      top: calc(50% + 45px) !important;
+      transform: scale(.86) !important;
+    }
+
+    /* Selection may glow, but must never alter orientation or size. */
+    body.camera-rotated .unit.selected .unit-representation-medium .unit-label,
+    body.camera-rotated .unit.selected .unit-representation-close .unit-label {
+      transform: translateX(-50%) !important;
+    }
+
+    body:not(.camera-rotated) .unit.selected .unit-representation-medium .unit-label,
+    body:not(.camera-rotated) .unit.selected .unit-representation-close .unit-label {
+      transform: translateX(-50%) !important;
+    }
+
+    /* Keep far counters modest in either board orientation. */
+    .unit-representation-far .far-unit-counter {
+      min-width: 42px !important;
+      padding: 5px 7px !important;
+      font-size: 9px !important;
+    }
+
 </style>
 </head>
 <body class="menu-open">
@@ -5088,7 +5208,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.5.2</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.5.3</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -5294,7 +5414,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.5.2 · SELECTION VISUAL RESET</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.5.3 · ORIENTATION & SCALE HOTFIX</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -5432,7 +5552,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.5.2 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.5.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -5699,7 +5819,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.5.2 after a full-reference audit confirmed that
+    // Removed in Gameplay 2.5.3 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 
