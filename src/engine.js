@@ -272,6 +272,7 @@
     let battleEnded = false;
     let overlayMode = null;
     let presentationEffects = null;
+    let screenOverlays = null;
     const targetingPresentation = window.CrossroadsTargetingPresentation.create();
     let announcementTimer = null;
     let orderDiePopTimer = null;
@@ -333,6 +334,7 @@
         renderUnits();
         renderRangeRing();
         renderWaypoint();
+        screenOverlays?.refresh();
       }
     });
 
@@ -529,6 +531,7 @@
       cursorReadout: document.getElementById("cursorReadout"),
       drawnDie: document.getElementById("drawnDie"),
       targetReadout: document.getElementById("targetReadout"),
+      battlefieldScreenOverlay: document.getElementById("battlefieldScreenOverlay"),
       orderDiePop: document.getElementById("orderDiePop"),
       orderDiePopFace: document.getElementById("orderDiePopFace"),
       orderDiePopText: document.getElementById("orderDiePopText"),
@@ -605,6 +608,7 @@
       "cursorReadout",
       "drawnDie",
       "targetReadout",
+      "battlefieldScreenOverlay",
       "orderDiePop",
       "orderDiePopFace",
       "orderDiePopText",
@@ -685,6 +689,7 @@
     const cursorReadout = DOM.cursorReadout;
     const drawnDie = DOM.drawnDie;
     const targetReadout = DOM.targetReadout;
+    const battlefieldScreenOverlay = DOM.battlefieldScreenOverlay;
     const orderDiePop = DOM.orderDiePop;
     const orderDiePopFace = DOM.orderDiePopFace;
     const orderDiePopText = DOM.orderDiePopText;
@@ -882,11 +887,16 @@
     }
 
     function deployMMG(unit) {
+      const cardinalAngle = {
+        right: 0,
+        down: 90,
+        left: 180,
+        up: 270
+      };
+
       unit.mmgDeployed = true;
-      const nearestEnemy = livingUnits()
-        .filter(other => other.faction !== unit.faction)
-        .sort((a, b) => distanceBetweenUnits(unit, a) - distanceBetweenUnits(unit, b))[0];
-      if (nearestEnemy) unit.mmgFacing = facingToward(unit, nearestEnemy);
+      unit.mmgFacing = cardinalAngle[unit.facing] ?? unit.mmgFacing ?? 0;
+
       addLog(`${capitalize(unit.faction)} ${unit.name} deploys its MMG facing ${Math.round(unit.mmgFacing)}°.`, "terrain");
       showBattleAnnouncement("MMG DEPLOYED", `${unit.name} establishes a firing position`, unit.faction, 1000);
     }
@@ -1215,22 +1225,11 @@
     }
 
     function showTargetReadout(target, state, heading, lines) {
-      if (!targetReadout || !target) return;
-
-      const point = tablePointToPixels(target);
-      targetReadout.className = `target-readout ${state}`;
-      targetReadout.style.left = `${point.x}px`;
-      targetReadout.style.top = `${point.y}px`;
-      targetReadout.innerHTML =
-        `<strong>${heading}</strong>${lines.map(line => `<div>${line}</div>`).join("")}`;
-      targetReadout.hidden = false;
+      screenOverlays?.show(target, state, heading, lines);
     }
 
     function clearTargetReadout() {
-      if (!targetReadout) return;
-      targetReadout.hidden = true;
-      targetReadout.textContent = "";
-      targetReadout.removeAttribute("style");
+      screenOverlays?.clear();
     }
 
     function showBattleAnnouncement(title, subtitle = "", tone = "neutral", duration = 1050) {
@@ -1311,6 +1310,15 @@
         Boolean(selected && selected.faction === objective.faction && phase === "plan-movement")
       );
     }
+
+    screenOverlays = window.CrossroadsScreenOverlays.create({
+      battlefield,
+      battlefieldViewport,
+      battlefieldScreenOverlay,
+      targetReadout,
+      tableWidth: RULES.tableWidth,
+      tableHeight: RULES.tableHeight
+    });
 
     presentationEffects = window.CrossroadsPresentationEffects.create({
       battlefield,
