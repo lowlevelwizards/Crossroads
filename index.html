@@ -2,19 +2,19 @@
 <!--
 ==============================================================================
 CROSSROADS 1939–1945 — INFANTRY CORE ENGINE
-FOUNDATION 2B: FIRST EXTERNAL PEELAWAYS
+FOUNDATION 3I: STABILIZED MODULAR ARCHITECTURE
 
-This build begins a low-risk multi-file migration. Build metadata and stage
-metadata now live in data/, while small command, DOM, and refresh seams live in
-src/. Gameplay, rendering, input, and startup behavior are intentionally unchanged.
+Static definitions, presentation, camera, input, and movement analysis now live
+in dedicated files. This document owns semantic application structure and script
+load order; startup validation prevents silent fallback to duplicated data.
 
 DOCUMENT LAYOUT
   1. Document Head and Styles
   2. Main Menu and Scenario Flow
   3. Battlefield and Desktop Interface
   4. Reference, Mobile, and Modal Interface
-  5. Battle Engine
-  6. Bootstrap
+  5. Modals and Reports
+  6. Ordered Module Bootstrap
 ==============================================================================
 -->
 <html lang="en">
@@ -456,6 +456,7 @@ DOCUMENT LAYOUT
   <script src="src/input/camera-input.js"></script>
   <script src="src/input/battlefield-input.js"></script>
   <script src="src/rules/movement.js"></script>
+  <script src="src/infrastructure/startup-validation.js"></script>
   <script src="src/engine.js"></script>
 </body>
 </html>
