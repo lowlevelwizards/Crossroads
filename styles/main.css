@@ -5696,66 +5696,6 @@ body:not(.camera-rotated) .mmg-deployed-formation {
   font-size: 14px;
 }
 
-/* Fallen miniature presentation, separate from living formation state. */
-.casualty-layer {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
-  z-index: 16;
-}
-
-.casualty-ghost {
-  position: absolute;
-  width: 56px;
-  height: 48px;
-  left: -28px;
-  top: -24px;
-  opacity: .82;
-  transition: opacity 320ms ease;
-}
-
-.casualty-ghost.is-fading {
-  opacity: 0;
-}
-
-.casualty-ghost .formation-slot {
-  left: 50% !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-.casualty-ghost .brick-soldier {
-  transform:
-    translateX(-50%)
-    rotate(90deg)
-    translateY(2px) !important;
-  transform-origin: 50% 86% !important;
-  animation: casualty-fall 420ms cubic-bezier(.28,.76,.31,1) both;
-  filter: saturate(.65) brightness(.91);
-}
-
-.casualty-ghost .brick-weapon {
-  animation: casualty-weapon-away 190ms ease forwards;
-}
-
-.casualty-ghost .model-shadow {
-  bottom: -5px !important;
-  width: 20px !important;
-  opacity: .62 !important;
-}
-
-@keyframes casualty-fall {
-  from {
-    transform: translateX(-50%) rotate(0deg) translateY(0);
-  }
-  to {
-    transform: translateX(-50%) rotate(90deg) translateY(2px);
-  }
-}
-
-@keyframes casualty-weapon-away {
-  to { opacity: 0; }
 }
 
 /* Far counter remains numeric; scatter is for medium/close only. */
@@ -6198,14 +6138,6 @@ body.targeting-confirmed
   font-size: 16px !important;
 }
 
-/* Casualties live outside units, so they share one camera-LOD variable. */
-.casualty-ghost {
-  transform:
-    translate(-50%, -50%)
-    scale(var(--casualty-visual-scale));
-  transform-origin: center;
-}
-
 /* Muzzle stars exist only while a shot pulse is active. */
 .weapon-muzzle {
   color: transparent !important;
@@ -6270,4 +6202,117 @@ body.targeting-confirmed
 .unit.targetable-assault::after {
   content: none !important;
   display: none !important;
+}
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3N-E — TEMPO, TOUCH, AND MMG FIRE CONTROL
+   ========================================================================== */
+
+/* Forgiving model-sized touch surfaces without restoring a unit rectangle. */
+.model-hit-pad {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 38px;
+  height: 46px;
+  transform: translateX(-50%);
+  border-radius: 45%;
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+  z-index: 8;
+  background: transparent;
+}
+
+@media (pointer: coarse) {
+  .model-hit-pad {
+    width: 44px;
+    height: 52px;
+    bottom: -7px;
+  }
+}
+
+/* 20% larger firing star; effects.js owns its longer pulse duration. */
+.weapon-muzzle {
+  width: 24px !important;
+  height: 24px !important;
+  right: -14px !important;
+}
+
+.facing-left .weapon-muzzle {
+  right: auto !important;
+  left: -14px !important;
+}
+
+.mmg-barrel .weapon-muzzle {
+  right: -18px !important;
+}
+
+.weapon-muzzle.muzzle-pulse::before {
+  font-size: 29px !important;
+}
+
+/* A casualty is removed with one brief tabletop smoke puff, never a corpse. */
+.casualty-puff {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  transform:
+    translate(
+      calc(-50% + var(--puff-x, 0px)),
+      calc(-50% + var(--puff-y, 0px))
+    );
+  pointer-events: none;
+  z-index: 120;
+}
+
+.casualty-puff i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(121, 118, 109, .74);
+  box-shadow: inset 0 0 0 1px rgba(70, 67, 61, .18);
+  animation: casualty-puff-out 460ms ease-out forwards;
+}
+
+.casualty-puff i:nth-child(2) {
+  margin-left: 5px;
+  margin-top: -3px;
+  animation-delay: 45ms;
+  animation-duration: 420ms;
+}
+
+.casualty-puff i:nth-child(3) {
+  margin-left: -6px;
+  margin-top: 2px;
+  animation-delay: 80ms;
+  animation-duration: 390ms;
+}
+
+@keyframes casualty-puff-out {
+  0% {
+    opacity: .82;
+    transform: translate(-50%, -50%) scale(.45);
+  }
+  55% {
+    opacity: .68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -85%) scale(2.25);
+  }
+}
+
+/* Deployed MMG arc is the range preview; never combine it with a full circle. */
+.mmg-fire-arc {
+  pointer-events: none;
+  opacity: .78;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .casualty-puff i {
+    animation-duration: 1ms !important;
+  }
 }
