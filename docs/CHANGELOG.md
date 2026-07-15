@@ -1,5 +1,17 @@
 # Changelog
 
+## Visual Stability 3K — Formation and silhouette pass
+
+- Locked clean Rifle zig-zag, Assault wedge, HQ stagger, and packed-MMG wedge formations.
+- Raised all unit labels closer to their formations.
+- Lowered individual shadows beneath the soldiers' feet.
+- Rebuilt rifles with brown stocks and gray barrel/muzzle sections.
+- Rebuilt SMGs as compact dark-gray weapons with visible box magazines.
+- Redesigned packs to read as strapped equipment rather than brown limbs.
+- Added deterministic left/right/up/down unit facing.
+- Unit facing now updates from the dominant movement direction.
+- Preserved selection, gameplay coordinates, and rule behavior.
+
 ## Visual Stability 3J — Unit presentation cleanup
 
 - Added authored Rifle, Assault, Officer, and packed-MMG formations.
