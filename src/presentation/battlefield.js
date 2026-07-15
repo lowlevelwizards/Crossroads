@@ -50,6 +50,8 @@
       qualityLabel,
       unitFormationHtml,
       consumeUnitEffects,
+      presentationEffects,
+      casualtyGhostHtml,
       unitIsOnObjective,
       analyzeShot,
       availableFireGroups,
@@ -168,21 +170,6 @@
           el.appendChild(mark);
         }
 
-        if (visualEffects.has("fire")) {
-          const weapon =
-            el.querySelector(".brick-soldier.role-lmg .brick-weapon") ||
-            el.querySelector(".brick-soldier.role-mmg .brick-weapon") ||
-            el.querySelector(".brick-soldier.role-smg .brick-weapon") ||
-            el.querySelector(".brick-weapon");
-
-          if (weapon) {
-            const flash = document.createElement("span");
-            flash.className = "muzzle-flash";
-            flash.textContent = "✦";
-            weapon.appendChild(flash);
-          }
-        }
-
         if (unit.activated) el.classList.add("activated");
         if (unit.ambush) el.classList.add("ambush");
         if (unit.id === selectedUnitId || unit.id === deploymentUnitId) el.classList.add("selected");
@@ -274,6 +261,17 @@
         el.addEventListener("mouseleave", clearTracePreview);
         battlefield.appendChild(el);
         applyEdgeContainment(el, unit, RULES, battlefield);
+        presentationEffects.decorateUnitElement(el, unit);
+      }
+
+      battlefield.querySelectorAll(".casualty-layer").forEach(el => el.remove());
+      for (const record of presentationEffects.casualtyRecords()) {
+        const ghost = document.createElement("span");
+        ghost.className = `casualty-layer ${record.faction} ${record.type ?? ""}`;
+        ghost.style.left = `${(record.x / RULES.tableWidth) * 100}%`;
+        ghost.style.top = `${(record.y / RULES.tableHeight) * 100}%`;
+        ghost.innerHTML = casualtyGhostHtml(record);
+        battlefield.appendChild(ghost);
       }
     };
   }

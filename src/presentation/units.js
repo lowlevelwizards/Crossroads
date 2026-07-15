@@ -68,6 +68,15 @@
     ].join(";");
   }
 
+  function weaponKeyForRole(role) {
+    if (role === "smg") return "smg";
+    if (role === "lmg") return "lmg";
+    if (role === "mmg") return "mmg";
+    if (role === "officer") return "pistol";
+    if (role === "loader" || role === "crew") return null;
+    return "rifle";
+  }
+
   function brickSoldierHtml(unit, index, options = {}) {
     const role = options.role ?? soldierRole(unit, index);
     const slots = formationSlots(unit, options.deployed ?? false);
@@ -77,20 +86,23 @@
     ];
     const extraClass = options.extraClass ? ` ${options.extraClass}` : "";
     const facing = options.facing ?? unitFacing(unit);
+    const weaponKey = options.weaponKey ?? weaponKeyForRole(role);
 
     return `
       <span class="model-wrap formation-slot slot-${index + 1}${extraClass}"
             style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
             aria-hidden="true">
         <span class="model-shadow"></span>
-        <span class="brick-soldier role-${role} facing-${facing}">
+        <span class="brick-soldier role-${role} facing-${facing}"
+              data-model-index="${index}"
+              ${weaponKey ? `data-weapon-key="${weaponKey}"` : ""}>
           <span class="brick-legs"></span>
           <span class="brick-pack"></span>
           <span class="brick-torso"></span>
           <span class="brick-head"></span>
           <span class="brick-helmet"></span>
           <span class="brick-arm"></span>
-          <span class="brick-weapon"></span>
+          <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true">✦</span></span>
         </span>
       </span>
     `;
@@ -147,7 +159,7 @@
       <span class="mmg-deployed-formation" style="--mmg-facing:${unit.mmgFacing}deg">
         <span class="mmg-tripod"><i></i><i></i><i></i></span>
         <span class="mmg-receiver"></span>
-        <span class="mmg-barrel"></span>
+        <span class="mmg-barrel"><span class="weapon-muzzle" aria-hidden="true">✦</span></span>
         ${crew}
       </span>
     `;
@@ -169,13 +181,16 @@
     `;
   }
 
-  function compactPinHtml(unit) {
+  function pinScatterHtml(unit) {
     if (unit.pins <= 0) return "";
-    const visible = "×".repeat(Math.min(unit.pins, 4));
-    const overflow = unit.pins > 4 ? `+${unit.pins - 4}` : "";
+    if (unit.pins >= 5) {
+      return `<span class="pin-scatter pin-counted" aria-label="${unit.pins} Pins">×${unit.pins}</span>`;
+    }
     return `
-      <span class="unit-nameplate-pins" aria-label="${unit.pins} Pins">
-        ${visible}${overflow}
+      <span class="pin-scatter" aria-label="${unit.pins} Pins">
+        ${Array.from({ length: unit.pins }, (_, index) =>
+          `<i class="pin-mark pin-position-${index + 1}">×</i>`
+        ).join("")}
       </span>
     `;
   }
@@ -194,6 +209,29 @@
       <span class="unit-label unit-label-close">
         ${qualityStripeHtml(unit)}
         <span class="unit-label-name">${unit.name}</span>
+      </span>
+    `;
+  }
+
+  function casualtyGhostHtml(record) {
+    const ghostUnit = {
+      faction: record.faction,
+      role: record.role === "mmg" ? "support" : "line",
+      facing: record.facing,
+      soldiers: 1,
+      weapons: {}
+    };
+    return `
+      <span class="casualty-ghost ${record.fading ? "is-fading" : ""}"
+            data-casualty-id="${record.id}"
+            style="--casualty-slot-x:${record.slot?.[0] ?? 50}%;--casualty-slot-y:${record.slot?.[1] ?? 50}%">
+        ${brickSoldierHtml(ghostUnit, 0, {
+          role: record.role,
+          slot: record.slot ?? [50, 50],
+          facing: record.facing,
+          weaponKey: record.weaponKey,
+          extraClass: "casualty-model"
+        })}
       </span>
     `;
   }
@@ -232,6 +270,7 @@
           ${models}
         </span>
         ${mediumLabelHtml(unit)}
+        ${pinScatterHtml(unit)}
       </span>
 
       <span class="unit-representation unit-representation-close${stateClass}">
@@ -239,7 +278,7 @@
           ${models}
         </span>
         ${closeLabelHtml(unit)}
-        ${compactPinHtml(unit)}
+        ${pinScatterHtml(unit)}
         <span class="unit-state-line">${stateChits}</span>
       </span>
     `;
@@ -257,7 +296,9 @@
     packedMMGFormationHtml,
     deployedMMGFormationHtml,
     qualityStripeHtml,
-    compactPinHtml,
+    pinScatterHtml,
+    casualtyGhostHtml,
+    weaponKeyForRole,
     roleAbbreviation,
     unitFacing,
     unitFormationHtml
