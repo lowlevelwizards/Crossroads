@@ -5801,3 +5801,178 @@ body:not(.camera-rotated) .mmg-deployed-formation {
 .unit-representation-far .pin-scatter {
   display: none !important;
 }
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3N-A — SINGLE-OWNER STABILIZATION
+   ========================================================================== */
+
+/* The old queued-effect pathway has been removed from JavaScript. */
+.unit-feedback-card,
+.effect-dust,
+.effect-impact,
+.effect-casualty-mark {
+  display: none !important;
+}
+
+/* One transform owner for travel; root remains the logical table anchor. */
+.unit,
+.unit-visual-travel,
+.unit-representation,
+.unit-formation,
+.formation-slot {
+  overflow: visible !important;
+}
+
+.unit {
+  width: 112px !important;
+  min-height: 102px !important;
+  contain: none !important;
+}
+
+.unit-visual-travel {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+.presentation-moving .unit-label,
+.presentation-moving .unit-state-line,
+.presentation-moving .pin-scatter {
+  opacity: .84;
+}
+
+/* One shadow rule: centered beneath its own model slot. */
+.model-shadow,
+.unit.selected .model-shadow,
+.unit.effect-eligible .model-shadow {
+  left: 50% !important;
+  right: auto !important;
+  bottom: -2px !important;
+  width: 15px !important;
+  height: 6px !important;
+  transform: translateX(-50%) !important;
+  transform-origin: center !important;
+}
+
+/* Readable muzzle flashes with a visible automatic-weapon cadence. */
+.weapon-muzzle {
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 24px !important;
+  right: -12px !important;
+  text-shadow:
+    0 0 2px #fffbd0,
+    0 0 7px #ffbd35,
+    0 0 13px rgba(255,90,0,.92) !important;
+}
+
+.facing-left .weapon-muzzle {
+  right: auto !important;
+  left: -12px !important;
+}
+
+.mmg-barrel .weapon-muzzle {
+  right: -15px !important;
+}
+
+.weapon-muzzle.muzzle-pulse {
+  animation: muzzle-star-readable var(--muzzle-duration, 185ms) ease-out both !important;
+}
+
+@keyframes muzzle-star-readable {
+  0% {
+    opacity: 0;
+    transform: translate(50%,-50%) scale(.25) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(50%,-50%) scale(1.45) rotate(15deg);
+  }
+  68% {
+    opacity: .92;
+    transform: translate(50%,-50%) scale(1.05) rotate(34deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(50%,-50%) scale(.55) rotate(52deg);
+  }
+}
+
+/* Persistent Pin state replaces the temporary +PIN feedback card. */
+.pin-scatter {
+  display: block !important;
+  overflow: visible !important;
+  z-index: 60 !important;
+}
+
+.pin-mark {
+  font-size: 23px !important;
+  color: #d52d28 !important;
+  opacity: 1 !important;
+}
+
+.pin-counted {
+  font-size: 18px !important;
+  color: #d52d28 !important;
+  opacity: 1 !important;
+  padding: 3px 6px !important;
+}
+
+/* Target browsing is subtle. Confirmation leaves one unambiguous target. */
+.unit.targetable-legal,
+.unit.targetable-protected,
+.unit.targetable-blocked,
+.unit.targetable-assault {
+  opacity: .88;
+}
+
+.unit.confirmed-target {
+  opacity: 1 !important;
+  z-index: 90 !important;
+}
+
+.unit.confirmed-target::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 94px;
+  height: 88px;
+  transform: translate(-50%,-50%);
+  border: 4px solid #fff8d8;
+  border-radius: 15px;
+  box-shadow:
+    0 0 0 3px #695d43,
+    0 0 0 7px rgba(255,244,194,.45);
+  pointer-events: none;
+  z-index: 80;
+}
+
+/* Preserve translation while counter-rotating the trace label. */
+body.camera-rotated .trace-label {
+  transform: translate(-50%, -145%) rotate(-90deg) !important;
+  transform-origin: center center !important;
+}
+
+/* A deployed MMG is one rotating assembly; crew orbit with the weapon. */
+.mmg-deployed-formation {
+  overflow: visible !important;
+}
+
+.mmg-deployed-crew {
+  transform: none !important;
+}
+
+.unit-representation.is-mmg-deployed .brick-soldier {
+  transform: translateX(-50%) !important;
+}
+
+/* Visual shell and targeting outline must not be clipped by button bounds. */
+.battlefield,
+#battlefield,
+#battlefieldSurface,
+.battlefield-surface {
+  overflow: visible;
+}
