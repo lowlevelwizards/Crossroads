@@ -289,7 +289,6 @@
     // Owns reversible unit selection until an action becomes committed.
     // -------------------------------------------------------------------------
     function beginActivationTransaction(unit) {
-      presentationEffects?.clearCasualtiesForUnit(unit.id);
       activationSnapshot = snapshotUnit(unit);
       transactionLockReason = null;
       updateTransactionBadge();
@@ -881,9 +880,26 @@
       return Math.min(diff, 360 - diff);
     }
 
+    function analyzeMMGFireArc(unit, target) {
+      if (!isMMGTeam(unit) || !unit.mmgDeployed) {
+        return {
+          bearing: null,
+          relativeAngle: 0,
+          insideArc: true
+        };
+      }
+
+      const bearing = facingToward(unit, target);
+      const relativeAngle = smallestAngleDifference(unit.mmgFacing, bearing);
+      return {
+        bearing,
+        relativeAngle,
+        insideArc: relativeAngle <= MMG_RULES.arcDegrees / 2 + 0.001
+      };
+    }
+
     function targetInsideMMGArc(unit, target) {
-      if (!isMMGTeam(unit) || !unit.mmgDeployed) return true;
-      return smallestAngleDifference(unit.mmgFacing, facingToward(unit, target)) <= MMG_RULES.arcDegrees / 2 + 0.001;
+      return analyzeMMGFireArc(unit, target).insideArc;
     }
 
     function deployMMG(unit) {
@@ -1011,7 +1027,9 @@
         });
         unit.soldiers -= 1;
       }
-      if (descriptors.length) presentationEffects?.recordCasualties(unit, descriptors);
+      if (descriptors.length) {
+        presentationEffects?.playCasualtyPuffs(unit, descriptors);
+      }
 
       if (isMMGTeam(unit) && unit.soldiers < MMG_RULES.reducedCrew) {
         undeployMMG(unit, "crew losses");
@@ -1028,6 +1046,17 @@
     }
 
     function destroyUnit(unit, reason = "destroyed") {
+      const remaining = Math.max(0, unit.soldiers);
+      if (remaining > 0) {
+        const slots = formationSlots(unit, unit.mmgDeployed);
+        presentationEffects?.playCasualtyPuffs(
+          unit,
+          Array.from({ length: Math.min(remaining, 4) }, (_, index) => ({
+            slot: slots[Math.max(0, remaining - 1 - index)] ?? [50, 50]
+          }))
+        );
+      }
+
       unit.soldiers = 0;
       for (const key of Object.keys(unit.weapons ?? {})) unit.weapons[key] = 0;
       setUnitOutcome(unit, UNIT_OUTCOME.DESTROYED, { reason });
@@ -1264,7 +1293,6 @@
       packedMMGFormationHtml,
       deployedMMGFormationHtml,
       qualityStripeHtml,
-      casualtyGhostHtml,
       unitFormationHtml
     } = window.CrossroadsUnitPresentation;
 
@@ -1323,8 +1351,7 @@
     presentationEffects = window.CrossroadsPresentationEffects.create({
       battlefield,
       tableWidth: RULES.tableWidth,
-      tableHeight: RULES.tableHeight,
-      renderUnits: context => renderUnits(context)
+      tableHeight: RULES.tableHeight
     });
 
     // Battlefield unit DOM rendering lives in src/presentation/battlefield.js.
@@ -1340,7 +1367,6 @@
       qualityLabel,
       unitFormationHtml,
       presentationEffects,
-      casualtyGhostHtml,
       unitIsOnObjective,
       analyzeShot,
       availableFireGroups,
@@ -1407,6 +1433,11 @@
             : RULES.advanceDistance;
         battlefield.classList.add("movement-mode");
       } else if (validFire) {
+        if (isMMGTeam(unit) && unit.mmgDeployed) {
+          rangeRing.hidden = true;
+          battlefield.classList.remove("movement-mode");
+          return;
+        }
         distance = weaponRange(unit, chosenOrder === "Advance");
         battlefield.classList.remove("movement-mode");
       } else {
@@ -1637,15 +1668,36 @@
       const range = weaponRange(shooter, false);
       const inRange = distance <= range + 0.001;
 
+      const mmgArc = analyzeMMGFireArc(shooter, targetAimPoint);
       let buildingHit = segmentRectClip(shooterPoint, targetAimPoint, TERRAIN.building);
       if (shooter?.inBuilding || targetUnit?.inBuilding) buildingHit = null;
-      const blocked = buildingHit !== null;
-      const blockReason = blocked ? "the farmhouse completely blocks line of sight." : "";
-      let cover = blocked ? { label: "No shot", saveTarget: null, sources: [] } : determineLineCover(shooterPoint, targetAimPoint);
+
+      const blockedByBuilding = buildingHit !== null;
+      const blockedByArc = !mmgArc.insideArc;
+      const blocked = blockedByBuilding || blockedByArc;
+      const blockReason = blockedByArc
+        ? "Outside the deployed MMG firing arc."
+        : blockedByBuilding
+          ? "The farmhouse completely blocks line of sight."
+          : "";
+
+      let cover = blocked
+        ? { label: "No shot", saveTarget: null, sources: [] }
+        : determineLineCover(shooterPoint, targetAimPoint);
       if (!blocked && targetUnit?.inBuilding) {
         cover = { label: "Hard cover inside farmhouse", saveTarget: 3, sources: ["target occupies the farmhouse"] };
       }
-      return { distance, range, inRange, blocked, blockReason, cover, shooterPoint, targetPoint: targetAimPoint };
+      return {
+        distance,
+        range,
+        inRange,
+        blocked,
+        blockReason,
+        cover,
+        shooterPoint,
+        targetPoint: targetAimPoint,
+        insideArc: mmgArc.insideArc
+      };
     }
 
     function determineLineCover(shooter, target) {
@@ -2242,6 +2294,9 @@
         visualMovement.y,
         unit.facing
       );
+      renderUnits({ reason: "face-before-movement" });
+      await new Promise(requestAnimationFrame);
+      await new Promise(resolve => setTimeout(resolve, 80));
       await presentationEffects.playMovement(
         unit.id,
         movementFrom,
@@ -2307,18 +2362,51 @@
     async function chooseTarget(targetId) {
       if (presentationEffects?.isBusy()) return;
       if (phase !== "choose-target" || !selectedUnitId || battleEnded) return;
+
       const shooter = getUnit(selectedUnitId);
       const target = getUnit(targetId);
       if (!shooter || !target || target.soldiers <= 0) return;
+
       if (target.id === shooter.id && chosenOrder === "Fire") {
         backToOrdersFromFire();
         return;
       }
-      if (target.faction === shooter.faction) return setStatus("Choose an enemy target.");
 
-      if (isMMGTeam(shooter) && shooter.mmgDeployed && chosenOrder === "Fire") {
-        shooter.mmgFacing = facingToward(shooter, target);
+      if (target.faction === shooter.faction) {
+        setStatus("Choose an enemy target.");
+        return;
       }
+
+      const moving = chosenOrder === "Advance";
+      const trace = analyzeShot(shooter, target);
+      const groups = availableFireGroups(shooter, trace.distance, moving, true);
+
+      if (!trace.inRange) {
+        showShotPreview(shooter, target);
+        setStatus(
+          `${target.name} is out of range at ${trace.distance.toFixed(1)}″.`,
+          `Maximum range: ${trace.range}″.`
+        );
+        return;
+      }
+
+      if (trace.blocked) {
+        showShotPreview(shooter, target);
+        setStatus(`No legal firing line to ${target.name}.`, trace.blockReason);
+        return;
+      }
+
+      if (groups.length === 0) {
+        showShotPreview(shooter, target);
+        setStatus(
+          `No surviving weapon can fire at ${target.name}.`,
+          moving
+            ? "Fixed weapons such as the MMG cannot fire after an Advance; finish the Advance or cancel."
+            : "Every surviving weapon is out of range."
+        );
+        return;
+      }
+
       if (!(isMMGTeam(shooter) && shooter.mmgDeployed)) {
         const visualFireVector = tableVectorToScreenVector(
           target.x - shooter.x,
@@ -2330,31 +2418,34 @@
           shooter.facing
         );
       }
-      renderUnits({ reason: "face-fire-target" });
-      const trace = analyzeShot(shooter, target);
-      const moving = chosenOrder === "Advance";
-      const groups = availableFireGroups(shooter, trace.distance, moving, true);
-      showShotPreview(shooter, target);
-      if (!trace.inRange) return setStatus(`${target.name} is out of range at ${trace.distance.toFixed(1)}″.`, `Maximum range: ${trace.range}″.`);
-      if (trace.blocked) return setStatus(`No line of sight to ${target.name}.`, trace.blockReason);
-      if (groups.length === 0) return setStatus(`No surviving weapon can fire at ${target.name}.`, moving ? "Fixed weapons such as the MMG cannot fire after an Advance; finish the Advance or cancel." : "Every surviving weapon is out of range.");
 
       confirmedTargetId = target.id;
       targetingPresentation.confirm(target.id);
       pendingTouchTargetId = null;
       renderUnits({ reason: "target-confirmed" });
+      await new Promise(requestAnimationFrame);
       showShotPreview(shooter, target);
 
-      // A stationary Fire order is only committed now, after a legal target
-      // has been chosen. Pinned units take their Order Test at this point.
       if (chosenOrder === "Fire" && !attemptOrder(shooter, "Fire")) {
+        confirmedTargetId = null;
+        targetingPresentation.clear();
         return;
       }
-      const firingGroups = availableFireGroups(shooter, trace.distance, moving, true);
-      const fireResult = resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
-      await presentationEffects.playFire(shooter.id, firingGroups);
+
+      const fireResult = resolveShootingCore(
+        shooter,
+        target,
+        trace,
+        {
+          label: chosenOrder === "Advance" ? "Advance fire" : "Fire",
+          movingPenalty: moving
+        }
+      );
+
+      await presentationEffects.playFire(shooter.id, groups);
       confirmedTargetId = null;
       targetingPresentation.clear();
+
       if (!checkElimination()) completeActivation(chosenOrder);
       else renderUnits();
     }
