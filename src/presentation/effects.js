@@ -24,79 +24,49 @@
     async function playMovement(unitId, from, to, distance, options = {}) {
       const root = unitElement(unitId);
       if (!root) return;
-
       const visual = root.querySelector(".unit-visual-travel");
-      if (!visual) return;
+      const visibleRepresentation = [...root.querySelectorAll(".unit-representation")].find(el => getComputedStyle(el).display !== "none");
+      if (!visual || !visibleRepresentation) return;
 
-      const pxPerX = Math.max(1, battlefield.offsetWidth) / tableWidth;
-      const pxPerY = Math.max(1, battlefield.offsetHeight) / tableHeight;
-      const dx = (to.x - from.x) * pxPerX;
-      const dy = (to.y - from.y) * pxPerY;
-      const duration = Math.round(Math.max(1000, Math.min(1750, 900 + distance * 65)));
+      const startRect = root.getBoundingClientRect();
+      root.style.left = `${(to.x / tableWidth) * 100}%`;
+      root.style.top = `${(to.y / tableHeight) * 100}%`;
+      const endRect = root.getBoundingClientRect();
+      const inverse = window.CrossroadsFormationGeometry.screenDeltaBetweenRects(startRect, endRect);
+      const duration = Math.round(Math.max(1050, Math.min(1800, 900 + distance * 68)));
 
       setBusy(1);
       root.classList.add("presentation-moving");
+      visual.style.transform = `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`;
+      void visual.offsetWidth;
 
-      const travel = visual.animate(
-        [
-          { transform: "translate3d(0, 0, 0)" },
-          { transform: `translate3d(${dx}px, ${dy}px, 0)` }
-        ],
-        {
-          duration,
-          easing: "cubic-bezier(.22,.72,.28,1)",
-          fill: "forwards"
-        }
-      );
+      const travel = visual.animate([
+        { transform: `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)` },
+        { transform: "translate3d(0, 0, 0)" }
+      ], { duration, easing: "cubic-bezier(.20,.72,.25,1)", fill: "forwards" });
 
-      const bodyAnimations = [];
-      const shadowAnimations = [];
-
-      root.querySelectorAll(".formation-slot").forEach((slot, index) => {
-        const body = slot.querySelector(".brick-soldier");
+      const localAnimations = [];
+      [...visibleRepresentation.querySelectorAll(".formation-slot")].forEach((slot,index) => {
+        const hop = slot.querySelector(".model-hop");
         const shadow = slot.querySelector(".model-shadow");
-        const delay = (index * 61) % 240;
-        const hopDuration = 320 + (index % 3) * 45;
-        const hopHeight = index === 0 && options.heavy ? -3 : -4 - (index % 2);
-
-        if (body) {
-          bodyAnimations.push(body.animate(
-            [
-              { translate: "0 0" },
-              { translate: `0 ${hopHeight}px`, offset: .48 },
-              { translate: "0 0" }
-            ],
-            {
-              duration: hopDuration,
-              delay,
-              iterations: Math.ceil((duration - delay) / hopDuration),
-              easing: "ease-in-out"
-            }
-          ));
-        }
-
-        if (shadow) {
-          shadowAnimations.push(shadow.animate(
-            [
-              { transform: "translateX(-50%) scale(1)", opacity: .82 },
-              { transform: "translateX(-50%) scale(.72)", opacity: .50, offset: .48 },
-              { transform: "translateX(-50%) scale(1)", opacity: .82 }
-            ],
-            {
-              duration: hopDuration,
-              delay,
-              iterations: Math.ceil((duration - delay) / hopDuration),
-              easing: "ease-in-out"
-            }
-          ));
-        }
+        const delay=(index*67)%250, hopDuration=330+(index%3)*48;
+        const hopHeight=index===0&&options.heavy?-4:-6-(index%2);
+        if (hop) localAnimations.push(hop.animate([
+          { transform:"translateY(0)" },
+          { transform:`translateY(${hopHeight}px)`, offset:.46 },
+          { transform:"translateY(0)" }
+        ], { duration:hopDuration, delay, iterations:Math.max(1,Math.ceil((duration-delay)/hopDuration)), easing:"cubic-bezier(.35,0,.35,1)" }));
+        if (shadow) localAnimations.push(shadow.animate([
+          { transform:"translateX(-50%) scale(1)", opacity:.78 },
+          { transform:"translateX(-50%) scale(.68)", opacity:.46, offset:.46 },
+          { transform:"translateX(-50%) scale(1)", opacity:.78 }
+        ], { duration:hopDuration, delay, iterations:Math.max(1,Math.ceil((duration-delay)/hopDuration)), easing:"cubic-bezier(.35,0,.35,1)" }));
       });
 
-      try {
-        await travel.finished;
-      } finally {
+      try { await travel.finished; } finally {
         travel.cancel();
-        for (const animation of [...bodyAnimations, ...shadowAnimations]) animation.cancel();
+        localAnimations.forEach(a => a.cancel());
+        visual.style.transform = "";
         root.classList.remove("presentation-moving");
         setBusy(-1);
       }

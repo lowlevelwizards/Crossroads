@@ -73,6 +73,7 @@
       getDeploymentUnitId,
       getPendingTouchTargetId,
       getConfirmedTargetId,
+      getTargetingSnapshot,
       getCurrentFaction
     } = deps;
 
@@ -82,7 +83,9 @@
       const selectedUnitId = getSelectedUnitId();
       const deploymentUnitId = getDeploymentUnitId();
       const pendingTouchTargetId = getPendingTouchTargetId();
-      const confirmedTargetId = getConfirmedTargetId();
+      const targeting = getTargetingSnapshot();
+      const confirmedTargetId = targeting.confirmedTargetId ?? getConfirmedTargetId();
+      const targetBrowsing = targeting.mode === "browsing";
       const currentFaction = getCurrentFaction();
 
       battlefield.querySelectorAll(".unit, .command-ring, .mmg-fire-arc").forEach(el => el.remove());
@@ -131,6 +134,8 @@
           `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
         );
         el.innerHTML = unitFormationHtml(unit);
+        el.querySelectorAll(".formation-slot").forEach(slot => slot.classList.add("unit-model-hit"));
+        el.querySelectorAll(".unit-label").forEach(label => label.classList.add("unit-label-hit"));
 
         if (unit.activated) el.classList.add("activated");
         if (unit.ambush) el.classList.add("ambush");
@@ -145,12 +150,14 @@
 
         const isEnemyShotTarget =
           phase === "choose-target" &&
+          targetBrowsing &&
           !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;
 
         const isEnemyAssaultTarget =
           phase === "choose-assault-target" &&
+          targetBrowsing &&
           !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;

@@ -93,9 +93,10 @@
             style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
             aria-hidden="true">
         <span class="model-shadow"></span>
-        <span class="brick-soldier role-${role} facing-${facing}"
-              data-model-index="${index}"
-              ${weaponKey ? `data-weapon-key="${weaponKey}"` : ""}>
+        <span class="model-hop">
+          <span class="brick-soldier role-${role} facing-${facing}"
+                data-model-index="${index}"
+                ${weaponKey ? `data-weapon-key="${weaponKey}"` : ""}>
           <span class="brick-legs"></span>
           <span class="brick-pack"></span>
           <span class="brick-torso"></span>
@@ -103,6 +104,7 @@
           <span class="brick-helmet"></span>
           <span class="brick-arm"></span>
           <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true">✦</span></span>
+          </span>
         </span>
       </span>
     `;
