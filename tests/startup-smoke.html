@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crossroads Startup Smoke Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.5; }
+    pre { padding: 16px; background: #eee; white-space: pre-wrap; }
+    .ok { font-weight: 800; }
+    .fail { font-weight: 800; }
+  </style>
+</head>
+<body>
+  <h1>Crossroads Startup Smoke Test</h1>
+  <p id="summary">Loading modules…</p>
+  <pre id="report"></pre>
+
+  <script src="../data/build-info.js"></script>
+  <script src="../data/stage.js"></script>
+  <script src="../data/weapons.js"></script>
+  <script src="../data/terrain.js"></script>
+  <script src="../data/unit-quality.js"></script>
+  <script src="../data/unit-types.js"></script>
+  <script src="../data/formations.js?v=3m2"></script>
+  <script src="../data/scenarios.js"></script>
+  <script src="../src/infrastructure/commands.js"></script>
+  <script src="../src/infrastructure/dom.js"></script>
+  <script src="../src/infrastructure/refresh.js"></script>
+  <script src="../src/presentation/units.js?v=3m2"></script>
+  <script src="../src/presentation/effects.js?v=3m2"></script>
+  <script src="../src/presentation/battlefield.js?v=3m2"></script>
+  <script src="../src/camera/camera.js"></script>
+  <script src="../src/camera/coordinates.js"></script>
+  <script src="../src/input/camera-input.js"></script>
+  <script src="../src/input/battlefield-input.js"></script>
+  <script src="../src/rules/movement.js"></script>
+  <script src="../src/infrastructure/startup-validation.js?v=3m2"></script>
+  <script>
+    const report = window.CROSSROADS_STARTUP_VALIDATION;
+    const summary = document.getElementById("summary");
+    const output = document.getElementById("report");
+
+    if (report?.ok) {
+      summary.className = "ok";
+      summary.textContent = `PASS — ${report.checked} required globals loaded.`;
+    } else {
+      summary.className = "fail";
+      summary.textContent = "FAIL — one or more modules are missing.";
+    }
+
+    output.textContent = JSON.stringify(report, null, 2);
+  </script>
+</body>
+</html>
