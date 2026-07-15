@@ -14,6 +14,7 @@
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
     ["CrossroadsFormationGeometry", "src/presentation/formation-geometry.js"],
     ["CrossroadsTargetingPresentation", "src/presentation/targeting.js"],
+    ["CrossroadsScreenOverlays", "src/presentation/overlays.js"],
     ["CrossroadsUnitPresentation", "src/presentation/units.js"],
     ["CrossroadsPresentationEffects", "src/presentation/effects.js"],
     ["CrossroadsBattlefieldPresentation", "src/presentation/battlefield.js"],
