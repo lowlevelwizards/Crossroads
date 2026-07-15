@@ -11,6 +11,12 @@
     return PRESENTATION.abbreviations[unit.role] ?? "RIF";
   }
 
+  function unitFacing(unit) {
+    const facing = unit?.facing;
+    if (["left", "right", "up", "down"].includes(facing)) return facing;
+    return unit?.faction === "red" ? "left" : "right";
+  }
+
   function farCounterHtml(unit) {
     return `
       <span class="far-unit-counter" aria-hidden="true">
@@ -53,13 +59,14 @@
       34 + Math.floor(index / 3) * 36
     ];
     const extraClass = options.extraClass ? ` ${options.extraClass}` : "";
+    const facing = options.facing ?? unitFacing(unit);
 
     return `
       <span class="model-wrap formation-slot slot-${index + 1}${extraClass}"
             style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
             aria-hidden="true">
         <span class="model-shadow"></span>
-        <span class="brick-soldier role-${role}">
+        <span class="brick-soldier role-${role} facing-${facing}">
           <span class="brick-legs"></span>
           <span class="brick-pack"></span>
           <span class="brick-torso"></span>
@@ -236,6 +243,7 @@
     qualityStripeHtml,
     compactPinHtml,
     roleAbbreviation,
+    unitFacing,
     unitFormationHtml
   });
 })();
