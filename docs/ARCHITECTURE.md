@@ -25,8 +25,8 @@ styles/main.css
   is stable enough to split without changing cascade order.
 
 data/
-  Static definitions and build metadata. These files are authoritative.
-  The engine must not contain fallback copies.
+  Static definitions, build metadata, and authored unit formations. These files
+  are authoritative. The engine must not contain fallback copies.
 
 src/engine.js
   Remaining battle coordinator: runtime state, turn flow, combat commitment,
@@ -35,8 +35,11 @@ src/engine.js
 src/infrastructure/
   Shared browser helpers and startup validation.
 
+data/formations.js
+  Canonical unit formation slots and medium-zoom abbreviations.
+
 src/presentation/units.js
-  Pure unit markup and formation builders.
+  Pure unit markup, labels, packed/deployed MMG views, and formation assembly.
 
 src/presentation/battlefield.js
   Unit-layer DOM rendering, visual state classes, and current unit event binding.

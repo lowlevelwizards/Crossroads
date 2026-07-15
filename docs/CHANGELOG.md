@@ -1,5 +1,16 @@
 # Changelog
 
+## Visual Stability 3J — Unit presentation cleanup
+
+- Added authored Rifle, Assault, Officer, and packed-MMG formations.
+- Added compact medium-zoom labels using quality stripes plus HQ/RIF/SMG/MMG.
+- Kept full unit names for close inspection only.
+- Rebuilt deployed MMG crew markup so the carried weapon disappears.
+- Increased deployed MMG visual scale and stabilized crew arrangement.
+- Normalized individual miniature shadows.
+- Added presentation-only edge containment without changing unit coordinates.
+- No intended gameplay changes.
+
 ## Foundation 3I — Stabilization and single sources of truth
 
 - Added explicit startup validation for required data and modules.
