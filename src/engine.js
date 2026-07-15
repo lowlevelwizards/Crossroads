@@ -7,12 +7,12 @@
       FOUNDATION CONTRACTS     outcomes, scenario objective registry
       CONFIGURATION & DATA      rules, weapons, terrain, units
       RUNTIME STATE             battle and activation transaction state
-      CAMERA & INPUT            zoom, rotation, pan, pointer conversion
+      EXTERNAL MODULES          presentation, camera, input, movement rules
       CORE HELPERS              units, geometry, dice, formatting
       BREAKTHROUGH SYSTEM       exit objective and containment scoring
-      RENDERING & FEEDBACK      miniatures, overlays, previews, effects
+      RENDERING & FEEDBACK      overlays, previews, reports, effects
       TURN & ORDER FLOW         bag draw, order choice, cancellation
-      MOVEMENT & AMBUSH         paths, terrain costs, interruptions
+      MOVEMENT COMMIT           state mutation, Ambush, completion
       SHOOTING & ASSAULT        combat resolution and casualties
       ACTION COMPLETION         activation, round, elimination
       SCENARIO SYSTEM           definitions, deployment, scoring, victory
@@ -23,8 +23,8 @@
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.5.3 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
-    rules, rendering, input, and existing startup order remain unchanged.
+    Foundation 3I keeps this file as the remaining coordinator while data,
+    presentation, camera, input, and movement analysis live in dedicated modules.
     =========================================================================
     */
 
@@ -106,23 +106,6 @@
       for (const hook of [...hooks]) hook(context);
     }
 
-    function applyBuildInfo() {
-      document.title = `CROSSROADS — ${BUILD_INFO.engine} ${BUILD_INFO.version}`;
-
-      const mainMenuBuildLabel = document.getElementById("mainMenuBuildLabel");
-      const headerBuildBadge = document.getElementById("headerBuildBadge");
-      const referenceBuildStamp = document.getElementById("referenceBuildStamp");
-
-      if (mainMenuBuildLabel) {
-        mainMenuBuildLabel.textContent =
-          `${BUILD_INFO.engine.toUpperCase()} · ${BUILD_INFO.version.toUpperCase()}`;
-      }
-      if (headerBuildBadge) headerBuildBadge.textContent = BUILD_INFO.version;
-      if (referenceBuildStamp) {
-        referenceBuildStamp.textContent =
-          `${BUILD_INFO.version.toUpperCase()} · ${BUILD_INFO.codename.toUpperCase()}`;
-      }
-    }
 
     function unitIsActive(unit) {
       return Boolean(
@@ -168,9 +151,9 @@
       RENDER: units, overlays, adaptive HUD
       EFFECTS: queued transient visual feedback
 
-      The downloadable prototype remains a single self-contained HTML file,
-      but new visual behavior now enters through one renderer and one effect
-      queue rather than order-specific DOM mutations.
+      Crossroads now loads a modular browser architecture. New behavior should
+      enter through the owning data, rules, input, camera, or presentation module
+      rather than expanding this coordinator by default.
     */
 
     // =========================================================================
@@ -188,8 +171,6 @@
       runDistance: 12,
       advanceDistance: 6,
       assaultDistance: 12,
-      rifleRange: 24,
-      lmgRange: 36,
       baseHitTarget: 4,
       regularDamageTarget: 4,
       unitCollisionRadius: 1.6,
@@ -200,31 +181,14 @@
       ambushSampleStep: 0.35,
       reactionFireThreshold: 6,
       commandRadius: 6,
-      commandMoraleBonus: 1,
-      smgRange: 12,
-      pistolRange: 6,
-      mmgRange: 36
+      commandMoraleBonus: 1
     };
 
-    const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES ?? Object.freeze({
-      rifle: Object.freeze({ key: "rifle", label: "Rifle", short: "R", range: 24, shots: 1, assault: false, fixed: false }),
-      smg: Object.freeze({ key: "smg", label: "SMG", short: "S", range: 12, shots: 2, assault: true, fixed: false }),
-      lmg: Object.freeze({ key: "lmg", label: "LMG", short: "L", range: 36, shots: 4, assault: false, fixed: false }),
-      pistol: Object.freeze({ key: "pistol", label: "Pistol", short: "P", range: 6, shots: 1, assault: true, fixed: false }),
-      mmg: Object.freeze({ key: "mmg", label: "MMG", short: "MMG", range: 36, shots: 5, reducedShots: 2, crewRequired: 2, crewWeapon: true, assault: false, fixed: true })
-    });
-
-    const TERRAIN = window.CROSSROADS_TERRAIN ?? {
-      woods: { id: "woods", label: "woods", type: "soft", x: 15, y: 28, width: 18, height: 14, save: 5 },
-      wall: { id: "wall", label: "low wall", type: "hard", x: 38, y: 30, width: 17, height: 2.5, save: 4 },
-      building: { id: "building", label: "farmhouse", type: "blocking", x: 28, y: 4, width: 13, height: 13 }
-    };
-
-
+    // Static definitions are required external data. Startup validation fails
+    // loudly if any source is missing, preventing silent fallback drift.
+    const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES;
+    const TERRAIN = window.CROSSROADS_TERRAIN;
     const UNIT_QUALITY = window.CROSSROADS_UNIT_QUALITY;
-    if (!UNIT_QUALITY) {
-      throw new Error("unit-quality.js did not load. Upload unit-quality.js beside index.html.");
-    }
 
     function qualityProfile(unitOrQuality) {
       const qualityId =
@@ -238,18 +202,8 @@
       return qualityProfile(unit).label;
     }
 
-    // Centralized unit templates now live in unit-types.js.
-    const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES ?? Object.freeze({
-      officer: Object.freeze({ quality: "regular", role: "officer", name: "Officer", soldiers: 2, morale: 9, weapons: Object.freeze({ pistol: 2 }), casualtyOrder: Object.freeze(["pistol"]) }),
-      rifleSquad: Object.freeze({ quality: "regular", role: "line", name: "Rifle Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 5, lmg: 1 }), casualtyOrder: Object.freeze(["rifle", "lmg"]) }),
-      assaultSquad: Object.freeze({ quality: "regular", role: "assault", name: "Assault Squad", soldiers: 6, morale: 9, weapons: Object.freeze({ rifle: 3, smg: 3 }), casualtyOrder: Object.freeze(["rifle", "smg"]) }),
-      mmgTeam: Object.freeze({ quality: "regular", role: "support", name: "MMG Team", soldiers: 3, morale: 9, weapons: Object.freeze({ mmg: 1 }), casualtyOrder: Object.freeze([]) })
-    });
-
+    const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
     const CORE_SCENARIO_12A = window.CROSSROADS_CORE_SCENARIO_12A;
-    if (!CORE_SCENARIO_12A) {
-      throw new Error("scenarios.js did not provide the core force definition.");
-    }
 
     function instantiateScenarioUnits(scenario) {
       const result = [];
@@ -4856,7 +4810,6 @@
       fitTable();
     });
     referenceMainMenuButton?.addEventListener("click", returnToCrossroadsMainMenu);
-    applyBuildInfo();
     organizePlayerFacingInterface();
     configureStageUI();
     configureMobilePanels();
