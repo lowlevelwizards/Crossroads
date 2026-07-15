@@ -271,7 +271,6 @@
     let activationSnapshot = null;
     let battleEnded = false;
     let overlayMode = null;
-    const queuedUnitEffects = new Map();
     let presentationEffects = null;
     let announcementTimer = null;
     let orderDiePopTimer = null;
@@ -279,6 +278,7 @@
     let pendingMovement = null;
     let pendingReaction = null;
     let deploymentUnitId = null;
+    let confirmedTargetId = null;
 
     let transactionLockReason = null;
 
@@ -1273,17 +1273,6 @@
     // Produces counters, formations, soldiers, pins, labels, and state chits.
     // =========================================================================
 
-    function queueUnitEffect(unitId, effectName) {
-      if (!unitId || !effectName) return;
-      if (!queuedUnitEffects.has(unitId)) queuedUnitEffects.set(unitId, new Set());
-      queuedUnitEffects.get(unitId).add(effectName);
-    }
-
-    function consumeUnitEffects(unitId) {
-      const effects = queuedUnitEffects.get(unitId);
-      queuedUnitEffects.delete(unitId);
-      return effects ?? new Set();
-    }
 
 
 
@@ -1341,7 +1330,6 @@
       unitIsEligibleForCurrentDie,
       qualityLabel,
       unitFormationHtml,
-      consumeUnitEffects,
       presentationEffects,
       casualtyGhostHtml,
       unitIsOnObjective,
@@ -1365,6 +1353,7 @@
       getSelectedUnitId: () => selectedUnitId,
       getDeploymentUnitId: () => deploymentUnitId,
       getPendingTouchTargetId: () => pendingTouchTargetId,
+      getConfirmedTargetId: () => confirmedTargetId,
       getCurrentFaction: () => currentFaction
     });
 
@@ -1858,7 +1847,6 @@
 
           for (const candidate of livingUnits()) {
             if (candidate.faction === currentFaction && !candidate.activated) {
-              queueUnitEffect(candidate.id, "eligible");
             }
           }
           addLog(`${capitalize(currentFaction)} die drawn. ${bag.length} dice remain.`);
@@ -1982,7 +1970,6 @@
         unit.down = true;
         unit.order = "Down · Failed";
         unit.activated = true;
-        queueUnitEffect(unit.id, "hit");
         addLog(`${capitalize(unit.faction)} ${unit.name} fails and goes Down.`, "fail");
         finishActivationState();
         return false;
@@ -2245,17 +2232,16 @@
         visualMovement.y,
         unit.facing
       );
-      unit.x = destination.x;
-      unit.y = destination.y;
-      presentationEffects.queueMovement(
+      await presentationEffects.playMovement(
         unit.id,
         movementFrom,
         destination,
-        movementDistance
+        movementDistance,
+        { heavy: isMMGTeam(unit) }
       );
-      queueUnitEffect(unit.id, "move");
-      renderUnits({ reason: "movement-presentation-start" });
-      await presentationEffects.playMovement(unit.id);
+      unit.x = destination.x;
+      unit.y = destination.y;
+      renderUnits({ reason: "movement-committed" });
 
       if (exitUnit(unit)) {
         const order = pendingMovement.order;
@@ -2324,15 +2310,17 @@
       if (isMMGTeam(shooter) && shooter.mmgDeployed && chosenOrder === "Fire") {
         shooter.mmgFacing = facingToward(shooter, target);
       }
-      const visualFireVector = tableVectorToScreenVector(
-        target.x - shooter.x,
-        target.y - shooter.y
-      );
-      shooter.facing = cardinalFacingFromVector(
-        visualFireVector.x,
-        visualFireVector.y,
-        shooter.facing
-      );
+      if (!(isMMGTeam(shooter) && shooter.mmgDeployed)) {
+        const visualFireVector = tableVectorToScreenVector(
+          target.x - shooter.x,
+          target.y - shooter.y
+        );
+        shooter.facing = cardinalFacingFromVector(
+          visualFireVector.x,
+          visualFireVector.y,
+          shooter.facing
+        );
+      }
       renderUnits({ reason: "face-fire-target" });
       const trace = analyzeShot(shooter, target);
       const moving = chosenOrder === "Advance";
@@ -2341,6 +2329,11 @@
       if (!trace.inRange) return setStatus(`${target.name} is out of range at ${trace.distance.toFixed(1)}″.`, `Maximum range: ${trace.range}″.`);
       if (trace.blocked) return setStatus(`No line of sight to ${target.name}.`, trace.blockReason);
       if (groups.length === 0) return setStatus(`No surviving weapon can fire at ${target.name}.`, moving ? "Fixed weapons such as the MMG cannot fire after an Advance; finish the Advance or cancel." : "Every surviving weapon is out of range.");
+
+      confirmedTargetId = target.id;
+      pendingTouchTargetId = null;
+      renderUnits({ reason: "target-confirmed" });
+      showShotPreview(shooter, target);
 
       // A stationary Fire order is only committed now, after a legal target
       // has been chosen. Pinned units take their Order Test at this point.
@@ -2351,6 +2344,7 @@
       const firingGroups = availableFireGroups(shooter, trace.distance, moving, true);
       const fireResult = resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
       await presentationEffects.playFire(shooter.id, firingGroups);
+      confirmedTargetId = null;
       if (!checkElimination()) completeActivation(chosenOrder);
       else renderUnits();
     }
@@ -2394,8 +2388,6 @@
       if (totalHits > 0) {
         if (shooterStats) shooterStats.pinsInflicted += 1;
         target.pins += 1;
-        queueUnitEffect(target.id, "hit");
-        queueUnitEffect(target.id, "pin");
         addLog(`${target.name} gains 1 Pin and now has ${target.pins}.`, "pin");
         if (target.pins >= target.morale) {
           const removed = target.soldiers;
@@ -2421,8 +2413,6 @@
       const requestedCasualties = Math.max(0, potentialCasualties - saved);
       const casualties = applyCasualties(target, requestedCasualties);
       if (casualties > 0 && target.soldiers > 0) {
-        queueUnitEffect(target.id, "casualty");
-        queueUnitEffect(target.id, "hit");
       }
       recordCasualties(shooter.faction, target.faction, casualties);
       if (casualties > 0) addLog(`${capitalize(target.faction)} ${target.name} suffers ${casualties} casualt${casualties === 1 ? "y" : "ies"}; remaining loadout: ${fullLoadout(target)}.`, "kill");
@@ -2628,6 +2618,7 @@
     // Clears transient state, completes activations, and advances the battle.
     // =========================================================================
     function clearActionOverlays() {
+      confirmedTargetId = null;
       overlayMode = null;
       rangeRing.hidden = true;
       battlefield.classList.remove("movement-mode");
@@ -4573,7 +4564,6 @@
       unit.x = center.x;
       unit.y = center.y;
       unit.down = false;
-      queueUnitEffect(unit.id, "move");
       return true;
     }
 
@@ -4629,7 +4619,6 @@
       unit.y = exitPoint.y;
       unit.buildingEntryX = null;
       unit.buildingEntryY = null;
-      queueUnitEffect(unit.id, "move");
       addLog(`${capitalize(unit.faction)} ${unit.name} exits the farmhouse through the doorway.`, "terrain");
       showBattleAnnouncement("FARMHOUSE CLEARED", `${unit.name} returns to the doorway`, unit.faction, 1000);
       completeActivation("Exit Building");
