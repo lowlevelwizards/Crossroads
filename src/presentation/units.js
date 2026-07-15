@@ -46,14 +46,31 @@
     return "rifle";
   }
 
-  function formationSlots(unit) {
-    if (unit.role === "support") return PRESENTATION.formations.supportPacked;
+  function formationDefinition(unit, deployed = false) {
+    if (unit.role === "support") {
+      return deployed
+        ? PRESENTATION.formations.supportDeployed
+        : PRESENTATION.formations.supportPacked;
+    }
     return PRESENTATION.formations[unit.role] ?? PRESENTATION.formations.line;
+  }
+
+  function formationSlots(unit, deployed = false) {
+    return formationDefinition(unit, deployed).slots;
+  }
+
+  function formationStyle(unit, deployed = false) {
+    const definition = formationDefinition(unit, deployed);
+    return [
+      `--formation-width:${definition.width}px`,
+      `--formation-height:${definition.height}px`,
+      `--model-count:${unit.soldiers}`
+    ].join(";");
   }
 
   function brickSoldierHtml(unit, index, options = {}) {
     const role = options.role ?? soldierRole(unit, index);
-    const slots = formationSlots(unit);
+    const slots = formationSlots(unit, options.deployed ?? false);
     const slot = options.slot ?? slots[index] ?? [
       20 + (index % 3) * 29,
       34 + Math.floor(index / 3) * 36
@@ -110,11 +127,7 @@
 
   function deployedMMGFormationHtml(unit) {
     const crewCount = Math.max(1, unit.soldiers);
-    const crewSlots = [
-      [50, 68],
-      [25, 42],
-      [76, 45]
-    ];
+    const crewSlots = formationSlots(unit, true);
 
     const crew = Array.from(
       { length: crewCount },
@@ -123,7 +136,8 @@
           ${brickSoldierHtml(unit, index, {
             role: "crew",
             slot: crewSlots[index] ?? [50, 50],
-            extraClass: "deployed-crew-model"
+            extraClass: "deployed-crew-model",
+            deployed: true
           })}
         </span>
       `
@@ -214,14 +228,14 @@
       </span>
 
       <span class="unit-representation unit-representation-medium${stateClass}">
-        <span class="unit-formation" style="--model-count:${unit.soldiers}">
+        <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
           ${models}
         </span>
         ${mediumLabelHtml(unit)}
       </span>
 
       <span class="unit-representation unit-representation-close${stateClass}">
-        <span class="unit-formation" style="--model-count:${unit.soldiers}">
+        <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
           ${models}
         </span>
         ${closeLabelHtml(unit)}
@@ -234,7 +248,9 @@
   window.CrossroadsUnitPresentation = Object.freeze({
     farCounterHtml,
     soldierRole,
+    formationDefinition,
     formationSlots,
+    formationStyle,
     brickSoldierHtml,
     roleAscii,
     orderAscii,
