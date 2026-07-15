@@ -5475,3 +5475,133 @@ body.camera-rotated
 .unit.effect-eligible .brick-soldier.facing-right {
   transform: translateX(-50%) !important;
 }
+/* ==========================================================================
+   VISUAL STABILITY 3L — FORMATION AND FACING CORRECTION
+   ========================================================================== */
+
+/* Authored canvas dimensions win over historical one-size formation rules. */
+.unit-representation-medium .unit-formation,
+.unit-representation-close .unit-formation,
+body:not(.camera-rotated) .unit-representation-medium .unit-formation,
+body:not(.camera-rotated) .unit-representation-close .unit-formation,
+body.camera-rotated .unit-representation-medium .unit-formation,
+body.camera-rotated .unit-representation-close .unit-formation {
+  width: var(--formation-width, 82px) !important;
+  height: var(--formation-height, 68px) !important;
+  min-width: var(--formation-width, 82px) !important;
+  min-height: var(--formation-height, 68px) !important;
+}
+
+/* Six-man squads use their authored spacing without being enlarged into clumps. */
+.unit.line .formation-slot,
+.unit.rifleSquad .formation-slot,
+.unit.assault .formation-slot,
+.unit.assaultSquad .formation-slot {
+  transform: translate(-50%, -50%) scale(.76) !important;
+}
+
+body.camera-rotated .unit.line .formation-slot,
+body.camera-rotated .unit.rifleSquad .formation-slot,
+body.camera-rotated .unit.assault .formation-slot,
+body.camera-rotated .unit.assaultSquad .formation-slot {
+  transform: translate(-50%, -50%) scale(.80) !important;
+}
+
+/* HQ and support teams retain full miniature presence. */
+.unit.officer .formation-slot,
+.unit.mmgTeam .formation-slot,
+.unit.support .formation-slot {
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+
+/* One centered shadow per soldier. Remove all historical group shadows. */
+.unit-formation::before,
+body.camera-close .unit-formation::before,
+body.camera-close .unit.selected .unit-formation::before {
+  content: none !important;
+  display: none !important;
+}
+
+.model-shadow,
+.unit.selected .model-shadow,
+.unit.effect-eligible .model-shadow {
+  left: 50% !important;
+  right: auto !important;
+  bottom: -3px !important;
+  width: 15px !important;
+  height: 6px !important;
+  transform: translateX(-50%) !important;
+  transform-origin: center center !important;
+}
+
+/* Rifle proportions: longer wood handguard, shorter exposed metal barrel. */
+.brick-soldier.role-rifle .brick-weapon,
+.brick-soldier.role-loader .brick-weapon {
+  width: 14px !important;
+  height: 4px !important;
+  background: #76502f !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+.brick-soldier.role-rifle .brick-weapon::before,
+.brick-soldier.role-loader .brick-weapon::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 1px;
+  width: 6px;
+  height: 2px;
+  border-radius: 0 1px 1px 0;
+  background: #697174;
+  box-shadow: 5px 0 0 #41474a;
+}
+
+.brick-soldier.role-rifle .brick-weapon::after,
+.brick-soldier.role-loader .brick-weapon::after {
+  left: 2px !important;
+  top: 3px !important;
+  width: 5px !important;
+  height: 3px !important;
+  background: #654125 !important;
+}
+
+/* Deployed MMG keeps the same crew and footprint scale as packed state. */
+.unit-representation.is-mmg-deployed .unit-formation,
+body:not(.camera-rotated)
+  .unit-representation.is-mmg-deployed
+  .unit-formation {
+  width: var(--formation-width, 82px) !important;
+  height: var(--formation-height, 74px) !important;
+  min-width: var(--formation-width, 82px) !important;
+  min-height: var(--formation-height, 74px) !important;
+}
+
+.mmg-deployed-formation,
+body:not(.camera-rotated) .mmg-deployed-formation {
+  inset: 0 !important;
+  transform: rotate(var(--mmg-facing)) scale(.96) !important;
+  transform-origin: 50% 50% !important;
+}
+
+.mmg-deployed-crew .model-wrap {
+  width: 25px !important;
+  height: 34px !important;
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+
+.mmg-deployed-formation::after {
+  width: 26px !important;
+  height: 7px !important;
+}
+
+/* Preserve directional silhouettes through every interaction state. */
+.unit:hover .brick-soldier.facing-up,
+.unit:focus-visible .brick-soldier.facing-up,
+.unit.selected .brick-soldier.facing-up,
+.unit.effect-eligible .brick-soldier.facing-up,
+.unit:hover .brick-soldier.facing-down,
+.unit:focus-visible .brick-soldier.facing-down,
+.unit.selected .brick-soldier.facing-down,
+.unit.effect-eligible .brick-soldier.facing-down {
+  transform: translateX(-50%) !important;
+}
