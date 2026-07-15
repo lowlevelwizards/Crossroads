@@ -92,6 +92,7 @@
       <span class="model-wrap formation-slot slot-${index + 1}${extraClass}"
             style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
             aria-hidden="true">
+        <span class="model-hit-pad" aria-hidden="true"></span>
         <span class="model-base-ring" aria-hidden="true"></span>
         <span class="model-shadow"></span>
         <span class="model-hop">
@@ -216,28 +217,6 @@
     `;
   }
 
-  function casualtyGhostHtml(record) {
-    const ghostUnit = {
-      faction: record.faction,
-      role: record.role === "mmg" ? "support" : "line",
-      facing: record.facing,
-      soldiers: 1,
-      weapons: {}
-    };
-    return `
-      <span class="casualty-ghost ${record.fading ? "is-fading" : ""}"
-            data-casualty-id="${record.id}"
-            style="--casualty-slot-x:${record.slot?.[0] ?? 50}%;--casualty-slot-y:${record.slot?.[1] ?? 50}%">
-        ${brickSoldierHtml(ghostUnit, 0, {
-          role: record.role,
-          slot: record.slot ?? [50, 50],
-          facing: record.facing,
-          weaponKey: record.weaponKey,
-          extraClass: "casualty-model"
-        })}
-      </span>
-    `;
-  }
 
   function unitFormationHtml(unit) {
     const models =
@@ -312,7 +291,6 @@
     deployedMMGFormationHtml,
     qualityStripeHtml,
     pinScatterHtml,
-    casualtyGhostHtml,
     weaponKeyForRole,
     roleAbbreviation,
     unitFacing,

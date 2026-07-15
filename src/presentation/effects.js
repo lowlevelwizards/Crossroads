@@ -3,9 +3,7 @@
 (() => {
   const sleep = ms => new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
 
-  function create({ battlefield, tableWidth, tableHeight, renderUnits }) {
-    const casualties = new Map();
-    let casualtySequence = 0;
+  function create({ battlefield, tableWidth, tableHeight }) {
     let busyCount = 0;
 
     function setBusy(delta) {
@@ -33,7 +31,7 @@
       if (!visual || !visibleRepresentation) return;
 
       const duration = Math.round(
-        Math.max(1100, Math.min(1800, 980 + distance * 68))
+        Math.max(875, Math.min(1425, 760 + distance * 54))
       );
 
       const previousTransition = root.style.transition;
@@ -164,17 +162,17 @@
     }
 
     function pulseDuration(key) {
-      if (key === "mmg") return 185;
-      if (key === "lmg") return 175;
-      if (key === "smg") return 170;
-      return 190;
+      if (key === "mmg") return 222;
+      if (key === "lmg") return 210;
+      if (key === "smg") return 204;
+      return 228;
     }
 
     function shotInterval(key) {
-      if (key === "mmg") return 145;
-      if (key === "lmg") return 155;
-      if (key === "smg") return 170;
-      return 210;
+      if (key === "mmg") return 174;
+      if (key === "lmg") return 186;
+      if (key === "smg") return 204;
+      return 252;
     }
 
     function flash(muzzle, key) {
@@ -216,7 +214,7 @@
           for (let shot = 0; shot < shots; shot += 1) {
             const muzzle = muzzles[shot % modelCount];
             const volley = Math.floor(shot / modelCount);
-            const delay = groupStart + (shot % modelCount) * 85 + volley * interval;
+            const delay = groupStart + (shot % modelCount) * 100 + volley * interval;
             jobs.push(new Promise(resolve => {
               setTimeout(() => {
                 flash(muzzle, key);
@@ -224,7 +222,7 @@
               }, delay);
             }));
           }
-          groupStart += 75;
+          groupStart += 90;
         }
 
         if (jobs.length) await Promise.all(jobs);
@@ -233,55 +231,34 @@
       }
     }
 
-    function recordCasualties(unit, descriptors) {
-      if (!unit || !descriptors?.length) return;
-      const list = casualties.get(unit.id) ?? [];
-      for (const descriptor of descriptors.slice(0, Math.max(0, 3 - list.length))) {
-        list.push({
-          id: `casualty-${++casualtySequence}`,
-          unitId: unit.id,
-          faction: unit.faction,
-          type: unit.type,
-          role: descriptor.role,
-          weaponKey: descriptor.weaponKey,
-          slot: descriptor.slot,
-          facing: unit.facing,
-          x: unit.x,
-          y: unit.y,
-          fading: false
-        });
-      }
-      casualties.set(unit.id, list);
-    }
+    function playCasualtyPuffs(unit, descriptors = []) {
+      if (!unit || !descriptors.length) return;
 
-    function casualtyRecords() {
-      return [...casualties.values()].flat();
-    }
+      const root = unitElement(unit.id);
+      const rootLeft = root?.style.left || `${(unit.x / tableWidth) * 100}%`;
+      const rootTop = root?.style.top || `${(unit.y / tableHeight) * 100}%`;
 
-    async function clearCasualtiesForUnit(unitId) {
-      const list = casualties.get(unitId);
-      if (!list?.length) return;
-      for (const record of list) record.fading = true;
-      renderUnits({ reason: "casualty-fade" });
-      await sleep(340);
-      casualties.delete(unitId);
-      renderUnits({ reason: "casualty-clear" });
-    }
+      descriptors.slice(0, 4).forEach((descriptor, index) => {
+        const puff = document.createElement("span");
+        puff.className = "casualty-puff";
+        puff.style.left = rootLeft;
+        puff.style.top = rootTop;
 
-    function clearDestroyedCasualties(activeUnitIds) {
-      const active = new Set(activeUnitIds);
-      for (const [unitId] of casualties) {
-        if (!active.has(unitId)) casualties.delete(unitId);
-      }
+        const slot = descriptor.slot ?? [50, 50];
+        const localX = (slot[0] - 50) * .45 + (index % 2 ? 3 : -3);
+        const localY = (slot[1] - 50) * .38 + Math.floor(index / 2) * 3;
+        puff.style.setProperty("--puff-x", `${localX.toFixed(1)}px`);
+        puff.style.setProperty("--puff-y", `${localY.toFixed(1)}px`);
+        puff.innerHTML = "<i></i><i></i><i></i>";
+        battlefield.appendChild(puff);
+        setTimeout(() => puff.remove(), 520);
+      });
     }
 
     return Object.freeze({
       playMovement,
       playFire,
-      recordCasualties,
-      casualtyRecords,
-      clearCasualtiesForUnit,
-      clearDestroyedCasualties,
+      playCasualtyPuffs,
       isBusy
     });
   }

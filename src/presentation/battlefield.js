@@ -50,7 +50,6 @@
       qualityLabel,
       unitFormationHtml,
       presentationEffects,
-      casualtyGhostHtml,
       unitIsOnObjective,
       analyzeShot,
       availableFireGroups,
@@ -89,7 +88,7 @@
     }
 
     battlefield.addEventListener("click", event => {
-      const hit = event.target.closest(".unit-model-hit, .unit-label-hit");
+      const hit = event.target.closest(".model-hit-pad, .unit-label-hit");
       if (!hit || !battlefield.contains(hit)) return;
 
       const unitElement = hit.closest(".unit");
@@ -113,7 +112,18 @@
       const shooter = getUnit(selectedUnitId);
 
       const selectedMMG = getUnit(selectedUnitId);
-      if (selectedMMG && isMMGTeam(selectedMMG) && selectedMMG.mmgDeployed && !selectedMMG.inBuilding) {
+      const mmgArcRelevant =
+        selectedMMG &&
+        isMMGTeam(selectedMMG) &&
+        selectedMMG.mmgDeployed &&
+        !selectedMMG.inBuilding &&
+        (
+          phase === "choose-order" ||
+          phase === "choose-target" ||
+          selectedMMG.ambush
+        );
+
+      if (mmgArcRelevant) {
         const arc = document.createElement("div");
         arc.className = `mmg-fire-arc ${selectedMMG.faction}`;
         arc.style.left = `${(selectedMMG.x / RULES.tableWidth) * 100}%`;
@@ -155,7 +165,6 @@
           `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
         );
         el.innerHTML = unitFormationHtml(unit);
-        el.querySelectorAll(".formation-slot").forEach(slot => slot.classList.add("unit-model-hit"));
         el.querySelectorAll(".unit-label").forEach(label => label.classList.add("unit-label-hit"));
 
         if (unit.activated) el.classList.add("activated");
@@ -247,15 +256,6 @@
         applyEdgeContainment(el, unit, RULES, battlefield);
       }
 
-      battlefield.querySelectorAll(".casualty-layer").forEach(el => el.remove());
-      for (const record of presentationEffects.casualtyRecords()) {
-        const ghost = document.createElement("span");
-        ghost.className = `casualty-layer ${record.faction} ${record.type ?? ""}`;
-        ghost.style.left = `${(record.x / RULES.tableWidth) * 100}%`;
-        ghost.style.top = `${(record.y / RULES.tableHeight) * 100}%`;
-        ghost.innerHTML = casualtyGhostHtml(record);
-        battlefield.appendChild(ghost);
-      }
     };
   }
 
