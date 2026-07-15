@@ -5,6 +5,38 @@
   // This module converts current battle state into DOM. It does not resolve
   // orders, mutate combat state, or own camera/input rules.
 
+  function applyEdgeContainment(element, unit, rules, battlefield) {
+    const pixelsPerInch =
+      Math.max(1, battlefield.offsetWidth) / Math.max(1, rules.tableWidth);
+
+    const horizontalFootprint = 54;
+    const topFootprint = 42;
+    const bottomFootprint = 74;
+
+    const availableLeft = unit.x * pixelsPerInch;
+    const availableRight = (rules.tableWidth - unit.x) * pixelsPerInch;
+    const availableTop = unit.y * pixelsPerInch;
+    const availableBottom = (rules.tableHeight - unit.y) * pixelsPerInch;
+
+    let shiftX = 0;
+    let shiftY = 0;
+
+    if (availableLeft < horizontalFootprint) {
+      shiftX = horizontalFootprint - availableLeft;
+    } else if (availableRight < horizontalFootprint) {
+      shiftX = -(horizontalFootprint - availableRight);
+    }
+
+    if (availableTop < topFootprint) {
+      shiftY = topFootprint - availableTop;
+    } else if (availableBottom < bottomFootprint) {
+      shiftY = -(bottomFootprint - availableBottom);
+    }
+
+    element.style.setProperty("--unit-edge-shift-x", `${shiftX.toFixed(1)}px`);
+    element.style.setProperty("--unit-edge-shift-y", `${shiftY.toFixed(1)}px`);
+  }
+
   function createUnitLayerRenderer(deps) {
     const {
       battlefield,
@@ -241,6 +273,7 @@
 
         el.addEventListener("mouseleave", clearTracePreview);
         battlefield.appendChild(el);
+        applyEdgeContainment(el, unit, RULES, battlefield);
       }
     };
   }
