@@ -5236,3 +5236,568 @@ body.camera-close .unit-label-medium,
 body.camera-inspection .unit-label-medium {
   display: none !important;
 }
+/* ==========================================================================
+   VISUAL STABILITY 3K — FORMATIONS, SILHOUETTES, AND FACING
+   ========================================================================== */
+
+/* Labels sit close enough to read as part of the unit object. */
+body:not(.camera-rotated)
+  .unit-representation-medium .unit-label,
+body:not(.camera-rotated)
+  .unit-representation-close .unit-label {
+  top: calc(50% + 32px) !important;
+}
+
+body.camera-rotated
+  .unit-representation-medium .unit-label,
+body.camera-rotated
+  .unit-representation-close .unit-label {
+  top: calc(50% + 37px) !important;
+}
+
+body:not(.camera-rotated)
+  .unit-representation-close .unit-state-line {
+  top: calc(50% + 52px) !important;
+}
+
+body.camera-rotated
+  .unit-representation-close .unit-state-line {
+  top: calc(50% + 57px) !important;
+}
+
+body:not(.camera-rotated)
+  .unit-representation-close .unit-nameplate-pins {
+  top: calc(50% + 33px) !important;
+}
+
+body.camera-rotated
+  .unit-representation-close .unit-nameplate-pins {
+  top: calc(50% + 38px) !important;
+}
+
+/* Shadows sit below the feet rather than behind the torso. */
+.model-shadow,
+.unit.selected .model-shadow,
+.unit.effect-eligible .model-shadow {
+  bottom: -3px !important;
+  width: 15px !important;
+  height: 6px !important;
+  opacity: .88 !important;
+}
+
+/* A backpack should read as a strapped pack, never as a brown arm. */
+.brick-pack {
+  left: 1px !important;
+  bottom: 7px !important;
+  width: 7px !important;
+  height: 9px !important;
+  border-radius: 2px 1px 2px 2px !important;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255,255,255,.10) 0 15%,
+      transparent 16% 27%,
+      rgba(0,0,0,.16) 28% 36%,
+      transparent 37%
+    ),
+    var(--pack) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.28),
+    1px 1px 0 rgba(0,0,0,.12) !important;
+  z-index: 1 !important;
+}
+
+.brick-pack::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 3px;
+  height: 1px;
+  background: rgba(32,25,18,.35);
+}
+
+/* Rifle: brown stock/receiver with a clearly separate gray barrel and muzzle. */
+.brick-soldier.role-rifle .brick-weapon,
+.brick-soldier.role-loader .brick-weapon {
+  left: 13px !important;
+  bottom: 10px !important;
+  width: 10px !important;
+  height: 4px !important;
+  border-radius: 1px !important;
+  background: #76502f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    8px 0 0 #6c7477,
+    12px 0 0 #42484b !important;
+}
+
+.brick-soldier.role-rifle .brick-weapon::after,
+.brick-soldier.role-loader .brick-weapon::after {
+  left: 2px !important;
+  top: 3px !important;
+  width: 4px !important;
+  height: 3px !important;
+  background: #654125 !important;
+}
+
+/* LMG keeps the same material family but reads heavier. */
+.brick-soldier.role-lmg .brick-weapon {
+  background: #66462c !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    11px 0 0 #666e71,
+    17px 0 0 #3f4548 !important;
+}
+
+/* SMG: compact dark receiver with a deliberately visible box magazine. */
+.brick-soldier.role-smg .brick-weapon {
+  left: 13px !important;
+  bottom: 11px !important;
+  width: 11px !important;
+  height: 5px !important;
+  border-radius: 1px !important;
+  background: #343a3d !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    7px 0 0 #252a2d !important;
+}
+
+.brick-soldier.role-smg .brick-weapon::after {
+  left: 3px !important;
+  top: 4px !important;
+  width: 4px !important;
+  height: 7px !important;
+  border-radius: 0 0 1px 1px !important;
+  background: #252a2d !important;
+  transform: rotate(4deg) !important;
+}
+
+/* Two authored bases produce four directions through mirroring/layer changes. */
+.brick-soldier.facing-right {
+  transform: translateX(-50%) !important;
+}
+
+.brick-soldier.facing-left {
+  transform: translateX(-50%) scaleX(-1) !important;
+}
+
+.brick-soldier.facing-down,
+.brick-soldier.facing-up {
+  width: 19px !important;
+}
+
+.brick-soldier.facing-down .brick-pack {
+  left: 6px !important;
+  width: 8px !important;
+  opacity: .36;
+  z-index: 0 !important;
+}
+
+.brick-soldier.facing-up .brick-pack {
+  left: 4px !important;
+  bottom: 6px !important;
+  width: 11px !important;
+  height: 11px !important;
+  opacity: 1;
+  z-index: 2 !important;
+}
+
+.brick-soldier.facing-up .brick-torso {
+  z-index: 1 !important;
+}
+
+.brick-soldier.facing-up .brick-head {
+  background: color-mix(in srgb, var(--skin) 35%, var(--helmet)) !important;
+}
+
+.brick-soldier.facing-down .brick-weapon,
+.brick-soldier.facing-up .brick-weapon {
+  left: 12px !important;
+  bottom: 8px !important;
+  transform: rotate(72deg) scale(.88) !important;
+  transform-origin: left center !important;
+}
+
+.brick-soldier.facing-up .brick-weapon {
+  left: 2px !important;
+  transform: rotate(-72deg) scale(.88) !important;
+}
+
+.brick-soldier.facing-down .brick-arm {
+  left: 12px !important;
+  transform: rotate(-5deg) !important;
+}
+
+.brick-soldier.facing-up .brick-arm {
+  left: 4px !important;
+  transform: rotate(5deg) !important;
+}
+
+/* HQ pair remains clean and slightly staggered. */
+.unit.officer .unit-formation,
+.unit.role-officer .unit-formation {
+  width: 56px !important;
+}
+
+/* Packed MMG is a deliberate carrier-led wedge. */
+.unit-representation.is-mmg-packed .unit-formation {
+  width: 70px !important;
+  height: 68px !important;
+}
+
+/* Deployed gun gets a grounding shadow independent from crew shadows. */
+.mmg-deployed-formation::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  width: 30px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(38,32,25,.22);
+  filter: blur(.4px);
+  z-index: -1;
+}
+
+/* Facing should never be overwritten by selection/hover reset rules. */
+.unit:hover .brick-soldier.facing-left,
+.unit:focus-visible .brick-soldier.facing-left,
+.unit.selected .brick-soldier.facing-left,
+.unit.effect-eligible .brick-soldier.facing-left {
+  transform: translateX(-50%) scaleX(-1) !important;
+}
+
+.unit:hover .brick-soldier.facing-right,
+.unit:focus-visible .brick-soldier.facing-right,
+.unit.selected .brick-soldier.facing-right,
+.unit.effect-eligible .brick-soldier.facing-right {
+  transform: translateX(-50%) !important;
+}
+/* ==========================================================================
+   VISUAL STABILITY 3L — FORMATION AND FACING CORRECTION
+   ========================================================================== */
+
+/* Authored canvas dimensions win over historical one-size formation rules. */
+.unit-representation-medium .unit-formation,
+.unit-representation-close .unit-formation,
+body:not(.camera-rotated) .unit-representation-medium .unit-formation,
+body:not(.camera-rotated) .unit-representation-close .unit-formation,
+body.camera-rotated .unit-representation-medium .unit-formation,
+body.camera-rotated .unit-representation-close .unit-formation {
+  width: var(--formation-width, 82px) !important;
+  height: var(--formation-height, 68px) !important;
+  min-width: var(--formation-width, 82px) !important;
+  min-height: var(--formation-height, 68px) !important;
+}
+
+/* Six-man squads use their authored spacing without being enlarged into clumps. */
+.unit.line .formation-slot,
+.unit.rifleSquad .formation-slot,
+.unit.assault .formation-slot,
+.unit.assaultSquad .formation-slot {
+  transform: translate(-50%, -50%) scale(.76) !important;
+}
+
+body.camera-rotated .unit.line .formation-slot,
+body.camera-rotated .unit.rifleSquad .formation-slot,
+body.camera-rotated .unit.assault .formation-slot,
+body.camera-rotated .unit.assaultSquad .formation-slot {
+  transform: translate(-50%, -50%) scale(.80) !important;
+}
+
+/* HQ and support teams retain full miniature presence. */
+.unit.officer .formation-slot,
+.unit.mmgTeam .formation-slot,
+.unit.support .formation-slot {
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+
+/* One centered shadow per soldier. Remove all historical group shadows. */
+.unit-formation::before,
+body.camera-close .unit-formation::before,
+body.camera-close .unit.selected .unit-formation::before {
+  content: none !important;
+  display: none !important;
+}
+
+.model-shadow,
+.unit.selected .model-shadow,
+.unit.effect-eligible .model-shadow {
+  left: 50% !important;
+  right: auto !important;
+  bottom: -3px !important;
+  width: 15px !important;
+  height: 6px !important;
+  transform: translateX(-50%) !important;
+  transform-origin: center center !important;
+}
+
+/* Rifle proportions: longer wood handguard, shorter exposed metal barrel. */
+.brick-soldier.role-rifle .brick-weapon,
+.brick-soldier.role-loader .brick-weapon {
+  width: 14px !important;
+  height: 4px !important;
+  background: #76502f !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+.brick-soldier.role-rifle .brick-weapon::before,
+.brick-soldier.role-loader .brick-weapon::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 1px;
+  width: 6px;
+  height: 2px;
+  border-radius: 0 1px 1px 0;
+  background: #697174;
+  box-shadow: 5px 0 0 #41474a;
+}
+
+.brick-soldier.role-rifle .brick-weapon::after,
+.brick-soldier.role-loader .brick-weapon::after {
+  left: 2px !important;
+  top: 3px !important;
+  width: 5px !important;
+  height: 3px !important;
+  background: #654125 !important;
+}
+
+/* Deployed MMG keeps the same crew and footprint scale as packed state. */
+.unit-representation.is-mmg-deployed .unit-formation,
+body:not(.camera-rotated)
+  .unit-representation.is-mmg-deployed
+  .unit-formation {
+  width: var(--formation-width, 82px) !important;
+  height: var(--formation-height, 74px) !important;
+  min-width: var(--formation-width, 82px) !important;
+  min-height: var(--formation-height, 74px) !important;
+}
+
+.mmg-deployed-formation,
+body:not(.camera-rotated) .mmg-deployed-formation {
+  inset: 0 !important;
+  transform: rotate(var(--mmg-facing)) scale(.96) !important;
+  transform-origin: 50% 50% !important;
+}
+
+.mmg-deployed-crew .model-wrap {
+  width: 25px !important;
+  height: 34px !important;
+  transform: translate(-50%, -50%) scale(.92) !important;
+}
+
+.mmg-deployed-formation::after {
+  width: 26px !important;
+  height: 7px !important;
+}
+
+/* Preserve directional silhouettes through every interaction state. */
+.unit:hover .brick-soldier.facing-up,
+.unit:focus-visible .brick-soldier.facing-up,
+.unit.selected .brick-soldier.facing-up,
+.unit.effect-eligible .brick-soldier.facing-up,
+.unit:hover .brick-soldier.facing-down,
+.unit:focus-visible .brick-soldier.facing-down,
+.unit.selected .brick-soldier.facing-down,
+.unit.effect-eligible .brick-soldier.facing-down {
+  transform: translateX(-50%) !important;
+}
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3M — ACTION AND CONSEQUENCE
+   ========================================================================== */
+
+.presentation-busy .order-buttons button,
+.presentation-busy .mobile-command-actions button {
+  pointer-events: none;
+  opacity: .72;
+}
+
+/* Logical unit is already at destination; this offset visually travels there. */
+.unit.presentation-moving {
+  --movement-from-x: 0px;
+  --movement-from-y: 0px;
+  transform:
+    translate(
+      calc(-50% + var(--movement-from-x)),
+      calc(-50% + var(--movement-from-y))
+    ) !important;
+}
+
+.unit.presentation-moving.presentation-moving-active {
+  transform: translate(-50%, -50%) !important;
+  transition:
+    transform var(--movement-duration, 1300ms)
+    cubic-bezier(.22,.72,.28,1) !important;
+}
+
+.unit.presentation-moving-active .formation-slot {
+  animation:
+    miniature-hop var(--hop-duration, 360ms)
+    ease-in-out var(--hop-delay, 0ms) infinite !important;
+}
+
+@keyframes miniature-hop {
+  0%, 100% { translate: 0 0; }
+  48% { translate: 0 var(--hop-height, -4px); }
+}
+
+/* Shadows remain grounded while only the model wrapper hops. */
+.unit.presentation-moving-active .model-shadow {
+  animation: hop-shadow 360ms ease-in-out var(--hop-delay, 0ms) infinite;
+}
+
+@keyframes hop-shadow {
+  0%, 100% { scale: 1; opacity: .88; }
+  48% { scale: .76; opacity: .55; }
+}
+
+/* Explicit muzzle anchor used by single shots and automatic bursts. */
+.weapon-muzzle {
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  display: grid;
+  place-items: center;
+  transform: translate(50%, -50%) scale(.2);
+  color: #fff08b;
+  font: 900 13px/1 ui-monospace, monospace;
+  text-shadow:
+    0 0 2px #fff6b0,
+    0 0 5px #ff9d22,
+    0 0 8px rgba(255,91,0,.78);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.facing-left .weapon-muzzle {
+  right: auto;
+  left: -7px;
+}
+
+.facing-up .weapon-muzzle,
+.facing-down .weapon-muzzle {
+  right: -6px;
+}
+
+.mmg-barrel .weapon-muzzle {
+  right: -9px;
+}
+
+.weapon-muzzle.muzzle-pulse {
+  animation: muzzle-star 100ms steps(2, end);
+}
+
+@keyframes muzzle-star {
+  0% { opacity: 0; transform: translate(50%, -50%) scale(.15) rotate(0deg); }
+  30% { opacity: 1; transform: translate(50%, -50%) scale(1.25) rotate(18deg); }
+  100% { opacity: 0; transform: translate(50%, -50%) scale(.5) rotate(42deg); }
+}
+
+/* Stable red grease-pencil Pin language at medium and close zoom. */
+.pin-scatter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 26;
+}
+
+.pin-mark,
+.pin-counted {
+  position: absolute;
+  color: #c92f2b;
+  font: 950 17px/1 ui-monospace, monospace;
+  text-shadow:
+    0 1px 0 #fff1df,
+    1px 0 #fff1df,
+    -1px 0 #fff1df,
+    0 -1px #fff1df,
+    1px 2px 0 rgba(62,22,19,.20);
+  transform: rotate(-7deg);
+}
+
+.pin-position-1 { left: 4%; top: 7%; }
+.pin-position-2 { right: 4%; top: 8%; transform: rotate(8deg); }
+.pin-position-3 { left: 7%; bottom: 17%; transform: rotate(5deg); }
+.pin-position-4 { right: 7%; bottom: 17%; transform: rotate(-10deg); }
+
+.pin-counted {
+  right: 2%;
+  top: 6%;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(255,239,221,.88);
+  font-size: 14px;
+}
+
+/* Fallen miniature presentation, separate from living formation state. */
+.casualty-layer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  z-index: 16;
+}
+
+.casualty-ghost {
+  position: absolute;
+  width: 56px;
+  height: 48px;
+  left: -28px;
+  top: -24px;
+  opacity: .82;
+  transition: opacity 320ms ease;
+}
+
+.casualty-ghost.is-fading {
+  opacity: 0;
+}
+
+.casualty-ghost .formation-slot {
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.casualty-ghost .brick-soldier {
+  transform:
+    translateX(-50%)
+    rotate(90deg)
+    translateY(2px) !important;
+  transform-origin: 50% 86% !important;
+  animation: casualty-fall 420ms cubic-bezier(.28,.76,.31,1) both;
+  filter: saturate(.65) brightness(.91);
+}
+
+.casualty-ghost .brick-weapon {
+  animation: casualty-weapon-away 190ms ease forwards;
+}
+
+.casualty-ghost .model-shadow {
+  bottom: -5px !important;
+  width: 20px !important;
+  opacity: .62 !important;
+}
+
+@keyframes casualty-fall {
+  from {
+    transform: translateX(-50%) rotate(0deg) translateY(0);
+  }
+  to {
+    transform: translateX(-50%) rotate(90deg) translateY(2px);
+  }
+}
+
+@keyframes casualty-weapon-away {
+  to { opacity: 0; }
+}
+
+/* Far counter remains numeric; scatter is for medium/close only. */
+.unit-representation-far .pin-scatter {
+  display: none !important;
+}
