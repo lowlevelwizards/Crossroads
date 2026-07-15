@@ -272,6 +272,7 @@
     let battleEnded = false;
     let overlayMode = null;
     const queuedUnitEffects = new Map();
+    let presentationEffects = null;
     let announcementTimer = null;
     let orderDiePopTimer = null;
     let movementWaypoint = null;
@@ -286,6 +287,7 @@
     // Owns reversible unit selection until an action becomes committed.
     // -------------------------------------------------------------------------
     function beginActivationTransaction(unit) {
+      presentationEffects?.clearCasualtiesForUnit(unit.id);
       activationSnapshot = snapshotUnit(unit);
       transactionLockReason = null;
       updateTransactionBadge();
@@ -979,15 +981,26 @@
 
     function applyCasualties(unit, requested) {
       const casualties = Math.min(requested, unit.soldiers);
+      const descriptors = [];
       for (let i = 0; i < casualties; i++) {
-        unit.soldiers -= 1;
+        const removedIndex = Math.max(0, unit.soldiers - 1);
+        let removedWeapon = null;
         for (const key of unit.casualtyOrder ?? []) {
           if ((unit.weapons?.[key] ?? 0) > 0) {
+            removedWeapon = key;
             unit.weapons[key] -= 1;
             break;
           }
         }
+        descriptors.push({
+          role: soldierRole(unit, removedIndex),
+          weaponKey: removedWeapon,
+          slot: formationSlots(unit, unit.mmgDeployed)[removedIndex] ?? [50, 50],
+          round
+        });
+        unit.soldiers -= 1;
       }
+      if (descriptors.length) presentationEffects?.recordCasualties(unit, descriptors);
 
       if (isMMGTeam(unit) && unit.soldiers < MMG_RULES.reducedCrew) {
         undeployMMG(unit, "crew losses");
@@ -1251,7 +1264,7 @@
       packedMMGFormationHtml,
       deployedMMGFormationHtml,
       qualityStripeHtml,
-      compactPinHtml,
+      casualtyGhostHtml,
       unitFormationHtml
     } = window.CrossroadsUnitPresentation;
 
@@ -1309,6 +1322,13 @@
       );
     }
 
+    presentationEffects = window.CrossroadsPresentationEffects.create({
+      battlefield,
+      tableWidth: RULES.tableWidth,
+      tableHeight: RULES.tableHeight,
+      renderUnits: context => renderUnits(context)
+    });
+
     // Battlefield unit DOM rendering lives in src/presentation/battlefield.js.
     const renderUnitLayer = window.CrossroadsBattlefieldPresentation.createUnitLayerRenderer({
       battlefield,
@@ -1322,6 +1342,8 @@
       qualityLabel,
       unitFormationHtml,
       consumeUnitEffects,
+      presentationEffects,
+      casualtyGhostHtml,
       unitIsOnObjective,
       analyzeShot,
       availableFireGroups,
@@ -1674,6 +1696,7 @@
     // Owns activation selection, cancellation, die draw, and order commitment.
     // =========================================================================
     function selectUnit(unitId) {
+      if (presentationEffects?.isBusy()) return;
       const unit = getUnit(unitId);
       if (!unit || unit.soldiers <= 0) return;
 
@@ -2195,7 +2218,7 @@
       clearTracePreview();
     }
 
-    function finalizePendingMovement() {
+    async function finalizePendingMovement() {
       if (!pendingMovement) return;
       overlayMode = null;
       lastMovementPreview = null;
@@ -2211,6 +2234,8 @@
 
       const destination = pendingMovement.path[pendingMovement.path.length - 1];
       const movementOrigin = pendingMovement.path[0] ?? unit;
+      const movementDistance = distanceBetweenPoints(movementOrigin, destination);
+      const movementFrom = { x: movementOrigin.x, y: movementOrigin.y };
       const visualMovement = tableVectorToScreenVector(
         destination.x - movementOrigin.x,
         destination.y - movementOrigin.y
@@ -2222,7 +2247,15 @@
       );
       unit.x = destination.x;
       unit.y = destination.y;
+      presentationEffects.queueMovement(
+        unit.id,
+        movementFrom,
+        destination,
+        movementDistance
+      );
       queueUnitEffect(unit.id, "move");
+      renderUnits({ reason: "movement-presentation-start" });
+      await presentationEffects.playMovement(unit.id);
 
       if (exitUnit(unit)) {
         const order = pendingMovement.order;
@@ -2276,7 +2309,8 @@
     // SHOOTING RESOLUTION
     // Applies fire groups, hit rolls, saves, pins, casualties, and statistics.
     // =========================================================================
-    function chooseTarget(targetId) {
+    async function chooseTarget(targetId) {
+      if (presentationEffects?.isBusy()) return;
       if (phase !== "choose-target" || !selectedUnitId || battleEnded) return;
       const shooter = getUnit(selectedUnitId);
       const target = getUnit(targetId);
@@ -2290,6 +2324,16 @@
       if (isMMGTeam(shooter) && shooter.mmgDeployed && chosenOrder === "Fire") {
         shooter.mmgFacing = facingToward(shooter, target);
       }
+      const visualFireVector = tableVectorToScreenVector(
+        target.x - shooter.x,
+        target.y - shooter.y
+      );
+      shooter.facing = cardinalFacingFromVector(
+        visualFireVector.x,
+        visualFireVector.y,
+        shooter.facing
+      );
+      renderUnits({ reason: "face-fire-target" });
       const trace = analyzeShot(shooter, target);
       const moving = chosenOrder === "Advance";
       const groups = availableFireGroups(shooter, trace.distance, moving, true);
@@ -2304,7 +2348,9 @@
         return;
       }
 
-      resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
+      const firingGroups = availableFireGroups(shooter, trace.distance, moving, true);
+      const fireResult = resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
+      await presentationEffects.playFire(shooter.id, firingGroups);
       if (!checkElimination()) completeActivation(chosenOrder);
       else renderUnits();
     }
@@ -2322,7 +2368,6 @@
       const shooterStats = battleStats?.[shooter.faction];
 
       addLog(`${capitalize(shooter.faction)} ${shooter.name} uses ${options.label} at ${target.name} from ${trace.distance.toFixed(1)}″.`, options.label.includes("Ambush") ? "ambush" : "hit");
-      queueUnitEffect(shooter.id, "fire");
 
       for (const group of groups) {
         let hitTarget = RULES.baseHitTarget;
