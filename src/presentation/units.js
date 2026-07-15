@@ -261,25 +261,27 @@
       : "";
 
     return `
-      <span class="unit-representation unit-representation-far${stateClass}">
-        ${farCounterHtml(unit)}
-      </span>
-
-      <span class="unit-representation unit-representation-medium${stateClass}">
-        <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-          ${models}
+      <span class="unit-visual-travel">
+        <span class="unit-representation unit-representation-far${stateClass}">
+          ${farCounterHtml(unit)}
         </span>
-        ${mediumLabelHtml(unit)}
-        ${pinScatterHtml(unit)}
-      </span>
 
-      <span class="unit-representation unit-representation-close${stateClass}">
-        <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-          ${models}
+        <span class="unit-representation unit-representation-medium${stateClass}">
+          <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
+            ${models}
+          </span>
+          ${mediumLabelHtml(unit)}
+          ${pinScatterHtml(unit)}
         </span>
-        ${closeLabelHtml(unit)}
-        ${pinScatterHtml(unit)}
-        <span class="unit-state-line">${stateChits}</span>
+
+        <span class="unit-representation unit-representation-close${stateClass}">
+          <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
+            ${models}
+          </span>
+          ${closeLabelHtml(unit)}
+          ${pinScatterHtml(unit)}
+          <span class="unit-state-line">${stateChits}</span>
+        </span>
       </span>
     `;
   }

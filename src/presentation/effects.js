@@ -1,15 +1,12 @@
 "use strict";
 
 (() => {
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
-  }
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
 
   function create({ battlefield, tableWidth, tableHeight, renderUnits }) {
-    const movements = new Map();
     const casualties = new Map();
-    let busyCount = 0;
     let casualtySequence = 0;
+    let busyCount = 0;
 
     function setBusy(delta) {
       busyCount = Math.max(0, busyCount + delta);
@@ -20,113 +17,153 @@
       return busyCount > 0;
     }
 
-    function queueMovement(unitId, from, to, distance) {
-      const duration = Math.round(Math.max(1000, Math.min(1700, 950 + distance * 55)));
-      movements.set(unitId, {
-        from: { ...from },
-        to: { ...to },
-        duration,
-        started: false
-      });
-      return duration;
+    function unitElement(unitId) {
+      return battlefield.querySelector(`.unit[data-unit-id="${CSS.escape(unitId)}"]`);
     }
 
-    function decorateUnitElement(element, unit) {
-      const movement = movements.get(unit.id);
-      if (!movement) return;
+    async function playMovement(unitId, from, to, distance, options = {}) {
+      const root = unitElement(unitId);
+      if (!root) return;
 
-      const pixelsPerInch = Math.max(1, battlefield.offsetWidth) / tableWidth;
-      const dx = (movement.from.x - movement.to.x) * pixelsPerInch;
-      const dy = (movement.from.y - movement.to.y) * pixelsPerInch;
+      const visual = root.querySelector(".unit-visual-travel");
+      if (!visual) return;
 
-      element.classList.add("presentation-moving");
-      element.style.setProperty("--movement-from-x", `${dx.toFixed(2)}px`);
-      element.style.setProperty("--movement-from-y", `${dy.toFixed(2)}px`);
-      element.style.setProperty("--movement-duration", `${movement.duration}ms`);
+      const pxPerX = Math.max(1, battlefield.offsetWidth) / tableWidth;
+      const pxPerY = Math.max(1, battlefield.offsetHeight) / tableHeight;
+      const dx = (to.x - from.x) * pxPerX;
+      const dy = (to.y - from.y) * pxPerY;
+      const duration = Math.round(Math.max(1000, Math.min(1750, 900 + distance * 65)));
 
-      element.querySelectorAll(".formation-slot").forEach((slot, index) => {
-        slot.style.setProperty("--hop-delay", `${(index * 73) % 290}ms`);
-        slot.style.setProperty("--hop-duration", `${310 + (index % 3) * 55}ms`);
-        if (index === 0 && unit.role === "support") {
-          slot.style.setProperty("--hop-height", "-3px");
-        } else {
-          slot.style.setProperty("--hop-height", `${-4 - (index % 2)}px`);
-        }
-      });
-    }
-
-    async function playMovement(unitId) {
-      const movement = movements.get(unitId);
-      if (!movement) return;
       setBusy(1);
-      try {
-        await new Promise(requestAnimationFrame);
-        const element = battlefield.querySelector(`.unit[data-unit-id="${CSS.escape(unitId)}"]`);
-        if (!element) {
-          await sleep(movement.duration);
-          return;
+      root.classList.add("presentation-moving");
+
+      const travel = visual.animate(
+        [
+          { transform: "translate3d(0, 0, 0)" },
+          { transform: `translate3d(${dx}px, ${dy}px, 0)` }
+        ],
+        {
+          duration,
+          easing: "cubic-bezier(.22,.72,.28,1)",
+          fill: "forwards"
         }
-        movement.started = true;
-        element.classList.add("presentation-moving-active");
-        await sleep(movement.duration + 60);
+      );
+
+      const bodyAnimations = [];
+      const shadowAnimations = [];
+
+      root.querySelectorAll(".formation-slot").forEach((slot, index) => {
+        const body = slot.querySelector(".brick-soldier");
+        const shadow = slot.querySelector(".model-shadow");
+        const delay = (index * 61) % 240;
+        const hopDuration = 320 + (index % 3) * 45;
+        const hopHeight = index === 0 && options.heavy ? -3 : -4 - (index % 2);
+
+        if (body) {
+          bodyAnimations.push(body.animate(
+            [
+              { translate: "0 0" },
+              { translate: `0 ${hopHeight}px`, offset: .48 },
+              { translate: "0 0" }
+            ],
+            {
+              duration: hopDuration,
+              delay,
+              iterations: Math.ceil((duration - delay) / hopDuration),
+              easing: "ease-in-out"
+            }
+          ));
+        }
+
+        if (shadow) {
+          shadowAnimations.push(shadow.animate(
+            [
+              { transform: "translateX(-50%) scale(1)", opacity: .82 },
+              { transform: "translateX(-50%) scale(.72)", opacity: .50, offset: .48 },
+              { transform: "translateX(-50%) scale(1)", opacity: .82 }
+            ],
+            {
+              duration: hopDuration,
+              delay,
+              iterations: Math.ceil((duration - delay) / hopDuration),
+              easing: "ease-in-out"
+            }
+          ));
+        }
+      });
+
+      try {
+        await travel.finished;
       } finally {
-        movements.delete(unitId);
+        travel.cancel();
+        for (const animation of [...bodyAnimations, ...shadowAnimations]) animation.cancel();
+        root.classList.remove("presentation-moving");
         setBusy(-1);
-        renderUnits({ reason: "movement-presentation-complete" });
       }
     }
 
-    function weaponPulseInterval(key) {
-      if (key === "mmg") return 70;
-      if (key === "lmg") return 78;
-      if (key === "smg") return 92;
-      return 110;
+    function pulseDuration(key) {
+      if (key === "mmg") return 185;
+      if (key === "lmg") return 175;
+      if (key === "smg") return 170;
+      return 190;
     }
 
-    function flashMuzzle(muzzle) {
+    function shotInterval(key) {
+      if (key === "mmg") return 145;
+      if (key === "lmg") return 155;
+      if (key === "smg") return 170;
+      return 210;
+    }
+
+    function flash(muzzle, key) {
       if (!muzzle) return;
       muzzle.classList.remove("muzzle-pulse");
       void muzzle.offsetWidth;
+      muzzle.style.setProperty("--muzzle-duration", `${pulseDuration(key)}ms`);
       muzzle.classList.add("muzzle-pulse");
-      setTimeout(() => muzzle.classList.remove("muzzle-pulse"), 100);
+      setTimeout(() => muzzle.classList.remove("muzzle-pulse"), pulseDuration(key) + 20);
     }
 
     async function playFire(unitId, groups) {
+      const root = unitElement(unitId);
+      if (!root) return;
+
       setBusy(1);
       try {
-        await sleep(160);
-        const root = battlefield.querySelector(`.unit[data-unit-id="${CSS.escape(unitId)}"]`);
-        if (!root) return;
-
+        await sleep(220);
         const jobs = [];
-        let groupOffset = 0;
+        let groupStart = 0;
 
         for (const group of groups ?? []) {
           const key = group.key;
-          const candidates = [
+          let muzzles = [
             ...root.querySelectorAll(`[data-weapon-key="${CSS.escape(key)}"] .weapon-muzzle`)
           ];
+
           if (key === "mmg") {
             const deployed = root.querySelector(".mmg-barrel .weapon-muzzle");
-            if (deployed) candidates.splice(0, candidates.length, deployed);
+            if (deployed) muzzles = [deployed];
           }
-          if (!candidates.length) continue;
+
+          if (!muzzles.length) continue;
 
           const shots = Math.max(1, group.shots ?? 1);
-          const models = Math.max(1, Math.min(candidates.length, group.models ?? candidates.length));
-          const interval = weaponPulseInterval(key);
+          const modelCount = Math.max(1, Math.min(muzzles.length, group.models ?? muzzles.length));
+          const interval = shotInterval(key);
 
-          for (let shot = 0; shot < shots; shot++) {
-            const muzzle = candidates[shot % models];
-            const delay = groupOffset + (shot % models) * 58 + Math.floor(shot / models) * interval;
+          for (let shot = 0; shot < shots; shot += 1) {
+            const muzzle = muzzles[shot % modelCount];
+            const volley = Math.floor(shot / modelCount);
+            const delay = groupStart + (shot % modelCount) * 85 + volley * interval;
             jobs.push(new Promise(resolve => {
               setTimeout(() => {
-                flashMuzzle(muzzle);
-                setTimeout(resolve, 115);
+                flash(muzzle, key);
+                setTimeout(resolve, pulseDuration(key) + 15);
               }, delay);
             }));
           }
-          groupOffset += 45;
+          groupStart += 75;
         }
 
         if (jobs.length) await Promise.all(jobs);
@@ -150,7 +187,6 @@
           facing: unit.facing,
           x: unit.x,
           y: unit.y,
-          createdRound: descriptor.round ?? 0,
           fading: false
         });
       }
@@ -179,8 +215,6 @@
     }
 
     return Object.freeze({
-      queueMovement,
-      decorateUnitElement,
       playMovement,
       playFire,
       recordCasualties,

@@ -49,7 +49,6 @@
       unitIsEligibleForCurrentDie,
       qualityLabel,
       unitFormationHtml,
-      consumeUnitEffects,
       presentationEffects,
       casualtyGhostHtml,
       unitIsOnObjective,
@@ -73,6 +72,7 @@
       getSelectedUnitId,
       getDeploymentUnitId,
       getPendingTouchTargetId,
+      getConfirmedTargetId,
       getCurrentFaction
     } = deps;
 
@@ -82,6 +82,7 @@
       const selectedUnitId = getSelectedUnitId();
       const deploymentUnitId = getDeploymentUnitId();
       const pendingTouchTargetId = getPendingTouchTargetId();
+      const confirmedTargetId = getConfirmedTargetId();
       const currentFaction = getCurrentFaction();
 
       battlefield.querySelectorAll(".unit, .command-ring, .mmg-fire-arc").forEach(el => el.remove());
@@ -131,58 +132,26 @@
         );
         el.innerHTML = unitFormationHtml(unit);
 
-        const visualEffects = consumeUnitEffects(unit.id);
-        for (const effectName of visualEffects) {
-          el.classList.add(`effect-${effectName}`);
-        }
-
-        const feedbackPriority = [
-          ["casualty", "CASUALTY"],
-          ["pin", "+ PIN"],
-          ["hit", "HIT"],
-          ["fire", "FIRE"],
-          ["move", chosenOrder === "Assault" ? "ASSAULT" : "MOVE"]
-        ];
-        const feedback = feedbackPriority.find(([effect]) => visualEffects.has(effect));
-
-        if (feedback) {
-          const card = document.createElement("span");
-          card.className = `unit-feedback-card feedback-${feedback[0]}`;
-          card.textContent = feedback[1];
-          el.appendChild(card);
-        }
-
-        if (visualEffects.has("move")) {
-          const dust = document.createElement("span");
-          dust.className = "effect-dust";
-          el.appendChild(dust);
-        }
-
-        if (visualEffects.has("hit")) {
-          const impact = document.createElement("span");
-          impact.className = "effect-impact";
-          el.appendChild(impact);
-        }
-
-        if (visualEffects.has("casualty")) {
-          const mark = document.createElement("span");
-          mark.className = "effect-casualty-mark";
-          el.appendChild(mark);
-        }
-
         if (unit.activated) el.classList.add("activated");
         if (unit.ambush) el.classList.add("ambush");
         if (unit.id === selectedUnitId || unit.id === deploymentUnitId) el.classList.add("selected");
-        if (unit.id === pendingTouchTargetId) el.classList.add("touch-pending-target");
+        if (unit.id === pendingTouchTargetId && !confirmedTargetId) {
+          el.classList.add("touch-pending-target");
+        }
+        if (unit.id === confirmedTargetId) {
+          el.classList.add("confirmed-target");
+        }
         if (unitIsOnObjective(unit)) el.classList.add("controls-objective");
 
         const isEnemyShotTarget =
           phase === "choose-target" &&
+          !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;
 
         const isEnemyAssaultTarget =
           phase === "choose-assault-target" &&
+          !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;
 
@@ -261,7 +230,6 @@
         el.addEventListener("mouseleave", clearTracePreview);
         battlefield.appendChild(el);
         applyEdgeContainment(el, unit, RULES, battlefield);
-        presentationEffects.decorateUnitElement(el, unit);
       }
 
       battlefield.querySelectorAll(".casualty-layer").forEach(el => el.remove());
