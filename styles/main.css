@@ -5074,4 +5074,165 @@ that no visual behavior changes. These banners identify the effective systems:
       padding: 5px 7px !important;
       font-size: 9px !important;
     }
+/* ==========================================================================
+   VISUAL STABILITY 3J — UNIT PRESENTATION CLEANUP
+   Final overrides deliberately live at the end of the historical cascade.
+   ========================================================================== */
 
+.unit {
+  --unit-edge-shift-x: 0px;
+  --unit-edge-shift-y: 0px;
+}
+
+.unit-representation {
+  transform:
+    translate(
+      var(--unit-edge-shift-x),
+      var(--unit-edge-shift-y)
+    ) !important;
+  transform-origin: center center !important;
+}
+
+/* Medium zoom uses compact tabletop shorthand; close zoom keeps full names. */
+.unit-label-medium {
+  min-width: 42px !important;
+  max-width: 58px !important;
+  padding: 3px 6px !important;
+  gap: 5px !important;
+  letter-spacing: .08em !important;
+}
+
+.unit-label-medium .unit-label-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+}
+
+.unit-label-close {
+  max-width: 116px !important;
+  letter-spacing: 0 !important;
+}
+
+/* Authored formations should read as groups, not regimented grids. */
+.unit-formation {
+  display: block !important;
+  padding: 0 !important;
+}
+
+.formation-slot {
+  z-index: 2;
+}
+
+/* Every miniature owns one modest footprint shadow. */
+.model-shadow,
+.unit.selected .model-shadow,
+.unit.effect-eligible .model-shadow {
+  left: 50% !important;
+  bottom: 1px !important;
+  width: 16px !important;
+  height: 7px !important;
+  transform: translateX(-50%) !important;
+  border-radius: 50% !important;
+  background: rgba(38,32,25,.27) !important;
+  filter: blur(.35px) !important;
+}
+
+/* Prevent a support gunner from carrying a second MMG after deployment. */
+.mmg-deployed-crew .brick-weapon,
+.brick-soldier.role-crew .brick-weapon {
+  display: none !important;
+}
+
+.mmg-deployed-crew .brick-pack {
+  opacity: .72;
+}
+
+/* Deployed MMG is a full three-model unit, not a tiny icon. */
+.unit-representation.is-mmg-deployed .unit-formation {
+  width: 88px !important;
+  height: 76px !important;
+  min-width: 88px !important;
+  min-height: 76px !important;
+}
+
+.mmg-deployed-formation {
+  position: absolute !important;
+  inset: 4px 6px 2px !important;
+  transform: rotate(var(--mmg-facing)) scale(.82) !important;
+  transform-origin: 50% 52% !important;
+  overflow: visible !important;
+}
+
+.mmg-deployed-crew {
+  position: absolute !important;
+  inset: 0 !important;
+  transform: rotate(calc(-1 * var(--mmg-facing))) !important;
+  pointer-events: none !important;
+}
+
+.mmg-deployed-crew .model-wrap {
+  position: absolute !important;
+  left: var(--slot-x) !important;
+  top: var(--slot-y) !important;
+  width: 24px !important;
+  height: 30px !important;
+  transform: translate(-50%, -50%) scale(.82) !important;
+  transform-origin: center center !important;
+}
+
+.mmg-deployed-crew.crew-1,
+.mmg-deployed-crew.crew-2,
+.mmg-deployed-crew.crew-3 {
+  transform: rotate(calc(-1 * var(--mmg-facing))) !important;
+}
+
+.mmg-receiver {
+  width: 23px !important;
+  height: 7px !important;
+}
+
+.mmg-barrel {
+  width: 31px !important;
+  height: 3px !important;
+  transform: translate(8px, -50%) !important;
+}
+
+.mmg-tripod i {
+  width: 20px !important;
+  height: 2px !important;
+}
+
+/* Landscape remains compact, but deployed support units retain visual parity. */
+body:not(.camera-rotated)
+  .unit-representation.is-mmg-deployed
+  .unit-formation {
+  width: 76px !important;
+  height: 68px !important;
+  min-width: 76px !important;
+  min-height: 68px !important;
+}
+
+body:not(.camera-rotated) .mmg-deployed-formation {
+  transform: rotate(var(--mmg-facing)) scale(.72) !important;
+}
+
+/* Root selection and edge correction remain independent. */
+.unit.selected .unit-representation,
+.unit:hover .unit-representation,
+.unit:focus-visible .unit-representation {
+  transform:
+    translate(
+      var(--unit-edge-shift-x),
+      var(--unit-edge-shift-y)
+    ) !important;
+}
+
+/* Keep close labels readable but medium labels deliberately terse. */
+body.camera-normal .unit-label-close {
+  display: none !important;
+}
+
+body.camera-close .unit-label-medium,
+body.camera-inspection .unit-label-medium {
+  display: none !important;
+}
