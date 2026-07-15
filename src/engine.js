@@ -272,6 +272,7 @@
     let battleEnded = false;
     let overlayMode = null;
     let presentationEffects = null;
+    const targetingPresentation = window.CrossroadsTargetingPresentation.create();
     let announcementTimer = null;
     let orderDiePopTimer = null;
     let movementWaypoint = null;
@@ -1354,6 +1355,7 @@
       getDeploymentUnitId: () => deploymentUnitId,
       getPendingTouchTargetId: () => pendingTouchTargetId,
       getConfirmedTargetId: () => confirmedTargetId,
+      getTargetingSnapshot: () => targetingPresentation.snapshot(),
       getCurrentFaction: () => currentFaction
     });
 
@@ -2274,6 +2276,7 @@
       if (order === "Advance") {
         overlayMode = "fire";
         phase = "choose-target";
+        targetingPresentation.browse(unit.id);
         finishAdvanceButton.hidden = false;
         cancelButton.disabled = Boolean(transactionLockReason);
         setStatus("Advance complete. Hover an enemy to shoot, or finish without firing.", `Objective distance: ${distanceToObjective(unit).toFixed(1)}″.`);
@@ -2331,6 +2334,7 @@
       if (groups.length === 0) return setStatus(`No surviving weapon can fire at ${target.name}.`, moving ? "Fixed weapons such as the MMG cannot fire after an Advance; finish the Advance or cancel." : "Every surviving weapon is out of range.");
 
       confirmedTargetId = target.id;
+      targetingPresentation.confirm(target.id);
       pendingTouchTargetId = null;
       renderUnits({ reason: "target-confirmed" });
       showShotPreview(shooter, target);
@@ -2341,10 +2345,12 @@
         return;
       }
 
+      targetingPresentation.resolve();
       const firingGroups = availableFireGroups(shooter, trace.distance, moving, true);
       const fireResult = resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
       await presentationEffects.playFire(shooter.id, firingGroups);
       confirmedTargetId = null;
+      targetingPresentation.clear();
       if (!checkElimination()) completeActivation(chosenOrder);
       else renderUnits();
     }
@@ -2618,6 +2624,7 @@
     // Clears transient state, completes activations, and advances the battle.
     // =========================================================================
     function clearActionOverlays() {
+      targetingPresentation.clear();
       confirmedTargetId = null;
       overlayMode = null;
       rangeRing.hidden = true;
