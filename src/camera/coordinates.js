@@ -21,6 +21,14 @@
       return { x: point.x * ppi, y: point.y * ppi };
     }
 
+    function tableVectorToScreenVector(dx, dy) {
+      if (!cameraIsRotated()) return { x: dx, y: dy };
+
+      // The portrait board uses a clockwise 90-degree visual transform.
+      // Convert table-space motion into the direction the player sees.
+      return { x: -dy, y: dx };
+    }
+
     function eventToTablePoint(event) {
       const rect = battlefield.getBoundingClientRect();
       const ppi = pixelsPerInch();
@@ -47,6 +55,7 @@
       pixelsPerInch,
       inchesToPixels,
       tablePointToPixels,
+      tableVectorToScreenVector,
       eventToTablePoint
     });
   }
