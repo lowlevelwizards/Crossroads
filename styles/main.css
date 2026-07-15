@@ -373,11 +373,8 @@ that no visual behavior changes. These banners identify the effective systems:
       text-align: center;
       font: inherit;
       transition:
-        left 180ms ease,
-        top 180ms ease,
         filter 120ms ease,
-        opacity 120ms ease,
-        transform 140ms ease;
+        opacity 120ms ease;
     }
 
     .unit-formation {
@@ -5615,42 +5612,6 @@ body:not(.camera-rotated) .mmg-deployed-formation {
   opacity: .72;
 }
 
-/* Logical unit is already at destination; this offset visually travels there. */
-.unit.presentation-moving {
-  --movement-from-x: 0px;
-  --movement-from-y: 0px;
-  transform:
-    translate(
-      calc(-50% + var(--movement-from-x)),
-      calc(-50% + var(--movement-from-y))
-    ) !important;
-}
-
-.unit.presentation-moving.presentation-moving-active {
-  transform: translate(-50%, -50%) !important;
-  transition:
-    transform var(--movement-duration, 1300ms)
-    cubic-bezier(.22,.72,.28,1) !important;
-}
-
-.unit.presentation-moving-active .formation-slot {
-  animation:
-    miniature-hop var(--hop-duration, 360ms)
-    ease-in-out var(--hop-delay, 0ms) infinite !important;
-}
-
-@keyframes miniature-hop {
-  0%, 100% { translate: 0 0; }
-  48% { translate: 0 var(--hop-height, -4px); }
-}
-
-/* Shadows remain grounded while only the model wrapper hops. */
-.unit.presentation-moving-active .model-shadow {
-  animation: hop-shadow 360ms ease-in-out var(--hop-delay, 0ms) infinite;
-}
-
-@keyframes hop-shadow {
-  0%, 100% { scale: 1; opacity: .88; }
   48% { scale: .76; opacity: .55; }
 }
 
@@ -5989,9 +5950,6 @@ body.camera-rotated .trace-label {
 .model-hop { position:absolute; inset:0; display:block; transform:translateY(0); transform-origin:50% 100%; will-change:transform; pointer-events:none; }
 .model-shadow { left:50% !important; bottom:-2px !important; transform:translateX(-50%) !important; }
 .unit.selected::before, .unit.selected::after, .unit.confirmed-target::after { content:none !important; display:none !important; }
-.unit.selected .unit-model-hit::after, .unit.confirmed-target .unit-model-hit::after, .unit.targetable-legal .unit-model-hit::after, .unit.targetable-protected .unit-model-hit::after, .unit.targetable-blocked .unit-model-hit::after, .unit.targetable-assault .unit-model-hit::after {
-  content:""; position:absolute; left:50%; bottom:-5px; width:23px; height:11px; transform:translateX(-50%); border:2px solid currentColor; border-radius:50%; pointer-events:none; z-index:0;
-}
 .unit.selected .unit-model-hit::after { border-color:#e2b64d; box-shadow:0 0 0 2px rgba(255,244,191,.45); }
 .unit.targetable-legal .unit-model-hit::after { border-color:rgba(48,139,77,.65); }
 .unit.targetable-protected .unit-model-hit::after { border-color:rgba(203,139,25,.70); }
@@ -6006,3 +5964,179 @@ body.targeting-confirmed .unit:not(.confirmed-target) .model-base { box-shadow:n
 .unit.targetable-legal, .unit.targetable-protected, .unit.targetable-blocked, .unit.targetable-assault { outline:none !important; box-shadow:none !important; }
 .unit.targetable-legal .model-base, .unit.targetable-protected .model-base, .unit.targetable-blocked .model-base, .unit.targetable-assault .model-base { box-shadow:none !important; }
 .unit-representation, .unit-formation, .formation-slot, .model-wrap, .model-hop, .brick-soldier, .unit-label { overflow:visible !important; }
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3N-C — UNIFIED MODEL BASES AND TIMING
+   ========================================================================== */
+
+:root {
+  --soldier-presentation-scale: .84;
+}
+
+body.camera-close {
+  --soldier-presentation-scale: 1;
+}
+
+body.camera-inspection {
+  --soldier-presentation-scale: 1.10;
+}
+
+/* Unit anchors never tween through left/top. Only effects.js owns travel. */
+.unit {
+  transition:
+    filter 120ms ease,
+    opacity 120ms ease !important;
+}
+
+/* One slot owns one ring, one shadow, and one hopping body. */
+.formation-slot {
+  position: absolute !important;
+  width: 30px !important;
+  height: 38px !important;
+  overflow: visible !important;
+}
+
+.model-base-ring,
+.model-shadow,
+.model-hop {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+}
+
+.model-base-ring {
+  bottom: -3px;
+  width: 23px;
+  height: 11px;
+  transform: translateX(-50%);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  opacity: 0;
+  z-index: 0;
+}
+
+.model-shadow {
+  bottom: 1px !important;
+  width: 15px !important;
+  height: 6px !important;
+  transform: translateX(-50%) !important;
+  z-index: 1;
+}
+
+.model-hop {
+  inset: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateY(0);
+  transform-origin: 50% 100%;
+  will-change: transform;
+  z-index: 2;
+}
+
+/* Restore the soldier's original feet anchor inside the new hop wrapper. */
+.model-hop > .brick-soldier {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 4px !important;
+}
+
+/* A modest touch pad follows each visible soldier, not the whole formation. */
+.unit-model-hit {
+  pointer-events: auto !important;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Selection and target states share the same explicit base element. */
+.unit.selected .model-base-ring {
+  opacity: 1;
+  border-color: #e2b64d;
+  box-shadow: 0 0 0 2px rgba(255,244,191,.48);
+}
+
+.unit.targetable-legal .model-base-ring {
+  opacity: .82;
+  border-color: #318b4d;
+}
+
+.unit.targetable-protected .model-base-ring {
+  opacity: .88;
+  border-color: #cb8b19;
+}
+
+.unit.targetable-blocked .model-base-ring {
+  opacity: .58;
+  border-color: #766862;
+}
+
+.unit.targetable-assault .model-base-ring {
+  opacity: .88;
+  border-color: #ba5623;
+}
+
+.unit.confirmed-target .model-base-ring {
+  opacity: 1 !important;
+  border-width: 3px;
+  border-color: #fff8d8 !important;
+  box-shadow:
+    0 0 0 2px #675b43,
+    0 0 8px rgba(255,242,176,.82);
+}
+
+body.targeting-confirmed
+  .unit:not(.confirmed-target)
+  .model-base-ring {
+  opacity: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Pins are now inside the same scaled formation shell as their soldiers. */
+.unit-formation-shell {
+  position: relative;
+  display: inline-block;
+  width: var(--formation-width, 82px);
+  height: var(--formation-height, 68px);
+  overflow: visible;
+}
+
+.unit-formation-shell .unit-formation {
+  position: absolute;
+  inset: 0;
+}
+
+.unit-formation-shell .pin-scatter {
+  position: absolute;
+  inset: 0;
+  transform: scale(var(--soldier-presentation-scale));
+  transform-origin: center;
+}
+
+.pin-mark {
+  font-size: 20px !important;
+}
+
+.pin-counted {
+  font-size: 16px !important;
+}
+
+/* Casualty bodies use the same LOD scale source as active soldiers. */
+.casualty-ghost {
+  transform:
+    translate(-50%, -50%)
+    scale(var(--soldier-presentation-scale));
+  transform-origin: center;
+}
+
+.casualty-ghost .model-hop > .brick-soldier {
+  bottom: 4px !important;
+}
+
+/* No broad selection or target rectangle survives this system. */
+.unit.selected::before,
+.unit.selected::after,
+.unit.confirmed-target::before,
+.unit.confirmed-target::after {
+  content: none !important;
+  display: none !important;
+}
