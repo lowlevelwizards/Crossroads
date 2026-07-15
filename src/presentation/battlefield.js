@@ -85,7 +85,6 @@
       const pendingTouchTargetId = getPendingTouchTargetId();
       const targeting = getTargetingSnapshot();
       const confirmedTargetId = targeting.confirmedTargetId ?? getConfirmedTargetId();
-      const targetBrowsing = targeting.mode === "browsing";
       const currentFaction = getCurrentFaction();
 
       battlefield.querySelectorAll(".unit, .command-ring, .mmg-fire-arc").forEach(el => el.remove());
@@ -150,14 +149,12 @@
 
         const isEnemyShotTarget =
           phase === "choose-target" &&
-          targetBrowsing &&
           !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;
 
         const isEnemyAssaultTarget =
           phase === "choose-assault-target" &&
-          targetBrowsing &&
           !confirmedTargetId &&
           shooter &&
           unit.faction !== shooter.faction;

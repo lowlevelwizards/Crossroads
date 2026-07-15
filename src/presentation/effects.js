@@ -24,50 +24,130 @@
     async function playMovement(unitId, from, to, distance, options = {}) {
       const root = unitElement(unitId);
       if (!root) return;
+
       const visual = root.querySelector(".unit-visual-travel");
-      const visibleRepresentation = [...root.querySelectorAll(".unit-representation")].find(el => getComputedStyle(el).display !== "none");
+      const visibleRepresentation = [
+        ...root.querySelectorAll(".unit-representation")
+      ].find(element => getComputedStyle(element).display !== "none");
+
       if (!visual || !visibleRepresentation) return;
+
+      const duration = Math.round(
+        Math.max(1200, Math.min(1950, 1080 + distance * 72))
+      );
+
+      const previousTransition = root.style.transition;
+      root.style.transition = "none";
 
       const startRect = root.getBoundingClientRect();
       root.style.left = `${(to.x / tableWidth) * 100}%`;
       root.style.top = `${(to.y / tableHeight) * 100}%`;
+
+      // Ensure the anchor has reached its final layout position before measuring.
+      void root.offsetWidth;
+
       const endRect = root.getBoundingClientRect();
-      const inverse = window.CrossroadsFormationGeometry.screenDeltaBetweenRects(startRect, endRect);
-      const duration = Math.round(Math.max(1050, Math.min(1800, 900 + distance * 68)));
+      const inverse =
+        window.CrossroadsFormationGeometry.screenDeltaBetweenRects(
+          startRect,
+          endRect
+        );
+
+      visual.style.transform =
+        `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`;
+
+      // Paint the exact old screen position before starting travel and hops.
+      void visual.offsetWidth;
 
       setBusy(1);
       root.classList.add("presentation-moving");
-      visual.style.transform = `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`;
-      void visual.offsetWidth;
 
-      const travel = visual.animate([
-        { transform: `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)` },
-        { transform: "translate3d(0, 0, 0)" }
-      ], { duration, easing: "cubic-bezier(.20,.72,.25,1)", fill: "forwards" });
+      const travel = visual.animate(
+        [
+          {
+            transform:
+              `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`
+          },
+          { transform: "translate3d(0, 0, 0)" }
+        ],
+        {
+          duration,
+          easing: "cubic-bezier(.18,.68,.24,1)",
+          fill: "forwards"
+        }
+      );
 
       const localAnimations = [];
-      [...visibleRepresentation.querySelectorAll(".formation-slot")].forEach((slot,index) => {
+      const slots = [
+        ...visibleRepresentation.querySelectorAll(".formation-slot")
+      ];
+
+      slots.forEach((slot, index) => {
         const hop = slot.querySelector(".model-hop");
         const shadow = slot.querySelector(".model-shadow");
-        const delay=(index*67)%250, hopDuration=330+(index%3)*48;
-        const hopHeight=index===0&&options.heavy?-4:-6-(index%2);
-        if (hop) localAnimations.push(hop.animate([
-          { transform:"translateY(0)" },
-          { transform:`translateY(${hopHeight}px)`, offset:.46 },
-          { transform:"translateY(0)" }
-        ], { duration:hopDuration, delay, iterations:Math.max(1,Math.ceil((duration-delay)/hopDuration)), easing:"cubic-bezier(.35,0,.35,1)" }));
-        if (shadow) localAnimations.push(shadow.animate([
-          { transform:"translateX(-50%) scale(1)", opacity:.78 },
-          { transform:"translateX(-50%) scale(.68)", opacity:.46, offset:.46 },
-          { transform:"translateX(-50%) scale(1)", opacity:.78 }
-        ], { duration:hopDuration, delay, iterations:Math.max(1,Math.ceil((duration-delay)/hopDuration)), easing:"cubic-bezier(.35,0,.35,1)" }));
+        const delay = Math.min(160, index * 34);
+        const hopDuration = 350 + (index % 3) * 42;
+        const hopHeight =
+          index === 0 && options.heavy ? -4 : -6 - (index % 2);
+
+        if (hop) {
+          localAnimations.push(
+            hop.animate(
+              [
+                { transform: "translateY(0)" },
+                {
+                  transform: `translateY(${hopHeight}px)`,
+                  offset: .46
+                },
+                { transform: "translateY(0)" }
+              ],
+              {
+                duration: hopDuration,
+                delay,
+                iterations: Infinity,
+                easing: "cubic-bezier(.35,0,.35,1)"
+              }
+            )
+          );
+        }
+
+        if (shadow) {
+          localAnimations.push(
+            shadow.animate(
+              [
+                {
+                  transform: "translateX(-50%) scale(1)",
+                  opacity: .78
+                },
+                {
+                  transform: "translateX(-50%) scale(.72)",
+                  opacity: .48,
+                  offset: .46
+                },
+                {
+                  transform: "translateX(-50%) scale(1)",
+                  opacity: .78
+                }
+              ],
+              {
+                duration: hopDuration,
+                delay,
+                iterations: Infinity,
+                easing: "cubic-bezier(.35,0,.35,1)"
+              }
+            )
+          );
+        }
       });
 
-      try { await travel.finished; } finally {
+      try {
+        await travel.finished;
+      } finally {
         travel.cancel();
-        localAnimations.forEach(a => a.cancel());
+        localAnimations.forEach(animation => animation.cancel());
         visual.style.transform = "";
         root.classList.remove("presentation-moving");
+        root.style.transition = previousTransition;
         setBusy(-1);
       }
     }

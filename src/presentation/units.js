@@ -92,6 +92,7 @@
       <span class="model-wrap formation-slot slot-${index + 1}${extraClass}"
             style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
             aria-hidden="true">
+        <span class="model-base-ring" aria-hidden="true"></span>
         <span class="model-shadow"></span>
         <span class="model-hop">
           <span class="brick-soldier role-${role} facing-${facing}"
@@ -269,19 +270,23 @@
         </span>
 
         <span class="unit-representation unit-representation-medium${stateClass}">
-          <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-            ${models}
+          <span class="unit-formation-shell">
+            <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
+              ${models}
+            </span>
+            ${pinScatterHtml(unit)}
           </span>
           ${mediumLabelHtml(unit)}
-          ${pinScatterHtml(unit)}
         </span>
 
         <span class="unit-representation unit-representation-close${stateClass}">
-          <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-            ${models}
+          <span class="unit-formation-shell">
+            <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
+              ${models}
+            </span>
+            ${pinScatterHtml(unit)}
           </span>
           ${closeLabelHtml(unit)}
-          ${pinScatterHtml(unit)}
           <span class="unit-state-line">${stateChits}</span>
         </span>
       </span>
