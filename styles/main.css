@@ -5976,3 +5976,33 @@ body.camera-rotated .trace-label {
 .battlefield-surface {
   overflow: visible;
 }
+
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3N-B — MODEL BASES AND TRUE MOVEMENT
+   ========================================================================== */
+.unit, body:not(.camera-rotated) .unit, body.camera-rotated .unit {
+  width:1px !important; height:1px !important; min-width:1px !important; min-height:1px !important;
+  padding:0 !important; border:0 !important; background:transparent !important; pointer-events:none !important; overflow:visible !important;
+}
+.unit-model-hit, .unit-label-hit { pointer-events:auto !important; cursor:pointer; touch-action:manipulation; }
+.unit-model-hit { border-radius:50%; }
+.model-hop { position:absolute; inset:0; display:block; transform:translateY(0); transform-origin:50% 100%; will-change:transform; pointer-events:none; }
+.model-shadow { left:50% !important; bottom:-2px !important; transform:translateX(-50%) !important; }
+.unit.selected::before, .unit.selected::after, .unit.confirmed-target::after { content:none !important; display:none !important; }
+.unit.selected .unit-model-hit::after, .unit.confirmed-target .unit-model-hit::after, .unit.targetable-legal .unit-model-hit::after, .unit.targetable-protected .unit-model-hit::after, .unit.targetable-blocked .unit-model-hit::after, .unit.targetable-assault .unit-model-hit::after {
+  content:""; position:absolute; left:50%; bottom:-5px; width:23px; height:11px; transform:translateX(-50%); border:2px solid currentColor; border-radius:50%; pointer-events:none; z-index:0;
+}
+.unit.selected .unit-model-hit::after { border-color:#e2b64d; box-shadow:0 0 0 2px rgba(255,244,191,.45); }
+.unit.targetable-legal .unit-model-hit::after { border-color:rgba(48,139,77,.65); }
+.unit.targetable-protected .unit-model-hit::after { border-color:rgba(203,139,25,.70); }
+.unit.targetable-blocked .unit-model-hit::after { border-color:rgba(105,94,86,.55); }
+.unit.targetable-assault .unit-model-hit::after { border-color:rgba(186,86,35,.72); }
+.unit.confirmed-target .unit-model-hit::after { border-color:#fff8d8 !important; border-width:3px; box-shadow:0 0 0 2px #675b43,0 0 8px rgba(255,242,176,.80); }
+body.targeting-confirmed .unit:not(.confirmed-target).targetable-legal .unit-model-hit::after, body.targeting-confirmed .unit:not(.confirmed-target).targetable-protected .unit-model-hit::after, body.targeting-confirmed .unit:not(.confirmed-target).targetable-blocked .unit-model-hit::after, body.targeting-confirmed .unit:not(.confirmed-target).targetable-assault .unit-model-hit::after { content:none !important; display:none !important; }
+body.targeting-confirmed .unit:not(.confirmed-target) .model-base { box-shadow:none !important; outline:none !important; }
+.unit.selected .unit-label { outline:2px solid #e2b64d !important; outline-offset:1px !important; }
+.unit.confirmed-target .unit-label { outline:3px solid #fff8d8 !important; outline-offset:2px !important; }
+.unit-visual-travel { will-change:transform; transform:translate3d(0,0,0); }
+.unit.targetable-legal, .unit.targetable-protected, .unit.targetable-blocked, .unit.targetable-assault { outline:none !important; box-shadow:none !important; }
+.unit.targetable-legal .model-base, .unit.targetable-protected .model-base, .unit.targetable-blocked .model-base, .unit.targetable-assault .model-base { box-shadow:none !important; }
+.unit-representation, .unit-formation, .formation-slot, .model-wrap, .model-hop, .brick-soldier, .unit-label { overflow:visible !important; }
