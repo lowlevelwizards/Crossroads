@@ -5964,34 +5964,103 @@ body.targeting-confirmed .unit:not(.confirmed-target) .model-base { box-shadow:n
 .unit.targetable-legal, .unit.targetable-protected, .unit.targetable-blocked, .unit.targetable-assault { outline:none !important; box-shadow:none !important; }
 .unit.targetable-legal .model-base, .unit.targetable-protected .model-base, .unit.targetable-blocked .model-base, .unit.targetable-assault .model-base { box-shadow:none !important; }
 .unit-representation, .unit-formation, .formation-slot, .model-wrap, .model-hop, .brick-soldier, .unit-label { overflow:visible !important; }
+/*
+
 /* ==========================================================================
-   INFANTRY CORE PRESENTATION 3N-C — UNIFIED MODEL BASES AND TIMING
+   INFANTRY CORE PRESENTATION 3N-D — ANCHOR, INPUT, AND OVERLAY CORRECTION
    ========================================================================== */
 
 :root {
-  --soldier-presentation-scale: .84;
+  --casualty-visual-scale: .84;
 }
 
 body.camera-close {
-  --soldier-presentation-scale: 1;
+  --casualty-visual-scale: 1;
 }
 
 body.camera-inspection {
-  --soldier-presentation-scale: 1.10;
+  --casualty-visual-scale: 1.08;
 }
 
-/* Unit anchors never tween through left/top. Only effects.js owns travel. */
+/* The root is a gameplay point. It owns no visual size or travel transform. */
 .unit {
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  overflow: visible !important;
   transition:
     filter 120ms ease,
     opacity 120ms ease !important;
 }
 
-/* One slot owns one ring, one shadow, and one hopping body. */
+.unit-visual-travel,
+.unit-representation {
+  position: absolute;
+  inset: 0;
+  overflow: visible !important;
+  pointer-events: none;
+}
+
+.unit-representation-medium {
+  --unit-visual-scale: .74;
+  --unit-label-offset: 40px;
+}
+
+.unit-representation-close {
+  --unit-visual-scale: .84;
+  --unit-label-offset: 47px;
+}
+
+body.camera-rotated .unit-representation-medium {
+  --unit-visual-scale: .86;
+  --unit-label-offset: 45px;
+}
+
+body.camera-rotated .unit-representation-close {
+  --unit-visual-scale: .94;
+  --unit-label-offset: 52px;
+}
+
+/* One centered origin and one scale owner for all model-relative visuals. */
+.unit-model-group {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--formation-width);
+  height: var(--formation-height);
+  transform:
+    translate(-50%, -50%)
+    scale(var(--unit-visual-scale));
+  transform-origin: center;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.unit-formation-shell,
+.unit-formation {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
 .formation-slot {
   position: absolute !important;
+  left: var(--slot-x) !important;
+  top: var(--slot-y) !important;
   width: 30px !important;
-  height: 38px !important;
+  height: 40px !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center !important;
   overflow: visible !important;
 }
 
@@ -6020,6 +6089,7 @@ body.camera-inspection {
   width: 15px !important;
   height: 6px !important;
   transform: translateX(-50%) !important;
+  transform-origin: center !important;
   z-index: 1;
 }
 
@@ -6034,21 +6104,30 @@ body.camera-inspection {
   z-index: 2;
 }
 
-/* Restore the soldier's original feet anchor inside the new hop wrapper. */
 .model-hop > .brick-soldier {
   position: absolute !important;
   left: 50% !important;
   bottom: 4px !important;
 }
 
-/* A modest touch pad follows each visible soldier, not the whole formation. */
-.unit-model-hit {
+/* Model and label are the only unit tap surfaces. */
+.unit-model-hit,
+.unit-label-hit {
   pointer-events: auto !important;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-/* Selection and target states share the same explicit base element. */
+.unit-label {
+  position: absolute !important;
+  left: 50% !important;
+  top: calc(50% + var(--unit-label-offset)) !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  pointer-events: auto !important;
+}
+
+/* One explicit base ring serves every unit and targeting state. */
 .unit.selected .model-base-ring {
   opacity: 1;
   border-color: #e2b64d;
@@ -6091,25 +6170,24 @@ body.targeting-confirmed
   box-shadow: none !important;
 }
 
-/* Pins are now inside the same scaled formation shell as their soldiers. */
-.unit-formation-shell {
-  position: relative;
-  display: inline-block;
-  width: var(--formation-width, 82px);
-  height: var(--formation-height, 68px);
-  overflow: visible;
+.unit.selected .unit-label {
+  outline: 2px solid #e2b64d !important;
+  outline-offset: 1px !important;
 }
 
-.unit-formation-shell .unit-formation {
-  position: absolute;
-  inset: 0;
+.unit.confirmed-target .unit-label {
+  outline: 3px solid #fff8d8 !important;
+  outline-offset: 2px !important;
 }
 
+/* Pins inherit the model group's scale. They do not scale themselves. */
 .unit-formation-shell .pin-scatter {
   position: absolute;
   inset: 0;
-  transform: scale(var(--soldier-presentation-scale));
+  transform: none !important;
   transform-origin: center;
+  pointer-events: none;
+  z-index: 60;
 }
 
 .pin-mark {
@@ -6120,23 +6198,76 @@ body.targeting-confirmed
   font-size: 16px !important;
 }
 
-/* Casualty bodies use the same LOD scale source as active soldiers. */
+/* Casualties live outside units, so they share one camera-LOD variable. */
 .casualty-ghost {
   transform:
     translate(-50%, -50%)
-    scale(var(--soldier-presentation-scale));
+    scale(var(--casualty-visual-scale));
   transform-origin: center;
 }
 
-.casualty-ghost .model-hop > .brick-soldier {
-  bottom: 4px !important;
+/* Muzzle stars exist only while a shot pulse is active. */
+.weapon-muzzle {
+  color: transparent !important;
+  font-size: 0 !important;
 }
 
-/* No broad selection or target rectangle survives this system. */
+.weapon-muzzle.muzzle-pulse::before {
+  content: "✦";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff08b;
+  font: 900 24px/1 ui-monospace, monospace;
+  text-shadow:
+    0 0 2px #fffbd0,
+    0 0 7px #ffbd35,
+    0 0 13px rgba(255,90,0,.92);
+}
+
+/* The shot card is viewport UI, never part of the rotated battlefield. */
+.battlefield-screen-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 180;
+}
+
+.battlefield-screen-overlay .target-readout {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+  transform: none !important;
+  rotate: 0deg !important;
+  transform-origin: center !important;
+  pointer-events: none;
+  max-width: min(180px, calc(100% - 16px));
+}
+
+.screen-overlay-world-anchor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* Broad legacy selection/target boxes are permanently disabled. */
 .unit.selected::before,
 .unit.selected::after,
 .unit.confirmed-target::before,
-.unit.confirmed-target::after {
+.unit.confirmed-target::after,
+.unit.targetable-legal::before,
+.unit.targetable-legal::after,
+.unit.targetable-protected::before,
+.unit.targetable-protected::after,
+.unit.targetable-blocked::before,
+.unit.targetable-blocked::after,
+.unit.targetable-assault::before,
+.unit.targetable-assault::after {
   content: none !important;
   display: none !important;
 }
