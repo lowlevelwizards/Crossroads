@@ -77,6 +77,28 @@
       getCurrentFaction
     } = deps;
 
+    function routeUnitTap(unitId) {
+      if (gestureSuppressed()) return;
+
+      const phase = getPhase();
+      if (adaptiveTouchActive()) handleAdaptiveUnitTap(unitId);
+      else if (phase === "deployment") selectDeploymentUnit(unitId);
+      else if (phase === "choose-target") chooseTarget(unitId);
+      else if (phase === "choose-assault-target") chooseAssaultTarget(unitId);
+      else selectUnit(unitId);
+    }
+
+    battlefield.addEventListener("click", event => {
+      const hit = event.target.closest(".unit-model-hit, .unit-label-hit");
+      if (!hit || !battlefield.contains(hit)) return;
+
+      const unitElement = hit.closest(".unit");
+      if (!unitElement?.dataset.unitId) return;
+
+      event.stopPropagation();
+      routeUnitTap(unitElement.dataset.unitId);
+    });
+
     return function renderUnitLayer() {
       const phase = getPhase();
       const chosenOrder = getChosenOrder();
@@ -199,17 +221,6 @@
         ) {
           el.classList.add("illegal");
         }
-
-        el.addEventListener("click", event => {
-          event.stopPropagation();
-          if (gestureSuppressed()) return;
-
-          if (adaptiveTouchActive()) handleAdaptiveUnitTap(unit.id);
-          else if (phase === "deployment") selectDeploymentUnit(unit.id);
-          else if (phase === "choose-target") chooseTarget(unit.id);
-          else if (phase === "choose-assault-target") chooseAssaultTarget(unit.id);
-          else selectUnit(unit.id);
-        });
 
         installLongPress(el, unit);
 

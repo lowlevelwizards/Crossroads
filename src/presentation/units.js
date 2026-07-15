@@ -104,7 +104,7 @@
           <span class="brick-head"></span>
           <span class="brick-helmet"></span>
           <span class="brick-arm"></span>
-          <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true">✦</span></span>
+          <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true"></span></span>
           </span>
         </span>
       </span>
@@ -162,7 +162,7 @@
       <span class="mmg-deployed-formation" style="--mmg-facing:${unit.mmgFacing}deg">
         <span class="mmg-tripod"><i></i><i></i><i></i></span>
         <span class="mmg-receiver"></span>
-        <span class="mmg-barrel"><span class="weapon-muzzle" aria-hidden="true">✦</span></span>
+        <span class="mmg-barrel"><span class="weapon-muzzle" aria-hidden="true"></span></span>
         ${crew}
       </span>
     `;
@@ -270,21 +270,27 @@
         </span>
 
         <span class="unit-representation unit-representation-medium${stateClass}">
-          <span class="unit-formation-shell">
-            <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-              ${models}
+          <span class="unit-model-group"
+                style="${formationStyle(unit, unit.mmgDeployed)}">
+            <span class="unit-formation-shell">
+              <span class="unit-formation">
+                ${models}
+              </span>
+              ${pinScatterHtml(unit)}
             </span>
-            ${pinScatterHtml(unit)}
           </span>
           ${mediumLabelHtml(unit)}
         </span>
 
         <span class="unit-representation unit-representation-close${stateClass}">
-          <span class="unit-formation-shell">
-            <span class="unit-formation" style="${formationStyle(unit, unit.mmgDeployed)}">
-              ${models}
+          <span class="unit-model-group"
+                style="${formationStyle(unit, unit.mmgDeployed)}">
+            <span class="unit-formation-shell">
+              <span class="unit-formation">
+                ${models}
+              </span>
+              ${pinScatterHtml(unit)}
             </span>
-            ${pinScatterHtml(unit)}
           </span>
           ${closeLabelHtml(unit)}
           <span class="unit-state-line">${stateChits}</span>

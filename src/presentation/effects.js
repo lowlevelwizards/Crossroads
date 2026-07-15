@@ -33,7 +33,7 @@
       if (!visual || !visibleRepresentation) return;
 
       const duration = Math.round(
-        Math.max(1200, Math.min(1950, 1080 + distance * 72))
+        Math.max(1100, Math.min(1800, 980 + distance * 68))
       );
 
       const previousTransition = root.style.transition;
@@ -42,8 +42,6 @@
       const startRect = root.getBoundingClientRect();
       root.style.left = `${(to.x / tableWidth) * 100}%`;
       root.style.top = `${(to.y / tableHeight) * 100}%`;
-
-      // Ensure the anchor has reached its final layout position before measuring.
       void root.offsetWidth;
 
       const endRect = root.getBoundingClientRect();
@@ -55,8 +53,6 @@
 
       visual.style.transform =
         `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`;
-
-      // Paint the exact old screen position before starting travel and hops.
       void visual.offsetWidth;
 
       setBusy(1);
@@ -72,7 +68,7 @@
         ],
         {
           duration,
-          easing: "cubic-bezier(.18,.68,.24,1)",
+          easing: "cubic-bezier(.30,.05,.70,.95)",
           fill: "forwards"
         }
       );
@@ -85,10 +81,14 @@
       slots.forEach((slot, index) => {
         const hop = slot.querySelector(".model-hop");
         const shadow = slot.querySelector(".model-shadow");
-        const delay = Math.min(160, index * 34);
-        const hopDuration = 350 + (index % 3) * 42;
+        const delay = Math.min(120, index * 28);
+        const hopDuration = 340 + (index % 3) * 38;
         const hopHeight =
           index === 0 && options.heavy ? -4 : -6 - (index % 2);
+        const iterations = Math.max(
+          1,
+          Math.ceil((duration - delay) / hopDuration)
+        );
 
         if (hop) {
           localAnimations.push(
@@ -104,7 +104,7 @@
               {
                 duration: hopDuration,
                 delay,
-                iterations: Infinity,
+                iterations,
                 easing: "cubic-bezier(.35,0,.35,1)"
               }
             )
@@ -132,7 +132,7 @@
               {
                 duration: hopDuration,
                 delay,
-                iterations: Infinity,
+                iterations,
                 easing: "cubic-bezier(.35,0,.35,1)"
               }
             )
@@ -145,6 +145,17 @@
       } finally {
         travel.cancel();
         localAnimations.forEach(animation => animation.cancel());
+
+        for (const slot of slots) {
+          const hop = slot.querySelector(".model-hop");
+          const shadow = slot.querySelector(".model-shadow");
+          if (hop) hop.style.transform = "translateY(0)";
+          if (shadow) {
+            shadow.style.transform = "translateX(-50%) scale(1)";
+            shadow.style.opacity = "";
+          }
+        }
+
         visual.style.transform = "";
         root.classList.remove("presentation-moving");
         root.style.transition = previousTransition;
