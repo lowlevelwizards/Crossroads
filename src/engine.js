@@ -123,6 +123,12 @@
           reconcileBuildingAfterUnitChange(unit);
 }
 
+    function cardinalFacingFromVector(dx, dy, fallback = "right") {
+      if (Math.hypot(dx, dy) < 0.35) return fallback;
+      if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left";
+      return dy >= 0 ? "down" : "up";
+    }
+
     function normalizeUnitRuntimeState(unit) {
       return {
         ...unit,
@@ -136,7 +142,8 @@
         buildingEntryX: unit.buildingEntryX ?? null,
         buildingEntryY: unit.buildingEntryY ?? null,
         mmgDeployed: unit.mmgDeployed ?? false,
-        mmgFacing: unit.mmgFacing ?? (unit.faction === "blue" ? 90 : -90)
+        mmgFacing: unit.mmgFacing ?? (unit.faction === "blue" ? 90 : -90),
+        facing: unit.facing ?? (unit.faction === "blue" ? "right" : "left")
       };
     }
 
@@ -2202,6 +2209,12 @@
       }
 
       const destination = pendingMovement.path[pendingMovement.path.length - 1];
+      const movementOrigin = pendingMovement.path[0] ?? unit;
+      unit.facing = cardinalFacingFromVector(
+        destination.x - movementOrigin.x,
+        destination.y - movementOrigin.y,
+        unit.facing
+      );
       unit.x = destination.x;
       unit.y = destination.y;
       queueUnitEffect(unit.id, "move");
