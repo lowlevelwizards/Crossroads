@@ -346,9 +346,8 @@
 
     // =========================================================================
     // CAMERA AND VIEWPORT SYSTEM
-    // Owns fit, zoom, rotation, centering, panning, and camera detail levels.
+    // Implemented by src/camera/camera.js and src/camera/coordinates.js.
     // =========================================================================
-/* ===== Infantry Core 1.4.2: free-pan camera stage ===== */
     const battlefieldViewport = document.getElementById("battlefieldViewport");
     const battlefieldSurface = document.getElementById("battlefieldSurface");
     const zoomOutButton = document.getElementById("zoomOutButton");
@@ -361,328 +360,38 @@
     const cameraHudScore = document.getElementById("cameraHudScore");
     const cameraHudDie = document.getElementById("cameraHudDie");
 
-    const CAMERA_WORLD_WIDTH = 1080;
-    const CAMERA_WORLD_HEIGHT = 720;
-    const CAMERA_MIN_SCALE = 0.18;
-    const CAMERA_MAX_SCALE = 4.5;
-
-    let boardZoom = 1;
-    let fittedBoardZoom = 1;
-    let cameraRotationQuarterTurns = 0;
-    let cameraRotationOverridden = false;
-    let cameraMarginX = 180;
-    let cameraMarginY = 180;
-    let boardOffsetX = 0;
-    let boardOffsetY = 0;
-    let boardVisualWidth = CAMERA_WORLD_WIDTH;
-    let boardVisualHeight = CAMERA_WORLD_HEIGHT;
-
-    function narrowBoardLayout() {
-      return window.matchMedia("(max-width: 820px)").matches ||
-        (window.matchMedia("(pointer: coarse)").matches && window.innerWidth <= 1180);
-    }
-
-    function adaptivePortrait() {
-      return narrowBoardLayout() && window.innerHeight > window.innerWidth;
-    }
-
-    function syncAutomaticCameraRotation() {
-      if (!cameraRotationOverridden) {
-        cameraRotationQuarterTurns = adaptivePortrait() ? 1 : 0;
-      }
-    }
-
-    function cameraIsRotated() {
-      return Math.abs(cameraRotationQuarterTurns % 2) === 1;
-    }
-
-    function syncCameraViewportBox() {
-      if (!battlefieldViewport) return;
-
-      if (narrowBoardLayout()) {
-        battlefieldViewport.style.removeProperty("--desktop-camera-height");
-        battlefieldViewport.style.removeProperty("height");
-        return;
-      }
-
-      const rect = battlefieldViewport.getBoundingClientRect();
-      const bottomGap = 14;
-      const availableHeight = Math.max(
-        320,
-        window.innerHeight - Math.max(rect.top, 0) - bottomGap
-      );
-
-      battlefieldViewport.style.setProperty(
-        "--desktop-camera-height",
-        `${availableHeight}px`
-      );
-      battlefieldViewport.style.height = `${availableHeight}px`;
-    }
-
-    function cameraViewportSize() {
-      syncCameraViewportBox();
-
-      const rect = battlefieldViewport?.getBoundingClientRect();
-      const visibleWidth = rect
-        ? Math.max(
-            1,
-            Math.min(
-              battlefieldViewport.clientWidth,
-              window.innerWidth - Math.max(rect.left, 0)
-            )
-          )
-        : window.innerWidth;
-
-      const visibleHeight = rect
-        ? Math.max(
-            1,
-            Math.min(
-              battlefieldViewport.clientHeight,
-              window.innerHeight - Math.max(rect.top, 0) - 14
-            )
-          )
-        : window.innerHeight;
-
-      return {
-        width: visibleWidth,
-        height: visibleHeight
-      };
-    }
-
-    function calculateFitZoom() {
-      const viewport = cameraViewportSize();
-      const baseWidth = cameraIsRotated() ? CAMERA_WORLD_HEIGHT : CAMERA_WORLD_WIDTH;
-      const baseHeight = cameraIsRotated() ? CAMERA_WORLD_WIDTH : CAMERA_WORLD_HEIGHT;
-      return clamp(
-        Math.min(viewport.width / baseWidth, viewport.height / baseHeight),
-        CAMERA_MIN_SCALE,
-        CAMERA_MAX_SCALE
-      );
-    }
-
-    function updateCameraDetailLevel() {
-      const relativeZoom =
-        fittedBoardZoom > 0
-          ? boardZoom / fittedBoardZoom
-          : 1;
-
-      // Publish a continuous miniature scale as well as the broad LOD bands.
-      // The board already zooms; this extra scale makes close inspection reveal
-      // genuinely larger, more legible miniatures rather than only more board.
-      const miniatureScale = clamp(
-        0.90 + Math.max(0, relativeZoom - 0.82) * 0.48,
-        0.90,
-        1.82
-      );
-      document.documentElement.style.setProperty(
-        "--camera-relative-zoom",
-        relativeZoom.toFixed(3)
-      );
-      document.documentElement.style.setProperty(
-        "--miniature-scale",
-        miniatureScale.toFixed(3)
-      );
-
-      document.body.classList.toggle("camera-far", relativeZoom < 0.82);
-      document.body.classList.toggle(
-        "camera-normal",
-        relativeZoom >= 0.82 && relativeZoom < 1.65
-      );
-      document.body.classList.toggle("camera-close", relativeZoom >= 1.65);
-      document.body.classList.toggle("camera-inspection", relativeZoom >= 2.25);
-      document.body.classList.toggle("camera-rotated", cameraIsRotated());
-    }
-
-    function applyCameraSurfaceSize() {
-      if (!battlefieldSurface) return;
-
-      const viewport = cameraViewportSize();
-      const boardWidth = CAMERA_WORLD_WIDTH * boardZoom;
-      const boardHeight = CAMERA_WORLD_HEIGHT * boardZoom;
-
-      boardVisualWidth = cameraIsRotated() ? boardHeight : boardWidth;
-      boardVisualHeight = cameraIsRotated() ? boardWidth : boardHeight;
-
-      cameraMarginX = Math.max(150, viewport.width * 0.58);
-      cameraMarginY = Math.max(150, viewport.height * 0.58);
-
-      boardOffsetX = cameraMarginX;
-      boardOffsetY = cameraMarginY;
-
-      const stageWidth = boardVisualWidth + cameraMarginX * 2;
-      const stageHeight = boardVisualHeight + cameraMarginY * 2;
-
-      battlefieldSurface.style.setProperty("--camera-width", `${stageWidth}px`);
-      battlefieldSurface.style.setProperty("--camera-height", `${stageHeight}px`);
-      battlefieldSurface.style.setProperty("--board-left", `${boardOffsetX}px`);
-      battlefieldSurface.style.setProperty("--board-top", `${boardOffsetY}px`);
-      battlefieldSurface.style.setProperty("--board-width", `${boardWidth}px`);
-      battlefieldSurface.style.setProperty("--board-height", `${boardHeight}px`);
-      battlefieldSurface.style.setProperty(
-        "--board-transform",
-        cameraIsRotated()
-          ? `translateX(${boardHeight}px) rotate(90deg)`
-          : "none"
-      );
-
-      battlefieldSurface.style.width = `${stageWidth}px`;
-      battlefieldSurface.style.height = `${stageHeight}px`;
-      battlefieldSurface.style.minWidth = `${stageWidth}px`;
-      battlefieldSurface.style.minHeight = `${stageHeight}px`;
-      battlefieldSurface.style.flex = "0 0 auto";
-
-      fittedBoardZoom = calculateFitZoom();
-      const relativeZoom =
-        fittedBoardZoom > 0
-          ? boardZoom / fittedBoardZoom
-          : 1;
-      const isFit = Math.abs(relativeZoom - 1) < 0.015;
-      zoomReadout.textContent =
-        isFit ? "FIT" : `${Math.round(relativeZoom * 100)}%`;
-      document.body.classList.toggle("fit-table-active", isFit);
-      updateCameraDetailLevel();
-    }
-
-    function cameraPointFromClient(clientX, clientY) {
-      const rect = battlefieldViewport.getBoundingClientRect();
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-      };
-    }
-
-    function setBoardZoom(nextZoom, options = {}) {
-      if (!battlefieldViewport || !battlefieldSurface) return;
-
-      const viewportPoint = options.viewportPoint ?? {
-        x: battlefieldViewport.clientWidth / 2,
-        y: battlefieldViewport.clientHeight / 2
-      };
-
-      const oldWidth = Math.max(1, battlefieldSurface.offsetWidth);
-      const oldHeight = Math.max(1, battlefieldSurface.offsetHeight);
-      const focusX =
-        (battlefieldViewport.scrollLeft + viewportPoint.x) / oldWidth;
-      const focusY =
-        (battlefieldViewport.scrollTop + viewportPoint.y) / oldHeight;
-
-      fittedBoardZoom = calculateFitZoom();
-      const minZoom = Math.max(CAMERA_MIN_SCALE, fittedBoardZoom * 0.45);
-      const maxZoom = Math.min(CAMERA_MAX_SCALE, fittedBoardZoom * 8);
-      boardZoom = clamp(nextZoom, minZoom, maxZoom);
-      applyCameraSurfaceSize();
-
-      requestAnimationFrame(() => {
-        battlefieldViewport.scrollLeft =
-          focusX * battlefieldSurface.offsetWidth - viewportPoint.x;
-        battlefieldViewport.scrollTop =
-          focusY * battlefieldSurface.offsetHeight - viewportPoint.y;
-      });
-
-      renderUnits();
-      renderRangeRing();
-      renderWaypoint();
-    }
-
-    function centerTable(options = {}) {
-      const boardCenterX = boardOffsetX + boardVisualWidth / 2;
-      const boardCenterY = boardOffsetY + boardVisualHeight / 2;
-      battlefieldViewport.scrollTo({
-        left: boardCenterX - battlefieldViewport.clientWidth / 2,
-        top: boardCenterY - battlefieldViewport.clientHeight / 2,
-        behavior: options.instant ? "auto" : "smooth"
-      });
-    }
-
-    function fitTable() {
-      syncAutomaticCameraRotation();
-      syncCameraViewportBox();
-
-      requestAnimationFrame(() => {
-        fittedBoardZoom = calculateFitZoom();
-        boardZoom = fittedBoardZoom;
-        applyCameraSurfaceSize();
-
-        requestAnimationFrame(() => {
-          centerTable({ instant: true });
-        });
-
+    const camera = window.CrossroadsCamera.create({
+      battlefieldViewport,
+      battlefieldSurface,
+      zoomReadout,
+      clamp,
+      onViewChanged: () => {
         renderUnits();
         renderRangeRing();
         renderWaypoint();
-      });
-    }
-
-    function zoomCameraByFactor(factor, viewportPoint = null) {
-      setBoardZoom(boardZoom * factor, {
-        viewportPoint: viewportPoint ?? {
-          x: battlefieldViewport.clientWidth / 2,
-          y: battlefieldViewport.clientHeight / 2
-        }
-      });
-    }
-
-    function rotateBoard() {
-      cameraRotationOverridden = true;
-      cameraRotationQuarterTurns =
-        cameraRotationQuarterTurns === 0 ? 1 : 0;
-      applyCameraSurfaceSize();
-      requestAnimationFrame(() => centerTable({ instant: true }));
-      renderUnits();
-      renderRangeRing();
-      renderWaypoint();
-    }
-
-    function cameraCanPan() {
-      return true;
-    }
-
-    function tablePointToSurfacePixels(point) {
-      const local = tablePointToPixels(point);
-      const boardHeight = CAMERA_WORLD_HEIGHT * boardZoom;
-
-      if (cameraIsRotated()) {
-        return {
-          x: boardOffsetX + boardHeight - local.y,
-          y: boardOffsetY + local.x
-        };
       }
+    });
 
-      return {
-        x: boardOffsetX + local.x,
-        y: boardOffsetY + local.y
-      };
-    }
-
-    function frameTablePoint(point, options = {}) {
-      if (!point || !battlefieldViewport || !battlefieldSurface) return;
-
-      const pixel = tablePointToSurfacePixels(point);
-      const margin = options.margin ?? 72;
-      const left = battlefieldViewport.scrollLeft;
-      const top = battlefieldViewport.scrollTop;
-      const right = left + battlefieldViewport.clientWidth;
-      const bottom = top + battlefieldViewport.clientHeight;
-
-      let nextLeft = left;
-      let nextTop = top;
-
-      if (pixel.x < left + margin) nextLeft = pixel.x - margin;
-      else if (pixel.x > right - margin) {
-        nextLeft = pixel.x - battlefieldViewport.clientWidth + margin;
-      }
-
-      if (pixel.y < top + margin) nextTop = pixel.y - margin;
-      else if (pixel.y > bottom - margin) {
-        nextTop = pixel.y - battlefieldViewport.clientHeight + margin;
-      }
-
-      battlefieldViewport.scrollTo({
-        left: Math.max(0, nextLeft),
-        top: Math.max(0, nextTop),
-        behavior: options.instant ? "auto" : "smooth"
-      });
-    }
+    const {
+      narrowBoardLayout,
+      adaptivePortrait,
+      syncAutomaticCameraRotation,
+      cameraIsRotated,
+      syncCameraViewportBox,
+      cameraViewportSize,
+      calculateFitZoom,
+      updateCameraDetailLevel,
+      applyCameraSurfaceSize,
+      cameraPointFromClient,
+      setBoardZoom,
+      centerTable,
+      fitTable,
+      zoomCameraByFactor,
+      rotateBoard,
+      cameraCanPan,
+      tablePointToSurfacePixels,
+      frameTablePoint
+    } = camera;
 
     function applyLargeControlsState(enabled, rerender = true) {
       document.body.classList.toggle("large-controls", enabled);
@@ -754,7 +463,7 @@
         );
 
         const factor = Math.exp(-event.deltaY * 0.0014);
-        setBoardZoom(boardZoom * factor, { viewportPoint });
+        zoomCameraByFactor(factor, viewportPoint);
       },
       { passive: false }
     );
@@ -1210,40 +919,23 @@
       }
     }
 
-    function pixelsPerInch() {
-      return Math.max(1, battlefield.offsetWidth) / RULES.tableWidth;
-    }
 
-    function inchesToPixels(inches) {
-      return inches * pixelsPerInch();
-    }
 
-    function tablePointToPixels(point) {
-      const ppi = pixelsPerInch();
-      return { x: point.x * ppi, y: point.y * ppi };
-    }
 
-    function eventToTablePoint(event) {
-      const rect = battlefield.getBoundingClientRect();
-      const ppi = pixelsPerInch();
-      let localX;
-      let localY;
 
-      if (cameraIsRotated()) {
-        const visualX = event.clientX - rect.left;
-        const visualY = event.clientY - rect.top;
-        localX = visualY;
-        localY = battlefield.offsetHeight - visualX;
-      } else {
-        localX = event.clientX - rect.left;
-        localY = event.clientY - rect.top;
-      }
-
-      return {
-        x: clamp(localX / ppi, 0, RULES.tableWidth),
-        y: clamp(localY / ppi, 0, RULES.tableHeight)
-      };
-    }
+    const coordinates = window.CrossroadsCoordinates.create({
+      battlefield,
+      tableWidth: RULES.tableWidth,
+      tableHeight: RULES.tableHeight,
+      clamp,
+      cameraIsRotated
+    });
+    const {
+      pixelsPerInch,
+      inchesToPixels,
+      tablePointToPixels,
+      eventToTablePoint
+    } = coordinates;
 
     function distanceBetweenPoints(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
     function distanceBetweenUnits(a, b) { return distanceBetweenPoints(a, b); }
@@ -4801,7 +4493,7 @@
 
         pinchGesture = {
           startDistance: Math.max(1, distance),
-          startZoom: boardZoom,
+          startZoom: camera.getBoardZoom(),
           worldFocusX:
             (battlefieldViewport.scrollLeft + viewportPoint.x) /
             Math.max(1, battlefieldSurface.offsetWidth),
@@ -4837,12 +4529,10 @@
           document.body.classList.add("camera-panning");
         }
 
-        boardZoom = clamp(
+        camera.setZoomImmediate(
           pinchGesture.startZoom *
             distance /
-            pinchGesture.startDistance,
-          CAMERA_MIN_SCALE,
-          CAMERA_MAX_SCALE
+            pinchGesture.startDistance
         );
 
         applyCameraSurfaceSize();
@@ -4910,10 +4600,11 @@
             event.clientX,
             event.clientY
           );
+          const fittedZoom = camera.getFittedZoom();
           const targetZoom =
-            boardZoom < Math.max(1.05, fittedBoardZoom * 1.8)
-              ? Math.max(1.05, fittedBoardZoom * 2.1)
-              : fittedBoardZoom;
+            camera.getBoardZoom() < Math.max(1.05, fittedZoom * 1.8)
+              ? Math.max(1.05, fittedZoom * 2.1)
+              : fittedZoom;
           setBoardZoom(targetZoom, { viewportPoint });
           gestureSuppressUntil = Date.now() + 360;
           lastCameraTap = { time: 0, x: 0, y: 0 };
@@ -4965,7 +4656,7 @@
     function captureViewportState() {
       if (!battlefieldViewport || !battlefieldSurface) return null;
       return {
-        zoom: boardZoom,
+        zoom: camera.getBoardZoom(),
         x: (battlefieldViewport.scrollLeft + battlefieldViewport.clientWidth / 2) / Math.max(1, battlefieldSurface.scrollWidth),
         y: (battlefieldViewport.scrollTop + battlefieldViewport.clientHeight / 2) / Math.max(1, battlefieldSurface.scrollHeight)
       };
@@ -4973,7 +4664,7 @@
 
     function restoreViewportState(state) {
       if (!state || !battlefieldViewport || !battlefieldSurface) return;
-      boardZoom = clamp(state.zoom, CAMERA_MIN_SCALE, CAMERA_MAX_SCALE);
+      camera.setZoomImmediate(state.zoom);
       applyCameraSurfaceSize();
       requestAnimationFrame(() => {
         battlefieldViewport.scrollLeft = state.x * battlefieldSurface.scrollWidth - battlefieldViewport.clientWidth / 2;
@@ -5042,7 +4733,7 @@
       syncCameraViewportBox();
       requestAnimationFrame(() => {
         syncAutomaticCameraRotation();
-        fittedBoardZoom = calculateFitZoom();
+        camera.recalculateFitZoom();
         fitTable();
         renderUnits();
       });
@@ -5086,17 +4777,17 @@
 
     window.addEventListener("resize", () => {
       const preservedView = captureViewportState();
-      const oldFit = fittedBoardZoom || calculateFitZoom();
+      const oldFit = camera.getFittedZoom() || calculateFitZoom();
       syncCameraViewportBox();
-      const relativeZoom = oldFit > 0 ? boardZoom / oldFit : 1;
+      const relativeZoom = oldFit > 0 ? camera.getBoardZoom() / oldFit : 1;
 
       createRulerLabels();
       clearTracePreview();
       syncAutomaticCameraRotation();
 
       requestAnimationFrame(() => {
-        fittedBoardZoom = calculateFitZoom();
-        boardZoom = fittedBoardZoom * relativeZoom;
+        camera.recalculateFitZoom();
+        camera.setZoomImmediate(camera.getFittedZoom() * relativeZoom);
         applyCameraSurfaceSize();
 
         if (preservedView) {
