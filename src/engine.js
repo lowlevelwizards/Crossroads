@@ -830,6 +830,7 @@
       pixelsPerInch,
       inchesToPixels,
       tablePointToPixels,
+      tableVectorToScreenVector,
       eventToTablePoint
     } = coordinates;
 
@@ -2210,9 +2211,13 @@
 
       const destination = pendingMovement.path[pendingMovement.path.length - 1];
       const movementOrigin = pendingMovement.path[0] ?? unit;
-      unit.facing = cardinalFacingFromVector(
+      const visualMovement = tableVectorToScreenVector(
         destination.x - movementOrigin.x,
-        destination.y - movementOrigin.y,
+        destination.y - movementOrigin.y
+      );
+      unit.facing = cardinalFacingFromVector(
+        visualMovement.x,
+        visualMovement.y,
         unit.facing
       );
       unit.x = destination.x;
