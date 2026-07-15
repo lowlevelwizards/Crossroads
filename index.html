@@ -5500,7 +5500,7 @@ that no visual behavior changes. These banners identify the effective systems:
   </div>
 
   <!-- Foundation 2B.1: first low-risk external peelaways. -->
-  <script src="build-info.js"></script>
+  <script src="data/build-info.js"></script>
   <script>
     // Apply the version before the battle engine starts. This keeps the visible
     // badge trustworthy even if a later startup error prevents full bootstrap.
@@ -5516,15 +5516,15 @@ that no visual behavior changes. These banners identify the effective systems:
       if (stamp) stamp.textContent = `${info.version.toUpperCase()} · ${info.codename.toUpperCase()}`;
     })();
   </script>
-  <script src="stage.js"></script>
-  <script src="weapons.js"></script>
-  <script src="terrain.js"></script>
-  <script src="unit-quality.js"></script>
-  <script src="unit-types.js"></script>
-  <script src="scenarios.js"></script>
-  <script src="commands.js"></script>
-  <script src="dom.js"></script>
-  <script src="refresh.js"></script>
+  <script src="data/stage.js"></script>
+  <script src="data/weapons.js"></script>
+  <script src="data/terrain.js"></script>
+  <script src="data/unit-quality.js"></script>
+  <script src="data/unit-types.js"></script>
+  <script src="data/scenarios.js"></script>
+  <script src="src/infrastructure/commands.js"></script>
+  <script src="src/infrastructure/dom.js"></script>
+  <script src="src/infrastructure/refresh.js"></script>
 
   <script>
 "use strict";
