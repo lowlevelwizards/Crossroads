@@ -8,6 +8,7 @@
     ["CROSSROADS_TERRAIN", "data/terrain.js"],
     ["CROSSROADS_UNIT_QUALITY", "data/unit-quality.js"],
     ["CROSSROADS_UNIT_TYPES", "data/unit-types.js"],
+    ["CROSSROADS_FORMATIONS", "data/formations.js"],
     ["CROSSROADS_SCENARIOS", "data/scenarios.js"],
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
