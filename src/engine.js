@@ -2243,7 +2243,6 @@
       );
       unit.x = destination.x;
       unit.y = destination.y;
-      renderUnits({ reason: "movement-committed" });
 
       if (exitUnit(unit)) {
         const order = pendingMovement.order;
@@ -2276,7 +2275,6 @@
       if (order === "Advance") {
         overlayMode = "fire";
         phase = "choose-target";
-        targetingPresentation.browse(unit.id);
         finishAdvanceButton.hidden = false;
         cancelButton.disabled = Boolean(transactionLockReason);
         setStatus("Advance complete. Hover an enemy to shoot, or finish without firing.", `Objective distance: ${distanceToObjective(unit).toFixed(1)}″.`);
@@ -2344,8 +2342,6 @@
       if (chosenOrder === "Fire" && !attemptOrder(shooter, "Fire")) {
         return;
       }
-
-      targetingPresentation.resolve();
       const firingGroups = availableFireGroups(shooter, trace.distance, moving, true);
       const fireResult = resolveShootingCore(shooter, target, trace, { label: chosenOrder === "Advance" ? "Advance fire" : "Fire", movingPenalty: moving });
       await presentationEffects.playFire(shooter.id, firingGroups);
