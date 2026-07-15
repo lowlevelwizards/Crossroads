@@ -1,9 +1,6 @@
-"use strict";
-
-// Foundation 2B.1: authoritative build metadata.
+/* CROSSROADS build metadata — update this file with every staged build. */
 window.CROSSROADS_BUILD_INFO = Object.freeze({
-  version: "Gameplay 2.4C.3",
-  codename: "Simple Tabletop Unit UI",
   engine: "Infantry Core",
-  updated: "2026-07-14"
+  version: "Gameplay 2.5.2",
+  codename: "Selection Visual Reset"
 });

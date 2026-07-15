@@ -4082,7 +4082,7 @@ that no visual behavior changes. These banners identify the effective systems:
       .building-approach-marker { animation: none !important; }
     }
 
-    /* ===== Gameplay 2.5.1: battlefield readability ===== */
+    /* ===== Gameplay 2.5.2: battlefield readability ===== */
 
     .unit-label {
       display: inline-flex !important;
@@ -4311,7 +4311,7 @@ that no visual behavior changes. These banners identify the effective systems:
       }
     }
 
-    /* ===== Gameplay 2.5.1: visual stability ===== */
+    /* ===== Gameplay 2.5.2: visual stability ===== */
 
     /* Keep formations from clipping heads or weapons. */
     .unit,
@@ -4462,7 +4462,7 @@ that no visual behavior changes. These banners identify the effective systems:
       display: none !important;
     }
 
-    /* ===== Gameplay 2.5.1: simple unit information hierarchy ===== */
+    /* ===== Gameplay 2.5.2: simple unit information hierarchy ===== */
 
     /* Far counters must never leak into medium or close zoom. */
     .far-unit-counter {
@@ -4647,7 +4647,7 @@ that no visual behavior changes. These banners identify the effective systems:
       display: none !important;
     }
 
-    /* ===== Gameplay 2.5.1: dedicated zoom representations ===== */
+    /* ===== Gameplay 2.5.2: dedicated zoom representations ===== */
     .unit-representation {
       position:absolute;
       inset:0;
@@ -4769,7 +4769,7 @@ that no visual behavior changes. These banners identify the effective systems:
     .mmg-carried-body,
     .mmg-carried-tripod { display:none !important; }
 
-    /* ===== Gameplay 2.5.1.1: selection alignment and visual coherence ===== */
+    /* ===== Gameplay 2.5.2.1: selection alignment and visual coherence ===== */
 
     /*
       Legacy selection rules moved the root unit, the formation, and every
@@ -4867,6 +4867,117 @@ that no visual behavior changes. These banners identify the effective systems:
     .unit:hover .model-base,
     .unit:focus-visible .model-base {
       transform: none !important;
+    }
+
+    /* ===== Gameplay 2.5.2: selection visual reset ===== */
+
+    /*
+      Selection no longer creates a separate plate or moves any geometry.
+      The selected state is communicated directly on the miniatures and
+      nameplate, eliminating independent alignment systems.
+    */
+
+    .unit,
+    .unit.selected {
+      transform: translate(-50%, -52%) !important;
+    }
+
+    .unit.selected::before,
+    .unit.selected .unit-representation-medium .unit-formation::after,
+    .unit.selected .unit-representation-close .unit-formation::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    .unit:hover .unit-formation,
+    .unit:focus-visible .unit-formation,
+    .unit.selected .unit-formation,
+    .unit.effect-eligible .unit-formation,
+    body.camera-close .unit.selected .unit-formation,
+    body.camera-inspection .unit.selected .unit-formation {
+      translate: none !important;
+      transform: translate(-50%, -50%) !important;
+      animation: none !important;
+      filter: none !important;
+    }
+
+    .unit:hover .formation-slot,
+    .unit:focus-visible .formation-slot,
+    .unit.selected .formation-slot,
+    .unit.effect-eligible .formation-slot {
+      translate: none !important;
+      animation: none !important;
+    }
+
+    .unit:hover .brick-soldier,
+    .unit:focus-visible .brick-soldier,
+    .unit.selected .brick-soldier,
+    .unit.effect-eligible .brick-soldier,
+    body.camera-close .unit.selected .brick-soldier,
+    body.camera-inspection .unit.selected .brick-soldier {
+      translate: none !important;
+      transform: none !important;
+      animation: none !important;
+    }
+
+    .unit.selected .model-shadow,
+    .unit.effect-eligible .model-shadow {
+      transform: translateX(-43%) !important;
+    }
+
+    /* Selected miniatures receive a direct gold base/rim treatment. */
+    .unit.selected .model-base,
+    .unit.selected .brick-soldier {
+      filter: drop-shadow(0 0 4px rgba(255,196,55,.9)) !important;
+    }
+
+    .unit.selected .unit-representation-medium .unit-label,
+    .unit.selected .unit-representation-close .unit-label {
+      transform: translateX(-50%) !important;
+      border-color: rgba(167,119,24,.95) !important;
+      box-shadow:
+        0 0 0 2px rgba(255,218,114,.72),
+        2px 3px 0 rgba(0,0,0,.18) !important;
+    }
+
+    /* Eligibility is a quiet glow, never a positional animation. */
+    .unit.effect-eligible .unit-representation-medium .unit-label,
+    .unit.effect-eligible .unit-representation-close .unit-label,
+    .unit.eligible-current .unit-representation-medium .unit-label,
+    .unit.eligible-current .unit-representation-close .unit-label {
+      animation: eligibleLabelGlow .9s ease-in-out infinite !important;
+    }
+
+    @keyframes eligibleLabelGlow {
+      0%, 100% {
+        box-shadow: 0 2px 0 rgba(0,0,0,.13);
+      }
+      50% {
+        box-shadow:
+          0 0 0 2px rgba(255,229,145,.72),
+          0 0 10px rgba(255,214,90,.72);
+      }
+    }
+
+    .unit.selected .unit-representation-far .far-unit-counter {
+      transform: translate(-50%, -50%) !important;
+      outline: 3px solid var(--gold) !important;
+      outline-offset: 2px !important;
+    }
+
+    /* Disable all older movement-based selection and hover treatments. */
+    .unit.selected .model-base,
+    .unit:hover .model-base,
+    .unit:focus-visible .model-base {
+      transform: none !important;
+    }
+
+    .unit.touch-pending-target .unit-formation,
+    .unit.targetable-legal .unit-formation,
+    .unit.targetable-protected .unit-formation,
+    .unit.targetable-blocked .unit-formation,
+    .unit.targetable-assault .unit-formation {
+      transform: translate(-50%, -50%) !important;
     }
 
 </style>
@@ -4977,7 +5088,7 @@ that no visual behavior changes. These banners identify the effective systems:
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.5.1</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Gameplay 2.5.2</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -5183,7 +5294,7 @@ that no visual behavior changes. These banners identify the effective systems:
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.5.1 · SELECTION ALIGNMENT HOTFIX</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">GAMEPLAY 2.5.2 · SELECTION VISUAL RESET</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -5321,7 +5432,7 @@ that no visual behavior changes. These banners identify the effective systems:
       PRESENTATION CONTROLLER   reference drawer and player-facing shell
       BOOTSTRAP                 final initialization sequence
 
-    Gameplay 2.5.1 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
+    Gameplay 2.5.2 externalizes scenario data and applies build metadata before the battle engine. Gameplay,
     rules, rendering, input, and existing startup order remain unchanged.
     =========================================================================
     */
@@ -5588,7 +5699,7 @@ that no visual behavior changes. These banners identify the effective systems:
 
     // =========================================================================
     // LEGACY INITIAL FORCE DATA
-    // Removed in Gameplay 2.5.1 after a full-reference audit confirmed that
+    // Removed in Gameplay 2.5.2 after a full-reference audit confirmed that
     // scenario forces are instantiated exclusively from external scenario data.
     // =========================================================================
 

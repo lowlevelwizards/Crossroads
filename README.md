@@ -1,26 +1,30 @@
-# CROSSROADS — Gameplay 2.5.1
+# CROSSROADS — Gameplay 2.5.2
 
-Selection Alignment Hotfix.
+Selection Visual Reset.
 
-## Corrected
+## What changed
 
-The older UI had several simultaneous selection movements:
+The detached selection square has been removed entirely.
 
-- the entire unit root moved upward
-- the formation moved and scaled
-- every soldier moved again
-- the selection glow remained attached to the original unit origin
+Selection now uses only:
 
-With dedicated zoom representations, those stacked transforms caused the
-soldiers and selection plate to separate.
+- a gold glow directly on the selected miniatures
+- a gold accent around the selected unit nameplate
+- a gold outline around far-zoom counters
 
-This build keeps all unit geometry fixed when selected.
+No selection, hover, or eligibility state is allowed to move:
 
-- soldiers do not move
-- formations do not shift or scale
-- nameplates stay in place
-- the selection halo is attached directly to the active formation canvas
-- far counters remain centered and gain only an outline
-- hover no longer nudges the formation
+- the unit root
+- the formation canvas
+- formation slots
+- soldiers
+- model shadows
+- labels
 
-Upload both files and wait for `Gameplay 2.5.1`.
+Eligibility now pulses the nameplate only, without changing geometry.
+
+## Upload
+
+Upload all files and wait until the visible badge says:
+
+`Gameplay 2.5.2`
