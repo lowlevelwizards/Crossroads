@@ -187,8 +187,10 @@ DOCUMENT LAYOUT
         <div class="terrain wall" title="Low wall: hard cover and +2 inch crossing cost"><span class="terrain-label" data-full="Hard cover · +2″ crossing">WALL</span></div>
         <div class="terrain building" id="farmhouseTerrain">
           <span class="terrain-label building-title-plaque" data-full="Occupiable · hard cover">FARMHOUSE</span>
-          <button id="buildingOccupancyBadge" class="building-occupancy-badge" type="button" hidden></button>
-          <button id="buildingOccupancyTab" class="building-occupancy-tab" type="button" hidden></button>
+          <button id="buildingOccupancyBadge"
+                  class="building-occupancy-nameplate"
+                  type="button"
+                  hidden></button>
           <span class="building-door"></span>
           <span id="buildingApproachMarker" class="building-approach-marker" hidden></span>
           <span class="building-window one"></span>
@@ -260,16 +262,17 @@ DOCUMENT LAYOUT
       <section class="panel">
         <h2>Give Order</h2>
         <div class="orders">
-          <button class="orderButton" data-order="Run" disabled>Run · 12″</button>
-          <button class="orderButton" data-order="Advance" disabled>Advance · 6″</button>
-          <button class="orderButton" data-order="Fire" disabled>Fire</button>
-          <button class="orderButton" data-order="Down" disabled>Down</button>
-          <button class="orderButton" data-order="Ambush" id="ambushOrderButton" disabled>Ambush</button>
-          <button class="orderButton" data-order="Assault" id="assaultOrderButton" disabled>Assault · 12″</button>
-          <button class="orderButton wide" data-order="Rally" disabled>Rally · Clear Pins</button>
+          <button class="orderButton" data-order="Run" disabled><b aria-hidden="true">≫</b><span>Run · 12″</span></button>
+          <button class="orderButton" data-order="Advance" disabled><b aria-hidden="true">›</b><span>Advance · 6″</span></button>
+          <button class="orderButton" data-order="Fire" disabled><b aria-hidden="true">✦</b><span>Fire</span></button>
+          <button class="orderButton" data-order="Down" disabled><b aria-hidden="true">↓</b><span>Down</span></button>
+          <button class="orderButton" data-order="Ambush" id="ambushOrderButton" disabled><b aria-hidden="true">A</b><span>Ambush</span></button>
+          <button class="orderButton" data-order="Assault" id="assaultOrderButton" disabled><b aria-hidden="true">!</b><span>Assault · 12″</span></button>
+          <button class="orderButton wide" data-order="Rally" disabled><b aria-hidden="true">+</b><span>Rally · Clear Pins</span></button>
         </div>
         <button id="buildingActionButton" class="building-action" hidden>Enter Farmhouse</button>
         <button id="finishAdvanceButton" class="finish" hidden>Finish Advance Without Shooting</button>
+        <button id="addWaypointButton" class="finish" hidden>Add Waypoint</button>
         <button id="clearWaypointButton" class="finish" hidden>Clear Waypoint</button>
         <button id="cancelButton" class="cancel" disabled>Cancel Order / Reselect Unit</button>
         <div id="transactionBadge" class="transaction-badge">No activation transaction is open.</div>
@@ -476,16 +479,16 @@ DOCUMENT LAYOUT
   <script src="src/presentation/formation-geometry.js?v=3nb"></script>
   <script src="src/presentation/targeting.js?v=3nb"></script>
   <script src="src/presentation/overlays.js?v=3nd"></script>
-  <script src="src/presentation/units.js?v=3nd"></script>
-  <script src="src/presentation/effects.js?v=3nd"></script>
-  <script src="src/presentation/battlefield.js?v=3nd"></script>
+  <script src="src/presentation/units.js?v=3nf"></script>
+  <script src="src/presentation/effects.js?v=3nf"></script>
+  <script src="src/presentation/battlefield.js?v=3nf"></script>
   <script src="src/camera/camera.js"></script>
   <script src="src/camera/coordinates.js"></script>
   <script src="src/input/camera-input.js"></script>
   <script src="src/input/battlefield-input.js"></script>
   <script src="src/rules/movement.js"></script>
   <script src="src/infrastructure/startup-validation.js?v=3nd"></script>
-  <script src="src/engine.js?v=3nd"></script>
+  <script src="src/engine.js?v=3nf"></script>
 </body>
 </html>
 
