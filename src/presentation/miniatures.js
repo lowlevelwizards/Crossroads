@@ -26,7 +26,7 @@
 
   function soldierRole(unit, index) {
     if (unit.role === "officer") return index === 0 ? "officer" : "rifle";
-    if (unit.role === "support") return index === 0 ? "mmg" : "loader";
+    if (unit.role === "support") return index === 0 ? "mmg" : "crew";
 
     if (unit.role === "assault") {
       const smgCount = unit.weapons?.smg ?? unit.soldiers;
@@ -44,7 +44,7 @@
     if (role === "lmg") return "lmg";
     if (role === "mmg") return "mmg";
     if (role === "officer") return "pistol";
-    if (role === "loader" || role === "crew") return null;
+    if (role === "crew") return null;
     return "rifle";
   }
 
@@ -62,7 +62,7 @@
     );
   }
 
-  function loadForModel(kit, role, index) {
+  function loadProfileIdForModel(kit, role, index) {
     const roleLoad = kit.roleLoads[role];
     if (roleLoad) return roleLoad;
 
@@ -71,10 +71,31 @@
     return kit.defaults.load;
   }
 
+  function loadProfileForModel(kit, role, index) {
+    const id = loadProfileIdForModel(kit, role, index);
+    const fallbackId = kit.defaults.load;
+    const profile = kit.loadProfiles[id] ?? kit.loadProfiles[fallbackId];
+
+    if (!profile) {
+      return Object.freeze({
+        id: "none",
+        primary: "none",
+        secondary: "none"
+      });
+    }
+
+    return Object.freeze({
+      id,
+      primary: profile.primary,
+      secondary: profile.secondary ?? "none"
+    });
+  }
+
   function resolveModelRecipe(unit, index, options = {}) {
     const role = options.role ?? soldierRole(unit, index);
     const weaponKey = options.weaponKey ?? weaponKeyForRole(role);
     const kit = kitForUnit(unit);
+    const load = loadProfileForModel(kit, role, index);
     const weaponProfile = weaponKey
       ? kit.weapons[weaponKey] ?? `generic-${weaponKey}`
       : "unarmed";
@@ -86,8 +107,10 @@
       weaponKey,
       helmet: safeToken(options.helmet ?? kit.defaults.helmet, "generic-steel"),
       legwear: safeToken(options.legwear ?? kit.defaults.legwear, "generic-boots"),
-      webbing: safeToken(options.webbing ?? kit.defaults.webbing, "generic-webbing"),
-      load: safeToken(options.load ?? loadForModel(kit, role, index), "generic-pack"),
+      webbing: safeToken(options.webbing ?? kit.defaults.webbing, "none"),
+      loadProfile: safeToken(load.id, "none"),
+      loadPrimary: safeToken(load.primary, "none"),
+      loadSecondary: safeToken(load.secondary, "none"),
       weaponProfile: safeToken(weaponProfile, "unarmed")
     });
   }
@@ -102,9 +125,23 @@
       `helmet-${recipe.helmet}`,
       `legwear-${recipe.legwear}`,
       `webbing-${recipe.webbing}`,
-      `load-${recipe.load}`,
+      `load-profile-${recipe.loadProfile}`,
+      `load-primary-${recipe.loadPrimary}`,
+      `load-secondary-${recipe.loadSecondary}`,
       `weapon-${recipe.weaponProfile}`
     ].join(" ");
+  }
+
+  function weaponHtml() {
+    return `
+      <span class="brick-weapon">
+        <span class="weapon-stock"></span>
+        <span class="weapon-receiver"></span>
+        <span class="weapon-barrel"></span>
+        <span class="weapon-detail"></span>
+        <span class="weapon-muzzle" aria-hidden="true"></span>
+      </span>
+    `;
   }
 
   function brickSoldierHtml(unit, index, options = {}) {
@@ -125,13 +162,16 @@
                 data-kit-id="${recipe.kit.id}"
                 ${recipe.weaponKey ? `data-weapon-key="${recipe.weaponKey}"` : ""}>
             <span class="brick-legs"></span>
-            <span class="brick-load"></span>
+            <span class="brick-load">
+              <span class="load-primary"></span>
+              <span class="load-secondary"></span>
+            </span>
             <span class="brick-torso"></span>
             <span class="brick-webbing"></span>
             <span class="brick-head"></span>
             <span class="brick-helmet"></span>
             <span class="brick-arm"></span>
-            <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true"></span></span>
+            ${weaponHtml()}
           </span>
         </span>
       </span>
@@ -186,6 +226,7 @@
     soldierRole,
     weaponKeyForRole,
     kitForUnit,
+    loadProfileForModel,
     resolveModelRecipe,
     brickSoldierHtml,
     packedMMGFormationHtml,

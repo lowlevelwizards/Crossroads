@@ -30,6 +30,10 @@
   const SAFE_TOKEN = /^[a-z0-9_-]+$/;
   const REQUIRED_WEAPONS = Object.freeze(["rifle", "smg", "lmg", "pistol", "mmg"]);
 
+  function validToken(value) {
+    return SAFE_TOKEN.test(String(value ?? ""));
+  }
+
   function validateFactionKits() {
     const registry = window.CROSSROADS_FACTION_KITS;
     if (!registry?.kits) return ["Faction-kit registry is unavailable."];
@@ -42,16 +46,47 @@
 
     for (const [kitId, kit] of Object.entries(registry.kits)) {
       if (kit.id !== kitId) issues.push(`Faction kit ${kitId} has mismatched id ${kit.id}.`);
-      if (!SAFE_TOKEN.test(kit.cssClass ?? "")) {
+      if (!validToken(kit.cssClass)) {
         issues.push(`Faction kit ${kitId} has unsafe cssClass ${kit.cssClass}.`);
       }
+
       for (const field of ["helmet", "legwear", "webbing", "load"]) {
-        if (!SAFE_TOKEN.test(kit.defaults?.[field] ?? "")) {
+        if (!validToken(kit.defaults?.[field])) {
           issues.push(`Faction kit ${kitId} has invalid default ${field}.`);
         }
       }
+
+      const profiles = kit.loadProfiles ?? {};
+      if (!profiles[kit.defaults?.load]) {
+        issues.push(`Faction kit ${kitId} is missing default load profile ${kit.defaults?.load}.`);
+      }
+
+      for (const [profileId, profile] of Object.entries(profiles)) {
+        if (!validToken(profileId)) {
+          issues.push(`Faction kit ${kitId} has invalid load profile id ${profileId}.`);
+        }
+        if (!validToken(profile?.primary)) {
+          issues.push(`Faction kit ${kitId}.${profileId} has invalid primary load.`);
+        }
+        if (!validToken(profile?.secondary ?? "none")) {
+          issues.push(`Faction kit ${kitId}.${profileId} has invalid secondary load.`);
+        }
+      }
+
+      for (const [role, profileId] of Object.entries(kit.roleLoads ?? {})) {
+        if (!profiles[profileId]) {
+          issues.push(`Faction kit ${kitId} role ${role} references unknown load ${profileId}.`);
+        }
+      }
+
+      for (const profileId of kit.loadPattern ?? []) {
+        if (!profiles[profileId]) {
+          issues.push(`Faction kit ${kitId} load pattern references unknown load ${profileId}.`);
+        }
+      }
+
       for (const weapon of REQUIRED_WEAPONS) {
-        if (!SAFE_TOKEN.test(kit.weapons?.[weapon] ?? "")) {
+        if (!validToken(kit.weapons?.[weapon])) {
           issues.push(`Faction kit ${kitId} is missing a valid ${weapon} visual.`);
         }
       }
