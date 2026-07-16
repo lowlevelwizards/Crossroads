@@ -184,23 +184,7 @@ DOCUMENT LAYOUT
         <div class="deployment-label blue">BLUE DEPLOYMENT · 12″</div>
         <div class="deployment-label red">RED DEPLOYMENT · 12″</div>
 
-        <div class="road horizontal"></div>
-        <div class="road vertical"></div>
-
-        <div class="terrain woods" title="Woods: soft cover and rough ground"><span class="terrain-label" data-full="Soft cover · rough ground">WOODS</span></div>
-        <div class="terrain wall" title="Low wall: hard cover and +2 inch crossing cost"><span class="terrain-label" data-full="Hard cover · +2″ crossing">WALL</span></div>
-        <div class="terrain building" id="farmhouseTerrain">
-          <span class="terrain-label building-title-plaque" data-full="Occupiable · hard cover">FARMHOUSE</span>
-          <button id="buildingOccupancyBadge"
-                  class="building-occupancy-nameplate"
-                  type="button"
-                  hidden></button>
-          <span class="building-door"></span>
-          <span id="buildingApproachMarker" class="building-approach-marker" hidden></span>
-          <span class="building-window one"></span>
-          <span class="building-window two"></span>
-          <span class="building-window three"></span>
-        </div>
+        <div id="terrainLayer" class="terrain-layer" aria-label="Scenario terrain"></div>
 
         <div id="objectiveRing" class="objective-ring"></div>
         <div id="objectiveMarker" class="objective-marker"></div>
@@ -476,6 +460,7 @@ DOCUMENT LAYOUT
   <script src="data/unit-types.js?v=3ni3"></script>
   <script src="data/faction-kits.js?v=3ni3"></script>
   <script src="data/scenarios.js?v=3ni2"></script>
+  <script src="src/presentation/terrain.js?v=4t1"></script>
   <script src="src/infrastructure/commands.js"></script>
   <script src="src/infrastructure/dom.js"></script>
   <script src="src/infrastructure/refresh.js"></script>
