@@ -163,10 +163,10 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       ]),
       red: Object.freeze([
         Object.freeze({ id: "red-officer", unitType: "officer", quality: "veteran", x: 66, y: 6 }),
-        Object.freeze({ id: "red-rifle-a", unitType: "rifleSquad", quality: "regular", x: 64, y: 15 }),
-        Object.freeze({ id: "red-rifle-b", unitType: "rifleSquad", quality: "regular", x: 64, y: 25 }),
-        Object.freeze({ id: "red-assault", unitType: "assaultSquad", quality: "veteran", x: 64, y: 35 }),
-        Object.freeze({ id: "red-mmg", unitType: "mmgTeam", quality: "inexperienced", x: 66, y: 43 })
+        Object.freeze({ id: "red-rifle-a", unitType: "rifleSquad", quality: "regular", x: 68, y: 15 }),
+        Object.freeze({ id: "red-rifle-b", unitType: "rifleSquad", quality: "regular", x: 68, y: 25 }),
+        Object.freeze({ id: "red-assault", unitType: "assaultSquad", quality: "veteran", x: 68, y: 35 }),
+        Object.freeze({ id: "red-mmg", unitType: "mmgTeam", quality: "inexperienced", x: 68, y: 43 })
       ])
     })
   })
