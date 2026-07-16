@@ -1,7 +1,15 @@
 "use strict";
 
 (() => {
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
+  const sleep = ms =>
+    new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
+
+  const FEEDBACK_CLASSES = Object.freeze([
+    "feedback-ambush",
+    "feedback-command",
+    "feedback-down",
+    "feedback-rally"
+  ]);
 
   function create({ battlefield, tableWidth, tableHeight }) {
     let busyCount = 0;
@@ -16,14 +24,15 @@
     }
 
     function unitElement(unitId) {
-      return battlefield.querySelector(`.unit[data-unit-id="${CSS.escape(unitId)}"]`);
+      return battlefield.querySelector(
+        `.unit[data-unit-id="${CSS.escape(unitId)}"]`
+      );
     }
 
     function visibleUnitParts(root) {
       const visual = root.querySelector(".unit-visual-travel");
-      const representation = [
-        ...root.querySelectorAll(".unit-representation")
-      ].find(element => getComputedStyle(element).display !== "none");
+      const representation = [...root.querySelectorAll(".unit-representation")]
+        .find(element => getComputedStyle(element).display !== "none");
 
       return {
         visual,
@@ -32,6 +41,49 @@
           ? [...representation.querySelectorAll(".formation-slot")]
           : []
       };
+    }
+
+    function feedbackLayer(root) {
+      return root?.querySelector(".unit-feedback-layer") ?? null;
+    }
+
+    async function playFeedbackPulse(root, state, options = {}) {
+      const feedback = feedbackLayer(root);
+      if (!feedback) return;
+
+      const className = `feedback-${state}`;
+      feedback.classList.remove(...FEEDBACK_CLASSES);
+      feedback.classList.add(className);
+
+      const animation = feedback.animate(
+        [
+          {
+            opacity: 0,
+            transform: `translate(-50%, -50%) scale(${options.startScale ?? .72})`
+          },
+          {
+            opacity: options.peakOpacity ?? .96,
+            transform: `translate(-50%, -50%) scale(${options.peakScale ?? 1.08})`,
+            offset: options.peakOffset ?? .42
+          },
+          {
+            opacity: 0,
+            transform: `translate(-50%, -50%) scale(${options.endScale ?? 1.3})`
+          }
+        ],
+        {
+          duration: options.duration ?? 620,
+          easing: options.easing ?? "cubic-bezier(.2,.8,.25,1)"
+        }
+      );
+
+      try {
+        await animation.finished;
+      } catch (_) {
+        // A rerender can remove the layer while an effect is in flight.
+      } finally {
+        feedback.classList.remove(className);
+      }
     }
 
     function applyFacing(root, facing) {
@@ -159,7 +211,6 @@
 
       try {
         for (let index = 1; index < path.length; index += 1) {
-          const from = path[index - 1];
           const to = path[index];
           const facing = options.facings?.[index - 1] ?? null;
           applyFacing(root, facing);
@@ -245,7 +296,10 @@
       void muzzle.offsetWidth;
       muzzle.style.setProperty("--muzzle-duration", `${pulseDuration(key)}ms`);
       muzzle.classList.add("muzzle-pulse");
-      setTimeout(() => muzzle.classList.remove("muzzle-pulse"), pulseDuration(key) + 20);
+      setTimeout(
+        () => muzzle.classList.remove("muzzle-pulse"),
+        pulseDuration(key) + 20
+      );
     }
 
     async function playFire(unitId, groups) {
@@ -261,7 +315,9 @@
         for (const group of groups ?? []) {
           const key = group.key;
           let muzzles = [
-            ...root.querySelectorAll(`[data-weapon-key="${CSS.escape(key)}"] .weapon-muzzle`)
+            ...root.querySelectorAll(
+              `[data-weapon-key="${CSS.escape(key)}"] .weapon-muzzle`
+            )
           ];
 
           if (key === "mmg") {
@@ -272,19 +328,25 @@
           if (!muzzles.length) continue;
 
           const shots = Math.max(1, group.shots ?? 1);
-          const modelCount = Math.max(1, Math.min(muzzles.length, group.models ?? muzzles.length));
+          const modelCount = Math.max(
+            1,
+            Math.min(muzzles.length, group.models ?? muzzles.length)
+          );
           const interval = shotInterval(key);
 
           for (let shot = 0; shot < shots; shot += 1) {
             const muzzle = muzzles[shot % modelCount];
             const volley = Math.floor(shot / modelCount);
-            const delay = groupStart + (shot % modelCount) * 100 + volley * interval;
-            jobs.push(new Promise(resolve => {
-              setTimeout(() => {
-                flash(muzzle, key);
-                setTimeout(resolve, pulseDuration(key) + 15);
-              }, delay);
-            }));
+            const delay =
+              groupStart + (shot % modelCount) * 100 + volley * interval;
+            jobs.push(
+              new Promise(resolve => {
+                setTimeout(() => {
+                  flash(muzzle, key);
+                  setTimeout(resolve, pulseDuration(key) + 15);
+                }, delay);
+              })
+            );
           }
           groupStart += 90;
         }
@@ -299,8 +361,10 @@
       if (!unit || !descriptors.length) return;
 
       const root = unitElement(unit.id);
-      const rootLeft = root?.style.left || `${(unit.x / tableWidth) * 100}%`;
-      const rootTop = root?.style.top || `${(unit.y / tableHeight) * 100}%`;
+      const rootLeft =
+        root?.style.left || `${(unit.x / tableWidth) * 100}%`;
+      const rootTop =
+        root?.style.top || `${(unit.y / tableHeight) * 100}%`;
 
       descriptors.slice(0, 4).forEach((descriptor, index) => {
         const puff = document.createElement("span");
@@ -331,33 +395,34 @@
             [
               { transform: "translateY(0) scale(1)", opacity: 1 },
               {
-                transform: `translateY(${-13 - index * 2}px) scale(.82)`,
+                transform: `translateY(${-14 - index * 2}px) scale(.78)`,
                 opacity: 0
               }
             ],
             {
-              duration: 390,
-              delay: index * 35,
+              duration: 360,
+              delay: index * 34,
               easing: "cubic-bezier(.2,.7,.25,1)",
               fill: "forwards"
             }
           )
         );
 
-        const feedback = root.querySelector(".unit-feedback-layer");
-        const pulse = feedback?.animate(
-          [
-            { opacity: 0, transform: "translate(-50%, -50%) scale(.75)" },
-            { opacity: .92, transform: "translate(-50%, -50%) scale(1.08)", offset: .42 },
-            { opacity: 0, transform: "translate(-50%, -50%) scale(1.28)" }
-          ],
-          { duration: 470, easing: "ease-out" }
+        await Promise.all(
+          animations.map(animation => animation.finished.catch(() => {}))
         );
+        pins.forEach(pin => {
+          pin.style.visibility = "hidden";
+        });
 
-        await Promise.all([
-          ...animations.map(animation => animation.finished.catch(() => {})),
-          pulse?.finished.catch(() => {})
-        ].filter(Boolean));
+        await playFeedbackPulse(root, "rally", {
+          duration: 500,
+          startScale: .76,
+          peakScale: 1.1,
+          endScale: 1.3,
+          peakOpacity: .94,
+          easing: "ease-out"
+        });
       } finally {
         setBusy(-1);
       }
@@ -376,48 +441,22 @@
 
       for (const unitId of supportedUnitIds) {
         const root = unitElement(unitId);
-        const feedback = root?.querySelector(".unit-feedback-layer");
-        if (!feedback) continue;
-        feedback.classList.add("feedback-command");
-        const animation = feedback.animate(
-          [
-            { opacity: 0, transform: "translate(-50%, -50%) scale(.72)" },
-            { opacity: 1, transform: "translate(-50%, -50%) scale(1.12)", offset: .4 },
-            { opacity: 0, transform: "translate(-50%, -50%) scale(1.3)" }
-          ],
-          { duration: 680, easing: "ease-out" }
-        );
-        animation.finished.finally(() =>
-          feedback.classList.remove("feedback-command")
-        );
+        if (!root) continue;
+        void playFeedbackPulse(root, "command", {
+          duration: 680,
+          startScale: .72,
+          peakScale: 1.12,
+          endScale: 1.3,
+          peakOpacity: 1,
+          easing: "ease-out"
+        });
       }
     }
 
     function playStatePulse(unitId, state) {
       const root = unitElement(unitId);
-      const feedback = root?.querySelector(".unit-feedback-layer");
-      if (!feedback) return;
-
-      feedback.classList.remove(
-        "feedback-ambush",
-        "feedback-down",
-        "feedback-command",
-        "feedback-rally"
-      );
-      feedback.classList.add(`feedback-${state}`);
-
-      const animation = feedback.animate(
-        [
-          { opacity: 0, transform: "translate(-50%, -50%) scale(.7)" },
-          { opacity: .95, transform: "translate(-50%, -50%) scale(1.08)", offset: .42 },
-          { opacity: 0, transform: "translate(-50%, -50%) scale(1.3)" }
-        ],
-        { duration: 620, easing: "cubic-bezier(.2,.8,.25,1)" }
-      );
-
-      animation.finished.finally(() =>
-        feedback.classList.remove(`feedback-${state}`)
-      );
+      if (!root) return Promise.resolve();
+      return playFeedbackPulse(root, state);
     }
 
     return Object.freeze({

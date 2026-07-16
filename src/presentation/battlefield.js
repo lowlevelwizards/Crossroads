@@ -1,9 +1,21 @@
 "use strict";
 
 (() => {
-  // Foundation 3E: battlefield unit-layer presentation.
-  // This module converts current battle state into DOM. It does not resolve
-  // orders, mutate combat state, or own camera/input rules.
+  // Battlefield presentation only: converts battle state into DOM without
+  // resolving orders, mutating combat state, or owning input/camera rules.
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const TACTICAL_STYLESHEET = "styles/tactical-states.css?v=3ng1";
+  const CARDINAL_ANGLE = Object.freeze({ right: 0, down: 90, left: 180, up: 270 });
+
+  function ensureTacticalStylesheet() {
+    if (document.querySelector('link[data-crossroads-tactical-states]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = TACTICAL_STYLESHEET;
+    link.dataset.crossroadsTacticalStates = "true";
+    document.head.appendChild(link);
+  }
 
   function applyEdgeContainment(element, unit, rules, battlefield) {
     const pixelsPerInch =
@@ -37,6 +49,152 @@
     element.style.setProperty("--unit-edge-shift-y", `${shiftY.toFixed(1)}px`);
   }
 
+  function maximumWeaponRange(unit, weaponProfiles) {
+    return Math.max(
+      0,
+      ...Object.entries(unit?.weapons ?? {})
+        .filter(([, count]) => Number(count) > 0)
+        .map(([key]) => Number(weaponProfiles[key]?.range) || 0)
+    );
+  }
+
+  function elementBoxWithin(element, ancestor) {
+    let x = 0;
+    let y = 0;
+    let node = element;
+
+    while (node && node !== ancestor) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+      node = node.offsetParent;
+    }
+
+    return {
+      x,
+      y,
+      width: element.offsetWidth,
+      height: element.offsetHeight
+    };
+  }
+
+  function appendFireArc({
+    battlefield,
+    center,
+    radius,
+    facing,
+    faction,
+    kind,
+    modifiers = []
+  }) {
+    if (!Number.isFinite(radius) || radius <= 0) return null;
+
+    const arc = document.createElementNS(SVG_NS, "svg");
+    arc.classList.add("fire-arc", `${kind}-fire-arc`, faction, ...modifiers);
+    arc.setAttribute("viewBox", "-1 -1 2 2");
+    arc.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    arc.setAttribute("aria-hidden", "true");
+    arc.style.left = `${center.x}px`;
+    arc.style.top = `${center.y}px`;
+    arc.style.width = `${radius * 2}px`;
+    arc.style.height = `${radius * 2}px`;
+    arc.style.setProperty("--fire-arc-facing", `${facing}deg`);
+
+    const sector = document.createElementNS(SVG_NS, "path");
+    sector.classList.add("fire-arc-sector");
+    sector.setAttribute(
+      "d",
+      "M 0 0 L .7071 -.7071 A 1 1 0 0 1 .7071 .7071 Z"
+    );
+    arc.appendChild(sector);
+    battlefield.appendChild(arc);
+    return arc;
+  }
+
+  function renderMMGFireArcs({
+    battlefield,
+    livingUnits,
+    selectedUnitId,
+    phase,
+    isMMGTeam,
+    weaponProfiles,
+    inchesToPixels
+  }) {
+    for (const unit of livingUnits()) {
+      if (!isMMGTeam(unit) || unit.inBuilding) continue;
+
+      const selected = unit.id === selectedUnitId;
+      const deployedRelevant =
+        unit.mmgDeployed &&
+        (unit.ambush || (selected && ["choose-order", "choose-target"].includes(phase)));
+      const deploymentPreview =
+        selected && !unit.mmgDeployed && phase === "choose-order";
+
+      if (!deployedRelevant && !deploymentPreview) continue;
+
+      const facing = unit.mmgDeployed
+        ? unit.mmgFacing
+        : CARDINAL_ANGLE[unit.facing] ?? unit.mmgFacing ?? 0;
+
+      appendFireArc({
+        battlefield,
+        center: {
+          x: inchesToPixels(unit.x),
+          y: inchesToPixels(unit.y)
+        },
+        radius: inchesToPixels(weaponProfiles.mmg?.range ?? 36),
+        facing,
+        faction: unit.faction,
+        kind: "mmg",
+        modifiers: [
+          deploymentPreview ? "is-deployment-preview" : "is-live",
+          unit.ambush ? "is-ambush" : ""
+        ].filter(Boolean)
+      });
+    }
+  }
+
+  function renderBuildingFireArcs({
+    battlefield,
+    livingUnits,
+    selectedUnitId,
+    phase,
+    weaponProfiles,
+    inchesToPixels
+  }) {
+    const occupant = livingUnits().find(unit => Boolean(unit.inBuilding));
+    if (!occupant) return;
+
+    const selected = occupant.id === selectedUnitId;
+    const relevant =
+      occupant.ambush ||
+      (selected && ["choose-order", "choose-target"].includes(phase));
+    if (!relevant) return;
+
+    const range = maximumWeaponRange(occupant, weaponProfiles);
+    const building = battlefield.querySelector("#farmhouseTerrain");
+    if (!building || range <= 0) return;
+
+    const box = elementBoxWithin(building, battlefield);
+    const origins = [
+      { x: box.x + box.width, y: box.y + box.height / 2, facing: 0 },
+      { x: box.x + box.width / 2, y: box.y + box.height, facing: 90 },
+      { x: box.x, y: box.y + box.height / 2, facing: 180 },
+      { x: box.x + box.width / 2, y: box.y, facing: 270 }
+    ];
+
+    for (const origin of origins) {
+      appendFireArc({
+        battlefield,
+        center: origin,
+        radius: inchesToPixels(range),
+        facing: origin.facing,
+        faction: occupant.faction,
+        kind: "building",
+        modifiers: [occupant.ambush ? "is-ambush" : "is-preview"]
+      });
+    }
+  }
+
   function createUnitLayerRenderer(deps) {
     const {
       battlefield,
@@ -49,7 +207,6 @@
       unitIsEligibleForCurrentDie,
       qualityLabel,
       unitFormationHtml,
-      presentationEffects,
       unitIsOnObjective,
       analyzeShot,
       availableFireGroups,
@@ -106,86 +263,88 @@
       const deploymentUnitId = getDeploymentUnitId();
       const pendingTouchTargetId = getPendingTouchTargetId();
       const targeting = getTargetingSnapshot();
-      const confirmedTargetId = targeting.confirmedTargetId ?? getConfirmedTargetId();
+      const confirmedTargetId =
+        targeting.confirmedTargetId ?? getConfirmedTargetId();
       const currentFaction = getCurrentFaction();
 
-      battlefield.querySelectorAll(".unit, .command-ring, .mmg-fire-arc").forEach(el => el.remove());
+      battlefield
+        .querySelectorAll(".unit, .command-ring, .fire-arc, .mmg-fire-arc")
+        .forEach(element => element.remove());
+
+      renderMMGFireArcs({
+        battlefield,
+        livingUnits,
+        selectedUnitId,
+        phase,
+        isMMGTeam,
+        weaponProfiles: WEAPON_PROFILES,
+        inchesToPixels
+      });
+      renderBuildingFireArcs({
+        battlefield,
+        livingUnits,
+        selectedUnitId,
+        phase,
+        weaponProfiles: WEAPON_PROFILES,
+        inchesToPixels
+      });
+
       const shooter = getUnit(selectedUnitId);
-
-      const selectedMMG = getUnit(selectedUnitId);
-      const mmgArcRelevant =
-        selectedMMG &&
-        isMMGTeam(selectedMMG) &&
-        selectedMMG.mmgDeployed &&
-        !selectedMMG.inBuilding &&
-        (
-          phase === "choose-order" ||
-          phase === "choose-target" ||
-          selectedMMG.ambush
-        );
-
-      if (mmgArcRelevant) {
-        const arc = document.createElement("div");
-        arc.className = `mmg-fire-arc ${selectedMMG.faction}`;
-        arc.style.left = `${(selectedMMG.x / RULES.tableWidth) * 100}%`;
-        arc.style.top = `${(selectedMMG.y / RULES.tableHeight) * 100}%`;
-        arc.style.width = `${inchesToPixels(WEAPON_PROFILES.mmg.range * 2)}px`;
-        arc.style.height = `${inchesToPixels(WEAPON_PROFILES.mmg.range * 2)}px`;
-        arc.style.setProperty("--mmg-facing", `${selectedMMG.mmgFacing}deg`);
-        battlefield.appendChild(arc);
-      }
 
       for (const unit of livingUnits()) {
         if (unit.inBuilding) continue;
 
-        const el = document.createElement("button");
-        el.className = `unit ${unit.faction} ${unit.type} quality-${unit.quality}${unit.inBuilding ? " in-building" : ""}${unitIsEligibleForCurrentDie(unit) ? " eligible-current" : ""}`;
-        el.style.left = `${(unit.x / RULES.tableWidth) * 100}%`;
-        el.style.top = `${(unit.y / RULES.tableHeight) * 100}%`;
-        el.dataset.unitId = unit.id;
-
-        el.setAttribute(
+        const element = document.createElement("button");
+        element.className =
+          `unit ${unit.faction} ${unit.type} quality-${unit.quality}` +
+          `${unitIsEligibleForCurrentDie(unit) ? " eligible-current" : ""}`;
+        element.style.left = `${(unit.x / RULES.tableWidth) * 100}%`;
+        element.style.top = `${(unit.y / RULES.tableHeight) * 100}%`;
+        element.dataset.unitId = unit.id;
+        element.setAttribute(
           "aria-label",
-          `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
+          `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ` +
+            `${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ` +
+            `${unit.pins} pins`
         );
-        el.innerHTML = unitFormationHtml(unit);
+        element.innerHTML = unitFormationHtml(unit);
 
-        if (unit.role === "officer") {
-          const travel = el.querySelector(".unit-visual-travel");
-          if (travel) {
-            const ring = document.createElement("span");
-            ring.className = `command-ring ${unit.faction}`;
-            ring.style.width = `${inchesToPixels(RULES.commandRadius * 2)}px`;
-            ring.style.height = `${inchesToPixels(RULES.commandRadius * 2)}px`;
-            travel.prepend(ring);
-          }
+        const travel = element.querySelector(".unit-visual-travel");
+        if (unit.role === "officer" && travel) {
+          const ring = document.createElement("span");
+          ring.className = `command-ring ${unit.faction}`;
+          ring.style.width = `${inchesToPixels(RULES.commandRadius * 2)}px`;
+          ring.style.height = `${inchesToPixels(RULES.commandRadius * 2)}px`;
+          travel.prepend(ring);
         }
 
         const support = commandSupport(unit);
-        if (support) {
-          el.classList.add("command-supported");
-          el.querySelectorAll(".unit-label").forEach(label => {
-            const star = document.createElement("span");
-            star.className = "command-support-star";
-            star.textContent = "★";
-            star.setAttribute("aria-label", `Supported by ${support.name}`);
-            label.appendChild(star);
-          });
+        if (support && travel) {
+          element.classList.add("command-supported");
+          const marker = document.createElement("span");
+          marker.className = "command-support-marker";
+          marker.textContent = "★";
+          marker.setAttribute("aria-label", `Supported by ${support.name}`);
+          travel.appendChild(marker);
         }
 
-        el.querySelectorAll(".unit-label").forEach(label => label.classList.add("unit-label-hit"));
+        element
+          .querySelectorAll(".unit-label")
+          .forEach(label => label.classList.add("unit-label-hit"));
 
-        if (unit.activated) el.classList.add("activated");
-        if (unit.ambush) el.classList.add("ambush");
-        if (unit.down) el.classList.add("down");
-        if (unit.id === selectedUnitId || unit.id === deploymentUnitId) el.classList.add("selected");
+        if (unit.activated) element.classList.add("activated");
+        if (unit.ambush) element.classList.add("ambush");
+        if (unit.down) element.classList.add("down");
+        if (unit.id === selectedUnitId || unit.id === deploymentUnitId) {
+          element.classList.add("selected");
+        }
         if (unit.id === pendingTouchTargetId && !confirmedTargetId) {
-          el.classList.add("touch-pending-target");
+          element.classList.add("touch-pending-target");
         }
         if (unit.id === confirmedTargetId) {
-          el.classList.add("confirmed-target");
+          element.classList.add("confirmed-target");
         }
-        if (unitIsOnObjective(unit)) el.classList.add("controls-objective");
+        if (unitIsOnObjective(unit)) element.classList.add("controls-objective");
 
         const isEnemyShotTarget =
           phase === "choose-target" &&
@@ -209,17 +368,17 @@
           );
 
           if (!trace.inRange || trace.blocked || groups.length === 0) {
-            el.classList.add("targetable-blocked");
+            element.classList.add("targetable-blocked");
           } else if (trace.cover.saveTarget !== null) {
-            el.classList.add("targetable-protected");
+            element.classList.add("targetable-protected");
           } else {
-            el.classList.add("targetable-legal");
+            element.classList.add("targetable-legal");
           }
         }
 
         if (isEnemyAssaultTarget) {
           const assault = analyzeAssault(shooter, unit);
-          el.classList.add(
+          element.classList.add(
             assault.legal ? "targetable-assault" : "targetable-blocked"
           );
         }
@@ -228,7 +387,6 @@
           phase === "choose-unit" &&
           currentFaction === unit.faction &&
           !unit.activated;
-
         const deploymentChoice = phase === "deployment";
 
         if (
@@ -237,12 +395,11 @@
           !isEnemyAssaultTarget &&
           !deploymentChoice
         ) {
-          el.classList.add("illegal");
+          element.classList.add("illegal");
         }
 
-        installLongPress(el, unit);
-
-        el.addEventListener("mouseenter", () => {
+        installLongPress(element, unit);
+        element.addEventListener("mouseenter", () => {
           if (
             phase === "choose-target" &&
             shooter &&
@@ -259,12 +416,11 @@
             showUnitPreview(unit);
           }
         });
+        element.addEventListener("mouseleave", clearTracePreview);
 
-        el.addEventListener("mouseleave", clearTracePreview);
-        battlefield.appendChild(el);
-        applyEdgeContainment(el, unit, RULES, battlefield);
+        battlefield.appendChild(element);
+        applyEdgeContainment(element, unit, RULES, battlefield);
       }
-
     };
   }
 
@@ -286,23 +442,25 @@
   }
 
   function confirmTargetInPlace(battlefield, targetId) {
-    battlefield.querySelectorAll(
-      ".unit.targetable-legal, .unit.targetable-protected, " +
-      ".unit.targetable-blocked, .unit.targetable-assault, " +
-      ".unit.confirmed-target"
-    ).forEach(unit => {
-      unit.classList.remove(
-        "targetable-legal",
-        "targetable-protected",
-        "targetable-blocked",
-        "targetable-assault",
-        "confirmed-target"
-      );
-    });
+    battlefield
+      .querySelectorAll(
+        ".unit.targetable-legal, .unit.targetable-protected, " +
+          ".unit.targetable-blocked, .unit.targetable-assault, " +
+          ".unit.confirmed-target"
+      )
+      .forEach(unit => {
+        unit.classList.remove(
+          "targetable-legal",
+          "targetable-protected",
+          "targetable-blocked",
+          "targetable-assault",
+          "confirmed-target"
+        );
+      });
 
-    battlefield.querySelector(
-      `.unit[data-unit-id="${CSS.escape(targetId)}"]`
-    )?.classList.add("confirmed-target");
+    battlefield
+      .querySelector(`.unit[data-unit-id="${CSS.escape(targetId)}"]`)
+      ?.classList.add("confirmed-target");
 
     document.body.classList.add("targeting-confirmed");
   }
@@ -313,6 +471,8 @@
     );
     document.body.classList.remove("targeting-confirmed");
   }
+
+  ensureTacticalStylesheet();
 
   window.CrossroadsBattlefieldPresentation = Object.freeze({
     createUnitLayerRenderer,
