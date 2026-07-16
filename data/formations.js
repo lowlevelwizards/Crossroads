@@ -1,8 +1,8 @@
 "use strict";
 
 (() => {
-  // Clean, authored formation canvases. Width and height are presentation
-  // metadata; slots remain percentages inside that canvas.
+  // Authored formation canvases only. Unit names and abbreviations belong to
+  // unit types; visual kit choices belong to data/faction-kits.js.
   const formations = Object.freeze({
     officer: Object.freeze({
       width: 58,
@@ -13,7 +13,6 @@
       ])
     }),
 
-    // Broad horizontal zig-zag: front, rear, front, rear, front, rear.
     line: Object.freeze({
       width: 104,
       height: 64,
@@ -27,7 +26,6 @@
       ])
     }),
 
-    // Clear three-row wedge with generous separation.
     assault: Object.freeze({
       width: 92,
       height: 80,
@@ -41,7 +39,6 @@
       ])
     }),
 
-    // Gun carrier at the point; assistants behind left and right.
     supportPacked: Object.freeze({
       width: 76,
       height: 70,
@@ -63,15 +60,5 @@
     })
   });
 
-  const abbreviations = Object.freeze({
-    officer: "HQ",
-    line: "RIF",
-    assault: "SMG",
-    support: "MMG"
-  });
-
-  window.CROSSROADS_FORMATIONS = Object.freeze({
-    formations,
-    abbreviations
-  });
+  window.CROSSROADS_FORMATIONS = Object.freeze({ formations });
 })();

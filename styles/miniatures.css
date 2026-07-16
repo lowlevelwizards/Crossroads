@@ -1,0 +1,405 @@
+/* ========================================================================== 
+   CROSSROADS BUILD A — SHAPE-BUILT MINIATURE GRAMMAR
+   Universal anatomy and role silhouettes only. Faction palettes and equipment
+   profiles live in faction-kits.css; transforms live in unit-transforms.css.
+   ========================================================================== */
+
+#battlefield .brick-soldier {
+  --uniform: #74775d;
+  --uniform-dark: #505440;
+  --trouser: #55584b;
+  --helmet: #545944;
+  --skin: #d7aa8b;
+  --leather: #5f4a34;
+  --load: #5b503d;
+  --load-dark: #433a2d;
+  --metal: #41484b;
+  --weapon-wood: #76502f;
+  --boot: #242522;
+
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 4px !important;
+  width: 20px !important;
+  height: 28px !important;
+  transform-origin: 50% 90% !important;
+  filter: drop-shadow(1px 2px 0 rgba(0, 0, 0, .17));
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+#battlefield .brick-soldier > span {
+  box-sizing: border-box;
+}
+
+/* Lower body. The kit changes where trouser, calf wrapping, and boot divide. */
+#battlefield .brick-legs {
+  position: absolute !important;
+  left: 5px !important;
+  bottom: 0 !important;
+  width: 10px !important;
+  height: 7px !important;
+  border-radius: 1px !important;
+  background:
+    linear-gradient(90deg,
+      var(--trouser) 0 40%,
+      transparent 40% 60%,
+      var(--trouser) 60% 100%) !important;
+  z-index: 1 !important;
+}
+
+#battlefield .brick-legs::before,
+#battlefield .brick-legs::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+#battlefield .brick-legs::after {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 0 0 1px 1px;
+  background:
+    linear-gradient(90deg,
+      var(--boot) 0 40%,
+      transparent 40% 60%,
+      var(--boot) 60% 100%);
+}
+
+/* One semantic rear-load slot. Kit profiles use its pseudo-elements for a roll,
+   gas-mask cylinder, bread bag, canteen, or ammunition load. */
+#battlefield .brick-load {
+  position: absolute !important;
+  left: 2px !important;
+  bottom: 6px !important;
+  width: 7px !important;
+  height: 10px !important;
+  border-radius: 1px !important;
+  background: var(--load) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2) !important;
+  z-index: 0 !important;
+}
+
+#battlefield .brick-load::before,
+#battlefield .brick-load::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Torso remains intentionally broad and stubby. */
+#battlefield .brick-torso {
+  position: absolute !important;
+  left: 5px !important;
+  bottom: 6px !important;
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 2px 2px 1px 1px !important;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .13), transparent 35%),
+    var(--uniform) !important;
+  box-shadow:
+    inset 0 -3px 0 var(--uniform-dark),
+    inset 0 0 0 1px rgba(0, 0, 0, .18) !important;
+  z-index: 2 !important;
+}
+
+#battlefield .brick-torso::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 5px;
+  height: 2px;
+  border-radius: 0 0 1px 1px;
+  background: var(--uniform-dark);
+  opacity: .7;
+}
+
+/* Broad webbing block: belt plus one readable pouch cluster, never tiny straps. */
+#battlefield .brick-webbing {
+  position: absolute !important;
+  left: 6px !important;
+  bottom: 7px !important;
+  width: 9px !important;
+  height: 3px !important;
+  border-radius: 1px !important;
+  border-bottom: 1px solid var(--leather) !important;
+  z-index: 4 !important;
+}
+
+#battlefield .brick-webbing::before,
+#battlefield .brick-webbing::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--leather);
+}
+
+#battlefield .brick-webbing::before { left: 0; }
+#battlefield .brick-webbing::after { right: 0; }
+
+#battlefield .brick-head {
+  position: absolute !important;
+  left: 7px !important;
+  bottom: 17px !important;
+  width: 8px !important;
+  height: 7px !important;
+  border-radius: 3px 3px 2px 2px !important;
+  background: var(--skin) !important;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .12) !important;
+  z-index: 3 !important;
+}
+
+#battlefield .brick-helmet {
+  position: absolute !important;
+  left: 6px !important;
+  bottom: 22px !important;
+  width: 10px !important;
+  height: 5px !important;
+  border-radius: 5px 5px 1px 1px !important;
+  background: var(--helmet) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .12),
+    0 1px 0 rgba(0, 0, 0, .2) !important;
+  z-index: 5 !important;
+}
+
+#battlefield .brick-helmet::before,
+#battlefield .brick-helmet::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+#battlefield .brick-arm {
+  position: absolute !important;
+  left: 13px !important;
+  bottom: 9px !important;
+  width: 4px !important;
+  height: 8px !important;
+  border-radius: 1px !important;
+  background: var(--uniform-dark) !important;
+  transform: rotate(-18deg) !important;
+  transform-origin: top center !important;
+  z-index: 4 !important;
+}
+
+/* Shared rifle construction. Build B will specialize national weapons without
+   changing this markup or the gameplay weapon keys. */
+#battlefield .brick-weapon {
+  position: absolute !important;
+  left: 13px !important;
+  bottom: 10px !important;
+  width: 14px !important;
+  height: 4px !important;
+  border-radius: 1px !important;
+  background: var(--weapon-wood) !important;
+  transform: rotate(-8deg) !important;
+  transform-origin: left center !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1) !important;
+  z-index: 6 !important;
+}
+
+#battlefield .brick-weapon::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 1px;
+  width: 8px;
+  height: 2px;
+  border-radius: 0 1px 1px 0;
+  background: var(--metal);
+  box-shadow: 5px 0 0 color-mix(in srgb, var(--metal) 72%, black);
+}
+
+#battlefield .brick-weapon::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 3px;
+  width: 5px;
+  height: 3px;
+  border-radius: 0 0 1px 1px;
+  background: color-mix(in srgb, var(--weapon-wood) 78%, black);
+}
+
+#battlefield .brick-soldier.role-smg .brick-weapon {
+  left: 13px !important;
+  bottom: 11px !important;
+  width: 10px !important;
+  height: 4px !important;
+  background: var(--metal) !important;
+  transform: rotate(-4deg) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09) !important;
+}
+
+#battlefield .brick-soldier.role-smg .brick-weapon::before {
+  left: 8px;
+  width: 5px;
+  box-shadow: none;
+}
+
+#battlefield .brick-soldier.role-smg .brick-weapon::after {
+  left: 3px;
+  top: 3px;
+  width: 3px;
+  height: 6px;
+  background: color-mix(in srgb, var(--metal) 65%, black);
+  transform: rotate(5deg);
+}
+
+#battlefield .brick-soldier.role-officer .brick-weapon {
+  left: 14px !important;
+  bottom: 11px !important;
+  width: 6px !important;
+  height: 3px !important;
+  background: var(--metal) !important;
+  transform: rotate(-22deg) !important;
+  box-shadow: none !important;
+}
+
+#battlefield .brick-soldier.role-officer .brick-weapon::before,
+#battlefield .brick-soldier.role-officer .brick-weapon::after {
+  content: none !important;
+}
+
+#battlefield .brick-soldier.role-lmg .brick-weapon {
+  left: 12px !important;
+  bottom: 9px !important;
+  width: 18px !important;
+  height: 4px !important;
+  transform: rotate(-5deg) !important;
+}
+
+#battlefield .brick-soldier.role-lmg .brick-weapon::before {
+  left: 13px;
+  width: 10px;
+}
+
+#battlefield .brick-soldier.role-lmg .brick-weapon::after {
+  left: 12px;
+  top: 3px;
+  width: 7px;
+  height: 6px;
+  border: 0;
+  border-left: 2px solid var(--metal);
+  border-right: 2px solid var(--metal);
+  background: transparent;
+  transform: skewX(-12deg);
+}
+
+#battlefield .brick-soldier.role-loader .brick-weapon,
+#battlefield .brick-soldier.role-crew .brick-weapon {
+  width: 8px !important;
+  opacity: .72 !important;
+}
+
+#battlefield .brick-soldier.role-mmg .brick-weapon {
+  left: 8px !important;
+  bottom: 6px !important;
+  width: 23px !important;
+  height: 4px !important;
+  background: var(--metal) !important;
+  transform: rotate(0) !important;
+}
+
+#battlefield .brick-soldier.role-mmg .brick-weapon::before {
+  left: 15px;
+  width: 9px;
+  box-shadow: none;
+}
+
+#battlefield .brick-soldier.role-mmg .brick-weapon::after {
+  left: 9px;
+  top: 3px;
+  width: 8px;
+  height: 7px;
+  border: 0;
+  border-left: 2px solid var(--metal);
+  border-right: 2px solid var(--metal);
+  background: transparent;
+  transform: skewX(-12deg);
+}
+
+/* Front/back views keep weapons deliberately side-biased for game readability. */
+#battlefield .brick-soldier.facing-down,
+#battlefield .brick-soldier.facing-up {
+  width: 19px !important;
+}
+
+#battlefield .brick-soldier.facing-down .brick-load {
+  left: 6px !important;
+  opacity: .24 !important;
+  z-index: 0 !important;
+}
+
+#battlefield .brick-soldier.facing-up .brick-load {
+  left: 4px !important;
+  bottom: 6px !important;
+  width: 11px !important;
+  opacity: 1 !important;
+  z-index: 3 !important;
+}
+
+#battlefield .brick-soldier.facing-up .brick-torso {
+  z-index: 1 !important;
+}
+
+#battlefield .brick-soldier.facing-up .brick-webbing {
+  opacity: .25 !important;
+}
+
+#battlefield .brick-soldier.facing-down .brick-weapon,
+#battlefield .brick-soldier.facing-up .brick-weapon {
+  left: 12px !important;
+  bottom: 8px !important;
+  transform: rotate(72deg) scale(.88) !important;
+  transform-origin: left center !important;
+}
+
+#battlefield .brick-soldier.facing-up .brick-weapon {
+  left: 2px !important;
+  transform: rotate(-72deg) scale(.88) !important;
+}
+
+#battlefield .brick-soldier.facing-down .brick-arm {
+  left: 12px !important;
+  transform: rotate(-5deg) !important;
+}
+
+#battlefield .brick-soldier.facing-up .brick-arm {
+  left: 4px !important;
+  transform: rotate(5deg) !important;
+}
+
+/* Explicit muzzle anchor remains local to the weapon assembly. */
+#battlefield .weapon-muzzle {
+  position: absolute !important;
+  right: -7px !important;
+  top: 50% !important;
+  width: 11px !important;
+  height: 11px !important;
+  display: grid !important;
+  place-items: center !important;
+  transform: translate(50%, -50%) scale(.2);
+  opacity: 0;
+  pointer-events: none !important;
+  z-index: 20 !important;
+}
+
+#battlefield .facing-left .weapon-muzzle {
+  right: auto !important;
+  left: -7px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #battlefield .brick-soldier {
+    transition: none !important;
+  }
+}

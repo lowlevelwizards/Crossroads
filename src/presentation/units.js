@@ -1,53 +1,51 @@
 "use strict";
 
 (() => {
-  // Unit markup and authored formations. This module returns HTML only.
+  // Unit-level LOD, labels, counters, and formation assembly. Individual model
+  // recipes and shape-built markup live in miniatures.js.
   const PRESENTATION = window.CROSSROADS_FORMATIONS;
+  const MINIATURES = window.CrossroadsMiniaturePresentation;
+  const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
+  const UNIT_QUALITY = window.CROSSROADS_UNIT_QUALITY;
+
   if (!PRESENTATION) {
     throw new Error("data/formations.js did not load before units.js.");
   }
+  if (!MINIATURES) {
+    throw new Error("src/presentation/miniatures.js did not load before units.js.");
+  }
+  if (!UNIT_TYPES || !UNIT_QUALITY) {
+    throw new Error("Unit type and quality data must load before units.js.");
+  }
+
+  const {
+    soldierRole,
+    weaponKeyForRole,
+    unitFacing,
+    brickSoldierHtml,
+    packedMMGFormationHtml,
+    deployedMMGFormationHtml
+  } = MINIATURES;
+
+  function qualityLabel(unit) {
+    return UNIT_QUALITY[unit?.quality]?.label ?? "Regular";
+  }
+
+  function isSupportTeam(unit) {
+    return unit?.role === "support";
+  }
 
   function roleAbbreviation(unit) {
-    return PRESENTATION.abbreviations[unit.role] ?? "RIF";
-  }
-
-  function unitFacing(unit) {
-    const facing = unit?.facing;
-    if (["left", "right", "up", "down"].includes(facing)) return facing;
-    return unit?.faction === "red" ? "left" : "right";
-  }
-
-  function farCounterHtml(unit) {
-    return `
-      <span class="far-unit-counter" aria-hidden="true">
-        <span class="far-counter-top">
-          ${qualityStripeHtml(unit)}
-          <strong>${roleAbbreviation(unit)}</strong>
-        </span>
-        <span class="far-counter-bottom">
-          <strong>${unit.soldiers}</strong>
-          ${unit.pins > 0 ? `<span class="counter-pins">P${unit.pins}</span>` : ""}
-        </span>
-      </span>
-    `;
-  }
-
-  function soldierRole(unit, index) {
-    if (unit.role === "officer") return index === 0 ? "officer" : "rifle";
-    if (unit.role === "support") return index === 0 ? "mmg" : "loader";
-    if (unit.role === "assault") {
-      const smgCount = unit.weapons?.smg ?? unit.soldiers;
-      return index < smgCount ? "smg" : "rifle";
-    }
-
-    const lmgCount = unit.weapons?.lmg ?? 0;
-    if (lmgCount > 0 && index === 0) return "lmg";
-    if (lmgCount > 0 && index === 1) return "loader";
-    return "rifle";
+    return UNIT_TYPES[unit?.type]?.short ?? ({
+      officer: "HQ",
+      line: "RIF",
+      assault: "SMG",
+      support: "MMG"
+    }[unit?.role] ?? "RIF");
   }
 
   function formationDefinition(unit, deployed = false) {
-    if (unit.role === "support") {
+    if (isSupportTeam(unit)) {
       return deployed
         ? PRESENTATION.formations.supportDeployed
         : PRESENTATION.formations.supportPacked;
@@ -68,45 +66,16 @@
     ].join(";");
   }
 
-  function weaponKeyForRole(role) {
-    if (role === "smg") return "smg";
-    if (role === "lmg") return "lmg";
-    if (role === "mmg") return "mmg";
-    if (role === "officer") return "pistol";
-    if (role === "loader" || role === "crew") return null;
-    return "rifle";
-  }
-
-  function brickSoldierHtml(unit, index, options = {}) {
-    const role = options.role ?? soldierRole(unit, index);
-    const slots = formationSlots(unit, options.deployed ?? false);
-    const slot = options.slot ?? slots[index] ?? [
-      20 + (index % 3) * 29,
-      34 + Math.floor(index / 3) * 36
-    ];
-    const extraClass = options.extraClass ? ` ${options.extraClass}` : "";
-    const facing = options.facing ?? unitFacing(unit);
-    const weaponKey = options.weaponKey ?? weaponKeyForRole(role);
-
+  function farCounterHtml(unit) {
     return `
-      <span class="model-wrap formation-slot slot-${index + 1}${extraClass}"
-            style="--slot-x:${slot[0]}%;--slot-y:${slot[1]}%"
-            aria-hidden="true">
-        <span class="model-hit-pad" aria-hidden="true"></span>
-        <span class="model-base-ring" aria-hidden="true"></span>
-        <span class="model-shadow"></span>
-        <span class="model-hop">
-          <span class="brick-soldier role-${role} facing-${facing}"
-                data-model-index="${index}"
-                ${weaponKey ? `data-weapon-key="${weaponKey}"` : ""}>
-          <span class="brick-legs"></span>
-          <span class="brick-pack"></span>
-          <span class="brick-torso"></span>
-          <span class="brick-head"></span>
-          <span class="brick-helmet"></span>
-          <span class="brick-arm"></span>
-          <span class="brick-weapon"><span class="weapon-muzzle" aria-hidden="true"></span></span>
-          </span>
+      <span class="far-unit-counter" aria-hidden="true">
+        <span class="far-counter-top">
+          ${qualityStripeHtml(unit)}
+          <strong>${roleAbbreviation(unit)}</strong>
+        </span>
+        <span class="far-counter-bottom">
+          <strong>${unit.soldiers}</strong>
+          ${unit.pins > 0 ? `<span class="counter-pins">P${unit.pins}</span>` : ""}
         </span>
       </span>
     `;
@@ -149,15 +118,10 @@
     const order = orderPresentation(unit);
     if (!order) return "";
 
-    const label =
-      detail === "close"
-        ? `<span>${order.short}</span>`
-        : "";
-
     return `
       <span class="ascii-chit physical-order-chit ${order.cls} detail-${detail}"
             aria-label="${order.short}">
-        <b>${order.symbol}</b>${label}
+        <b>${order.symbol}</b>${detail === "close" ? `<span>${order.short}</span>` : ""}
       </span>
     `;
   }
@@ -176,18 +140,13 @@
       stats.push(`<span class="nameplate-pins">P${unit.pins}</span>`);
     }
 
-    const showOrder = options.showOrder ?? true;
-    const order = showOrder ? orderPresentation(unit) : null;
-    const orderLabel =
-      order
-        ? `<span class="nameplate-order ${order.cls}"
-                 aria-label="${order.short}">
-             <b>${order.symbol}</b>
-             ${detail === "close" || detail === "building"
-               ? `<span>${order.short}</span>`
-               : ""}
-           </span>`
-        : "";
+    const order = (options.showOrder ?? true) ? orderPresentation(unit) : null;
+    const orderLabel = order
+      ? `<span class="nameplate-order ${order.cls}" aria-label="${order.short}">
+           <b>${order.symbol}</b>
+           ${detail === "close" || detail === "building" ? `<span>${order.short}</span>` : ""}
+         </span>`
+      : "";
 
     return `
       <span class="unit-label unit-label-${detail}">
@@ -199,49 +158,8 @@
     `;
   }
 
-  function packedMMGFormationHtml(unit) {
-    return Array.from(
-      { length: Math.max(1, unit.soldiers) },
-      (_, index) => brickSoldierHtml(unit, index)
-    ).join("");
-  }
-
-  function deployedMMGFormationHtml(unit) {
-    const crewCount = Math.max(1, unit.soldiers);
-    const crewSlots = formationSlots(unit, true);
-
-    const crew = Array.from(
-      { length: crewCount },
-      (_, index) => `
-        <span class="mmg-deployed-crew crew-${index + 1}">
-          ${brickSoldierHtml(unit, index, {
-            role: "crew",
-            slot: crewSlots[index] ?? [50, 50],
-            extraClass: "deployed-crew-model",
-            deployed: true
-          })}
-        </span>
-      `
-    ).join("");
-
-    return `
-      <span class="mmg-deployed-formation" style="--mmg-facing:${unit.mmgFacing}deg">
-        <span class="mmg-tripod"><i></i><i></i><i></i></span>
-        <span class="mmg-receiver"></span>
-        <span class="mmg-barrel"><span class="weapon-muzzle" aria-hidden="true"></span></span>
-        ${crew}
-      </span>
-    `;
-  }
-
   function qualityStripeHtml(unit) {
-    const count =
-      unit.quality === "veteran"
-        ? 3
-        : unit.quality === "regular"
-          ? 2
-          : 1;
-
+    const count = unit.quality === "veteran" ? 3 : unit.quality === "regular" ? 2 : 1;
     return `
       <span class="quality-nameplate-stripes quality-${unit.quality}"
             aria-label="${qualityLabel(unit)}">
@@ -264,26 +182,31 @@
     `;
   }
 
+  function formationModelsHtml(unit) {
+    const deployed = Boolean(unit.mmgDeployed && isSupportTeam(unit));
+    const slots = formationSlots(unit, deployed);
 
+    if (isSupportTeam(unit)) {
+      return deployed
+        ? deployedMMGFormationHtml(unit, slots)
+        : packedMMGFormationHtml(unit, slots);
+    }
+
+    return Array.from(
+      { length: Math.max(1, unit.soldiers) },
+      (_, index) => brickSoldierHtml(unit, index, {
+        slot: slots[index] ?? [50, 50]
+      })
+    ).join("");
+  }
 
   function unitFormationHtml(unit) {
-    const models =
-      isMMGTeam(unit)
-        ? (
-            unit.mmgDeployed
-              ? deployedMMGFormationHtml(unit)
-              : packedMMGFormationHtml(unit)
-          )
-        : Array.from(
-            { length: Math.max(1, unit.soldiers) },
-            (_, index) => brickSoldierHtml(unit, index)
-          ).join("");
-
+    const models = formationModelsHtml(unit);
     const farOrderChit = orderChitHtml(unit, "far");
-
-    const stateClass = isMMGTeam(unit)
+    const stateClass = isSupportTeam(unit)
       ? (unit.mmgDeployed ? " is-mmg-deployed" : " is-mmg-packed")
       : "";
+    const style = formationStyle(unit, unit.mmgDeployed);
 
     return `
       <span class="unit-visual-travel">
@@ -294,12 +217,9 @@
         </span>
 
         <span class="unit-representation unit-representation-medium${stateClass}">
-          <span class="unit-model-group"
-                style="${formationStyle(unit, unit.mmgDeployed)}">
+          <span class="unit-model-group" style="${style}">
             <span class="unit-formation-shell">
-              <span class="unit-formation">
-                ${models}
-              </span>
+              <span class="unit-formation">${models}</span>
               ${pinScatterHtml(unit)}
             </span>
           </span>
@@ -307,12 +227,9 @@
         </span>
 
         <span class="unit-representation unit-representation-close${stateClass}">
-          <span class="unit-model-group"
-                style="${formationStyle(unit, unit.mmgDeployed)}">
+          <span class="unit-model-group" style="${style}">
             <span class="unit-formation-shell">
-              <span class="unit-formation">
-                ${models}
-              </span>
+              <span class="unit-formation">${models}</span>
               ${pinScatterHtml(unit)}
             </span>
           </span>
@@ -322,6 +239,8 @@
     `;
   }
 
+  // Preserve the established public API while delegating individual miniature
+  // concerns to CrossroadsMiniaturePresentation.
   window.CrossroadsUnitPresentation = Object.freeze({
     farCounterHtml,
     soldierRole,
