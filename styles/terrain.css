@@ -1,0 +1,130 @@
+/* CROSSROADS TERRAIN LIBRARY — BUILD T3 */
+:root {
+  --terrain-outline: #4f493c;
+  --terrain-shadow: rgba(39, 36, 29, .28);
+  --terrain-label-bg: rgba(56, 53, 44, .68);
+}
+
+.battlefield.mat-grass-temperate { background-color: #aeb18a; }
+.battlefield.mat-grass-dry { background-color: #b9a77b; }
+.battlefield.mat-dirt { background-color: #9f8668; }
+.battlefield.mat-forest-floor { background-color: #7e8062; }
+.battlefield.mat-cobblestone { background-color: #99988c; }
+.battlefield.mat-mud { background-color: #7c705e; }
+
+.terrain-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.terrain-piece {
+  position: absolute;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 5px 3px var(--terrain-shadow));
+}
+.terrain-piece .terrain-label {
+  z-index: 20;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--terrain-label-bg);
+  color: #f5efe0;
+  font-size: clamp(7px, .8vw, 10px);
+  letter-spacing: .05em;
+  opacity: .88;
+}
+
+/* Roads */
+.terrain-road {
+  background: #907d5f;
+  border: 2px solid rgba(83, 68, 50, .35);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 5px rgba(213, 191, 143, .12);
+  z-index: 0;
+}
+.terrain-road::after {
+  content: ""; position: absolute; inset: 37% 5%; border-top: 2px dashed rgba(224, 207, 163, .28);
+}
+.terrain-road_curve { border-radius: 50% 50% 12px 12px; background: #907d5f; border: 2px solid rgba(83,68,50,.35); }
+.terrain-road_curve .road-curve-inner { position:absolute; inset: 25%; border-radius: 50%; background: #aeb18a; }
+.terrain-road_crossroads { background:#907d5f; border-radius:16px; }
+.terrain-road_crossroads .road-arm { position:absolute; left:-38%; right:-38%; top:32%; height:36%; background:#907d5f; border:2px solid rgba(83,68,50,.25); border-radius:14px; }
+.terrain-road_crossroads .road-arm-2 { transform:rotate(90deg); }
+
+/* Railway */
+.terrain-rail, .terrain-rail_crossing { background:#796f5c; border-radius:4px; overflow:hidden; }
+.rail-line { position:absolute; top:18%; bottom:18%; width:8%; background:#4e5050; border-radius:3px; z-index:3; }
+.rail-line-1 { left:24%; } .rail-line-2 { right:24%; }
+.rail-sleeper { position:absolute; left:8%; right:8%; height:7%; background:#4b3727; border-radius:2px; }
+.rail-sleeper-1{top:3%}.rail-sleeper-2{top:13%}.rail-sleeper-3{top:23%}.rail-sleeper-4{top:33%}.rail-sleeper-5{top:43%}.rail-sleeper-6{top:53%}.rail-sleeper-7{top:63%}.rail-sleeper-8{top:73%}.rail-sleeper-9{top:83%}.rail-sleeper-10{top:93%}
+.terrain-rail_crossing::after { content:""; position:absolute; left:0; right:0; top:37%; height:26%; background:#a28a66; z-index:4; }
+
+/* Trees */
+.terrain-woods, .terrain-orchard {
+  border: 2px dashed #3f6840;
+  border-radius: 18px;
+  background: rgba(72, 103, 58, .18);
+  overflow: visible;
+}
+.tree-canopy, .orchard-tree {
+  position:absolute; width:31%; aspect-ratio:1; border-radius:50%;
+  background:#648257; border:6px solid #405f3f;
+  box-shadow: 7px 8px 0 rgba(54,72,47,.23);
+}
+.tree-canopy-1{left:5%;top:8%}.tree-canopy-2{left:34%;top:3%}.tree-canopy-3{right:5%;top:11%}
+.tree-canopy-4{left:12%;top:41%}.tree-canopy-5{left:42%;top:34%}.tree-canopy-6{right:4%;top:47%}
+.tree-canopy-7{left:29%;bottom:1%}.tree-canopy-8{left:2%;bottom:2%}.tree-canopy-9{right:3%;bottom:1%}
+.terrain-id-woods .tree-canopy-8,.terrain-id-woods .tree-canopy-9{display:none}
+.orchard-tree { width:22%; border-width:4px; box-shadow:4px 5px 0 rgba(54,72,47,.2); }
+.orchard-tree-1{left:6%;top:7%}.orchard-tree-2{left:39%;top:7%}.orchard-tree-3{right:6%;top:7%}
+.orchard-tree-4{left:6%;top:39%}.orchard-tree-5{left:39%;top:39%}.orchard-tree-6{right:6%;top:39%}
+.orchard-tree-7{left:6%;bottom:5%}.orchard-tree-8{left:39%;bottom:5%}.orchard-tree-9{right:6%;bottom:5%}
+
+/* Linear terrain */
+.terrain-wall { border-radius:7px; background:#756b5b; padding:2px; }
+.wall-stone { position:absolute; top:12%; width:13%; height:76%; background:#9d988b; border:2px solid #5e584c; border-radius:45%; }
+.wall-stone-1{left:1%}.wall-stone-2{left:13%}.wall-stone-3{left:25%}.wall-stone-4{left:37%}.wall-stone-5{left:49%}.wall-stone-6{left:61%}.wall-stone-7{left:73%}.wall-stone-8{left:85%}
+.terrain-hedge { background:#3e663f; border:3px solid #334e34; border-radius:999px; }
+.hedge-clump { position:absolute; top:-15%; width:20%; height:130%; border-radius:50%; background:#66845b; border:2px solid #405d3e; }
+.hedge-clump-1{left:0}.hedge-clump-2{left:14%}.hedge-clump-3{left:28%}.hedge-clump-4{left:42%}.hedge-clump-5{left:56%}.hedge-clump-6{left:70%}.hedge-clump-7{right:0}
+.terrain-fence { background:transparent; }
+.fence-rail { position:absolute; left:2%; right:2%; height:14%; background:#76583b; border-radius:4px; }
+.fence-rail-1{top:27%}.fence-rail-2{bottom:27%}
+.fence-post { position:absolute; top:0; bottom:0; width:6%; background:#5b432f; border-radius:3px; }
+.fence-post-1{left:0}.fence-post-2{left:24%}.fence-post-3{left:48%}.fence-post-4{left:72%}.fence-post-5{right:0}
+.terrain-ditch { border-radius:999px; background:#7e7254; box-shadow:inset 0 4px 0 #5c523d, inset 0 -4px 0 #a2a276; }
+.terrain-stream { border-radius:999px; background:#586e72; border:5px solid #6e7757; }
+.stream-water { position:absolute; inset:18% 0; border-radius:999px; background:#6f969c; }
+
+/* Buildings */
+.terrain-piece.terrain-building { pointer-events:auto; overflow:visible; background:#92795f; border:5px solid #544637; border-radius:7px; box-shadow:0 7px 0 rgba(56,46,36,.38); }
+.terrain-roof { position:absolute; inset:5%; background:#8a654e; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); border-radius:5px; }
+.terrain-roof-ridge { position:absolute; left:48%; top:8%; bottom:8%; width:4%; background:rgba(63,45,34,.55); transform:rotate(45deg); transform-origin:center; }
+.terrain-id-barn .terrain-roof { background:#765846; }
+.terrain-id-cottage .terrain-roof { background:#9a7058; }
+.terrain-id-shed .terrain-roof { inset:8%; background:#6f6554; clip-path:none; }
+.terrain-piece .building-door { position:absolute; left:42%; bottom:-5px; width:17%; height:13%; background:#3f3025; border:2px solid #271f19; z-index:6; }
+.terrain-piece .building-window { position:absolute; width:13%; height:14%; background:#78939a; border:3px solid #3f3931; z-index:6; }
+.terrain-piece .building-window-1{left:16%;top:24%}.terrain-piece .building-window-2{right:16%;top:24%}.terrain-piece .building-window-3{right:16%;bottom:18%}
+.terrain-piece .building-chimney { position:absolute; right:12%; top:-7%; width:12%; height:21%; background:#634b3a; border:2px solid #3f3329; z-index:7; }
+.terrain-id-barn .building-window { width:11%; height:18%; }
+.terrain-id-shed .building-window { left:15%; top:35%; }
+
+/* Defences and scatter */
+.terrain-foxholes { background:rgba(110,91,59,.22); border-radius:18px; }
+.foxhole-pit { position:absolute; width:28%; height:56%; border-radius:50%; background:#594a36; border:5px solid #8b7955; }
+.foxhole-pit-1{left:4%;top:22%}.foxhole-pit-2{left:36%;top:8%}.foxhole-pit-3{right:4%;top:25%}
+.terrain-sandbags { border-radius:12px; }
+.sandbag { position:absolute; top:20%; width:14%; height:60%; border-radius:45%; background:#9a875f; border:2px solid #655a43; }
+.sandbag-1{left:0}.sandbag-2{left:12%}.sandbag-3{left:24%}.sandbag-4{left:36%}.sandbag-5{left:48%}.sandbag-6{left:60%}.sandbag-7{left:72%}.sandbag-8{left:84%}
+.terrain-haystack { border-radius:50%; background:#b99b54; border:4px solid #7c693d; }
+.hay-bundle { position:absolute; border-radius:50%; background:#c9a65c; border:2px solid #8c753f; }
+.hay-bundle-1{inset:8% 38% 8% 8%}.hay-bundle-2{inset:8% 8% 8% 38%}.hay-bundle-3{inset:25% 20%}
+.terrain-well { border-radius:50%; background:#827866; border:5px solid #585144; }
+.well-ring{position:absolute;inset:12%;border-radius:50%;background:#a39d8f}.well-water{position:absolute;inset:30%;border-radius:50%;background:#65868c}
+.terrain-crates,.terrain-woodpile{filter:drop-shadow(0 3px 2px var(--terrain-shadow))}
+.crate{position:absolute;width:42%;height:48%;background:#8a6845;border:3px solid #55422f}.crate-1{left:0;top:0}.crate-2{right:0;top:8%}.crate-3{left:28%;bottom:0}
+.log{position:absolute;left:4%;right:4%;height:17%;background:#6c4b31;border:2px solid #493522;border-radius:999px}.log-1{top:0}.log-2{top:16%}.log-3{top:32%}.log-4{top:48%}.log-5{top:64%}.log-6{top:80%}
+
+/* Zoom label discipline */
+body.camera-close .terrain-piece .terrain-label { opacity: .35; }
+body.camera-close .terrain-piece:hover .terrain-label { opacity: .95; }
+.terrain-road.is-vertical::after { inset:5% 37%; border-top:0; border-left:2px dashed rgba(224,207,163,.28); }

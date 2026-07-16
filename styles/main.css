@@ -6643,3 +6643,7 @@ body.targeting-confirmed
 .terrain-layer > .terrain.building {
   pointer-events: auto;
 }
+
+/* Build T3: terrain library scenario card */
+.scenario-card.terrain-library-card { border-top: 10px solid #65766a; }
+.scenario-card.terrain-library-card button { background:#d5dfd4; border-color:#526257; }
