@@ -73,7 +73,8 @@
       getPendingTouchTargetId,
       getConfirmedTargetId,
       getTargetingSnapshot,
-      getCurrentFaction
+      getCurrentFaction,
+      commandSupport
     } = deps;
 
     function routeUnitTap(unitId) {
@@ -134,23 +135,6 @@
         battlefield.appendChild(arc);
       }
 
-      const commandRingsRelevant =
-        phase === "choose-unit" ||
-        phase === "choose-order" ||
-        getUnit(selectedUnitId)?.role === "officer";
-
-      for (const officer of commandRingsRelevant
-        ? livingUnits().filter(unit => unit.role === "officer")
-        : []) {
-        const ring = document.createElement("div");
-        ring.className = `command-ring ${officer.faction}`;
-        ring.style.left = `${(officer.x / RULES.tableWidth) * 100}%`;
-        ring.style.top = `${(officer.y / RULES.tableHeight) * 100}%`;
-        ring.style.width = `${inchesToPixels(RULES.commandRadius * 2)}px`;
-        ring.style.height = `${inchesToPixels(RULES.commandRadius * 2)}px`;
-        battlefield.appendChild(ring);
-      }
-
       for (const unit of livingUnits()) {
         if (unit.inBuilding) continue;
 
@@ -165,10 +149,35 @@
           `${unit.name}, ${qualityLabel(unit)}, ${unit.soldiers} soldiers, ${unit.ambush ? "Ambush" : unit.down ? "Down" : unit.order ?? "Ready"}, ${unit.pins} pins`
         );
         el.innerHTML = unitFormationHtml(unit);
+
+        if (unit.role === "officer") {
+          const travel = el.querySelector(".unit-visual-travel");
+          if (travel) {
+            const ring = document.createElement("span");
+            ring.className = `command-ring ${unit.faction}`;
+            ring.style.width = `${inchesToPixels(RULES.commandRadius * 2)}px`;
+            ring.style.height = `${inchesToPixels(RULES.commandRadius * 2)}px`;
+            travel.prepend(ring);
+          }
+        }
+
+        const support = commandSupport(unit);
+        if (support) {
+          el.classList.add("command-supported");
+          el.querySelectorAll(".unit-label").forEach(label => {
+            const star = document.createElement("span");
+            star.className = "command-support-star";
+            star.textContent = "★";
+            star.setAttribute("aria-label", `Supported by ${support.name}`);
+            label.appendChild(star);
+          });
+        }
+
         el.querySelectorAll(".unit-label").forEach(label => label.classList.add("unit-label-hit"));
 
         if (unit.activated) el.classList.add("activated");
         if (unit.ambush) el.classList.add("ambush");
+        if (unit.down) el.classList.add("down");
         if (unit.id === selectedUnitId || unit.id === deploymentUnitId) el.classList.add("selected");
         if (unit.id === pendingTouchTargetId && !confirmedTargetId) {
           el.classList.add("touch-pending-target");
@@ -259,7 +268,56 @@
     };
   }
 
+  function applyUnitFacing(battlefield, unitId, facing) {
+    const root = battlefield.querySelector(
+      `.unit[data-unit-id="${CSS.escape(unitId)}"]`
+    );
+    if (!root) return;
+
+    root.querySelectorAll(".brick-soldier").forEach(soldier => {
+      soldier.classList.remove(
+        "facing-up",
+        "facing-down",
+        "facing-left",
+        "facing-right"
+      );
+      soldier.classList.add(`facing-${facing}`);
+    });
+  }
+
+  function confirmTargetInPlace(battlefield, targetId) {
+    battlefield.querySelectorAll(
+      ".unit.targetable-legal, .unit.targetable-protected, " +
+      ".unit.targetable-blocked, .unit.targetable-assault, " +
+      ".unit.confirmed-target"
+    ).forEach(unit => {
+      unit.classList.remove(
+        "targetable-legal",
+        "targetable-protected",
+        "targetable-blocked",
+        "targetable-assault",
+        "confirmed-target"
+      );
+    });
+
+    battlefield.querySelector(
+      `.unit[data-unit-id="${CSS.escape(targetId)}"]`
+    )?.classList.add("confirmed-target");
+
+    document.body.classList.add("targeting-confirmed");
+  }
+
+  function clearTargetConfirmation(battlefield) {
+    battlefield.querySelectorAll(".unit.confirmed-target").forEach(unit =>
+      unit.classList.remove("confirmed-target")
+    );
+    document.body.classList.remove("targeting-confirmed");
+  }
+
   window.CrossroadsBattlefieldPresentation = Object.freeze({
-    createUnitLayerRenderer
+    createUnitLayerRenderer,
+    applyUnitFacing,
+    confirmTargetInPlace,
+    clearTargetConfirmation
   });
 })();

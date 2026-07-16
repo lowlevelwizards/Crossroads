@@ -119,19 +119,68 @@
     return "R";
   }
 
-  function orderAscii(unit) {
-    if (unit.ambush) return { symbol: "A", label: "AMBUSH", cls: "order-ambush" };
-    if (unit.down) return { symbol: "↓", label: "DOWN", cls: "order-down" };
+  const ORDER_PRESENTATION = Object.freeze({
+    Fire: Object.freeze({ symbol: "✦", short: "FIRE", cls: "order-fire" }),
+    Run: Object.freeze({ symbol: "≫", short: "RUN", cls: "order-run" }),
+    Advance: Object.freeze({ symbol: "›", short: "ADV", cls: "order-advance" }),
+    Assault: Object.freeze({ symbol: "!", short: "ASLT", cls: "order-assault" }),
+    Rally: Object.freeze({ symbol: "+", short: "RALLY", cls: "order-rally" }),
+    Ambush: Object.freeze({ symbol: "A", short: "AMB", cls: "order-ambush" }),
+    Down: Object.freeze({ symbol: "↓", short: "DOWN", cls: "order-down" })
+  });
 
-    const map = {
-      Fire: { symbol: "✦", label: "FIRE", cls: "order-fire" },
-      Run: { symbol: "≫", label: "RUN", cls: "order-run" },
-      Advance: { symbol: "›", label: "ADV", cls: "order-advance" },
-      Assault: { symbol: "!", label: "ASSAULT", cls: "order-assault" },
-      Rally: { symbol: "+", label: "RALLY", cls: "order-rally" },
-      Down: { symbol: "↓", label: "DOWN", cls: "order-down" }
-    };
-    return map[unit.order ?? ""] ?? null;
+  function orderPresentation(unitOrOrder) {
+    if (typeof unitOrOrder === "string") {
+      return ORDER_PRESENTATION[unitOrOrder] ?? null;
+    }
+
+    const unit = unitOrOrder;
+    if (!unit) return null;
+    if (unit.ambush) return ORDER_PRESENTATION.Ambush;
+    if (unit.down) return ORDER_PRESENTATION.Down;
+
+    const raw = String(unit.order ?? "").split(" · ")[0];
+    if (raw === "Ambush Fired") return ORDER_PRESENTATION.Fire;
+    if (raw === "MMG Deployed") return ORDER_PRESENTATION.Fire;
+    return ORDER_PRESENTATION[raw] ?? null;
+  }
+
+  function orderChitHtml(unit, detail = "close") {
+    const order = orderPresentation(unit);
+    if (!order) return "";
+
+    const label =
+      detail === "close"
+        ? `<span>${order.short}</span>`
+        : "";
+
+    return `
+      <span class="ascii-chit physical-order-chit ${order.cls} detail-${detail}"
+            aria-label="${order.short}">
+        <b>${order.symbol}</b>${label}
+      </span>
+    `;
+  }
+
+  function unitNameplateHtml(unit, options = {}) {
+    const detail = options.detail ?? "close";
+    const name =
+      options.name ??
+      (detail === "medium" ? roleAbbreviation(unit) : unit.name);
+
+    const stats = [];
+    if (options.showMen) stats.push(`<span class="nameplate-men">♟${unit.soldiers}</span>`);
+    if (options.showPins && unit.pins > 0) {
+      stats.push(`<span class="nameplate-pins">P${unit.pins}</span>`);
+    }
+
+    return `
+      <span class="unit-label unit-label-${detail}">
+        ${qualityStripeHtml(unit)}
+        <span class="unit-label-name">${name}</span>
+        ${stats.length ? `<span class="unit-label-stats">${stats.join("")}</span>` : ""}
+      </span>
+    `;
   }
 
   function packedMMGFormationHtml(unit) {
@@ -199,23 +248,6 @@
     `;
   }
 
-  function mediumLabelHtml(unit) {
-    return `
-      <span class="unit-label unit-label-medium">
-        ${qualityStripeHtml(unit)}
-        <span class="unit-label-name">${roleAbbreviation(unit)}</span>
-      </span>
-    `;
-  }
-
-  function closeLabelHtml(unit) {
-    return `
-      <span class="unit-label unit-label-close">
-        ${qualityStripeHtml(unit)}
-        <span class="unit-label-name">${unit.name}</span>
-      </span>
-    `;
-  }
 
 
   function unitFormationHtml(unit) {
@@ -231,12 +263,9 @@
             (_, index) => brickSoldierHtml(unit, index)
           ).join("");
 
-    const order = orderAscii(unit);
-    const stateChits = order
-      ? `<span class="ascii-chit physical-order-chit ${order.cls}">
-           <b>${order.symbol}</b><span>${order.label}</span>
-         </span>`
-      : "";
+    const farOrderChit = orderChitHtml(unit, "far");
+    const mediumOrderChit = orderChitHtml(unit, "medium");
+    const closeOrderChit = orderChitHtml(unit, "close");
 
     const stateClass = isMMGTeam(unit)
       ? (unit.mmgDeployed ? " is-mmg-deployed" : " is-mmg-packed")
@@ -246,6 +275,7 @@
       <span class="unit-visual-travel">
         <span class="unit-representation unit-representation-far${stateClass}">
           ${farCounterHtml(unit)}
+          <span class="unit-state-line unit-state-line-far">${farOrderChit}</span>
         </span>
 
         <span class="unit-representation unit-representation-medium${stateClass}">
@@ -258,7 +288,8 @@
               ${pinScatterHtml(unit)}
             </span>
           </span>
-          ${mediumLabelHtml(unit)}
+          ${unitNameplateHtml(unit, { detail: "medium" })}
+          <span class="unit-state-line unit-state-line-medium">${mediumOrderChit}</span>
         </span>
 
         <span class="unit-representation unit-representation-close${stateClass}">
@@ -271,8 +302,8 @@
               ${pinScatterHtml(unit)}
             </span>
           </span>
-          ${closeLabelHtml(unit)}
-          <span class="unit-state-line">${stateChits}</span>
+          ${unitNameplateHtml(unit, { detail: "close" })}
+          <span class="unit-state-line unit-state-line-close">${closeOrderChit}</span>
         </span>
       </span>
     `;
@@ -286,7 +317,10 @@
     formationStyle,
     brickSoldierHtml,
     roleAscii,
-    orderAscii,
+    ORDER_PRESENTATION,
+    orderPresentation,
+    orderChitHtml,
+    unitNameplateHtml,
     packedMMGFormationHtml,
     deployedMMGFormationHtml,
     qualityStripeHtml,
