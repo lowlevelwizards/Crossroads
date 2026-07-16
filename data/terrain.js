@@ -1,61 +1,56 @@
 "use strict";
 
-/*
-  BUILD T1 — DYNAMIC TERRAIN FOUNDATION
+/* BUILD T3 — CROSSROADS TERRAIN LIBRARY MVP */
+const openRules = Object.freeze({ movement: "open", cover: null, los: "clear" });
+const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5 });
+const crossingHard = Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 });
+const buildingRules = Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 });
 
-  Terrain types are immutable reusable definitions. Scenarios place instances of
-  those definitions. CROSSROADS_TERRAIN remains a small mutable compatibility
-  view for the current rules engine until Build T2 moves geometry queries to the
-  instance collection directly.
-*/
-window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
-  road_horizontal: Object.freeze({
-    id: "road_horizontal",
-    family: "road",
-    renderer: "road",
-    label: "road",
-    rules: Object.freeze({ movement: "open", cover: null, los: "clear" })
-  }),
-  road_vertical: Object.freeze({
-    id: "road_vertical",
-    family: "road",
-    renderer: "road",
-    label: "road",
-    rules: Object.freeze({ movement: "open", cover: null, los: "clear" })
-  }),
-  woods: Object.freeze({
-    id: "woods",
-    family: "natural",
-    renderer: "woods",
-    label: "woods",
-    rules: Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5 })
-  }),
-  wall: Object.freeze({
-    id: "wall",
-    family: "linear",
-    renderer: "wall",
-    label: "low wall",
-    rules: Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 })
-  }),
-  building: Object.freeze({
-    id: "building",
-    family: "building",
-    renderer: "building",
-    label: "farmhouse",
-    rules: Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 })
-  }),
-  barn: Object.freeze({
-    id: "barn",
-    family: "building",
-    renderer: "building",
-    label: "barn",
-    rules: Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 })
-  })
+function terrainType(id, family, renderer, label, rules, editor = {}) {
+  return Object.freeze({ id, family, renderer, label, rules, editor: Object.freeze(editor) });
+}
+
+window.CROSSROADS_TERRAIN_MATS = Object.freeze({
+  grass_temperate: Object.freeze({ id: "grass_temperate", label: "Temperate Grass", cssClass: "mat-grass-temperate" }),
+  grass_dry: Object.freeze({ id: "grass_dry", label: "Dry Grass", cssClass: "mat-grass-dry" }),
+  dirt: Object.freeze({ id: "dirt", label: "Dirt", cssClass: "mat-dirt" }),
+  forest_floor: Object.freeze({ id: "forest_floor", label: "Forest Floor", cssClass: "mat-forest-floor" }),
+  cobblestone: Object.freeze({ id: "cobblestone", label: "Cobblestone", cssClass: "mat-cobblestone" }),
+  mud: Object.freeze({ id: "mud", label: "Mud", cssClass: "mat-mud" })
 });
 
-// Temporary runtime compatibility records used by the existing movement,
-// shooting, assault, and building systems. Coordinates are hydrated from the
-// active scenario's terrain instances by applyScenarioDefinition().
+window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
+  road_horizontal: terrainType("road_horizontal", "transport", "road", "dirt road", openRules),
+  road_vertical: terrainType("road_vertical", "transport", "road", "dirt road", openRules),
+  road_straight: terrainType("road_straight", "transport", "road", "dirt road", openRules, { rotatable: true, resizable: true }),
+  road_curve: terrainType("road_curve", "transport", "road_curve", "road bend", openRules, { rotatable: true }),
+  road_crossroads: terrainType("road_crossroads", "transport", "road_crossroads", "crossroads", openRules, { rotatable: true }),
+  rail_straight: terrainType("rail_straight", "transport", "rail", "railway", openRules, { rotatable: true, resizable: true }),
+  rail_crossing: terrainType("rail_crossing", "transport", "rail_crossing", "rail crossing", openRules, { rotatable: true }),
+
+  woods: terrainType("woods", "natural", "woods", "woods", roughSoft, { rotatable: true, resizable: true }),
+  woods_dense: terrainType("woods_dense", "natural", "woods", "dense woods", roughSoft, { rotatable: true, resizable: true }),
+  orchard: terrainType("orchard", "natural", "orchard", "orchard", roughSoft, { rotatable: true, resizable: true }),
+  hedge: terrainType("hedge", "linear", "hedge", "hedge", crossingHard, { rotatable: true, resizable: true }),
+  fence_wood: terrainType("fence_wood", "linear", "fence", "wood fence", crossingHard, { rotatable: true, resizable: true }),
+  wall: terrainType("wall", "linear", "wall", "low wall", crossingHard, { rotatable: true, resizable: true }),
+  ditch: terrainType("ditch", "linear", "ditch", "ditch", Object.freeze({ movement: "rough", cover: "soft", los: "clear", save: 5 }), { rotatable: true, resizable: true }),
+  stream: terrainType("stream", "water", "stream", "stream", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
+
+  building: terrainType("building", "building", "building", "farmhouse", buildingRules),
+  farmhouse: terrainType("farmhouse", "building", "building", "farmhouse", buildingRules),
+  barn: terrainType("barn", "building", "building", "barn", buildingRules),
+  cottage: terrainType("cottage", "building", "building", "cottage", buildingRules),
+  shed: terrainType("shed", "building", "building", "shed", buildingRules),
+
+  foxholes: terrainType("foxholes", "defensive", "foxholes", "foxholes", Object.freeze({ movement: "open", cover: "hard", los: "clear", save: 4 })),
+  sandbags: terrainType("sandbags", "defensive", "sandbags", "sandbags", crossingHard),
+  haystack: terrainType("haystack", "scatter", "haystack", "haystack", Object.freeze({ movement: "open", cover: "soft", los: "obscuring", save: 5 })),
+  well: terrainType("well", "scatter", "well", "well", openRules),
+  crates: terrainType("crates", "scatter", "crates", "crates", Object.freeze({ movement: "open", cover: "soft", los: "clear", save: 5 })),
+  woodpile: terrainType("woodpile", "scatter", "woodpile", "wood pile", Object.freeze({ movement: "open", cover: "soft", los: "clear", save: 5 }))
+});
+
 window.CROSSROADS_TERRAIN = {
   woods: { id: "woods", label: "woods", type: "soft", x: 15, y: 28, width: 18, height: 14, save: 5 },
   wall: { id: "wall", label: "low wall", type: "hard", x: 38, y: 30, width: 17, height: 2.5, save: 4 },
