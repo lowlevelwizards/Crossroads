@@ -23,6 +23,7 @@ DOCUMENT LAYOUT
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Crossroads 1939–1945 — Infantry Core 1.7C</title>
     <link rel="stylesheet" href="styles/main.css?v=3nf3">
+    <link rel="stylesheet" href="styles/terrain.css?v=3t3">
     <link rel="stylesheet" href="styles/miniatures.css?v=3ni6">
     <link rel="stylesheet" href="styles/faction-kits.css?v=3ni6">
     <link rel="stylesheet" href="styles/unit-transforms.css?v=3nh2">
@@ -59,7 +60,7 @@ DOCUMENT LAYOUT
       <div class="scenario-menu-heading">
         <div class="modal-kicker">Choose Scenario</div>
         <h2 id="scenarioMenuTitle">Select a Mission</h2>
-        <p>Three battles, three different tactical problems. All use the same infantry core.</p>
+        <p>Three battles and one terrain catalogue. All use the same modular battlefield system.</p>
       </div>
       <div class="scenario-card-grid">
         <article class="scenario-card crossroads">
@@ -85,6 +86,14 @@ DOCUMENT LAYOUT
           <p>A compact defensive battle. Poland holds a farmhouse and barn while Germany attacks through fields, walls, and woods.</p>
           <div class="scenario-card-meta"><span>4 rounds</span><span>Defensive</span><span>Fixed deployment</span></div>
           <button type="button" onclick="window.CrossroadsFlow.selectScenario('hold_the_farm');">SELECT HOLD THE FARM</button>
+        </article>
+        <article class="scenario-card terrain-library-card">
+          <div class="scenario-card-symbol">▦</div>
+          <h3>Terrain Library</h3>
+          <div class="scenario-card-tag">Browse modular pieces</div>
+          <p>A playable style sheet showing roads, railway, woods, linear terrain, buildings, defences, and scatter beside infantry for scale.</p>
+          <div class="scenario-card-meta"><span>Catalogue</span><span>Fixed layout</span><span>Editor foundation</span></div>
+          <button type="button" onclick="window.CrossroadsFlow.selectScenario('terrain_library');">OPEN TERRAIN LIBRARY</button>
         </article>
       </div>
       <button class="scenario-menu-back" type="button" onclick="window.CrossroadsFlow.backToMainMenu();">BACK</button>
@@ -227,6 +236,7 @@ DOCUMENT LAYOUT
           <option value="take_the_crossroads">Take the Crossroads</option>
           <option value="hold_the_farm">Hold the Farm</option>
           <option value="breakthrough">Breakthrough</option>
+          <option value="terrain_library">Terrain Library</option>
         </select>
         <div id="scenarioBrief" class="scenario-brief"></div>
         <div id="deploymentProgress" class="deployment-progress">Deployment not started.</div>
@@ -463,12 +473,12 @@ DOCUMENT LAYOUT
   </script>
   <script src="data/stage.js"></script>
   <script src="data/weapons.js"></script>
-  <script src="data/terrain.js"></script>
+  <script src="data/terrain.js?v=3t3"></script>
   <script src="data/unit-quality.js"></script>
   <script src="data/unit-types.js?v=3ni3"></script>
   <script src="data/faction-kits.js?v=3ni3"></script>
-  <script src="data/scenarios.js?v=3ni2"></script>
-  <script src="src/presentation/terrain.js?v=3t2"></script>
+  <script src="data/scenarios.js?v=3t3"></script>
+  <script src="src/presentation/terrain.js?v=3t3"></script>
   <script src="src/infrastructure/commands.js"></script>
   <script src="src/infrastructure/dom.js"></script>
   <script src="src/infrastructure/refresh.js"></script>
