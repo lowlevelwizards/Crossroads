@@ -476,7 +476,7 @@
           typeof packedMMGFormationHtml === "function" &&
           typeof deployedMMGFormationHtml === "function",
         visualStability:
-          Boolean(buildingOccupancyTab) &&
+          Boolean(buildingOccupancyBadge) &&
           typeof qualityStripeHtml === "function",
         simpleUnitUI:
           typeof farCounterHtml === "function" &&
@@ -540,6 +540,7 @@
       restartButton: document.getElementById("restartButton"),
       cancelButton: document.getElementById("cancelButton"),
       finishAdvanceButton: document.getElementById("finishAdvanceButton"),
+      addWaypointButton: document.getElementById("addWaypointButton"),
       clearWaypointButton: document.getElementById("clearWaypointButton"),
       orderButtons: [...document.querySelectorAll(".orderButton")],
       ambushOrderButton: document.getElementById("ambushOrderButton"),
@@ -561,7 +562,6 @@
       objectiveLabel: document.getElementById("objectiveLabel"),
       farmhouseTerrain: document.getElementById("farmhouseTerrain"),
       buildingOccupancyBadge: document.getElementById("buildingOccupancyBadge"),
-      buildingOccupancyTab: document.getElementById("buildingOccupancyTab"),
       buildingApproachMarker: document.getElementById("buildingApproachMarker"),
       buildingActionButton: document.getElementById("buildingActionButton"),
       objectiveRing: document.getElementById("objectiveRing"),
@@ -617,6 +617,7 @@
       "restartButton",
       "cancelButton",
       "finishAdvanceButton",
+      "addWaypointButton",
       "clearWaypointButton",
       "orderButtons",
       "ambushOrderButton",
@@ -638,7 +639,6 @@
       "objectiveLabel",
       "farmhouseTerrain",
       "buildingOccupancyBadge",
-      "buildingOccupancyTab",
       "buildingApproachMarker",
       "buildingActionButton",
       "objectiveRing",
@@ -698,6 +698,7 @@
     const restartButton = DOM.restartButton;
     const cancelButton = DOM.cancelButton;
     const finishAdvanceButton = DOM.finishAdvanceButton;
+    const addWaypointButton = DOM.addWaypointButton;
     const clearWaypointButton = DOM.clearWaypointButton;
     const orderButtons = DOM.orderButtons;
     const ambushOrderButton = DOM.ambushOrderButton;
@@ -719,7 +720,6 @@
     const objectiveLabel = DOM.objectiveLabel;
     const farmhouseTerrain = DOM.farmhouseTerrain;
     const buildingOccupancyBadge = DOM.buildingOccupancyBadge;
-    const buildingOccupancyTab = DOM.buildingOccupancyTab;
     const buildingApproachMarker = DOM.buildingApproachMarker;
     const buildingActionButton = DOM.buildingActionButton;
     const objectiveRing = DOM.objectiveRing;
@@ -785,7 +785,7 @@
           ? `Assaults use a 12″ direct charge, reaction fire beyond 6″, and defender-first combat across rough ground or obstacles.`
           : `Close Assault is intentionally disabled in this isolated stage.`,
         FEATURES.movementIntegrity
-          ? `Choose deployment before Round 1. Units cannot overlap or pass through units. Woods double movement spent inside them; wall crossings cost +2″. Overlong legal paths stop at the furthest affordable point. Shift-click adds one waypoint.`
+          ? `Choose deployment before Round 1. Units cannot overlap or pass through units. Woods double movement spent inside them; wall crossings cost +2″. Overlong legal paths stop at the furthest affordable point. Use Add Waypoint, then tap once to place it and once more for the destination. Shift-click remains an optional shortcut.`
           : `Movement uses the earlier direct-path prototype rules so the stage isolates its featured system.`,
         `Officer teams project a <code>6″</code> command radius and add <code>+1 Morale</code> to nearby friendly Order Tests. Rifle squads carry rifles plus an LMG; assault squads mix rifles and SMGs; MMG teams cannot fire after an Advance.`
       ];
@@ -793,7 +793,7 @@
       stageRules.innerHTML = ruleLines.join("<br><br>");
 
       scaleNote.textContent = FEATURES.movementIntegrity
-        ? "Movement integrity is active: Shift-click once to place a waypoint, then click the final destination. If a chosen point is too deep into rough ground, the unit stops at the furthest affordable legal point."
+        ? "Movement integrity is active: choose Add Waypoint, place it, then choose the final destination. If a chosen point is too deep into rough ground, the unit stops at the furthest affordable legal point."
         : "This stage keeps direct movement so its featured combat system can be tested without the additional movement-planning layer.";
     }
 
@@ -1246,12 +1246,6 @@
       }, 760);
     }
 
-    function physicalStateMarkerHtml(unit) {
-      if (unit.ambush) return `<span class="physical-state-marker ambush">A</span>`;
-      if (unit.down) return `<span class="physical-state-marker down">↓</span>`;
-      if (unit.activated) return `<span class="physical-state-marker activated">✓</span>`;
-      return "";
-    }
 
     function showTargetReadout(target, state, heading, lines) {
       screenOverlays?.show(target, state, heading, lines);
@@ -1293,6 +1287,7 @@
       packedMMGFormationHtml,
       deployedMMGFormationHtml,
       qualityStripeHtml,
+      unitNameplateHtml,
       unitFormationHtml
     } = window.CrossroadsUnitPresentation;
 
@@ -1390,7 +1385,8 @@
       getPendingTouchTargetId: () => pendingTouchTargetId,
       getConfirmedTargetId: () => confirmedTargetId,
       getTargetingSnapshot: () => targetingPresentation.snapshot(),
-      getCurrentFaction: () => currentFaction
+      getCurrentFaction: () => currentFaction,
+      commandSupport
     });
 
 
@@ -1921,7 +1917,7 @@
       endRound();
     }
 
-    function chooseOrder(order) {
+    async function chooseOrder(order) {
       if (phase !== "choose-order" || !selectedUnitId || battleEnded) return;
       const unit = getUnit(selectedUnitId);
       if (!unit) return;
@@ -1938,7 +1934,7 @@
       pendingTouchMovement = null;
       pendingTouchTargetId = null;
       pendingTouchTargetKind = null;
-      touchWaypointArmed = false;
+      waypointArmed = false;
       setOrderButtonsDisabled();
 
       // An undeployed MMG spends its Fire order establishing a fixed position.
@@ -1967,8 +1963,13 @@
       if (!attemptOrder(unit, order)) return;
 
       if (order === "Rally") {
+        const removedPins = unit.pins;
+        await presentationEffects.playRally(unit.id);
         unit.pins = 0;
-        addLog(`${capitalize(unit.faction)} ${unit.name} rallies and removes every Pin.`, "morale");
+        addLog(
+          `${capitalize(unit.faction)} ${unit.name} rallies and removes ${removedPins} Pin${removedPins === 1 ? "" : "s"}.`,
+          "morale"
+        );
         completeActivation("Rally");
         return;
       }
@@ -2001,9 +2002,17 @@
         overlayMode = "move";
         phase = "plan-movement";
         movementWaypoint = null;
+        waypointArmed = false;
+        addWaypointButton.hidden = !FEATURES.movementIntegrity;
+        clearWaypointButton.hidden = true;
         cancelButton.disabled = Boolean(transactionLockReason);
         const distance = order === "Run" ? RULES.runDistance : RULES.advanceDistance;
-        setStatus(`${order}: click a destination inside the gold circle.`, FEATURES.movementIntegrity ? `Maximum cost ${distance}″. Shift-click once to add a waypoint.` : `Maximum movement ${distance}″.`);
+        setStatus(
+          `${order}: tap a destination inside the gold circle.`,
+          FEATURES.movementIntegrity
+            ? `Maximum cost ${distance}″. Add Waypoint is optional.`
+            : `Maximum movement ${distance}″.`
+        );
         renderUnits();
         return;
       }
@@ -2064,17 +2073,12 @@
       const unit = getUnit(selectedUnitId);
       if (!unit) return;
 
-      if (FEATURES.movementIntegrity && event.shiftKey && !movementWaypoint) {
-        const waypoint = clampPoint(point);
-        const analysis = analyzeMovementPath(unit, [unit, waypoint], chosenOrder, null);
-        if (!analysis.legal) {
-          rejectMovement(analysis, [unit, waypoint]);
-          return;
-        }
-        movementWaypoint = waypoint;
-        clearWaypointButton.hidden = false;
-        setStatus("Waypoint placed. Click the final destination.", `${analysis.cost.toFixed(1)}″ spent; ${(analysis.allowance - analysis.cost).toFixed(1)}″ movement cost remains.`);
-        renderUnits();
+      if (
+        FEATURES.movementIntegrity &&
+        !movementWaypoint &&
+        (waypointArmed || event.shiftKey)
+      ) {
+        placeWaypoint(unit, point);
         return;
       }
 
@@ -2108,13 +2112,62 @@
     // MOVEMENT, TERRAIN COSTS, COLLISION, AND AMBUSH INTERRUPTION
     // Analyzes paths, begins movement, and resolves reaction opportunities.
     // =========================================================================
+    function armWaypoint() {
+      if (
+        phase !== "plan-movement" ||
+        !FEATURES.movementIntegrity ||
+        movementWaypoint
+      ) return;
+
+      waypointArmed = !waypointArmed;
+      addWaypointButton.classList.toggle("active", waypointArmed);
+      setStatus(
+        waypointArmed
+          ? "Waypoint armed. Tap the battlefield to place it."
+          : "Waypoint mode cancelled. Tap a final destination."
+      );
+      queueAdaptiveUI();
+    }
+
+    function placeWaypoint(unit, point) {
+      const waypoint = clampPoint(point);
+      const analysis = analyzeMovementPath(
+        unit,
+        [unit, waypoint],
+        chosenOrder,
+        null
+      );
+
+      if (!analysis.legal) {
+        rejectMovement(analysis, [unit, waypoint]);
+        return false;
+      }
+
+      movementWaypoint = waypoint;
+      waypointArmed = false;
+      addWaypointButton.hidden = true;
+      addWaypointButton.classList.remove("active");
+      clearWaypointButton.hidden = false;
+      pendingTouchMovement = null;
+      setStatus(
+        "Waypoint placed. Tap the final destination.",
+        `${analysis.cost.toFixed(1)}″ spent; ` +
+        `${(analysis.allowance - analysis.cost).toFixed(1)}″ remains.`
+      );
+      renderUnits();
+      return true;
+    }
+
     function clearWaypoint() {
       if (phase !== "plan-movement") return;
       movementWaypoint = null;
+      waypointArmed = false;
+      addWaypointButton.hidden = !FEATURES.movementIntegrity;
+      addWaypointButton.classList.remove("active");
       clearWaypointButton.hidden = true;
       clearRouteLines();
       waypointMarker.hidden = true;
-      setStatus("Waypoint cleared. Click a destination, or Shift-click a new waypoint.");
+      setStatus("Waypoint cleared. Tap a destination or add another waypoint.");
       renderUnits();
     }
 
@@ -2281,37 +2334,78 @@
         return;
       }
 
-      const destination = pendingMovement.path[pendingMovement.path.length - 1];
-      const movementOrigin = pendingMovement.path[0] ?? unit;
-      const movementDistance = distanceBetweenPoints(movementOrigin, destination);
-      const movementFrom = { x: movementOrigin.x, y: movementOrigin.y };
-      const visualMovement = tableVectorToScreenVector(
-        destination.x - movementOrigin.x,
-        destination.y - movementOrigin.y
+      const movementPath = pendingMovement.path.map(point => ({
+        x: point.x,
+        y: point.y
+      }));
+      const destination = movementPath[movementPath.length - 1];
+      const supportedBefore = new Set(
+        unit.role === "officer"
+          ? livingUnits()
+              .filter(candidate => commandSupport(candidate)?.id === unit.id)
+              .map(candidate => candidate.id)
+          : []
       );
-      unit.facing = cardinalFacingFromVector(
-        visualMovement.x,
-        visualMovement.y,
+
+      const facings = [];
+      for (let index = 1; index < movementPath.length; index += 1) {
+        const from = movementPath[index - 1];
+        const to = movementPath[index];
+        const visualMovement = tableVectorToScreenVector(
+          to.x - from.x,
+          to.y - from.y
+        );
+        facings.push(
+          cardinalFacingFromVector(
+            visualMovement.x,
+            visualMovement.y,
+            unit.facing
+          )
+        );
+      }
+
+      unit.facing = facings[0] ?? unit.facing;
+      window.CrossroadsBattlefieldPresentation.applyUnitFacing(
+        battlefield,
+        unit.id,
         unit.facing
       );
-      renderUnits({ reason: "face-before-movement" });
       await new Promise(requestAnimationFrame);
-      await new Promise(resolve => setTimeout(resolve, 80));
-      await presentationEffects.playMovement(
+      await new Promise(resolve => setTimeout(resolve, 65));
+
+      await presentationEffects.playMovementPath(
         unit.id,
-        movementFrom,
-        destination,
-        movementDistance,
-        { heavy: isMMGTeam(unit) }
+        movementPath,
+        pendingMovement.analysis.cost,
+        {
+          heavy: isMMGTeam(unit),
+          facings
+        }
       );
+
       unit.x = destination.x;
       unit.y = destination.y;
+      unit.facing = facings[facings.length - 1] ?? unit.facing;
+
+      if (unit.role === "officer") {
+        const newlySupported = livingUnits()
+          .filter(candidate =>
+            candidate.id !== unit.id &&
+            commandSupport(candidate)?.id === unit.id &&
+            !supportedBefore.has(candidate.id)
+          )
+          .map(candidate => candidate.id);
+
+        presentationEffects.playCommandPulse(unit.id, newlySupported);
+      }
 
       if (exitUnit(unit)) {
         const order = pendingMovement.order;
         addLog(`${capitalize(unit.faction)} ${unit.name} completes ${order} by exiting the battlefield.`, "objective");
         pendingMovement = null;
         movementWaypoint = null;
+        waypointArmed = false;
+        addWaypointButton.hidden = true;
         clearWaypointButton.hidden = true;
         clearRouteLines();
         waypointMarker.hidden = true;
@@ -2331,6 +2425,8 @@
 
       pendingMovement = null;
       movementWaypoint = null;
+      waypointArmed = false;
+      addWaypointButton.hidden = true;
       clearWaypointButton.hidden = true;
       clearRouteLines();
       waypointMarker.hidden = true;
@@ -2422,7 +2518,15 @@
       confirmedTargetId = target.id;
       targetingPresentation.confirm(target.id);
       pendingTouchTargetId = null;
-      renderUnits({ reason: "target-confirmed" });
+      window.CrossroadsBattlefieldPresentation.applyUnitFacing(
+        battlefield,
+        shooter.id,
+        shooter.facing
+      );
+      window.CrossroadsBattlefieldPresentation.confirmTargetInPlace(
+        battlefield,
+        target.id
+      );
       await new Promise(requestAnimationFrame);
       showShotPreview(shooter, target);
 
@@ -2445,6 +2549,9 @@
       await presentationEffects.playFire(shooter.id, groups);
       confirmedTargetId = null;
       targetingPresentation.clear();
+      window.CrossroadsBattlefieldPresentation.clearTargetConfirmation(
+        battlefield
+      );
 
       if (!checkElimination()) completeActivation(chosenOrder);
       else renderUnits();
@@ -2734,7 +2841,7 @@
       if (typeof pendingTouchTargetId !== "undefined") pendingTouchTargetId = null;
       if (typeof pendingTouchTargetKind !== "undefined") pendingTouchTargetKind = null;
       if (typeof pendingTouchDeploymentPoint !== "undefined") pendingTouchDeploymentPoint = null;
-      if (typeof touchWaypointArmed !== "undefined") touchWaypointArmed = false;
+      if (typeof waypointArmed !== "undefined") waypointArmed = false;
     }
 
     function finalizeActionTransaction({
@@ -3986,7 +4093,7 @@
     let pendingTouchTargetId = null;
     let pendingTouchTargetKind = null;
     let pendingTouchDeploymentPoint = null;
-    let touchWaypointArmed = false;
+    let waypointArmed = false;
     let gestureSuppressUntil = 0;
     let adaptiveUpdateQueued = false;
 
@@ -4100,7 +4207,7 @@
 
       if (phase === "deployment") {
         if (deploymentUnitId) {
-          addTrayAction(touchWaypointArmed ? "Tap board" : "Preview placement", () => {}, { disabled: true });
+          addTrayAction(waypointArmed ? "Tap board" : "Preview placement", () => {}, { disabled: true });
           addTrayAction("Confirm Place", confirmPendingTouchDeployment, { disabled: !pendingTouchDeploymentPoint, className: "tray-confirm tray-wide" });
         } else {
           addTrayAction("Select a unit on the table", () => {}, { disabled: true, className: "tray-wide" });
@@ -4166,10 +4273,14 @@
           });
         }
       } else if (phase === "plan-movement") {
-        addTrayAction(movementWaypoint ? "Clear Waypoint" : touchWaypointArmed ? "Waypoint Armed" : "Add Waypoint", () => {
-          if (movementWaypoint) clearWaypoint();
-          else { touchWaypointArmed = !touchWaypointArmed; setStatus(touchWaypointArmed ? "Tap the battlefield to place a waypoint." : "Waypoint mode cancelled."); queueAdaptiveUI(); }
-        });
+        addTrayAction(
+          movementWaypoint
+            ? "Clear Waypoint"
+            : waypointArmed
+              ? "Waypoint Armed"
+              : "Add Waypoint",
+          movementWaypoint ? clearWaypoint : armWaypoint
+        );
         addTrayAction("Confirm", confirmPendingTouchMovement, { disabled: !pendingTouchMovement || pendingTouchMovement.state === "blocked", className: "tray-confirm tray-wide" });
         addTrayAction("Cancel", cancelAndReselect, { disabled: Boolean(transactionLockReason), className: "tray-danger" });
         addTrayCommand(mobileDetailsCommand());
@@ -4305,16 +4416,8 @@
       if (phase === "plan-movement") {
         const unit = getUnit(selectedUnitId);
         if (!unit) return false;
-        if (touchWaypointArmed && !movementWaypoint) {
-          const waypoint = clampPoint(point);
-          const analysis = analyzeMovementPath(unit, [unit, waypoint], chosenOrder, null);
-          if (!analysis.legal) { rejectMovement(analysis, [unit, waypoint]); return true; }
-          movementWaypoint = waypoint;
-          touchWaypointArmed = false;
-          clearWaypointButton.hidden = false;
-          pendingTouchMovement = null;
-          setStatus("Waypoint placed. Tap the final destination.", `${analysis.cost.toFixed(1)}″ spent; ${(analysis.allowance - analysis.cost).toFixed(1)}″ remains.`);
-          renderUnits();
+        if (waypointArmed && !movementWaypoint) {
+          placeWaypoint(unit, point);
           return true;
         }
         previewMovementAt(point);
@@ -4532,10 +4635,15 @@
     restartButton.addEventListener("click", restartBattle);
     cancelButton.addEventListener("click", handleCancelAction);
     finishAdvanceButton.addEventListener("click", finishAdvanceWithoutShooting);
+    addWaypointButton.addEventListener("click", armWaypoint);
     clearWaypointButton.addEventListener("click", clearWaypoint);
     reactionPrimaryButton.addEventListener("click", resolveAmbushFire);
     reactionSecondaryButton.addEventListener("click", holdAmbushFire);
-    for (const button of orderButtons) button.addEventListener("click", () => chooseOrder(button.dataset.order));
+    for (const button of orderButtons) {
+      button.addEventListener("click", () => {
+        void chooseOrder(button.dataset.order);
+      });
+    }
 
     window.addEventListener("resize", () => {
       const preservedView = captureViewportState();
@@ -4784,31 +4892,20 @@
 
       if (buildingOccupancyBadge) {
         buildingOccupancyBadge.hidden = !occupant;
-        buildingOccupancyBadge.className = `building-occupancy-badge ${occupant?.faction ?? ""}`;
-        buildingOccupancyBadge.innerHTML = occupant
-          ? `<span class="building-occupancy-faction">${activeScenario.factions[occupant.faction].name}</span>
-             <strong class="building-occupancy-name">${occupant.name}</strong>
-             <span class="building-occupancy-quality">${qualityLabel(occupant)}</span>
-             <span class="building-occupancy-stats">${occupant.faction === "blue" ? "B" : "R"} · ${occupant.soldiers} men · ${occupant.pins} pin${occupant.pins === 1 ? "" : "s"}</span>
-             <span class="building-occupancy-order">${buildingOrderLabel(occupant)}</span>${unitIsEligibleForCurrentDie(occupant) ? `<span class="building-ready-tag">READY</span>` : ""}`
-          : "";
-        buildingOccupancyBadge.onclick = occupant
-          ? event => {
-              event.stopPropagation();
-              if (!gestureSuppressed()) selectBuildingOccupant();
-            }
-          : null;
-      }
-
-      if (buildingOccupancyTab) {
-        buildingOccupancyTab.hidden = !occupant;
-        buildingOccupancyTab.className =
-          `building-occupancy-tab ${occupant?.faction ?? ""}` +
+        buildingOccupancyBadge.className =
+          `building-occupancy-nameplate ${occupant?.faction ?? ""}` +
+          `${occupant?.id === selectedUnitId ? " selected" : ""}` +
           `${occupant && unitIsEligibleForCurrentDie(occupant) ? " ready" : ""}`;
-        buildingOccupancyTab.textContent = occupant
-          ? `${occupant.faction === "blue" ? "BLUE" : "RED"} · ${occupant.name} · ${occupant.soldiers}`
+
+        buildingOccupancyBadge.innerHTML = occupant
+          ? unitNameplateHtml(occupant, {
+              detail: "building",
+              showMen: true,
+              showPins: true
+            })
           : "";
-        buildingOccupancyTab.onclick = occupant
+
+        buildingOccupancyBadge.onclick = occupant
           ? event => {
               event.stopPropagation();
               if (!gestureSuppressed()) selectBuildingOccupant();
