@@ -23,6 +23,12 @@
       return busyCount > 0;
     }
 
+    function clearCommittedMovementOverlay() {
+      document.getElementById("routeLayer")?.replaceChildren();
+      const waypoint = document.getElementById("waypointMarker");
+      if (waypoint) waypoint.hidden = true;
+    }
+
     function unitElement(unitId) {
       return battlefield.querySelector(
         `.unit[data-unit-id="${CSS.escape(unitId)}"]`
@@ -149,12 +155,58 @@
       }
     }
 
+    function playEligibilityHop() {
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+      const roots = [...battlefield.querySelectorAll(".unit.eligible-current")];
+      roots.forEach((root, unitIndex) => {
+        const { slots } = visibleUnitParts(root);
+        slots.forEach((slot, modelIndex) => {
+          const hop = slot.querySelector(".model-hop");
+          const shadow = slot.querySelector(".model-shadow");
+          const delay = unitIndex * 42 + Math.min(48, modelIndex * 10);
+          const duration = 330 + (modelIndex % 2) * 24;
+          const height = -4 - (modelIndex % 2);
+
+          hop?.animate(
+            [
+              { transform: "translateY(0)" },
+              { transform: `translateY(${height}px)`, offset: .46 },
+              { transform: "translateY(0)" }
+            ],
+            {
+              duration,
+              delay,
+              iterations: 1,
+              easing: "cubic-bezier(.28,0,.32,1)"
+            }
+          );
+
+          shadow?.animate(
+            [
+              { opacity: .78 },
+              { opacity: .52, offset: .46 },
+              { opacity: .78 }
+            ],
+            {
+              duration,
+              delay,
+              iterations: 1,
+              easing: "cubic-bezier(.28,0,.32,1)"
+            }
+          );
+        });
+      });
+    }
+
     async function playMovementPath(
       unitId,
       path,
       totalDistance,
       options = {}
     ) {
+      clearCommittedMovementOverlay();
+
       const root = unitElement(unitId);
       if (!root || !Array.isArray(path) || path.length < 2) return;
 
@@ -435,8 +487,35 @@
       return playFeedbackPulse(root, state);
     }
 
+    const drawnDie = document.getElementById("drawnDie");
+    let eligibilityFrame = 0;
+    if (drawnDie) {
+      new MutationObserver(() => {
+        if (!/Order Die$/.test(drawnDie.textContent.trim())) return;
+        cancelAnimationFrame(eligibilityFrame);
+        eligibilityFrame = requestAnimationFrame(playEligibilityHop);
+      }).observe(drawnDie, {
+        attributes: true,
+        attributeFilter: ["class"],
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+
+    const reactionPanel = document.getElementById("reactionPanel");
+    if (reactionPanel) {
+      new MutationObserver(() => {
+        if (!reactionPanel.hidden) clearCommittedMovementOverlay();
+      }).observe(reactionPanel, {
+        attributes: true,
+        attributeFilter: ["hidden"]
+      });
+    }
+
     return Object.freeze({
       playMovementPath,
+      playEligibilityHop,
       playFire,
       playCasualtyPuffs,
       playRally,

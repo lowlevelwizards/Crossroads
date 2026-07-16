@@ -47,11 +47,6 @@ svg.fire-arc.mmg-fire-arc.red {
   stroke-width: 2.5px;
 }
 
-.mmg-fire-arc.is-deployment-preview .fire-arc-sector {
-  fill: rgba(83, 125, 165, .07);
-  stroke-dasharray: 4 6;
-  opacity: .76;
-}
 
 .mmg-fire-arc.is-ambush .fire-arc-sector {
   --arc-fill: rgba(118, 81, 143, .15);

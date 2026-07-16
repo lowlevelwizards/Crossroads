@@ -214,7 +214,7 @@ body.camera-rotated #battlefield .unit.targetable-assault {
 #battlefield .mmg-deployed-crew .model-wrap {
   width: 24px !important;
   height: 30px !important;
-  transform: translate(-50%, -50%) scale(.82) !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 /* 7. Hop owns temporary vertical animation; shadow owns only local squash. */
@@ -255,7 +255,7 @@ body.camera-rotated #battlefield .unit.targetable-assault {
 #battlefield .unit.targetable-assault .model-shadow {
   position: absolute !important;
   left: 50% !important;
-  bottom: -3px !important;
+  bottom: 0 !important;
   width: 15px !important;
   height: 6px !important;
   margin: 0 !important;
@@ -300,13 +300,10 @@ body.camera-rotated #battlefield .unit.targetable-assault {
 
 /* MMG facing is one intentional transform on the deployed weapon assembly. */
 #battlefield .mmg-deployed-formation {
-  transform: rotate(var(--mmg-facing)) scale(.82) !important;
+  transform: rotate(var(--mmg-facing)) !important;
   transform-origin: 50% 52% !important;
 }
 
-body:not(.camera-rotated) #battlefield .mmg-deployed-formation {
-  transform: rotate(var(--mmg-facing)) scale(.72) !important;
-}
 
 #battlefield .mmg-deployed-crew,
 #battlefield .mmg-deployed-crew.crew-1,

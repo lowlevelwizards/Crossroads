@@ -5,13 +5,6 @@
   // resolving orders, mutating combat state, or owning input/camera rules.
 
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const CARDINAL_ANGLE = Object.freeze({
-    right: 0,
-    down: 90,
-    left: 180,
-    up: 270
-  });
-
   function createLocalFrame(travel) {
     const frame = document.createElement("span");
     frame.className = "unit-local-frame";
@@ -97,18 +90,13 @@
     for (const unit of livingUnits()) {
       if (!isMMGTeam(unit) || unit.inBuilding) continue;
 
+      if (!unit.mmgDeployed) continue;
+
       const selected = unit.id === selectedUnitId;
-      const deployedRelevant =
-        unit.mmgDeployed &&
-        (unit.ambush || (selected && ["choose-order", "choose-target"].includes(phase)));
-      const deploymentPreview =
-        selected && !unit.mmgDeployed && phase === "choose-order";
-
-      if (!deployedRelevant && !deploymentPreview) continue;
-
-      const facing = unit.mmgDeployed
-        ? unit.mmgFacing
-        : CARDINAL_ANGLE[unit.facing] ?? unit.mmgFacing ?? 0;
+      const relevant =
+        unit.ambush ||
+        (selected && ["choose-order", "choose-target"].includes(phase));
+      if (!relevant) continue;
 
       appendFireArc({
         battlefield,
@@ -117,13 +105,10 @@
           y: inchesToPixels(unit.y)
         },
         radius: inchesToPixels(weaponProfiles.mmg?.range ?? 36),
-        facing,
+        facing: unit.mmgFacing,
         faction: unit.faction,
         kind: "mmg",
-        modifiers: [
-          deploymentPreview ? "is-deployment-preview" : "is-live",
-          unit.ambush ? "is-ambush" : ""
-        ].filter(Boolean)
+        modifiers: ["is-live", unit.ambush ? "is-ambush" : ""].filter(Boolean)
       });
     }
   }
