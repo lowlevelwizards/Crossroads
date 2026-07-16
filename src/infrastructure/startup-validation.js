@@ -6,12 +6,14 @@
     ["CROSSROADS_STAGE", "data/stage.js"],
     ["CROSSROADS_WEAPON_PROFILES", "data/weapons.js"],
     ["CROSSROADS_TERRAIN", "data/terrain.js"],
+    ["CROSSROADS_TERRAIN_TYPES", "data/terrain.js"],
     ["CROSSROADS_UNIT_QUALITY", "data/unit-quality.js"],
     ["CROSSROADS_UNIT_TYPES", "data/unit-types.js"],
     ["CROSSROADS_FACTION_KITS", "data/faction-kits.js"],
     ["CROSSROADS_FORMATIONS", "data/formations.js"],
     ["CROSSROADS_SCENARIOS", "data/scenarios.js"],
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
+    ["CrossroadsTerrainPresentation", "src/presentation/terrain.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
     ["CrossroadsFormationGeometry", "src/presentation/formation-geometry.js"],
     ["CrossroadsTargetingPresentation", "src/presentation/targeting.js"],
@@ -114,6 +116,46 @@
     return issues;
   }
 
+
+  function validateTerrainLibrary() {
+    const types = window.CROSSROADS_TERRAIN_TYPES;
+    const scenarios = window.CROSSROADS_SCENARIOS;
+    if (!types || !scenarios) return [];
+
+    const issues = [];
+    for (const scenario of Object.values(scenarios)) {
+      if (!Array.isArray(scenario.terrain)) {
+        issues.push(`${scenario.id}.terrain must be an instance array.`);
+        continue;
+      }
+
+      const ids = new Set();
+      for (const instance of scenario.terrain) {
+        if (!instance?.id) issues.push(`${scenario.id} has terrain without an instance id.`);
+        if (ids.has(instance?.id)) issues.push(`${scenario.id} duplicates terrain id ${instance.id}.`);
+        ids.add(instance?.id);
+        if (!types[instance?.terrainId]) {
+          issues.push(`${scenario.id}.${instance?.id} references unknown terrain ${instance?.terrainId}.`);
+        }
+        for (const field of ["x", "y", "width", "height"]) {
+          if (!Number.isFinite(Number(instance?.[field]))) {
+            issues.push(`${scenario.id}.${instance?.id} has invalid ${field}.`);
+          }
+        }
+        if (Number(instance?.width) <= 0 || Number(instance?.height) <= 0) {
+          issues.push(`${scenario.id}.${instance?.id} must have a positive footprint.`);
+        }
+      }
+
+      for (const required of ["woods", "wall", "building"]) {
+        if (!scenario.terrain.some(instance => instance.terrainId === required)) {
+          issues.push(`${scenario.id} is missing required compatibility terrain ${required}.`);
+        }
+      }
+    }
+    return issues;
+  }
+
   function validateUnitTypes() {
     const types = window.CROSSROADS_UNIT_TYPES;
     if (!types) return [];
@@ -145,6 +187,7 @@
       : [
           ...validateFactionKits(),
           ...validateScenarioKits(),
+          ...validateTerrainLibrary(),
           ...validateUnitTypes()
         ];
 
