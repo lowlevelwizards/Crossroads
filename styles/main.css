@@ -6620,3 +6620,25 @@ body.targeting-confirmed
   content: none !important;
   display: none !important;
 }
+
+/* ==========================================================================
+   BUILD T1 — DYNAMIC TERRAIN FOUNDATION
+   Terrain positions now come from scenario instance data. The layer remains
+   below objectives and units while its children preserve the existing visual
+   and interaction classes.
+   ========================================================================== */
+.terrain-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.terrain-layer > .road,
+.terrain-layer > .terrain {
+  transform-origin: center;
+}
+
+.terrain-layer > .terrain.building {
+  pointer-events: auto;
+}
