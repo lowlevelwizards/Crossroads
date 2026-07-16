@@ -1,8 +1,12 @@
-/* CROSSROADS TERRAIN LIBRARY — BUILD T3 */
+/* CROSSROADS TERRAIN LIBRARY — BUILD T3.1 SHAPE-LAYERED VISUAL PASS */
 :root {
-  --terrain-outline: #4f493c;
-  --terrain-shadow: rgba(39, 36, 29, .28);
-  --terrain-label-bg: rgba(56, 53, 44, .68);
+  --terrain-outline: #48483a;
+  --terrain-shadow: rgba(39, 38, 29, .32);
+  --terrain-contact: rgba(43, 42, 31, .24);
+  --terrain-label-bg: rgba(55, 54, 43, .72);
+  --grass-dark: #66744b;
+  --grass-mid: #87925f;
+  --grass-light: #a7a970;
 }
 
 .battlefield.mat-grass-temperate { background-color: #aeb18a; }
@@ -12,119 +16,154 @@
 .battlefield.mat-cobblestone { background-color: #99988c; }
 .battlefield.mat-mud { background-color: #7c705e; }
 
-.terrain-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.terrain-layer { position:absolute; inset:0; z-index:1; pointer-events:none; }
 .terrain-piece {
-  position: absolute;
-  transform-origin: 50% 50%;
-  pointer-events: none;
-  filter: drop-shadow(0 5px 3px var(--terrain-shadow));
+  position:absolute;
+  transform-origin:50% 50%;
+  pointer-events:none;
+  filter:drop-shadow(0 6px 4px var(--terrain-shadow));
+  isolation:isolate;
 }
 .terrain-piece .terrain-label {
-  z-index: 20;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: var(--terrain-label-bg);
-  color: #f5efe0;
-  font-size: clamp(7px, .8vw, 10px);
-  letter-spacing: .05em;
-  opacity: .88;
+  z-index:40; left:50%; top:50%; transform:translate(-50%,-50%);
+  padding:2px 6px; border-radius:5px; background:var(--terrain-label-bg);
+  color:#f4eedf; font-size:clamp(7px,.8vw,10px); letter-spacing:.05em; opacity:.9;
+  text-shadow:0 1px 0 rgba(0,0,0,.28);
 }
 
-/* Roads */
-.terrain-road {
-  background: #907d5f;
-  border: 2px solid rgba(83, 68, 50, .35);
-  border-radius: 18px;
-  box-shadow: inset 0 0 0 5px rgba(213, 191, 143, .12);
-  z-index: 0;
+/* ROADS — dirt ribbons with shoulders, stones and verge tufts */
+.terrain-road,.terrain-road_curve,.terrain-road_crossroads {
+  background:#a68b61;
+  border:3px solid #6f6748;
+  border-radius:20px;
+  box-shadow:inset 0 0 0 5px rgba(207,190,134,.16), 0 4px 0 var(--terrain-contact);
+  z-index:0;
 }
-.terrain-road::after {
-  content: ""; position: absolute; inset: 37% 5%; border-top: 2px dashed rgba(224, 207, 163, .28);
+.terrain-road::before,.terrain-road_curve::before,.terrain-road_crossroads::before {
+  content:""; position:absolute; inset:5%; border-radius:inherit;
+  background:linear-gradient(90deg,rgba(255,245,194,.08),transparent 26% 74%,rgba(88,68,43,.07));
 }
-.terrain-road_curve { border-radius: 50% 50% 12px 12px; background: #907d5f; border: 2px solid rgba(83,68,50,.35); }
-.terrain-road_curve .road-curve-inner { position:absolute; inset: 25%; border-radius: 50%; background: #aeb18a; }
-.terrain-road_crossroads { background:#907d5f; border-radius:16px; }
-.terrain-road_crossroads .road-arm { position:absolute; left:-38%; right:-38%; top:32%; height:36%; background:#907d5f; border:2px solid rgba(83,68,50,.25); border-radius:14px; }
-.terrain-road_crossroads .road-arm-2 { transform:rotate(90deg); }
+.terrain-road::after { content:""; position:absolute; inset:38% 7%; border-top:2px dashed rgba(231,216,167,.35); }
+.terrain-road.is-vertical::after { inset:7% 38%; border-top:0; border-left:2px dashed rgba(231,216,167,.35); }
+.road-edge { position:absolute; z-index:-1; background:#788052; border-radius:999px; }
+.road-edge-1{inset:-5% 86% -5% -5%}.road-edge-2{inset:-5% -5% -5% 86%}
+.terrain-road.is-vertical .road-edge-1{inset:-5% -5% 86% -5%}.terrain-road.is-vertical .road-edge-2{inset:86% -5% -5% -5%}
+.road-pebble{position:absolute;width:6%;aspect-ratio:1;border-radius:50%;background:#c2b28b;border:1px solid #786f59;z-index:3}
+.road-pebble-1{left:13%;top:18%}.road-pebble-2{right:15%;top:25%}.road-pebble-3{left:34%;bottom:16%}.road-pebble-4{right:32%;bottom:22%}.road-pebble-5{left:54%;top:12%}.road-pebble-6{left:23%;top:58%}.road-pebble-7{right:7%;bottom:9%}.road-pebble-8{left:7%;bottom:8%}
+.road-tuft{position:absolute;width:8%;height:16%;border-radius:50%;background:#778253;z-index:4}
+.road-tuft-1{left:-2%;top:8%}.road-tuft-2{right:-2%;bottom:8%}.road-tuft-3{left:-3%;bottom:24%}.road-tuft-4{right:-3%;top:28%}.road-tuft-5{left:47%;top:-5%}.road-tuft-6{right:34%;bottom:-5%}
+.terrain-road_curve { border-radius:55% 55% 18px 18px; }
+.terrain-road_curve .road-curve-inner { position:absolute; inset:27%; border-radius:50%; background:#aeb18a; border:3px solid #6f6748; }
+.terrain-road_crossroads{overflow:visible}
+.terrain-road_crossroads .road-arm{position:absolute;left:-38%;right:-38%;top:32%;height:36%;background:#a68b61;border:3px solid #6f6748;border-radius:18px;box-shadow:inset 0 0 0 5px rgba(207,190,134,.13)}
+.terrain-road_crossroads .road-arm-2{transform:rotate(90deg)}
 
-/* Railway */
-.terrain-rail, .terrain-rail_crossing { background:#796f5c; border-radius:4px; overflow:hidden; }
-.rail-line { position:absolute; top:18%; bottom:18%; width:8%; background:#4e5050; border-radius:3px; z-index:3; }
-.rail-line-1 { left:24%; } .rail-line-2 { right:24%; }
-.rail-sleeper { position:absolute; left:8%; right:8%; height:7%; background:#4b3727; border-radius:2px; }
-.rail-sleeper-1{top:3%}.rail-sleeper-2{top:13%}.rail-sleeper-3{top:23%}.rail-sleeper-4{top:33%}.rail-sleeper-5{top:43%}.rail-sleeper-6{top:53%}.rail-sleeper-7{top:63%}.rail-sleeper-8{top:73%}.rail-sleeper-9{top:83%}.rail-sleeper-10{top:93%}
-.terrain-rail_crossing::after { content:""; position:absolute; left:0; right:0; top:37%; height:26%; background:#a28a66; z-index:4; }
+/* RAILWAY — ballast first, sleepers second, steel rails last */
+.terrain-rail,.terrain-rail_crossing{background:#716d5e;border:4px solid #625f52;border-radius:7px;overflow:visible;box-shadow:0 5px 0 var(--terrain-contact)}
+.rail-ballast{position:absolute;inset:-6%;border-radius:8px;background:repeating-radial-gradient(circle at 20% 35%,#918d7c 0 2px,#777465 3px 5px);z-index:-1}
+.rail-sleeper{position:absolute;left:7%;right:7%;height:6.5%;background:#65452d;border:2px solid #493422;border-radius:2px;z-index:1}
+.rail-sleeper-1{top:1%}.rail-sleeper-2{top:10%}.rail-sleeper-3{top:19%}.rail-sleeper-4{top:28%}.rail-sleeper-5{top:37%}.rail-sleeper-6{top:46%}.rail-sleeper-7{top:55%}.rail-sleeper-8{top:64%}.rail-sleeper-9{top:73%}.rail-sleeper-10{top:82%}.rail-sleeper-11{top:91%}
+.rail-line{position:absolute;top:-1%;bottom:-1%;width:6%;background:#5e6261;border:2px solid #414645;border-radius:2px;z-index:3;box-shadow:2px 0 0 rgba(235,237,220,.28)}
+.rail-line-1{left:25%}.rail-line-2{right:25%}
+.crossing-plank{position:absolute;left:-7%;right:-7%;height:9%;background:#b2894d;border:2px solid #715633;z-index:5}
+.crossing-plank-1{top:28%}.crossing-plank-2{top:37%}.crossing-plank-3{top:46%}.crossing-plank-4{top:55%}.crossing-plank-5{top:64%}
 
-/* Trees */
-.terrain-woods, .terrain-orchard {
-  border: 2px dashed #3f6840;
-  border-radius: 18px;
-  background: rgba(72, 103, 58, .18);
-  overflow: visible;
-}
-.tree-canopy, .orchard-tree {
-  position:absolute; width:31%; aspect-ratio:1; border-radius:50%;
-  background:#648257; border:6px solid #405f3f;
-  box-shadow: 7px 8px 0 rgba(54,72,47,.23);
-}
-.tree-canopy-1{left:5%;top:8%}.tree-canopy-2{left:34%;top:3%}.tree-canopy-3{right:5%;top:11%}
-.tree-canopy-4{left:12%;top:41%}.tree-canopy-5{left:42%;top:34%}.tree-canopy-6{right:4%;top:47%}
-.tree-canopy-7{left:29%;bottom:1%}.tree-canopy-8{left:2%;bottom:2%}.tree-canopy-9{right:3%;bottom:1%}
-.terrain-id-woods .tree-canopy-8,.terrain-id-woods .tree-canopy-9{display:none}
-.orchard-tree { width:22%; border-width:4px; box-shadow:4px 5px 0 rgba(54,72,47,.2); }
-.orchard-tree-1{left:6%;top:7%}.orchard-tree-2{left:39%;top:7%}.orchard-tree-3{right:6%;top:7%}
-.orchard-tree-4{left:6%;top:39%}.orchard-tree-5{left:39%;top:39%}.orchard-tree-6{right:6%;top:39%}
-.orchard-tree-7{left:6%;bottom:5%}.orchard-tree-8{left:39%;bottom:5%}.orchard-tree-9{right:6%;bottom:5%}
+/* TREES — three layers per canopy: contact shadow, dark crown, light crown */
+.terrain-woods,.terrain-orchard{border:2px dashed #3f6840;border-radius:18px;background:rgba(72,103,58,.14);overflow:visible}
+.tree-shadow,.tree-canopy,.tree-highlight,.orchard-shadow,.orchard-tree,.orchard-highlight{position:absolute;aspect-ratio:1;border-radius:48% 52% 46% 54%}
+.tree-shadow{width:32%;background:rgba(46,58,36,.30);transform:translate(7%,10%)}
+.tree-canopy{width:31%;background:#4e6f44;border:4px solid #36543a;box-shadow:inset 0 -7px 0 rgba(45,70,39,.35)}
+.tree-highlight{width:20%;background:#78945f;box-shadow:inset 0 3px 0 rgba(172,184,118,.24)}
+.tree-shadow-1,.tree-canopy-1{left:4%;top:7%}.tree-highlight-1{left:9%;top:11%}
+.tree-shadow-2,.tree-canopy-2{left:34%;top:2%}.tree-highlight-2{left:39%;top:6%}
+.tree-shadow-3,.tree-canopy-3{right:4%;top:9%}.tree-highlight-3{right:9%;top:13%}
+.tree-shadow-4,.tree-canopy-4{left:11%;top:40%}.tree-highlight-4{left:16%;top:44%}
+.tree-shadow-5,.tree-canopy-5{left:41%;top:33%}.tree-highlight-5{left:46%;top:37%}
+.tree-shadow-6,.tree-canopy-6{right:3%;top:46%}.tree-highlight-6{right:8%;top:50%}
+.tree-shadow-7,.tree-canopy-7{left:28%;bottom:1%}.tree-highlight-7{left:33%;bottom:7%}
+.tree-shadow-8,.tree-canopy-8{right:26%;bottom:0}.tree-highlight-8{right:31%;bottom:6%}
+.terrain-id-woods_dense{background:rgba(50,76,48,.28);border-color:#315b39}
+.terrain-id-woods_dense .tree-canopy{background:#3f633f;border-color:#294a32}
+.terrain-id-woods_dense .tree-highlight{background:#678456}
+.orchard-shadow,.orchard-tree{width:22%}.orchard-highlight{width:13%}
+.orchard-shadow{background:rgba(47,62,37,.28);transform:translate(8%,11%)}
+.orchard-tree{background:#587647;border:4px solid #395638;box-shadow:inset 0 -5px 0 rgba(44,66,36,.32)}
+.orchard-highlight{background:#80975a}
+.orchard-shadow-1,.orchard-tree-1{left:6%;top:7%}.orchard-highlight-1{left:11%;top:12%}
+.orchard-shadow-2,.orchard-tree-2{left:39%;top:7%}.orchard-highlight-2{left:44%;top:12%}
+.orchard-shadow-3,.orchard-tree-3{right:6%;top:7%}.orchard-highlight-3{right:11%;top:12%}
+.orchard-shadow-4,.orchard-tree-4{left:6%;top:39%}.orchard-highlight-4{left:11%;top:44%}
+.orchard-shadow-5,.orchard-tree-5{left:39%;top:39%}.orchard-highlight-5{left:44%;top:44%}
+.orchard-shadow-6,.orchard-tree-6{right:6%;top:39%}.orchard-highlight-6{right:11%;top:44%}
+.orchard-shadow-7,.orchard-tree-7{left:6%;bottom:5%}.orchard-highlight-7{left:11%;bottom:10%}
+.orchard-shadow-8,.orchard-tree-8{left:39%;bottom:5%}.orchard-highlight-8{left:44%;bottom:10%}
+.orchard-shadow-9,.orchard-tree-9{right:6%;bottom:5%}.orchard-highlight-9{right:11%;bottom:10%}
 
-/* Linear terrain */
-.terrain-wall { border-radius:7px; background:#756b5b; padding:2px; }
-.wall-stone { position:absolute; top:12%; width:13%; height:76%; background:#9d988b; border:2px solid #5e584c; border-radius:45%; }
-.wall-stone-1{left:1%}.wall-stone-2{left:13%}.wall-stone-3{left:25%}.wall-stone-4{left:37%}.wall-stone-5{left:49%}.wall-stone-6{left:61%}.wall-stone-7{left:73%}.wall-stone-8{left:85%}
-.terrain-hedge { background:#3e663f; border:3px solid #334e34; border-radius:999px; }
-.hedge-clump { position:absolute; top:-15%; width:20%; height:130%; border-radius:50%; background:#66845b; border:2px solid #405d3e; }
+/* LINEAR TERRAIN */
+.terrain-wall{border-radius:8px;background:#6c6b5f;padding:2px;box-shadow:0 4px 0 var(--terrain-contact)}
+.wall-stone{position:absolute;top:10%;height:80%;background:#a29f8c;border:2px solid #5a594f;border-radius:7px;box-shadow:inset 0 3px 0 rgba(235,231,205,.25)}
+.wall-stone-1{left:1%;width:15%}.wall-stone-2{left:15%;width:12%}.wall-stone-3{left:26%;width:17%}.wall-stone-4{left:42%;width:13%}.wall-stone-5{left:54%;width:18%}.wall-stone-6{left:71%;width:13%}.wall-stone-7{right:1%;width:15%}
+.terrain-hedge{background:#355f3b;border:3px solid #2e4e34;border-radius:999px;box-shadow:0 5px 0 var(--terrain-contact)}
+.hedge-clump{position:absolute;top:-12%;width:21%;height:124%;border-radius:45% 55% 48% 52%;background:#5f8050;border:2px solid #3c5d3d;box-shadow:inset 0 4px 0 rgba(156,173,104,.18)}
 .hedge-clump-1{left:0}.hedge-clump-2{left:14%}.hedge-clump-3{left:28%}.hedge-clump-4{left:42%}.hedge-clump-5{left:56%}.hedge-clump-6{left:70%}.hedge-clump-7{right:0}
-.terrain-fence { background:transparent; }
-.fence-rail { position:absolute; left:2%; right:2%; height:14%; background:#76583b; border-radius:4px; }
-.fence-rail-1{top:27%}.fence-rail-2{bottom:27%}
-.fence-post { position:absolute; top:0; bottom:0; width:6%; background:#5b432f; border-radius:3px; }
+.terrain-fence{background:transparent;filter:drop-shadow(0 4px 2px var(--terrain-shadow))}
+.fence-rail{position:absolute;left:2%;right:2%;height:14%;background:#805b38;border:2px solid #533c29;border-radius:4px}
+.fence-rail-1{top:28%}.fence-rail-2{bottom:22%}
+.fence-post{position:absolute;top:-18%;bottom:-5%;width:8%;background:#68492f;border:2px solid #463321;border-radius:4px;z-index:3}
+.fence-post::after{content:"";position:absolute;left:18%;right:18%;top:-8%;height:12%;background:#a47b4e;clip-path:polygon(50% 0,100% 100%,0 100%)}
 .fence-post-1{left:0}.fence-post-2{left:24%}.fence-post-3{left:48%}.fence-post-4{left:72%}.fence-post-5{right:0}
-.terrain-ditch { border-radius:999px; background:#7e7254; box-shadow:inset 0 4px 0 #5c523d, inset 0 -4px 0 #a2a276; }
-.terrain-stream { border-radius:999px; background:#586e72; border:5px solid #6e7757; }
-.stream-water { position:absolute; inset:18% 0; border-radius:999px; background:#6f969c; }
+.terrain-ditch{border-radius:999px;background:#788052;border:5px solid #89915c;box-shadow:inset 0 6px 0 #4d4937,inset 0 -4px 0 #aaa879,0 4px 0 var(--terrain-contact)}
+.ditch-channel{position:absolute;inset:12% 29%;border-radius:999px;background:#5b4c34;box-shadow:inset 5px 0 0 rgba(40,34,25,.18)}
+.ditch-rim{position:absolute;top:3%;bottom:3%;width:14%;border-radius:50%;background:#76814e}
+.ditch-rim-1{left:-4%}.ditch-rim-2{right:-4%}
+.ditch-stone{position:absolute;width:8%;aspect-ratio:1;border-radius:50%;background:#aaa180;border:1px solid #68634f;z-index:3}
+.ditch-stone-1{left:12%;top:15%}.ditch-stone-2{right:14%;top:31%}.ditch-stone-3{left:18%;bottom:14%}.ditch-stone-4{right:11%;bottom:18%}
+.terrain-stream{border-radius:999px;background:#6f7855;border:5px solid #66704f;box-shadow:0 5px 0 var(--terrain-contact);overflow:visible}
+.stream-bank{position:absolute;top:-7%;bottom:-7%;width:23%;border-radius:999px;background:#788353;z-index:1}
+.stream-bank-1{left:-8%}.stream-bank-2{right:-8%}
+.stream-water{position:absolute;inset:4% 24%;border-radius:999px;background:#6f98a1;border:3px solid #4f747d;z-index:2;box-shadow:inset 5px 0 0 rgba(181,216,210,.18)}
+.stream-ripple{position:absolute;left:39%;width:23%;height:2%;border-top:2px solid rgba(220,239,225,.48);z-index:3}
+.stream-ripple-1{top:23%}.stream-ripple-2{top:49%}.stream-ripple-3{top:74%}
+.stream-stone{position:absolute;width:10%;aspect-ratio:1;border-radius:50%;background:#a39c7d;border:1px solid #625f4e;z-index:4}
+.stream-stone-1{left:9%;top:14%}.stream-stone-2{right:8%;top:36%}.stream-stone-3{left:10%;bottom:17%}.stream-stone-4{right:10%;bottom:7%}
 
-/* Buildings */
-.terrain-piece.terrain-building { pointer-events:auto; overflow:visible; background:#92795f; border:5px solid #544637; border-radius:7px; box-shadow:0 7px 0 rgba(56,46,36,.38); }
-.terrain-roof { position:absolute; inset:5%; background:#8a654e; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); border-radius:5px; }
-.terrain-roof-ridge { position:absolute; left:48%; top:8%; bottom:8%; width:4%; background:rgba(63,45,34,.55); transform:rotate(45deg); transform-origin:center; }
-.terrain-id-barn .terrain-roof { background:#765846; }
-.terrain-id-cottage .terrain-roof { background:#9a7058; }
-.terrain-id-shed .terrain-roof { inset:8%; background:#6f6554; clip-path:none; }
-.terrain-piece .building-door { position:absolute; left:42%; bottom:-5px; width:17%; height:13%; background:#3f3025; border:2px solid #271f19; z-index:6; }
-.terrain-piece .building-window { position:absolute; width:13%; height:14%; background:#78939a; border:3px solid #3f3931; z-index:6; }
-.terrain-piece .building-window-1{left:16%;top:24%}.terrain-piece .building-window-2{right:16%;top:24%}.terrain-piece .building-window-3{right:16%;bottom:18%}
-.terrain-piece .building-chimney { position:absolute; right:12%; top:-7%; width:12%; height:21%; background:#634b3a; border:2px solid #3f3329; z-index:7; }
-.terrain-id-barn .building-window { width:11%; height:18%; }
-.terrain-id-shed .building-window { left:15%; top:35%; }
+/* BUILDINGS — not strict top-down: roof above visible facade and side wall */
+.terrain-piece.terrain-building{pointer-events:auto;overflow:visible;background:transparent;border:0;border-radius:0;box-shadow:none;filter:drop-shadow(0 8px 4px rgba(46,39,31,.38))}
+.building-ground{position:absolute;left:2%;right:-3%;top:12%;bottom:-8%;border-radius:12px;background:#78805a;opacity:.65;z-index:0}
+.building-front-wall{position:absolute;left:8%;right:13%;bottom:7%;height:28%;background:#d0bf95;border:4px solid #524537;border-radius:0 0 6px 6px;z-index:3;box-shadow:inset 0 4px 0 rgba(255,245,213,.22)}
+.building-side-wall{position:absolute;right:5%;bottom:12%;width:12%;height:47%;background:#9d7e58;border:4px solid #524537;clip-path:polygon(0 10%,100% 0,100% 90%,0 100%);z-index:2}
+.terrain-roof-plane{position:absolute;top:4%;bottom:28%;border:4px solid #493e32;z-index:5;box-shadow:inset 0 4px 0 rgba(255,220,167,.12)}
+.terrain-roof-plane-1{left:6%;right:49%;background:#a85d3e;clip-path:polygon(100% 0,100% 100%,0 88%,0 18%);border-radius:8px 0 0 4px}
+.terrain-roof-plane-2{left:49%;right:8%;background:#8e4d37;clip-path:polygon(0 0,100% 18%,100% 88%,0 100%);border-radius:0 8px 4px 0}
+.terrain-roof-ridge{position:absolute;left:48%;top:3%;bottom:25%;width:4%;background:#5b3d2e;border-radius:999px;z-index:7;box-shadow:2px 0 0 rgba(244,194,137,.18)}
+.terrain-piece .building-door{position:absolute;left:43%;bottom:6%;width:15%;height:23%;background:#4e3927;border:3px solid #30251d;border-radius:3px 3px 0 0;z-index:8;box-shadow:inset 3px 0 0 rgba(143,107,69,.28)}
+.terrain-piece .building-door::after{content:"";position:absolute;right:13%;top:48%;width:12%;aspect-ratio:1;border-radius:50%;background:#b79a58}
+.terrain-piece .building-window{position:absolute;bottom:12%;width:13%;height:13%;background:#789198;border:3px solid #443d34;z-index:8;box-shadow:inset 0 0 0 2px rgba(210,224,211,.22)}
+.terrain-piece .building-window-1{left:18%}.terrain-piece .building-window-2{right:21%}
+.terrain-piece .building-chimney{position:absolute;right:16%;top:-1%;width:11%;height:22%;background:#d3c5a3;border:3px solid #4d4236;border-radius:3px;z-index:9;box-shadow:inset 0 4px 0 rgba(255,246,219,.25)}
+.terrain-id-barn .building-front-wall{background:#9a6238}.terrain-id-barn .building-side-wall{background:#734b31}.terrain-id-barn .terrain-roof-plane-1{background:#48523d}.terrain-id-barn .terrain-roof-plane-2{background:#3c4737}.terrain-id-barn .building-door{left:36%;width:28%;height:27%;background:#674329}.terrain-id-barn .building-door::before{content:"×";position:absolute;inset:-15% 0 0;text-align:center;color:#aa7c4c;font-weight:900;font-size:clamp(12px,2vw,26px)}.terrain-id-barn .building-window{display:none}
+.terrain-id-cottage .building-front-wall{background:#c9b991}.terrain-id-cottage .terrain-roof-plane-1{background:#555c5a}.terrain-id-cottage .terrain-roof-plane-2{background:#464e4f}
+.terrain-id-shed .building-front-wall{left:12%;right:16%;height:31%;background:#8a663f}.terrain-id-shed .building-side-wall{height:42%}.terrain-id-shed .terrain-roof-plane-1{left:9%;right:48%;top:8%;bottom:30%;background:#756949}.terrain-id-shed .terrain-roof-plane-2{left:48%;right:11%;top:8%;bottom:30%;background:#665b40}.terrain-id-shed .building-window{display:none}.terrain-id-shed .building-door{left:38%;width:24%;height:25%}
 
-/* Defences and scatter */
-.terrain-foxholes { background:rgba(110,91,59,.22); border-radius:18px; }
-.foxhole-pit { position:absolute; width:28%; height:56%; border-radius:50%; background:#594a36; border:5px solid #8b7955; }
+/* DEFENCES AND SCATTER */
+.terrain-foxholes{background:rgba(110,91,59,.18);border-radius:18px}
+.foxhole-pit{position:absolute;width:28%;height:56%;border-radius:50%;background:#564532;border:6px solid #9b8258;box-shadow:inset 0 5px 0 rgba(36,29,22,.35),0 4px 0 var(--terrain-contact)}
 .foxhole-pit-1{left:4%;top:22%}.foxhole-pit-2{left:36%;top:8%}.foxhole-pit-3{right:4%;top:25%}
-.terrain-sandbags { border-radius:12px; }
-.sandbag { position:absolute; top:20%; width:14%; height:60%; border-radius:45%; background:#9a875f; border:2px solid #655a43; }
+.terrain-sandbags{border-radius:12px}
+.sandbag{position:absolute;top:20%;width:14%;height:60%;border-radius:45%;background:#a38d62;border:2px solid #655a43;box-shadow:inset 0 4px 0 rgba(232,213,165,.22)}
 .sandbag-1{left:0}.sandbag-2{left:12%}.sandbag-3{left:24%}.sandbag-4{left:36%}.sandbag-5{left:48%}.sandbag-6{left:60%}.sandbag-7{left:72%}.sandbag-8{left:84%}
-.terrain-haystack { border-radius:50%; background:#b99b54; border:4px solid #7c693d; }
-.hay-bundle { position:absolute; border-radius:50%; background:#c9a65c; border:2px solid #8c753f; }
-.hay-bundle-1{inset:8% 38% 8% 8%}.hay-bundle-2{inset:8% 8% 8% 38%}.hay-bundle-3{inset:25% 20%}
-.terrain-well { border-radius:50%; background:#827866; border:5px solid #585144; }
-.well-ring{position:absolute;inset:12%;border-radius:50%;background:#a39d8f}.well-water{position:absolute;inset:30%;border-radius:50%;background:#65868c}
-.terrain-crates,.terrain-woodpile{filter:drop-shadow(0 3px 2px var(--terrain-shadow))}
-.crate{position:absolute;width:42%;height:48%;background:#8a6845;border:3px solid #55422f}.crate-1{left:0;top:0}.crate-2{right:0;top:8%}.crate-3{left:28%;bottom:0}
-.log{position:absolute;left:4%;right:4%;height:17%;background:#6c4b31;border:2px solid #493522;border-radius:999px}.log-1{top:0}.log-2{top:16%}.log-3{top:32%}.log-4{top:48%}.log-5{top:64%}.log-6{top:80%}
+.terrain-haystack{border-radius:50%;background:transparent;border:0}
+.hay-layer{position:absolute;left:50%;transform:translateX(-50%);border-radius:50%;background:#c9a653;border:4px solid #846d37;box-shadow:inset 0 5px 0 rgba(246,211,111,.22)}
+.hay-layer-1{width:92%;height:48%;bottom:3%}.hay-layer-2{width:72%;height:43%;bottom:31%}.hay-layer-3{width:48%;height:34%;bottom:59%}
+.hay-cross{position:absolute;left:43%;top:9%;width:14%;height:20%;background:#846433;clip-path:polygon(40% 0,60% 0,60% 40%,100% 40%,100% 60%,60% 60%,60% 100%,40% 100%,40% 60%,0 60%,0 40%,40% 40%);transform:rotate(45deg);z-index:5}
+.terrain-well{border-radius:50%;background:#837967;border:5px solid #555044}
+.well-ring{position:absolute;inset:18%;border-radius:50%;background:#aaa18d;border:4px solid #5f5a4e}.well-water{position:absolute;inset:34%;border-radius:50%;background:#678991}.well-post{position:absolute;top:-30%;bottom:45%;width:10%;background:#684c31;border:2px solid #443322;z-index:4}.well-post-1{left:17%}.well-post-2{right:17%}.well-roof{position:absolute;left:3%;right:3%;top:-44%;height:38%;background:#85552f;border:3px solid #4e3827;clip-path:polygon(50% 0,100% 100%,0 100%);z-index:5}
+.terrain-crates,.terrain-woodpile{filter:drop-shadow(0 4px 3px var(--terrain-shadow))}
+.crate{position:absolute;width:40%;height:44%;background:#976f3e;border:3px solid #56412c;box-shadow:inset 0 0 0 3px rgba(188,139,71,.18)}
+.crate::after{content:"×";position:absolute;inset:0;display:grid;place-items:center;color:#614527;font-weight:900}
+.crate-1{left:0;top:0}.crate-2{right:0;top:6%}.crate-3{left:29%;bottom:0}.crate-4{right:4%;bottom:-6%;width:24%;height:28%}
+.log{position:absolute;left:4%;right:4%;height:17%;background:#704b2e;border:2px solid #493522;border-radius:999px}.log::after{content:"";position:absolute;left:-2%;top:10%;height:80%;aspect-ratio:1;border-radius:50%;background:#9a7447;border:2px solid #493522}.log-1{top:0}.log-2{top:16%}.log-3{top:32%}.log-4{top:48%}.log-5{top:64%}.log-6{top:80%}.woodpile-cover{position:absolute;left:-4%;right:-4%;top:-12%;height:28%;background:#6d6048;border:3px solid #453d30;clip-path:polygon(8% 0,92% 0,100% 100%,0 100%)}
 
-/* Zoom label discipline */
-body.camera-close .terrain-piece .terrain-label { opacity: .35; }
-body.camera-close .terrain-piece:hover .terrain-label { opacity: .95; }
-.terrain-road.is-vertical::after { inset:5% 37%; border-top:0; border-left:2px dashed rgba(224,207,163,.28); }
+/* LABEL DISCIPLINE */
+body.camera-close .terrain-piece .terrain-label{opacity:.28}
+body.camera-close .terrain-piece:hover .terrain-label{opacity:.95}
