@@ -75,9 +75,9 @@ svg.fire-arc.mmg-fire-arc.red {
 }
 
 /* Persistent tactical states: unmistakable, but never geometry-changing. */
-.unit.ambush .unit-label,
-.building-occupancy-nameplate.ambush .unit-label,
-.building-occupancy-nameplate .unit-label:has(.nameplate-order.order-ambush) {
+#battlefield .unit.ambush .unit-label,
+#battlefield .building-occupancy-nameplate.ambush .unit-label,
+#battlefield .building-occupancy-nameplate .unit-label:has(.nameplate-order.order-ambush) {
   background: var(--state-ambush-soft) !important;
   border-color: var(--state-ambush) !important;
   color: #4f3465 !important;
@@ -86,25 +86,25 @@ svg.fire-arc.mmg-fire-arc.red {
     0 4px 0 rgba(70, 62, 49, .18) !important;
 }
 
-.unit.ambush .model-base-ring {
+#battlefield .unit.ambush .model-base-ring {
   opacity: 1 !important;
   border-color: var(--state-ambush) !important;
   background: rgba(118, 81, 143, .12) !important;
   box-shadow: 0 0 0 2px rgba(118, 81, 143, .25) !important;
 }
 
-.unit.ambush .far-unit-counter {
+#battlefield .unit.ambush .far-unit-counter {
   outline: 3px solid var(--state-ambush) !important;
   background: var(--state-ambush-soft) !important;
 }
 
-.unit.down .unit-model-group {
+#battlefield .unit.down .unit-model-group {
   filter: saturate(.42) brightness(.84) !important;
 }
 
-.unit.down .unit-label,
-.building-occupancy-nameplate.down .unit-label,
-.building-occupancy-nameplate .unit-label:has(.nameplate-order.order-down) {
+#battlefield .unit.down .unit-label,
+#battlefield .building-occupancy-nameplate.down .unit-label,
+#battlefield .building-occupancy-nameplate .unit-label:has(.nameplate-order.order-down) {
   background: var(--state-down-soft) !important;
   border-color: var(--state-down) !important;
   color: #365265 !important;
@@ -113,36 +113,36 @@ svg.fire-arc.mmg-fire-arc.red {
     0 4px 0 rgba(70, 62, 49, .16) !important;
 }
 
-.unit.down .model-base-ring {
+#battlefield .unit.down .model-base-ring {
   opacity: 1 !important;
   border-color: var(--state-down) !important;
   background: rgba(85, 120, 141, .16) !important;
   box-shadow: 0 0 0 2px rgba(85, 120, 141, .22) !important;
 }
 
-.unit.down .far-unit-counter {
+#battlefield .unit.down .far-unit-counter {
   outline: 3px solid var(--state-down) !important;
   background: var(--state-down-soft) !important;
 }
 
-.nameplate-order.order-ambush,
-.physical-order-chit.order-ambush,
+#battlefield .nameplate-order.order-ambush,
+#battlefield .physical-order-chit.order-ambush,
 .orderButton[data-order="Ambush"] {
   color: #4f3465 !important;
   border-color: var(--state-ambush) !important;
   background: var(--state-ambush-soft) !important;
 }
 
-.nameplate-order.order-down,
-.physical-order-chit.order-down,
+#battlefield .nameplate-order.order-down,
+#battlefield .physical-order-chit.order-down,
 .orderButton[data-order="Down"] {
   color: #365265 !important;
   border-color: var(--state-down) !important;
   background: var(--state-down-soft) !important;
 }
 
-.nameplate-order.order-rally,
-.physical-order-chit.order-rally,
+#battlefield .nameplate-order.order-rally,
+#battlefield .physical-order-chit.order-rally,
 .orderButton[data-order="Rally"] {
   color: #356b40 !important;
   border-color: var(--state-rally) !important;
@@ -158,14 +158,14 @@ svg.fire-arc.mmg-fire-arc.red {
 /* One restrained marker per supported unit, not one per LOD nameplate. */
 .command-support-marker {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 31px;
+  top: -36px;
   z-index: 74;
   display: grid;
   place-items: center;
   width: 14px;
   height: 14px;
-  transform: translate(31px, -36px);
+  transform: none !important;
   border: 1px solid #73591b;
   border-radius: 50%;
   background: #f0c95b;
@@ -178,9 +178,11 @@ svg.fire-arc.mmg-fire-arc.red {
 }
 
 body.camera-far .command-support-marker {
+  left: 21px;
+  top: -24px;
   width: 11px;
   height: 11px;
-  transform: translate(21px, -24px);
+  transform: none !important;
   font-size: 7px;
 }
 
@@ -224,24 +226,24 @@ body.camera-far .command-support-marker {
 }
 
 /* Command support is the small marker only; do not duplicate it as a label ring. */
-.unit.command-supported:not(.selected):not(.ambush):not(.down) .unit-label {
+#battlefield .unit.command-supported:not(.selected):not(.ambush):not(.down) .unit-label {
   outline: none !important;
 }
 
 /* State uses fill/border; selection keeps the familiar gold outline. */
-.unit.ambush .unit-label,
-.unit.down .unit-label {
+#battlefield .unit.ambush .unit-label,
+#battlefield .unit.down .unit-label {
   outline: none !important;
 }
 
-.unit.selected.ambush .unit-label,
-.unit.selected.down .unit-label {
+#battlefield .unit.selected.ambush .unit-label,
+#battlefield .unit.selected.down .unit-label {
   outline: 2px solid #e2b64d !important;
   outline-offset: 1px !important;
 }
 
-.building-occupancy-nameplate.selected .unit-label:has(.nameplate-order.order-ambush),
-.building-occupancy-nameplate.selected .unit-label:has(.nameplate-order.order-down) {
+#battlefield .building-occupancy-nameplate.selected .unit-label:has(.nameplate-order.order-ambush),
+#battlefield .building-occupancy-nameplate.selected .unit-label:has(.nameplate-order.order-down) {
   box-shadow:
     0 0 0 3px #e2b64d,
     0 5px 0 rgba(76, 67, 52, .22) !important;

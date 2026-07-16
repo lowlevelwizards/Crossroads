@@ -1,0 +1,564 @@
+/* ==========================================================================
+   CROSSROADS 3N-H.1 — UNIT TRANSFORM OWNERSHIP
+   One stable coordinate chain:
+   unit anchor -> travel layer -> local frame -> representation -> local parts.
+   State changes may alter color, opacity, outline, or filter, never geometry.
+   ========================================================================== */
+
+/* 1. Gameplay anchor: owns table position and camera counter-rotation only. */
+#battlefield .unit,
+#battlefield .unit:hover,
+#battlefield .unit:focus-visible,
+#battlefield .unit.selected,
+#battlefield .unit.ambush,
+#battlefield .unit.down,
+#battlefield .unit.command-supported,
+#battlefield .unit.confirmed-target,
+#battlefield .unit.targetable-legal,
+#battlefield .unit.targetable-protected,
+#battlefield .unit.targetable-blocked,
+#battlefield .unit.targetable-assault {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+body.camera-rotated #battlefield .unit,
+body.camera-rotated #battlefield .unit:hover,
+body.camera-rotated #battlefield .unit:focus-visible,
+body.camera-rotated #battlefield .unit.selected,
+body.camera-rotated #battlefield .unit.ambush,
+body.camera-rotated #battlefield .unit.down,
+body.camera-rotated #battlefield .unit.command-supported,
+body.camera-rotated #battlefield .unit.confirmed-target,
+body.camera-rotated #battlefield .unit.targetable-legal,
+body.camera-rotated #battlefield .unit.targetable-protected,
+body.camera-rotated #battlefield .unit.targetable-blocked,
+body.camera-rotated #battlefield .unit.targetable-assault {
+  transform: translate(-50%, -50%) rotate(-90deg) !important;
+}
+
+/* 2. Travel layer: the only element movement animation may translate. */
+#battlefield .unit-visual-travel {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  inset: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  will-change: transform;
+}
+
+/* 3. Local frame: all unit-bound visuals share this exact origin. */
+#battlefield .unit-local-frame {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  inset: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  transform-origin: center !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* 4. LOD representations are zero-size views of the same local origin. */
+#battlefield .unit-representation,
+#battlefield .unit:hover .unit-representation,
+#battlefield .unit:focus-visible .unit-representation,
+#battlefield .unit.selected .unit-representation,
+#battlefield .unit.ambush .unit-representation,
+#battlefield .unit.down .unit-representation,
+#battlefield .unit.command-supported .unit-representation,
+#battlefield .unit.confirmed-target .unit-representation,
+#battlefield .unit.targetable-legal .unit-representation,
+#battlefield .unit.targetable-protected .unit-representation,
+#battlefield .unit.targetable-blocked .unit-representation,
+#battlefield .unit.targetable-assault .unit-representation {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  inset: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transform-origin: center !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  contain: none !important;
+}
+
+/* 5. One scale owner for the formation, pins, shadows, and muzzle anchors. */
+#battlefield .unit-model-group,
+#battlefield .unit:hover .unit-model-group,
+#battlefield .unit:focus-visible .unit-model-group,
+#battlefield .unit.selected .unit-model-group,
+#battlefield .unit.ambush .unit-model-group,
+#battlefield .unit.down .unit-model-group,
+#battlefield .unit.command-supported .unit-model-group,
+#battlefield .unit.confirmed-target .unit-model-group,
+#battlefield .unit.targetable-legal .unit-model-group,
+#battlefield .unit.targetable-protected .unit-model-group,
+#battlefield .unit.targetable-blocked .unit-model-group,
+#battlefield .unit.targetable-assault .unit-model-group {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: var(--formation-width) !important;
+  height: var(--formation-height) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform:
+    translate(-50%, -50%)
+    scale(var(--unit-visual-scale)) !important;
+  transform-origin: center !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+#battlefield .unit-formation-shell,
+#battlefield .unit-formation,
+#battlefield .unit:hover .unit-formation,
+#battlefield .unit:focus-visible .unit-formation,
+#battlefield .unit.selected .unit-formation,
+#battlefield .unit.ambush .unit-formation,
+#battlefield .unit.down .unit-formation,
+#battlefield .unit.command-supported .unit-formation,
+#battlefield .unit.confirmed-target .unit-formation,
+#battlefield .unit.targetable-legal .unit-formation,
+#battlefield .unit.targetable-protected .unit-formation,
+#battlefield .unit.targetable-blocked .unit-formation,
+#battlefield .unit.targetable-assault .unit-formation {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  translate: none !important;
+  animation: none !important;
+  overflow: visible !important;
+}
+
+/* 6. Authored slot coordinates are immutable across interaction states. */
+#battlefield .formation-slot,
+#battlefield .model-wrap,
+#battlefield .unit:hover .formation-slot,
+#battlefield .unit:focus-visible .formation-slot,
+#battlefield .unit.selected .formation-slot,
+#battlefield .unit.ambush .formation-slot,
+#battlefield .unit.down .formation-slot,
+#battlefield .unit.command-supported .formation-slot,
+#battlefield .unit.confirmed-target .formation-slot,
+#battlefield .unit.targetable-legal .formation-slot,
+#battlefield .unit.targetable-protected .formation-slot,
+#battlefield .unit.targetable-blocked .formation-slot,
+#battlefield .unit.targetable-assault .formation-slot {
+  position: absolute !important;
+  left: var(--slot-x) !important;
+  top: var(--slot-y) !important;
+  width: 30px !important;
+  height: 40px !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  translate: none !important;
+  transform-origin: center !important;
+  overflow: visible !important;
+}
+
+/* Deployed MMG crew are still authored slots inside one rotating subassembly. */
+#battlefield .mmg-deployed-crew .formation-slot,
+#battlefield .mmg-deployed-crew .model-wrap {
+  width: 24px !important;
+  height: 30px !important;
+  transform: translate(-50%, -50%) scale(.82) !important;
+}
+
+/* 7. Hop owns temporary vertical animation; shadow owns only local squash. */
+#battlefield .model-hop,
+#battlefield .unit:hover .model-hop,
+#battlefield .unit:focus-visible .model-hop,
+#battlefield .unit.selected .model-hop,
+#battlefield .unit.ambush .model-hop,
+#battlefield .unit.down .model-hop,
+#battlefield .unit.command-supported .model-hop,
+#battlefield .unit.confirmed-target .model-hop,
+#battlefield .unit.targetable-legal .model-hop,
+#battlefield .unit.targetable-protected .model-hop,
+#battlefield .unit.targetable-blocked .model-hop,
+#battlefield .unit.targetable-assault .model-hop {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: translateY(0);
+  translate: none !important;
+  transform-origin: 50% 100% !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+#battlefield .model-shadow,
+#battlefield .unit:hover .model-shadow,
+#battlefield .unit:focus-visible .model-shadow,
+#battlefield .unit.selected .model-shadow,
+#battlefield .unit.ambush .model-shadow,
+#battlefield .unit.down .model-shadow,
+#battlefield .unit.command-supported .model-shadow,
+#battlefield .unit.confirmed-target .model-shadow,
+#battlefield .unit.targetable-legal .model-shadow,
+#battlefield .unit.targetable-protected .model-shadow,
+#battlefield .unit.targetable-blocked .model-shadow,
+#battlefield .unit.targetable-assault .model-shadow {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -3px !important;
+  width: 15px !important;
+  height: 6px !important;
+  margin: 0 !important;
+  transform: translateX(-50%) !important;
+  translate: none !important;
+  transform-origin: center !important;
+}
+
+#battlefield .model-base-ring {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -3px !important;
+  transform: translateX(-50%) !important;
+  translate: none !important;
+  transform-origin: center !important;
+}
+
+#battlefield .model-hit-pad {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  translate: none !important;
+}
+
+/* 8. Facing is soldier-local and cannot be erased by selection/hover rules. */
+#battlefield .model-hop > .brick-soldier {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 4px !important;
+}
+
+#battlefield .brick-soldier.facing-right,
+#battlefield .brick-soldier.facing-up,
+#battlefield .brick-soldier.facing-down {
+  transform: translateX(-50%) !important;
+  translate: none !important;
+}
+
+#battlefield .brick-soldier.facing-left {
+  transform: translateX(-50%) scaleX(-1) !important;
+  translate: none !important;
+}
+
+/* MMG facing is one intentional transform on the deployed weapon assembly. */
+#battlefield .mmg-deployed-formation {
+  transform: rotate(var(--mmg-facing)) scale(.82) !important;
+  transform-origin: 50% 52% !important;
+}
+
+body:not(.camera-rotated) #battlefield .mmg-deployed-formation {
+  transform: rotate(var(--mmg-facing)) scale(.72) !important;
+}
+
+#battlefield .mmg-deployed-crew,
+#battlefield .mmg-deployed-crew.crew-1,
+#battlefield .mmg-deployed-crew.crew-2,
+#battlefield .mmg-deployed-crew.crew-3 {
+  transform: rotate(calc(-1 * var(--mmg-facing))) !important;
+  transform-origin: 50% 52% !important;
+}
+
+/* 9. Unit-bound effects and command indicators use the local frame. */
+#battlefield .unit-feedback-layer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 92px !important;
+  height: 72px !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center !important;
+  pointer-events: none !important;
+}
+
+#battlefield .unit-local-frame > .command-ring {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center !important;
+  pointer-events: none !important;
+}
+
+/* 10. Far counter and labels are anchored directly to the representation origin. */
+#battlefield .unit-representation-far .far-unit-counter,
+#battlefield .unit.selected .unit-representation-far .far-unit-counter,
+#battlefield .unit.ambush .unit-representation-far .far-unit-counter,
+#battlefield .unit.down .unit-representation-far .far-unit-counter,
+#battlefield .unit.confirmed-target .unit-representation-far .far-unit-counter {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center !important;
+}
+
+/* Compact nameplate reset, moved out of runtime-injected JavaScript. */
+#battlefield .unit-label {
+  all: unset !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: var(--unit-label-offset, 48px) !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 150px !important;
+  padding: 4px 8px !important;
+  margin: 0 !important;
+  transform: translateX(-50%) !important;
+  translate: none !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(91, 80, 67, .42) !important;
+  border-radius: 7px !important;
+  background: rgba(246, 240, 227, .96) !important;
+  box-shadow: 0 3px 0 rgba(70, 62, 49, .18) !important;
+  color: #2d2b27 !important;
+  font: 900 13px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  pointer-events: auto !important;
+  flex: 0 0 auto !important;
+  place-self: auto !important;
+  contain: none !important;
+}
+
+#battlefield .unit-label > * {
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  flex: 0 0 auto !important;
+  align-self: center !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  transform: none !important;
+  translate: none !important;
+  box-sizing: border-box !important;
+}
+
+#battlefield .unit-label-name {
+  display: block !important;
+  max-width: 88px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#battlefield .quality-nameplate-stripes {
+  display: inline-grid !important;
+  gap: 1px !important;
+  width: 10px !important;
+  flex-basis: 10px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#battlefield .quality-nameplate-stripes i {
+  display: block !important;
+  width: 10px !important;
+  height: 3px !important;
+  min-width: 10px !important;
+  min-height: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(63, 55, 43, .68) !important;
+  border-radius: 3px !important;
+  background: #6f9a63 !important;
+  box-shadow: none !important;
+}
+
+#battlefield .quality-nameplate-stripes.quality-regular i {
+  background: #d2b54f !important;
+}
+
+#battlefield .quality-nameplate-stripes.quality-veteran i {
+  background: #c9823d !important;
+}
+
+#battlefield .unit-label-stats {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: 900 .82em/1 ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+#battlefield .nameplate-order {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 20px !important;
+  min-height: 18px !important;
+  padding: 2px 5px !important;
+  border: 1px solid #6a6254 !important;
+  border-radius: 5px !important;
+  background: #eee6d6 !important;
+  box-shadow: 1px 2px 0 rgba(60, 53, 43, .20) !important;
+  color: inherit !important;
+  font: 900 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  white-space: nowrap !important;
+}
+
+#battlefield .unit-label-medium .nameplate-order span {
+  display: none !important;
+}
+
+
+/* Selection and target confirmation change appearance, never placement. */
+#battlefield .unit.selected .unit-label {
+  outline: 2px solid #e2b64d !important;
+  outline-offset: 1px !important;
+}
+
+#battlefield .unit.confirmed-target .unit-label {
+  outline: 3px solid #fff8d8 !important;
+  outline-offset: 2px !important;
+}
+
+/* Root/representation pseudo-panels and legacy formation selection plates stay off. */
+#battlefield .unit::before,
+#battlefield .unit::after,
+#battlefield .unit-representation::before,
+#battlefield .unit-representation::after,
+#battlefield .unit-formation::before,
+#battlefield .unit-formation::after,
+#battlefield .unit-label::before,
+#battlefield .unit-label::after,
+#battlefield .unit-label > *::before,
+#battlefield .unit-label > *::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Building occupant reuses the same component without unit-local positioning. */
+#buildingOccupancyBadge.building-occupancy-nameplate {
+  all: unset !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: -15px !important;
+  z-index: 28 !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: calc(100% - 12px) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: translateX(-50%) !important;
+  overflow: visible !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+#buildingOccupancyBadge.building-occupancy-nameplate[hidden] {
+  display: none !important;
+}
+
+#buildingOccupancyBadge .unit-label {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+@media (max-width: 899px) {
+  #battlefield .unit-label {
+    max-width: 138px !important;
+    padding: 4px 7px !important;
+    font-size: 12px !important;
+  }
+
+  #battlefield .unit-label-name {
+    max-width: 78px !important;
+  }
+}

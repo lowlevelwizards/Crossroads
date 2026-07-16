@@ -5,48 +5,23 @@
   // resolving orders, mutating combat state, or owning input/camera rules.
 
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const TACTICAL_STYLESHEET = "styles/tactical-states.css?v=3ng1";
-  const CARDINAL_ANGLE = Object.freeze({ right: 0, down: 90, left: 180, up: 270 });
+  const CARDINAL_ANGLE = Object.freeze({
+    right: 0,
+    down: 90,
+    left: 180,
+    up: 270
+  });
 
-  function ensureTacticalStylesheet() {
-    if (document.querySelector('link[data-crossroads-tactical-states]')) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = TACTICAL_STYLESHEET;
-    link.dataset.crossroadsTacticalStates = "true";
-    document.head.appendChild(link);
-  }
+  function createLocalFrame(travel) {
+    const frame = document.createElement("span");
+    frame.className = "unit-local-frame";
 
-  function applyEdgeContainment(element, unit, rules, battlefield) {
-    const pixelsPerInch =
-      Math.max(1, battlefield.offsetWidth) / Math.max(1, rules.tableWidth);
-
-    const horizontalFootprint = 54;
-    const topFootprint = 42;
-    const bottomFootprint = 74;
-
-    const availableLeft = unit.x * pixelsPerInch;
-    const availableRight = (rules.tableWidth - unit.x) * pixelsPerInch;
-    const availableTop = unit.y * pixelsPerInch;
-    const availableBottom = (rules.tableHeight - unit.y) * pixelsPerInch;
-
-    let shiftX = 0;
-    let shiftY = 0;
-
-    if (availableLeft < horizontalFootprint) {
-      shiftX = horizontalFootprint - availableLeft;
-    } else if (availableRight < horizontalFootprint) {
-      shiftX = -(horizontalFootprint - availableRight);
+    while (travel.firstChild) {
+      frame.appendChild(travel.firstChild);
     }
 
-    if (availableTop < topFootprint) {
-      shiftY = topFootprint - availableTop;
-    } else if (availableBottom < bottomFootprint) {
-      shiftY = -(bottomFootprint - availableBottom);
-    }
-
-    element.style.setProperty("--unit-edge-shift-x", `${shiftX.toFixed(1)}px`);
-    element.style.setProperty("--unit-edge-shift-y", `${shiftY.toFixed(1)}px`);
+    travel.appendChild(frame);
+    return frame;
   }
 
   function maximumWeaponRange(unit, weaponProfiles) {
@@ -268,7 +243,7 @@
       const currentFaction = getCurrentFaction();
 
       battlefield
-        .querySelectorAll(".unit, .command-ring, .fire-arc, .mmg-fire-arc")
+        .querySelectorAll(".unit, .fire-arc")
         .forEach(element => element.remove());
 
       renderMMGFireArcs({
@@ -310,22 +285,24 @@
         element.innerHTML = unitFormationHtml(unit);
 
         const travel = element.querySelector(".unit-visual-travel");
-        if (unit.role === "officer" && travel) {
+        const localFrame = travel ? createLocalFrame(travel) : null;
+
+        if (unit.role === "officer" && localFrame) {
           const ring = document.createElement("span");
           ring.className = `command-ring ${unit.faction}`;
           ring.style.width = `${inchesToPixels(RULES.commandRadius * 2)}px`;
           ring.style.height = `${inchesToPixels(RULES.commandRadius * 2)}px`;
-          travel.prepend(ring);
+          localFrame.prepend(ring);
         }
 
         const support = commandSupport(unit);
-        if (support && travel) {
+        if (support && localFrame) {
           element.classList.add("command-supported");
           const marker = document.createElement("span");
           marker.className = "command-support-marker";
           marker.textContent = "★";
           marker.setAttribute("aria-label", `Supported by ${support.name}`);
-          travel.appendChild(marker);
+          localFrame.appendChild(marker);
         }
 
         element
@@ -419,7 +396,6 @@
         element.addEventListener("mouseleave", clearTracePreview);
 
         battlefield.appendChild(element);
-        applyEdgeContainment(element, unit, RULES, battlefield);
       }
     };
   }
@@ -428,17 +404,7 @@
     const root = battlefield.querySelector(
       `.unit[data-unit-id="${CSS.escape(unitId)}"]`
     );
-    if (!root) return;
-
-    root.querySelectorAll(".brick-soldier").forEach(soldier => {
-      soldier.classList.remove(
-        "facing-up",
-        "facing-down",
-        "facing-left",
-        "facing-right"
-      );
-      soldier.classList.add(`facing-${facing}`);
-    });
+    window.CrossroadsFormationGeometry.applyFacing(root, facing);
   }
 
   function confirmTargetInPlace(battlefield, targetId) {
@@ -472,7 +438,6 @@
     document.body.classList.remove("targeting-confirmed");
   }
 
-  ensureTacticalStylesheet();
 
   window.CrossroadsBattlefieldPresentation = Object.freeze({
     createUnitLayerRenderer,

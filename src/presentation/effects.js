@@ -57,19 +57,13 @@
 
       const animation = feedback.animate(
         [
-          {
-            opacity: 0,
-            transform: `translate(-50%, -50%) scale(${options.startScale ?? .72})`
-          },
+          { opacity: 0, filter: "brightness(1)" },
           {
             opacity: options.peakOpacity ?? .96,
-            transform: `translate(-50%, -50%) scale(${options.peakScale ?? 1.08})`,
+            filter: "brightness(1.12)",
             offset: options.peakOffset ?? .42
           },
-          {
-            opacity: 0,
-            transform: `translate(-50%, -50%) scale(${options.endScale ?? 1.3})`
-          }
+          { opacity: 0, filter: "brightness(1.04)" }
         ],
         {
           duration: options.duration ?? 620,
@@ -87,16 +81,7 @@
     }
 
     function applyFacing(root, facing) {
-      if (!facing) return;
-      root.querySelectorAll(".brick-soldier").forEach(soldier => {
-        soldier.classList.remove(
-          "facing-up",
-          "facing-down",
-          "facing-left",
-          "facing-right"
-        );
-        soldier.classList.add(`facing-${facing}`);
-      });
+      window.CrossroadsFormationGeometry.applyFacing(root, facing);
     }
 
     function startHopAnimations(slots, duration, options = {}) {
@@ -136,19 +121,9 @@
           animations.push(
             shadow.animate(
               [
-                {
-                  transform: "translateX(-50%) scale(1)",
-                  opacity: .78
-                },
-                {
-                  transform: "translateX(-50%) scale(.72)",
-                  opacity: .48,
-                  offset: .46
-                },
-                {
-                  transform: "translateX(-50%) scale(1)",
-                  opacity: .78
-                }
+                { opacity: .78 },
+                { opacity: .48, offset: .46 },
+                { opacity: .78 }
               ],
               {
                 duration: hopDuration,
@@ -168,11 +143,9 @@
       for (const slot of slots) {
         const hop = slot.querySelector(".model-hop");
         const shadow = slot.querySelector(".model-shadow");
-        if (hop) hop.style.transform = "translateY(0)";
-        if (shadow) {
-          shadow.style.transform = "translateX(-50%) scale(1)";
-          shadow.style.opacity = "";
-        }
+        hop?.style.removeProperty("transform");
+        shadow?.style.removeProperty("transform");
+        shadow?.style.removeProperty("opacity");
       }
     }
 
@@ -312,16 +285,21 @@
         const jobs = [];
         let groupStart = 0;
 
+        const visible = visibleUnitParts(root);
+        const firingSurface = visible.representation ?? root;
+
         for (const group of groups ?? []) {
           const key = group.key;
           let muzzles = [
-            ...root.querySelectorAll(
+            ...firingSurface.querySelectorAll(
               `[data-weapon-key="${CSS.escape(key)}"] .weapon-muzzle`
             )
           ];
 
           if (key === "mmg") {
-            const deployed = root.querySelector(".mmg-barrel .weapon-muzzle");
+            const deployed = firingSurface.querySelector(
+              ".mmg-barrel .weapon-muzzle"
+            );
             if (deployed) muzzles = [deployed];
           }
 
@@ -389,7 +367,11 @@
 
       setBusy(1);
       try {
-        const pins = [...root.querySelectorAll(".pin-mark, .pin-counted")];
+        const visible = visibleUnitParts(root);
+        const pinSurface = visible.representation ?? root;
+        const pins = [
+          ...pinSurface.querySelectorAll(".pin-mark, .pin-counted")
+        ];
         const animations = pins.map((pin, index) =>
           pin.animate(
             [
@@ -417,9 +399,6 @@
 
         await playFeedbackPulse(root, "rally", {
           duration: 500,
-          startScale: .76,
-          peakScale: 1.1,
-          endScale: 1.3,
           peakOpacity: .94,
           easing: "ease-out"
         });
@@ -432,9 +411,9 @@
       const officer = unitElement(officerId);
       officer?.querySelector(".command-ring")?.animate(
         [
-          { opacity: .35, transform: "translate(-50%, -50%) scale(.88)" },
-          { opacity: .82, transform: "translate(-50%, -50%) scale(1.05)" },
-          { opacity: .38, transform: "translate(-50%, -50%) scale(1)" }
+          { opacity: .35, filter: "brightness(1)" },
+          { opacity: .82, filter: "brightness(1.28)" },
+          { opacity: .38, filter: "brightness(1)" }
         ],
         { duration: 620, easing: "ease-out" }
       );
@@ -444,9 +423,6 @@
         if (!root) continue;
         void playFeedbackPulse(root, "command", {
           duration: 680,
-          startScale: .72,
-          peakScale: 1.12,
-          endScale: 1.3,
           peakOpacity: 1,
           easing: "ease-out"
         });
