@@ -6316,3 +6316,227 @@ body.targeting-confirmed
     animation-duration: 1ms !important;
   }
 }
+
+/* ==========================================================================
+   INFANTRY CORE PRESENTATION 3N-F — UNIFIED BATTLEFIELD LANGUAGE
+   ========================================================================== */
+
+/* One order vocabulary across action buttons and every zoom tier. */
+.orderButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .48em;
+}
+
+.orderButton > b {
+  display: inline-grid;
+  min-width: 1.25em;
+  place-items: center;
+  font: 900 1.05em/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.unit-state-line-far,
+.unit-state-line-medium,
+.unit-state-line-close {
+  position: absolute;
+  pointer-events: none;
+}
+
+.unit-state-line-far {
+  right: -17px;
+  top: -15px;
+}
+
+.unit-state-line-medium {
+  left: calc(50% + 33px);
+  top: calc(50% + var(--unit-label-offset) - 9px);
+}
+
+.unit-state-line-close {
+  left: calc(50% + 47px);
+  top: calc(50% + var(--unit-label-offset) - 10px);
+}
+
+.physical-order-chit.detail-medium,
+.physical-order-chit.detail-far {
+  min-width: 23px;
+  padding: 4px 6px;
+}
+
+.physical-order-chit.detail-medium span,
+.physical-order-chit.detail-far span {
+  display: none;
+}
+
+.physical-order-chit.detail-far {
+  min-width: 18px;
+  padding: 3px 4px;
+  transform: scale(.82);
+}
+
+/* Compact building occupant presentation reuses ordinary unit nameplate markup. */
+.building-occupancy-nameplate {
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  z-index: 28;
+  width: max-content;
+  max-width: 90%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  overflow: visible;
+  cursor: pointer;
+}
+
+.building-occupancy-nameplate .unit-label {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  display: inline-flex !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.building-occupancy-nameplate.blue .unit-label {
+  outline: 3px solid rgba(79,124,161,.84);
+}
+
+.building-occupancy-nameplate.red .unit-label {
+  outline: 3px solid rgba(148,92,73,.84);
+}
+
+.building-occupancy-nameplate.selected .unit-label {
+  box-shadow:
+    0 0 0 3px #e2b64d,
+    0 5px 0 rgba(76,67,52,.22);
+}
+
+.unit-label-building {
+  gap: 9px;
+}
+
+.unit-label-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 900 .82em/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.nameplate-men {
+  color: #48453f;
+}
+
+.nameplate-pins {
+  color: #a9362f;
+}
+
+/* Command radius belongs to the officer's travel layer. */
+.unit-visual-travel > .command-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -2;
+}
+
+.command-support-star {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 4px;
+  color: #d8a735;
+  font: 900 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-shadow:
+    0 1px 0 #67562f,
+    0 0 5px rgba(226,182,77,.65);
+}
+
+.unit.command-supported .unit-label {
+  box-shadow:
+    inset 0 -2px 0 rgba(218,171,52,.5),
+    0 4px 0 rgba(70,62,49,.18);
+}
+
+/* Ambush and Down use the same order language with quiet persistent states. */
+.unit.ambush .unit-label {
+  outline-color: #74558d !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(116,85,141,.42),
+    0 4px 0 rgba(70,62,49,.18);
+}
+
+.unit.ambush .model-base-ring {
+  opacity: .72;
+  border-color: #74558d;
+}
+
+.unit.down .unit-model-group {
+  filter: saturate(.48) brightness(.9);
+}
+
+.unit.down .unit-label {
+  outline-color: #77736b !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(105,101,94,.38),
+    0 4px 0 rgba(70,62,49,.18);
+}
+
+/* Explicit waypoint mode reads as a temporary active tool. */
+#addWaypointButton.active {
+  border-color: #d39a24;
+  box-shadow:
+    inset 0 0 0 2px rgba(211,154,36,.3),
+    0 3px 0 rgba(80,68,45,.22);
+}
+
+/* Weapon-specific barrel-tip anchors. */
+.brick-soldier {
+  --muzzle-x: calc(100% - 1px);
+  --muzzle-y: 50%;
+}
+
+.role-rifle {
+  --muzzle-x: calc(100% - 2px);
+  --muzzle-y: 48%;
+}
+
+.role-smg,
+.role-officer {
+  --muzzle-x: calc(100% - 1px);
+  --muzzle-y: 52%;
+}
+
+.role-lmg {
+  --muzzle-x: calc(100% - 3px);
+  --muzzle-y: 49%;
+}
+
+.brick-weapon .weapon-muzzle {
+  left: var(--muzzle-x) !important;
+  right: auto !important;
+  top: var(--muzzle-y) !important;
+  width: 29px !important;
+  height: 29px !important;
+  transform: translate(-50%, -50%);
+}
+
+.facing-left .brick-weapon .weapon-muzzle {
+  left: calc(100% - var(--muzzle-x)) !important;
+}
+
+.mmg-barrel .weapon-muzzle {
+  left: calc(100% - 1px) !important;
+  right: auto !important;
+  top: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  transform: translate(-50%, -50%);
+}
+
+.weapon-muzzle.muzzle-pulse::before {
+  font-size: 34px !important;
+}
