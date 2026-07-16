@@ -234,29 +234,31 @@
       exemptUnitId
     ) {
       const distance = distanceBetweenPoints(start, end);
-      const expandedBuilding = expandRect(
-        terrain.building,
-        rules.unitCollisionRadius
-      );
+      const terrainInstances = Array.isArray(terrain.instances) ? terrain.instances : [];
+      const buildings = terrainInstances.filter(instance => instance.rules?.occupiable);
 
-      if (pointInsideRect(end, expandedBuilding)) {
-        return {
-          legal: false,
-          reason: "destination overlaps the impassable farmhouse.",
-          distance,
-          cost: distance,
-          details: []
-        };
-      }
+      for (const building of buildings) {
+        const expandedBuilding = expandRect(building, rules.unitCollisionRadius);
+        const label = building.definition?.label ?? "building";
+        if (pointInsideRect(end, expandedBuilding)) {
+          return {
+            legal: false,
+            reason: `destination overlaps the impassable ${label}.`,
+            distance,
+            cost: distance,
+            details: []
+          };
+        }
 
-      if (segmentRectClip(start, end, expandedBuilding)) {
-        return {
-          legal: false,
-          reason: "the path passes through the impassable farmhouse.",
-          distance,
-          cost: distance,
-          details: []
-        };
+        if (segmentRectClip(start, end, expandedBuilding)) {
+          return {
+            legal: false,
+            reason: `the path passes through the impassable ${label}.`,
+            distance,
+            cost: distance,
+            details: []
+          };
+        }
       }
 
       if (movementIntegrityEnabled()) {
@@ -289,27 +291,18 @@
       const details = [];
 
       if (movementIntegrityEnabled()) {
-        const woodsClip = segmentRectClip(start, end, terrain.woods);
-
-        if (woodsClip) {
-          const insideLength =
-            distance *
-            Math.max(0, woodsClip.tExit - woodsClip.tEnter);
-
-          cost +=
-            insideLength *
-            (rules.roughGroundMultiplier - 1);
-
-          details.push(
-            `${insideLength.toFixed(1)}″ through woods costs double`
-          );
+        for (const woods of terrainInstances.filter(instance => instance.rules?.movement === "rough")) {
+          const woodsClip = segmentRectClip(start, end, woods);
+          if (!woodsClip) continue;
+          const insideLength = distance * Math.max(0, woodsClip.tExit - woodsClip.tEnter);
+          cost += insideLength * (rules.roughGroundMultiplier - 1);
+          details.push(`${insideLength.toFixed(1)}″ through ${woods.definition?.label ?? "rough ground"} costs double`);
         }
 
-        const wallClip = segmentRectClip(start, end, terrain.wall);
-
-        if (wallClip) {
+        for (const wall of terrainInstances.filter(instance => instance.rules?.movement === "crossing")) {
+          if (!segmentRectClip(start, end, wall)) continue;
           cost += rules.wallCrossingCost;
-          details.push(`wall crossing +${rules.wallCrossingCost}″`);
+          details.push(`${wall.definition?.label ?? "obstacle"} crossing +${rules.wallCrossingCost}″`);
         }
       }
 
