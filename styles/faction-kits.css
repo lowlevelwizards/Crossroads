@@ -1,365 +1,168 @@
 /* ==========================================================================
-   CROSSROADS BUILD A.2 — POLAND / GERMANY 1939
-   Identity comes from palette, headwear, lower legs, rear load, and weapon mass.
-   Detail remains subordinate to chunky silhouette readability.
+   CROSSROADS BUILD A.2.1 — POLAND / GERMANY 1939 REFINEMENT
+   Stronger load identity, quieter caps, and small detail accents without clutter.
    ========================================================================== */
 
-/* Neutral compatibility kit. */
 #battlefield .brick-soldier.kit-generic-ww2 {
-  --uniform: #74775d;
-  --uniform-dark: #505440;
-  --trouser: #55584b;
-  --helmet: #545944;
-  --load: #5b503d;
-  --load-secondary: #796d52;
-  --weapon-wood: #76502f;
-  --weapon-wood-dark: #59391f;
-  --metal: #41484b;
-  --metal-dark: #2f3436;
-  --boot: #242522;
+  --uniform:#74775d; --uniform-dark:#505440; --trouser:#55584b; --helmet:#545944;
+  --load:#5b503d; --load-secondary:#796d52; --weapon-wood:#76502f; --weapon-wood-dark:#59391f;
+  --metal:#41484b; --metal-dark:#2f3436; --boot:#242522;
 }
-
-#battlefield .load-primary-generic-pack .load-primary {
-  width: 9px;
-  height: 10px;
-}
-
+#battlefield .load-primary-generic-pack .load-primary { width:9px; height:10px; }
 #battlefield .load-primary-generic-pack-small .load-primary,
-#battlefield .load-primary-generic-light-pack .load-primary {
-  width: 6px;
-  height: 7px;
-}
-
+#battlefield .load-primary-generic-light-pack .load-primary { width:6px; height:7px; }
 #battlefield .load-secondary-generic-roll .load-secondary {
-  display: block;
-  left: 0;
-  top: -2px;
-  width: 10px;
-  height: 3px;
-  border-radius: 3px;
+  display:block; left:0; top:-2px; width:10px; height:3px; border-radius:3px;
+}
+#battlefield .load-primary-generic-pack .load-primary::after,
+#battlefield .load-primary-generic-pack-small .load-primary::after,
+#battlefield .load-primary-generic-light-pack .load-primary::after {
+  content:""; position:absolute; left:1px; right:1px; top:2px; height:1px; background:rgba(255,255,255,.10);
 }
 
-/* --------------------------------------------------------------------------
-   POLAND 1939 — warm, rounded, broad canvas load.
-   -------------------------------------------------------------------------- */
+/* Poland 1939 */
 #battlefield .brick-soldier.kit-poland-1939 {
-  --uniform: #827b55;
-  --uniform-dark: #625d40;
-  --trouser: #77714d;
-  --helmet: #59583b;
-  --load: #696849;
-  --load-secondary: #8a7951;
-  --weapon-wood: #83552f;
-  --weapon-wood-dark: #654125;
-  --metal: #596063;
-  --metal-dark: #41474a;
-  --boot: #2b2924;
+  --uniform:#827b55; --uniform-dark:#625d40; --trouser:#77714d; --helmet:#59583b;
+  --load:#696849; --load-secondary:#8a7951; --weapon-wood:#83552f; --weapon-wood-dark:#654125;
+  --metal:#596063; --metal-dark:#41474a; --boot:#2b2924;
 }
-
-/* Wz.31: slightly wider rounded bowl, still with almost no skirt. */
 #battlefield .helmet-wz31 .brick-helmet {
-  left: 5px !important;
-  bottom: 22px !important;
-  width: 11px !important;
-  height: 6px !important;
-  border-radius: 7px 7px 2px 2px !important;
+  left:5px !important; bottom:22px !important; width:11px !important; height:6px !important;
+  border-radius:7px 7px 2px 2px !important;
 }
-
-#battlefield .helmet-wz31 .brick-helmet::before {
-  content: none !important;
-}
-
+#battlefield .helmet-wz31 .brick-helmet::before { content:none !important; }
 #battlefield .helmet-wz31 .brick-helmet::after {
-  left: 0;
-  bottom: -1px;
-  width: 11px;
-  height: 1px;
-  border-radius: 1px;
-  background: var(--helmet);
+  left:0; bottom:-1px; width:11px; height:1px; border-radius:1px; background:var(--helmet);
 }
 
-/* Officer: soft field cap with one short visor. */
+/* Simpler, calmer Polish officer cap. */
 #battlefield .role-officer.kit-poland-1939 .brick-helmet {
-  left: 5px !important;
-  bottom: 22px !important;
-  width: 11px !important;
-  height: 4px !important;
-  border-radius: 5px 5px 1px 1px !important;
-  clip-path: none !important;
+  left:6px !important; bottom:22px !important; width:10px !important; height:4px !important;
+  border-radius:4px 4px 1px 1px !important; clip-path:none !important;
 }
-
 #battlefield .role-officer.kit-poland-1939 .brick-helmet::before {
-  content: "" !important;
-  display: block !important;
-  left: 1px;
-  bottom: 0;
-  width: 9px;
-  height: 1px;
-  background: color-mix(in srgb, var(--helmet) 72%, black);
+  content:"" !important; display:block !important; left:1px; bottom:0; width:8px; height:1px;
+  background: color-mix(in srgb, var(--helmet) 70%, black);
 }
-
 #battlefield .role-officer.kit-poland-1939 .brick-helmet::after {
-  content: "" !important;
-  display: block !important;
-  left: 7px;
-  bottom: -1px;
-  width: 6px;
-  height: 2px;
-  border-radius: 0 2px 2px 0;
-  background: var(--helmet);
+  content:"" !important; display:block !important; left:7px; bottom:-1px; width:4px; height:1px;
+  border-radius:0 1px 1px 0; background:var(--helmet);
 }
-
 #battlefield .role-officer.kit-poland-1939.facing-up .brick-helmet::after,
 #battlefield .role-officer.kit-poland-1939.facing-down .brick-helmet::after {
-  left: 3px;
-  width: 5px;
-  border-radius: 1px;
+  left:3px; width:3px; border-radius:1px;
 }
 
-/* Short, visibly lighter beige-khaki puttees. */
 #battlefield .legwear-puttees .brick-legs::before {
-  bottom: 1px;
-  height: 2px;
-  background:
-    linear-gradient(
-      90deg,
-      #a1956d 0 40%,
-      transparent 40% 60%,
-      #a1956d 60% 100%
-    );
+  bottom:1px; height:2px;
+  background: linear-gradient(90deg,#a1956d 0 40%,transparent 40% 60%,#a1956d 60% 100%);
 }
+#battlefield .legwear-puttees .brick-legs::after { height:1px; }
 
-#battlefield .legwear-puttees .brick-legs::after {
-  height: 1px;
-}
-
-/* One broad soft pack. Full load adds only one horizontal roll. */
+/* Broad central pack with one seam/lid accent. */
 #battlefield .load-primary-polish-pack .load-primary {
-  left: -1px;
-  bottom: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: #696849;
+  left:-1px; bottom:0; width:10px; height:10px; border-radius:3px; background:#696849;
 }
-
 #battlefield .load-primary-polish-pack-small .load-primary {
-  left: 0;
-  bottom: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: #696849;
+  left:0; bottom:0; width:8px; height:8px; border-radius:3px; background:#696849;
 }
-
 #battlefield .load-primary-polish-light-pack .load-primary {
-  left: 1px;
-  bottom: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 2px;
-  background: #735039;
+  left:1px; bottom:0; width:6px; height:6px; border-radius:2px; background:#735039;
 }
-
+#battlefield .load-primary-polish-pack .load-primary::after,
+#battlefield .load-primary-polish-pack-small .load-primary::after,
+#battlefield .load-primary-polish-light-pack .load-primary::after {
+  content:""; position:absolute; left:1px; right:1px; top:2px; height:1px; background:rgba(255,255,255,.12);
+}
 #battlefield .load-secondary-polish-roll .load-secondary {
-  display: block;
-  left: -2px;
-  top: -2px;
-  width: 12px;
-  height: 3px;
-  border-radius: 3px;
-  background: #8a7951;
+  display:block; left:-2px; top:-2px; width:12px; height:3px; border-radius:3px; background:#8a7951;
 }
-
-/* Rear view makes the Polish central pack especially unmistakable. */
-#battlefield .kit-poland-1939.facing-up .load-primary {
-  left: 1px;
-  width: 11px;
+#battlefield .load-secondary-polish-roll .load-secondary::after {
+  content:""; position:absolute; left:5px; top:0; width:1px; height:3px; background:rgba(0,0,0,.16);
 }
+#battlefield .kit-poland-1939.facing-up .load-primary { left:1px; width:11px; }
+#battlefield .kit-poland-1939.facing-up .load-secondary-polish-roll .load-secondary { left:0; width:13px; }
+#battlefield .kit-poland-1939.facing-right .brick-load,
+#battlefield .kit-poland-1939.facing-left .brick-load { opacity:.98; }
 
-#battlefield .kit-poland-1939.facing-up .load-secondary-polish-roll .load-secondary {
-  left: 0;
-  width: 13px;
-}
-
-/* --------------------------------------------------------------------------
-   GERMANY 1939 — cool field gray, flared Stahlhelm, compact offset load.
-   -------------------------------------------------------------------------- */
+/* Germany 1939 */
 #battlefield .brick-soldier.kit-germany-1939 {
-  --uniform: #667161;
-  --uniform-dark: #394c42;
-  --trouser: #575b5d;
-  --helmet: #465149;
-  --load: #465047;
-  --load-secondary: #343b37;
-  --weapon-wood: #65462e;
-  --weapon-wood-dark: #4b3322;
-  --metal: #394144;
-  --metal-dark: #292f31;
-  --boot: #1f211f;
+  --uniform:#667161; --uniform-dark:#394c42; --trouser:#575b5d; --helmet:#465149;
+  --load:#465047; --load-secondary:#343b37; --weapon-wood:#65462e; --weapon-wood-dark:#4b3322;
+  --metal:#394144; --metal-dark:#292f31; --boot:#1f211f;
 }
-
 #battlefield .kit-germany-1939 .brick-torso::before {
-  left: 2px;
-  width: 7px;
-  height: 2px;
-  background: #2f443b;
-  opacity: 1;
+  left:2px; width:7px; height:2px; background:#2f443b; opacity:1;
 }
-
-/* M35: low dome plus exaggerated triangular/trapezoidal skirt. */
 #battlefield .helmet-m35 .brick-helmet {
-  left: 6px !important;
-  bottom: 23px !important;
-  width: 10px !important;
-  height: 4px !important;
-  border-radius: 5px 5px 2px 2px !important;
+  left:6px !important; bottom:23px !important; width:10px !important; height:4px !important; border-radius:5px 5px 2px 2px !important;
 }
-
-#battlefield .helmet-m35 .brick-helmet::before {
-  content: none !important;
-}
-
+#battlefield .helmet-m35 .brick-helmet::before { content:none !important; }
 #battlefield .helmet-m35 .brick-helmet::after {
-  left: -2px;
-  bottom: -3px;
-  width: 14px;
-  height: 4px;
-  border-radius: 1px 1px 2px 2px;
-  background: var(--helmet);
-  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .16);
+  left:-2px; bottom:-3px; width:14px; height:4px; border-radius:1px 1px 2px 2px; background:var(--helmet);
+  clip-path: polygon(18% 0,82% 0,100% 100%,0 100%);
+  box-shadow: 0 1px 0 rgba(0,0,0,.16);
 }
 
-/* Officer: sharper peaked field cap, distinct from the Stahlhelm. */
+/* Simpler German field cap. */
 #battlefield .role-officer.kit-germany-1939 .brick-helmet {
-  left: 5px !important;
-  bottom: 22px !important;
-  width: 11px !important;
-  height: 4px !important;
-  border-radius: 3px 4px 1px 1px !important;
-  clip-path: polygon(8% 20%, 84% 0, 100% 100%, 0 100%) !important;
+  left:6px !important; bottom:22px !important; width:10px !important; height:4px !important;
+  border-radius:3px 4px 1px 1px !important; clip-path: polygon(10% 20%,82% 4%,100% 100%,0 100%) !important;
 }
-
 #battlefield .role-officer.kit-germany-1939 .brick-helmet::before {
-  content: "" !important;
-  display: block !important;
-  left: 1px;
-  bottom: 0;
-  width: 9px;
-  height: 1px;
-  background: color-mix(in srgb, var(--helmet) 65%, black);
+  content:"" !important; display:block !important; left:1px; bottom:0; width:8px; height:1px;
+  background: color-mix(in srgb, var(--helmet) 64%, black);
 }
-
 #battlefield .role-officer.kit-germany-1939 .brick-helmet::after {
-  content: "" !important;
-  display: block !important;
-  left: 7px;
-  bottom: -1px;
-  width: 6px;
-  height: 2px;
-  border-radius: 0 2px 2px 0;
-  background: var(--helmet);
-  clip-path: none;
-  box-shadow: none;
+  content:"" !important; display:block !important; left:7px; bottom:-1px; width:4px; height:1px;
+  border-radius:0 1px 1px 0; background:var(--helmet); clip-path:none; box-shadow:none;
 }
-
 #battlefield .role-officer.kit-germany-1939.facing-up .brick-helmet::after,
 #battlefield .role-officer.kit-germany-1939.facing-down .brick-helmet::after {
-  left: 3px;
-  width: 5px;
-  border-radius: 1px;
+  left:3px; width:3px; border-radius:1px;
 }
 
-/* Jackboots stay on the lower half, leaving a visible trouser cap. */
 #battlefield .legwear-jackboots .brick-legs::before {
-  bottom: 0;
-  height: 4px;
-  background:
-    linear-gradient(
-      90deg,
-      var(--boot) 0 40%,
-      transparent 40% 60%,
-      var(--boot) 60% 100%
-    );
+  bottom:0; height:4px;
+  background: linear-gradient(90deg,var(--boot) 0 40%,transparent 40% 60%,var(--boot) 60% 100%);
 }
+#battlefield .legwear-jackboots .brick-legs::after { height:1px; }
 
-#battlefield .legwear-jackboots .brick-legs::after {
-  height: 1px;
-}
-
-/* Fighting load: one compact horizontal canister. */
+/* Smaller offset load with one lid/seam accent. */
 #battlefield .load-primary-german-canister .load-primary {
-  left: -1px;
-  bottom: 2px;
-  width: 11px;
-  height: 3px;
-  border-radius: 3px;
-  background: #3e4942;
-  box-shadow:
-    inset 1px 0 0 rgba(255, 255, 255, .08),
-    inset -1px 0 0 rgba(0, 0, 0, .18);
+  left:1px; bottom:3px; width:8px; height:3px; border-radius:3px; background:#3e4942;
+  box-shadow: inset 1px 0 0 rgba(255,255,255,.06), inset -1px 0 0 rgba(0,0,0,.18);
 }
-
-/* Full load: one small angular pack plus the same canister. */
+#battlefield .load-primary-german-canister .load-primary::after {
+  content:""; position:absolute; left:3px; top:0; width:1px; height:3px; background:rgba(255,255,255,.10);
+}
 #battlefield .load-primary-german-pack .load-primary {
-  left: 1px;
-  bottom: 0;
-  width: 7px;
-  height: 8px;
-  border-radius: 1px;
-  background: #555347;
+  left:1px; bottom:0; width:7px; height:8px; border-radius:1px; background:#555347;
 }
-
 #battlefield .load-primary-german-pack-small .load-primary {
-  left: 2px;
-  bottom: 0;
-  width: 6px;
-  height: 7px;
-  border-radius: 1px;
-  background: #465047;
+  left:2px; bottom:0; width:6px; height:7px; border-radius:1px; background:#465047;
 }
-
 #battlefield .load-primary-german-light-pack .load-primary {
-  left: 3px;
-  bottom: 0;
-  width: 5px;
-  height: 6px;
-  border-radius: 1px;
-  background: #343a35;
+  left:3px; bottom:0; width:5px; height:6px; border-radius:1px; background:#343a35;
 }
-
+#battlefield .load-primary-german-pack .load-primary::after,
+#battlefield .load-primary-german-pack-small .load-primary::after,
+#battlefield .load-primary-german-light-pack .load-primary::after {
+  content:""; position:absolute; left:1px; right:1px; top:2px; height:1px; background:rgba(255,255,255,.10);
+}
 #battlefield .load-secondary-german-canister .load-secondary {
-  display: block;
-  left: 3px;
-  bottom: -2px;
-  width: 10px;
-  height: 3px;
-  border-radius: 3px;
-  background: #3e4942;
+  display:block; left:4px; bottom:-1px; width:8px; height:3px; border-radius:3px; background:#3e4942;
 }
-
-/* Rear view deliberately offsets Germany's smaller equipment cluster. */
+#battlefield .load-secondary-german-canister .load-secondary::after {
+  content:""; position:absolute; left:3px; top:0; width:1px; height:3px; background:rgba(255,255,255,.10);
+}
+#battlefield .kit-germany-1939.facing-right .brick-load,
+#battlefield .kit-germany-1939.facing-left .brick-load { opacity:.95; }
 #battlefield .kit-germany-1939.facing-up .load-primary-german-canister .load-primary {
-  left: 5px;
-  width: 8px;
+  left:5px; width:7px;
 }
+#battlefield .kit-germany-1939.facing-up .load-primary-german-pack .load-primary { left:2px; width:7px; }
+#battlefield .kit-germany-1939.facing-up .load-secondary-german-canister .load-secondary { left:5px; width:8px; }
 
-#battlefield .kit-germany-1939.facing-up .load-primary-german-pack .load-primary {
-  left: 2px;
-  width: 7px;
-}
-
-#battlefield .kit-germany-1939.facing-up .load-secondary-german-canister .load-secondary {
-  left: 4px;
-  width: 9px;
-}
-
-/* National bolt-actions stay close cousins: wood mass first, metal second. */
-#battlefield .weapon-polish-rifle .weapon-stock {
-  background: #83552f;
-}
-
-#battlefield .weapon-german-rifle .weapon-stock {
-  background: #65462e;
-}
+#battlefield .weapon-polish-rifle .weapon-stock { background:#83552f; }
+#battlefield .weapon-german-rifle .weapon-stock { background:#65462e; }
