@@ -3370,11 +3370,23 @@
       const objective = scenarioObjective();
       RULES.objective = { x: objective.x, y: objective.y, radius: objective.radius };
 
-      for (const key of ["woods", "wall", "building"]) {
-        Object.assign(TERRAIN[key], activeScenario.terrain[key]);
-        const el = battlefield.querySelector(`.terrain.${key}`);
-        if (el) applyRectStyle(el, TERRAIN[key]);
+      const terrainPresentation = window.CrossroadsTerrainPresentation;
+      if (!terrainPresentation) {
+        throw new Error("Terrain presentation module is unavailable.");
       }
+
+      const legacyTerrain = terrainPresentation.legacyInstanceMap(activeScenario);
+      for (const key of ["woods", "wall", "building"]) {
+        if (!legacyTerrain[key]) {
+          throw new Error(`Scenario ${activeScenario.id} is missing required terrain: ${key}`);
+        }
+        Object.assign(TERRAIN[key], legacyTerrain[key]);
+      }
+
+      terrainPresentation.renderScenarioTerrain({
+        layer: document.getElementById("terrainLayer"),
+        scenario: activeScenario
+      });
 
       const ring = battlefield.querySelector(".objective-ring");
       const marker = battlefield.querySelector(".objective-marker");
