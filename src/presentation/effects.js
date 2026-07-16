@@ -25,8 +25,19 @@
 
     function clearCommittedMovementOverlay() {
       document.getElementById("routeLayer")?.replaceChildren();
-      const waypoint = document.getElementById("waypointMarker");
-      if (waypoint) waypoint.hidden = true;
+
+      for (const id of [
+        "waypointMarker",
+        "ghostToken",
+        "ambushPreviewDot",
+        "traceLine",
+        "traceLabel"
+      ]) {
+        const element = document.getElementById(id);
+        if (!element) continue;
+        element.hidden = true;
+        if (id === "ghostToken") element.textContent = "";
+      }
     }
 
     function unitElement(unitId) {
@@ -155,46 +166,155 @@
       }
     }
 
+    function reducedMotionPreferred() {
+      return Boolean(
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      );
+    }
+
+    async function playUnitHop(unitId, options = {}) {
+      if (reducedMotionPreferred()) return;
+
+      const root = unitElement(unitId);
+      if (!root) return;
+
+      const { representation, slots } = visibleUnitParts(root);
+      const duration = options.duration ?? 340;
+      const height = Math.max(2, options.height ?? 5);
+      const stagger = Math.max(0, options.stagger ?? 10);
+      const baseDelay = Math.max(0, options.delay ?? 0);
+      const animations = [];
+
+      if (slots.length === 0) {
+        const counter = representation?.querySelector(".far-unit-counter");
+        if (!counter) return;
+
+        const animation = counter.animate(
+          [
+            { translate: "0 0" },
+            { translate: `0 -${height}px`, offset: .46 },
+            { translate: "0 0" }
+          ],
+          {
+            duration,
+            delay: baseDelay,
+            iterations: 1,
+            easing: "cubic-bezier(.28,0,.32,1)"
+          }
+        );
+        await animation.finished.catch(() => {});
+        return;
+      }
+
+      slots.forEach((slot, index) => {
+        const hop = slot.querySelector(".model-hop");
+        const shadow = slot.querySelector(".model-shadow");
+        const delay = baseDelay + index * stagger;
+        const localHeight = height + (index % 2);
+
+        if (hop) {
+          animations.push(
+            hop.animate(
+              [
+                { transform: "translateY(0)" },
+                { transform: `translateY(-${localHeight}px)`, offset: .46 },
+                { transform: "translateY(0)" }
+              ],
+              {
+                duration,
+                delay,
+                iterations: 1,
+                easing: "cubic-bezier(.28,0,.32,1)"
+              }
+            )
+          );
+        }
+
+        if (shadow) {
+          animations.push(
+            shadow.animate(
+              [
+                { opacity: .78 },
+                { opacity: .5, offset: .46 },
+                { opacity: .78 }
+              ],
+              {
+                duration,
+                delay,
+                iterations: 1,
+                easing: "cubic-bezier(.28,0,.32,1)"
+              }
+            )
+          );
+        }
+      });
+
+      await Promise.all(
+        animations.map(animation => animation.finished.catch(() => {}))
+      );
+      settleSlots(slots);
+    }
+
+    async function visuallyPackMMGBeforeMovement(root, unitId) {
+      const visible = visibleUnitParts(root);
+      const deployed = visible.representation?.querySelector(
+        ".mmg-deployed-formation"
+      );
+      if (!deployed) return;
+
+      const collapse = deployed.animate(
+        [
+          { opacity: 1, filter: "brightness(1)" },
+          { opacity: .12, filter: "brightness(.78)" }
+        ],
+        {
+          duration: 170,
+          easing: "cubic-bezier(.35,0,.55,1)",
+          fill: "forwards"
+        }
+      );
+      await collapse.finished.catch(() => {});
+      collapse.cancel();
+
+      const unit = window.InfantryCore?.state.units
+        ?.find(candidate => candidate.id === unitId);
+      const presentation = window.CrossroadsUnitPresentation;
+      if (!unit || !presentation) return;
+
+      const packedUnit = { ...unit, mmgDeployed: false };
+      root.querySelectorAll(".unit-representation.is-mmg-deployed")
+        .forEach(representation => {
+          representation.classList.remove("is-mmg-deployed");
+          representation.classList.add("is-mmg-packed");
+
+          const group = representation.querySelector(".unit-model-group");
+          const formation = representation.querySelector(".unit-formation");
+          if (group) {
+            group.setAttribute(
+              "style",
+              presentation.formationStyle(packedUnit, false)
+            );
+          }
+          if (formation) {
+            formation.innerHTML =
+              presentation.packedMMGFormationHtml(packedUnit);
+          }
+        });
+
+      await new Promise(requestAnimationFrame);
+      await sleep(55);
+    }
+
     function playEligibilityHop() {
-      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+      if (reducedMotionPreferred()) return;
 
       const roots = [...battlefield.querySelectorAll(".unit.eligible-current")];
       roots.forEach((root, unitIndex) => {
-        const { slots } = visibleUnitParts(root);
-        slots.forEach((slot, modelIndex) => {
-          const hop = slot.querySelector(".model-hop");
-          const shadow = slot.querySelector(".model-shadow");
-          const delay = unitIndex * 42 + Math.min(48, modelIndex * 10);
-          const duration = 330 + (modelIndex % 2) * 24;
-          const height = -4 - (modelIndex % 2);
-
-          hop?.animate(
-            [
-              { transform: "translateY(0)" },
-              { transform: `translateY(${height}px)`, offset: .46 },
-              { transform: "translateY(0)" }
-            ],
-            {
-              duration,
-              delay,
-              iterations: 1,
-              easing: "cubic-bezier(.28,0,.32,1)"
-            }
-          );
-
-          shadow?.animate(
-            [
-              { opacity: .78 },
-              { opacity: .52, offset: .46 },
-              { opacity: .78 }
-            ],
-            {
-              duration,
-              delay,
-              iterations: 1,
-              easing: "cubic-bezier(.28,0,.32,1)"
-            }
-          );
+        void playUnitHop(root.dataset.unitId, {
+          delay: unitIndex * 42,
+          duration: 340,
+          height: 4,
+          stagger: 8
         });
       });
     }
@@ -210,31 +330,34 @@
       const root = unitElement(unitId);
       if (!root || !Array.isArray(path) || path.length < 2) return;
 
-      const parts = visibleUnitParts(root);
-      if (!parts.visual || !parts.representation) return;
-
-      const segmentLengths = [];
-      let pathLength = 0;
-      for (let index = 1; index < path.length; index += 1) {
-        const length = Math.hypot(
-          path[index].x - path[index - 1].x,
-          path[index].y - path[index - 1].y
-        );
-        segmentLengths.push(length);
-        pathLength += length;
-      }
-
-      const totalDuration = Math.round(
-        Math.max(740, Math.min(1210, 645 + totalDistance * 46))
-      );
-
       const previousTransition = root.style.transition;
       root.style.transition = "none";
 
       setBusy(1);
+      document.body.classList.add("movement-resolving");
       root.classList.add("presentation-moving");
 
       try {
+        await visuallyPackMMGBeforeMovement(root, unitId);
+
+        const parts = visibleUnitParts(root);
+        if (!parts.visual || !parts.representation) return;
+
+        const segmentLengths = [];
+        let pathLength = 0;
+        for (let index = 1; index < path.length; index += 1) {
+          const length = Math.hypot(
+            path[index].x - path[index - 1].x,
+            path[index].y - path[index - 1].y
+          );
+          segmentLengths.push(length);
+          pathLength += length;
+        }
+
+        const totalDuration = Math.round(
+          Math.max(740, Math.min(1210, 645 + totalDistance * 46))
+        );
+
         for (let index = 1; index < path.length; index += 1) {
           const to = path[index];
           const facing = options.facings?.[index - 1] ?? null;
@@ -297,6 +420,8 @@
       } finally {
         root.classList.remove("presentation-moving");
         root.style.transition = previousTransition;
+        document.body.classList.remove("movement-resolving");
+        clearCommittedMovementOverlay();
         setBusy(-1);
       }
     }
@@ -449,11 +574,18 @@
           pin.style.visibility = "hidden";
         });
 
-        await playFeedbackPulse(root, "rally", {
-          duration: 500,
-          peakOpacity: .94,
-          easing: "ease-out"
-        });
+        await Promise.all([
+          playFeedbackPulse(root, "rally", {
+            duration: 500,
+            peakOpacity: .94,
+            easing: "ease-out"
+          }),
+          playUnitHop(unitId, {
+            duration: 410,
+            height: 6,
+            stagger: 9
+          })
+        ]);
       } finally {
         setBusy(-1);
       }
@@ -487,6 +619,107 @@
       return playFeedbackPulse(root, state);
     }
 
+    const unitStateById = new Map();
+    let unitStateFrame = 0;
+
+    function syncUnitStateFeedback() {
+      const next = new Map();
+
+      for (const root of battlefield.querySelectorAll(".unit[data-unit-id]")) {
+        const unitId = root.dataset.unitId;
+        const state = {
+          selected: root.classList.contains("selected"),
+          ambush: root.classList.contains("ambush"),
+          down: root.classList.contains("down")
+        };
+        const previous = unitStateById.get(unitId);
+        next.set(unitId, state);
+
+        if (!previous) continue;
+
+        if (!previous.selected && state.selected) {
+          void playUnitHop(unitId, {
+            duration: 330,
+            height: 5,
+            stagger: 8
+          });
+        }
+
+        if (!previous.down && state.down) {
+          void Promise.all([
+            playFeedbackPulse(root, "down", {
+              duration: 520,
+              peakOpacity: .92
+            }),
+            playUnitHop(unitId, {
+              duration: 380,
+              height: 5,
+              stagger: 9
+            })
+          ]);
+        } else if (!previous.ambush && state.ambush) {
+          void Promise.all([
+            playFeedbackPulse(root, "ambush", {
+              duration: 540,
+              peakOpacity: .94
+            }),
+            playUnitHop(unitId, {
+              duration: 390,
+              height: 5,
+              stagger: 9
+            })
+          ]);
+        }
+      }
+
+      unitStateById.clear();
+      next.forEach((state, unitId) => unitStateById.set(unitId, state));
+    }
+
+    new MutationObserver(() => {
+      cancelAnimationFrame(unitStateFrame);
+      unitStateFrame = requestAnimationFrame(syncUnitStateFeedback);
+    }).observe(battlefield, {
+      childList: true
+    });
+
+    const ORDER_TONES = Object.freeze([
+      ["run", /(?:^|\s)Run(?:\s|·|$)/i],
+      ["advance", /(?:^|\s)(?:Advance|Adv)(?:\s|·|$)/i],
+      ["fire", /(?:^|\s)Fire(?:\s|$)/i],
+      ["assault", /(?:^|\s)(?:Assault|Charge)(?:\s|·|$)/i],
+      ["ambush", /(?:^|\s)(?:Ambush|Amb)(?:\s|$)/i],
+      ["down", /(?:^|\s)Down(?:\s|$)/i],
+      ["rally", /(?:^|\s)Rally(?:\s|·|$)/i]
+    ]);
+
+    function tagOrderTone(button) {
+      const desktopOrder = button.dataset.order;
+      if (desktopOrder) {
+        button.dataset.orderTone = desktopOrder.toLowerCase();
+        return;
+      }
+
+      const label = button.textContent.trim();
+      const match = ORDER_TONES.find(([, pattern]) => pattern.test(label));
+      if (match) button.dataset.orderTone = match[0];
+      else delete button.dataset.orderTone;
+    }
+
+    function syncOrderToneButtons() {
+      document
+        .querySelectorAll(".orderButton[data-order], #mobileCommandActions button")
+        .forEach(tagOrderTone);
+    }
+
+    syncOrderToneButtons();
+    const mobileCommandActions = document.getElementById("mobileCommandActions");
+    if (mobileCommandActions) {
+      new MutationObserver(syncOrderToneButtons).observe(mobileCommandActions, {
+        childList: true
+      });
+    }
+
     const drawnDie = document.getElementById("drawnDie");
     let eligibilityFrame = 0;
     if (drawnDie) {
@@ -516,6 +749,7 @@
     return Object.freeze({
       playMovementPath,
       playEligibilityHop,
+      playUnitHop,
       playFire,
       playCasualtyPuffs,
       playRally,

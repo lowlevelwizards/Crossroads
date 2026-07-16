@@ -7,6 +7,14 @@
   --state-down-soft: #dce8ee;
   --state-rally: #4f9a5d;
   --state-command: #d6a42e;
+  --order-run: #4f8b5a;
+  --order-run-soft: #dfeee1;
+  --order-advance: #b5902d;
+  --order-advance-soft: #f3ebc9;
+  --order-assault: #c77a31;
+  --order-assault-soft: #f4dfca;
+  --order-fire: #c75e35;
+  --order-fire-soft: #f2d7cc;
 }
 
 /* Shared directional arc. Geometry is authored once in battlefield.js. */
@@ -120,9 +128,47 @@ svg.fire-arc.mmg-fire-arc.red {
   background: var(--state-down-soft) !important;
 }
 
+/* Order spectrum: restrained tabletop colors, shared across surfaces. */
+#battlefield .nameplate-order.order-run,
+#battlefield .physical-order-chit.order-run,
+.orderButton[data-order="Run"],
+#mobileCommandActions button[data-order-tone="run"] {
+  color: #315d39 !important;
+  border-color: var(--order-run) !important;
+  background: var(--order-run-soft) !important;
+}
+
+#battlefield .nameplate-order.order-advance,
+#battlefield .physical-order-chit.order-advance,
+.orderButton[data-order="Advance"],
+#mobileCommandActions button[data-order-tone="advance"] {
+  color: #665117 !important;
+  border-color: var(--order-advance) !important;
+  background: var(--order-advance-soft) !important;
+}
+
+#battlefield .nameplate-order.order-assault,
+#battlefield .physical-order-chit.order-assault,
+.orderButton[data-order="Assault"],
+#mobileCommandActions button[data-order-tone="assault"] {
+  color: #744117 !important;
+  border-color: var(--order-assault) !important;
+  background: var(--order-assault-soft) !important;
+}
+
+#battlefield .nameplate-order.order-fire,
+#battlefield .physical-order-chit.order-fire,
+.orderButton[data-order="Fire"],
+#mobileCommandActions button[data-order-tone="fire"] {
+  color: #7b321c !important;
+  border-color: var(--order-fire) !important;
+  background: var(--order-fire-soft) !important;
+}
+
 #battlefield .nameplate-order.order-ambush,
 #battlefield .physical-order-chit.order-ambush,
-.orderButton[data-order="Ambush"] {
+.orderButton[data-order="Ambush"],
+#mobileCommandActions button[data-order-tone="ambush"] {
   color: #4f3465 !important;
   border-color: var(--state-ambush) !important;
   background: var(--state-ambush-soft) !important;
@@ -130,7 +176,8 @@ svg.fire-arc.mmg-fire-arc.red {
 
 #battlefield .nameplate-order.order-down,
 #battlefield .physical-order-chit.order-down,
-.orderButton[data-order="Down"] {
+.orderButton[data-order="Down"],
+#mobileCommandActions button[data-order-tone="down"] {
   color: #365265 !important;
   border-color: var(--state-down) !important;
   background: var(--state-down-soft) !important;
@@ -138,7 +185,8 @@ svg.fire-arc.mmg-fire-arc.red {
 
 #battlefield .nameplate-order.order-rally,
 #battlefield .physical-order-chit.order-rally,
-.orderButton[data-order="Rally"] {
+.orderButton[data-order="Rally"],
+#mobileCommandActions button[data-order-tone="rally"] {
   color: #356b40 !important;
   border-color: var(--state-rally) !important;
   background: #dfeddf !important;
@@ -242,4 +290,15 @@ body.camera-far .command-support-marker {
   box-shadow:
     0 0 0 3px #e2b64d,
     0 5px 0 rgba(76, 67, 52, .22) !important;
+}
+
+
+/* A committed movement owns the board; its hover tape cannot be rebuilt mid-animation. */
+body.movement-resolving #routeLayer,
+body.movement-resolving #waypointMarker,
+body.movement-resolving #ghostToken,
+body.movement-resolving #ambushPreviewDot,
+body.movement-resolving #traceLine,
+body.movement-resolving #traceLabel {
+  display: none !important;
 }
