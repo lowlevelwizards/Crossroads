@@ -45,11 +45,18 @@
     badge.hidden = true;
     element.appendChild(badge);
 
-    addPrimitive(element, "terrain-roof");
+    // Slightly cheated top-down construction: roof planes sit above a visible
+    // front wall and narrow side wall. All parts remain simple CSS shapes.
+    addPrimitive(element, "building-ground");
+    addPrimitive(element, "building-front-wall");
+    addPrimitive(element, "building-side-wall");
+    addPrimitive(element, "terrain-roof-plane", 2);
     addPrimitive(element, "terrain-roof-ridge");
     addPrimitive(element, "building-door");
-    addPrimitive(element, "building-window", definition.id === "shed" ? 1 : 3);
-    if (["farmhouse", "building", "cottage"].includes(instance.terrainId)) addPrimitive(element, "building-chimney");
+    addPrimitive(element, "building-window", definition.id === "shed" ? 1 : 2);
+    if (["farmhouse", "building", "cottage"].includes(instance.terrainId)) {
+      addPrimitive(element, "building-chimney");
+    }
 
     const approach = document.createElement("span");
     approach.className = "building-approach-marker";
@@ -59,22 +66,35 @@
 
   function decorate(element, definition, instance) {
     const renderer = definition.renderer;
-    if (renderer === "woods") addPrimitive(element, "tree-canopy", instance.terrainId === "woods_dense" ? 9 : 7);
-    else if (renderer === "orchard") addPrimitive(element, "orchard-tree", 9);
-    else if (renderer === "wall") addPrimitive(element, "wall-stone", 8);
+    if (renderer === "woods") {
+      const count = instance.terrainId === "woods_dense" ? 8 : 7;
+      addPrimitive(element, "tree-shadow", count);
+      addPrimitive(element, "tree-canopy", count);
+      addPrimitive(element, "tree-highlight", count);
+    } else if (renderer === "orchard") {
+      addPrimitive(element, "orchard-shadow", 9);
+      addPrimitive(element, "orchard-tree", 9);
+      addPrimitive(element, "orchard-highlight", 9);
+    } else if (renderer === "wall") addPrimitive(element, "wall-stone", 7);
     else if (renderer === "hedge") addPrimitive(element, "hedge-clump", 7);
     else if (renderer === "fence") { addPrimitive(element, "fence-rail", 2); addPrimitive(element, "fence-post", 5); }
-    else if (renderer === "rail" || renderer === "rail_crossing") { addPrimitive(element, "rail-line", 2); addPrimitive(element, "rail-sleeper", 10); }
-    else if (renderer === "road_curve") addPrimitive(element, "road-curve-inner");
-    else if (renderer === "road_crossroads") { addPrimitive(element, "road-arm", 2); }
-    else if (renderer === "ditch") addPrimitive(element, "ditch-channel");
-    else if (renderer === "stream") addPrimitive(element, "stream-water");
+    else if (renderer === "rail" || renderer === "rail_crossing") {
+      addPrimitive(element, "rail-ballast");
+      addPrimitive(element, "rail-sleeper", 11);
+      addPrimitive(element, "rail-line", 2);
+      if (renderer === "rail_crossing") addPrimitive(element, "crossing-plank", 5);
+    }
+    else if (renderer === "road") { addPrimitive(element, "road-edge", 2); addPrimitive(element, "road-pebble", 7); addPrimitive(element, "road-tuft", 5); }
+    else if (renderer === "road_curve") { addPrimitive(element, "road-curve-inner"); addPrimitive(element, "road-pebble", 5); addPrimitive(element, "road-tuft", 4); }
+    else if (renderer === "road_crossroads") { addPrimitive(element, "road-arm", 2); addPrimitive(element, "road-pebble", 8); addPrimitive(element, "road-tuft", 6); }
+    else if (renderer === "ditch") { addPrimitive(element, "ditch-channel"); addPrimitive(element, "ditch-rim", 2); addPrimitive(element, "ditch-stone", 4); }
+    else if (renderer === "stream") { addPrimitive(element, "stream-bank", 2); addPrimitive(element, "stream-water"); addPrimitive(element, "stream-ripple", 3); addPrimitive(element, "stream-stone", 4); }
     else if (renderer === "foxholes") addPrimitive(element, "foxhole-pit", 3);
     else if (renderer === "sandbags") addPrimitive(element, "sandbag", 8);
-    else if (renderer === "haystack") addPrimitive(element, "hay-bundle", 3);
-    else if (renderer === "well") { addPrimitive(element, "well-ring"); addPrimitive(element, "well-water"); }
-    else if (renderer === "crates") addPrimitive(element, "crate", 3);
-    else if (renderer === "woodpile") addPrimitive(element, "log", 6);
+    else if (renderer === "haystack") { addPrimitive(element, "hay-layer", 3); addPrimitive(element, "hay-cross"); }
+    else if (renderer === "well") { addPrimitive(element, "well-ring"); addPrimitive(element, "well-water"); addPrimitive(element, "well-post", 2); addPrimitive(element, "well-roof"); }
+    else if (renderer === "crates") addPrimitive(element, "crate", 4);
+    else if (renderer === "woodpile") { addPrimitive(element, "log", 6); addPrimitive(element, "woodpile-cover"); }
   }
 
   function createElement(instance) {
