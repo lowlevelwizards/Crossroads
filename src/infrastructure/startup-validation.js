@@ -14,6 +14,7 @@
     ["CROSSROADS_SCENARIOS", "data/scenarios.js"],
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
     ["CrossroadsTerrainPresentation", "src/presentation/terrain.js"],
+    ["CrossroadsTerrainGeometry", "src/rules/terrain-geometry.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
     ["CrossroadsFormationGeometry", "src/presentation/formation-geometry.js"],
     ["CrossroadsTargetingPresentation", "src/presentation/targeting.js"],
@@ -145,12 +146,16 @@
         if (Number(instance?.width) <= 0 || Number(instance?.height) <= 0) {
           issues.push(`${scenario.id}.${instance?.id} must have a positive footprint.`);
         }
+        if (instance?.rotation !== undefined && !Number.isFinite(Number(instance.rotation))) {
+          issues.push(`${scenario.id}.${instance?.id} has invalid rotation.`);
+        }
       }
 
-      for (const required of ["woods", "wall", "building"]) {
-        if (!scenario.terrain.some(instance => instance.terrainId === required)) {
-          issues.push(`${scenario.id} is missing required compatibility terrain ${required}.`);
-        }
+      const occupiableIds = scenario.terrain
+        .filter(instance => types[instance.terrainId]?.rules?.occupiable)
+        .map(instance => instance.id);
+      if (new Set(occupiableIds).size !== occupiableIds.length) {
+        issues.push(`${scenario.id} has duplicate occupiable-building ids.`);
       }
     }
     return issues;
