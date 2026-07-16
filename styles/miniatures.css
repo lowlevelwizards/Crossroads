@@ -1,7 +1,7 @@
-/* ========================================================================== 
-   CROSSROADS BUILD A.1 — SHAPE-BUILT MINIATURE GRAMMAR
-   Universal anatomy and coherent handheld-weapon assemblies. Faction-specific
-   silhouettes live in faction-kits.css; transforms live in unit-transforms.css.
+/* ==========================================================================
+   CROSSROADS BUILD A.2 — SHAPE-BUILT MINIATURE GRAMMAR
+   Universal anatomy, floating weapon hands, and coherent weapon assemblies.
+   Faction silhouettes live in faction-kits.css; transforms live elsewhere.
    ========================================================================== */
 
 #battlefield .brick-soldier {
@@ -41,7 +41,7 @@
   box-sizing: border-box;
 }
 
-/* Lower body. Kits only decide the lower-leg color split. */
+/* Lower body. Kits decide only the trouser / wrapping / boot split. */
 #battlefield .brick-legs {
   position: absolute !important;
   left: 5px !important;
@@ -50,10 +50,12 @@
   height: 7px !important;
   border-radius: 1px !important;
   background:
-    linear-gradient(90deg,
+    linear-gradient(
+      90deg,
       var(--trouser) 0 40%,
       transparent 40% 60%,
-      var(--trouser) 60% 100%) !important;
+      var(--trouser) 60% 100%
+    ) !important;
   z-index: 1 !important;
 }
 
@@ -77,13 +79,15 @@
   height: 1px;
   border-radius: 0 0 1px 1px;
   background:
-    linear-gradient(90deg,
+    linear-gradient(
+      90deg,
       var(--boot) 0 40%,
       transparent 40% 60%,
-      var(--boot) 60% 100%);
+      var(--boot) 60% 100%
+    );
 }
 
-/* Rear equipment is exactly one primary shape plus one optional secondary. */
+/* Rear equipment remains exactly one primary plus one optional secondary. */
 #battlefield .brick-load {
   position: absolute !important;
   left: 1px !important;
@@ -159,7 +163,7 @@
   opacity: .65;
 }
 
-/* Build A.1 deliberately removes visible chest webbing and pouch blobs. */
+/* Chest webbing remains deliberately absent at this scale. */
 #battlefield .brick-webbing,
 #battlefield .brick-webbing::before,
 #battlefield .brick-webbing::after {
@@ -200,20 +204,7 @@
   pointer-events: none;
 }
 
-#battlefield .brick-arm {
-  position: absolute !important;
-  left: 13px !important;
-  bottom: 9px !important;
-  width: 4px !important;
-  height: 8px !important;
-  border-radius: 1px !important;
-  background: var(--uniform-dark) !important;
-  transform: rotate(-18deg) !important;
-  transform-origin: top center !important;
-  z-index: 4 !important;
-}
-
-/* One weapon parent owns every piece. Nothing can drift independently. */
+/* One weapon parent owns stock, barrel, hands, and muzzle in every facing. */
 #battlefield .brick-weapon {
   position: absolute !important;
   left: 12px !important;
@@ -239,50 +230,53 @@
 #battlefield .weapon-stock,
 #battlefield .weapon-receiver,
 #battlefield .weapon-barrel,
-#battlefield .weapon-detail {
+#battlefield .weapon-detail,
+#battlefield .weapon-hand {
   position: absolute !important;
   display: block;
   pointer-events: none;
 }
 
+/* Default bolt-action rifle: one long wooden mass plus one short metal barrel. */
 #battlefield .weapon-stock {
-  left: 0;
+  left: -4px;
   top: 2px;
-  width: 14px;
+  width: 18px;
   height: 4px;
-  border-radius: 1px;
+  border-radius: 2px 1px 1px 2px;
   background: var(--weapon-wood);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1);
 }
 
-#battlefield .weapon-receiver {
-  left: 9px;
-  top: 1px;
-  width: 6px;
-  height: 4px;
-  border-radius: 1px;
-  background: var(--metal-dark);
+#battlefield .weapon-receiver,
+#battlefield .weapon-detail {
+  display: none;
 }
 
 #battlefield .weapon-barrel {
-  left: 13px;
-  top: 2px;
-  width: 12px;
+  left: 14px;
+  top: 3px;
+  width: 10px;
   height: 2px;
   border-radius: 0 1px 1px 0;
   background: var(--metal);
 }
 
-#battlefield .weapon-detail {
-  left: 2px;
-  top: 5px;
-  width: 5px;
-  height: 3px;
-  border-radius: 0 0 1px 1px;
-  background: var(--weapon-wood-dark);
+/* Two tiny floating hands replace the old sleeve block. */
+#battlefield .weapon-hand {
+  top: 1px;
+  width: 3px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--skin);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .11);
+  z-index: 4;
 }
 
-/* Explicit unarmed state prevents support crew from becoming floating barrels. */
+#battlefield .weapon-hand-rear { left: 2px; }
+#battlefield .weapon-hand-front { left: 10px; }
+
+/* Explicit unarmed state prevents support crew from inheriting weapon pieces. */
 #battlefield .weapon-unarmed .brick-weapon {
   display: none !important;
 }
@@ -301,14 +295,18 @@
   top: 3px;
   width: 4px;
   height: 2px;
+  border-radius: 1px;
   background: var(--metal-dark);
 }
 
 #battlefield .brick-soldier.role-smg .weapon-receiver {
+  display: block;
   left: 3px;
   top: 2px;
   width: 9px;
   height: 4px;
+  border-radius: 1px;
+  background: var(--metal-dark);
 }
 
 #battlefield .brick-soldier.role-smg .weapon-barrel {
@@ -319,15 +317,20 @@
 }
 
 #battlefield .brick-soldier.role-smg .weapon-detail {
+  display: block;
   left: 6px;
   top: 5px;
   width: 3px;
   height: 5px;
+  border-radius: 0 0 1px 1px;
   background: var(--metal-dark);
   transform: rotate(4deg);
 }
 
-/* Pistol. */
+#battlefield .brick-soldier.role-smg .weapon-hand-rear { left: 3px; }
+#battlefield .brick-soldier.role-smg .weapon-hand-front { left: 9px; }
+
+/* Pistol: one hand only. */
 #battlefield .brick-soldier.role-officer .brick-weapon {
   left: 14px !important;
   bottom: 11px !important;
@@ -341,10 +344,13 @@
 }
 
 #battlefield .brick-soldier.role-officer .weapon-receiver {
+  display: block;
   left: 0;
   top: 2px;
   width: 6px;
   height: 3px;
+  border-radius: 1px;
+  background: var(--metal-dark);
 }
 
 #battlefield .brick-soldier.role-officer .weapon-barrel {
@@ -355,14 +361,25 @@
 }
 
 #battlefield .brick-soldier.role-officer .weapon-detail {
+  display: block;
   left: 1px;
   top: 4px;
   width: 3px;
   height: 3px;
+  border-radius: 0 0 1px 1px;
   background: var(--weapon-wood-dark);
 }
 
-/* LMG and packed MMG use continuous mechanical silhouettes. */
+#battlefield .brick-soldier.role-officer .weapon-hand-rear {
+  left: 0;
+  top: 1px;
+}
+
+#battlefield .brick-soldier.role-officer .weapon-hand-front {
+  display: none;
+}
+
+/* LMG and packed MMG retain stronger mechanical silhouettes. */
 #battlefield .brick-soldier.role-lmg .brick-weapon {
   left: 11px !important;
   bottom: 8px !important;
@@ -371,20 +388,27 @@
 }
 
 #battlefield .brick-soldier.role-lmg .weapon-stock {
-  width: 12px;
+  left: -3px;
+  width: 14px;
 }
 
 #battlefield .brick-soldier.role-lmg .weapon-receiver {
+  display: block;
   left: 9px;
+  top: 1px;
   width: 8px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--metal-dark);
 }
 
 #battlefield .brick-soldier.role-lmg .weapon-barrel {
-  left: 15px;
-  width: 13px;
+  left: 16px;
+  width: 12px;
 }
 
 #battlefield .brick-soldier.role-lmg .weapon-detail {
+  display: block;
   left: 20px;
   top: 4px;
   width: 7px;
@@ -394,6 +418,9 @@
   background: transparent;
   transform: skewX(-12deg);
 }
+
+#battlefield .brick-soldier.role-lmg .weapon-hand-rear { left: 3px; }
+#battlefield .brick-soldier.role-lmg .weapon-hand-front { left: 11px; }
 
 #battlefield .brick-soldier.role-mmg .brick-weapon {
   left: 6px !important;
@@ -409,8 +436,13 @@
 }
 
 #battlefield .brick-soldier.role-mmg .weapon-receiver {
+  display: block;
   left: 7px;
+  top: 1px;
   width: 9px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--metal-dark);
 }
 
 #battlefield .brick-soldier.role-mmg .weapon-barrel {
@@ -419,6 +451,7 @@
 }
 
 #battlefield .brick-soldier.role-mmg .weapon-detail {
+  display: block;
   left: 17px;
   top: 4px;
   width: 9px;
@@ -429,7 +462,10 @@
   transform: skewX(-12deg);
 }
 
-/* Front/back views keep the whole weapon assembly together. */
+#battlefield .brick-soldier.role-mmg .weapon-hand-rear { left: 4px; }
+#battlefield .brick-soldier.role-mmg .weapon-hand-front { left: 11px; }
+
+/* Front/back views keep the entire weapon-and-hands assembly together. */
 #battlefield .brick-soldier.facing-down,
 #battlefield .brick-soldier.facing-up {
   width: 19px !important;
@@ -468,17 +504,7 @@
   transform: rotate(-72deg) scale(.84) !important;
 }
 
-#battlefield .brick-soldier.facing-down .brick-arm {
-  left: 12px !important;
-  transform: rotate(-5deg) !important;
-}
-
-#battlefield .brick-soldier.facing-up .brick-arm {
-  left: 4px !important;
-  transform: rotate(5deg) !important;
-}
-
-/* Muzzle stays at the far end of the same weapon parent in every facing. */
+/* Muzzle remains at the far end of the same weapon parent. */
 #battlefield .brick-weapon > .weapon-muzzle {
   position: absolute !important;
   right: -1px !important;

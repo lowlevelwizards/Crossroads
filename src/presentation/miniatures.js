@@ -139,6 +139,8 @@
         <span class="weapon-receiver"></span>
         <span class="weapon-barrel"></span>
         <span class="weapon-detail"></span>
+        <span class="weapon-hand weapon-hand-rear"></span>
+        <span class="weapon-hand weapon-hand-front"></span>
         <span class="weapon-muzzle" aria-hidden="true"></span>
       </span>
     `;
@@ -170,7 +172,6 @@
             <span class="brick-webbing"></span>
             <span class="brick-head"></span>
             <span class="brick-helmet"></span>
-            <span class="brick-arm"></span>
             ${weaponHtml()}
           </span>
         </span>
