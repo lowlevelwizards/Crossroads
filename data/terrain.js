@@ -42,7 +42,14 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
     family: "building",
     renderer: "building",
     label: "farmhouse",
-    rules: Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true })
+    rules: Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 })
+  }),
+  barn: Object.freeze({
+    id: "barn",
+    family: "building",
+    renderer: "building",
+    label: "barn",
+    rules: Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 })
   })
 });
 

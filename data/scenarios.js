@@ -79,9 +79,12 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
     terrain: Object.freeze([
       Object.freeze({ id: "main-road", terrainId: "road_horizontal", x: 0, y: 22.08, width: 72, height: 4.32 }),
       Object.freeze({ id: "cross-road", terrainId: "road_vertical", x: 33.48, y: 0, width: 5.04, height: 48 }),
-      Object.freeze({ id: "woods", terrainId: "woods", x: 8, y: 5, width: 18, height: 15 }),
-      Object.freeze({ id: "wall", terrainId: "wall", x: 29, y: 26, width: 18, height: 2.5 }),
-      Object.freeze({ id: "building", terrainId: "building", x: 31, y: 14, width: 14, height: 13 })
+      Object.freeze({ id: "north-woods", terrainId: "woods", x: 8, y: 5, width: 18, height: 15 }),
+      Object.freeze({ id: "south-copse", terrainId: "woods", x: 12, y: 34, width: 12, height: 9 }),
+      Object.freeze({ id: "yard-wall", terrainId: "wall", x: 29, y: 26, width: 18, height: 2.5 }),
+      Object.freeze({ id: "garden-wall", terrainId: "wall", x: 45, y: 11, width: 10, height: 2.5 }),
+      Object.freeze({ id: "farmhouse", terrainId: "building", x: 31, y: 14, width: 14, height: 13 }),
+      Object.freeze({ id: "east-barn", terrainId: "barn", x: 49, y: 30, width: 11, height: 10 })
     ]),
     objectives: Object.freeze([
       Object.freeze({ id: "farm_yard", x: 38, y: 24, radius: 4, label: "Farm Yard" })
