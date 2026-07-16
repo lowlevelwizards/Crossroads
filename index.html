@@ -59,7 +59,7 @@ DOCUMENT LAYOUT
       <div class="scenario-menu-heading">
         <div class="modal-kicker">Choose Scenario</div>
         <h2 id="scenarioMenuTitle">Select a Mission</h2>
-        <p>Two battles, two different tactical problems. Both use the same infantry core.</p>
+        <p>Three battles, three different tactical problems. All use the same infantry core.</p>
       </div>
       <div class="scenario-card-grid">
         <article class="scenario-card crossroads">
@@ -77,6 +77,14 @@ DOCUMENT LAYOUT
           <p>An asymmetric battle. Red must force surviving units through the Blue edge while Blue delays, pins, and contains the attack.</p>
           <div class="scenario-card-meta"><span>6 rounds</span><span>Asymmetric</span><span>Player deployment</span></div>
           <button type="button" onclick="window.CrossroadsFlow.selectScenario('breakthrough');">SELECT BREAKTHROUGH</button>
+        </article>
+        <article class="scenario-card hold-farm">
+          <div class="scenario-card-symbol">⌂</div>
+          <h3>Hold the Farm</h3>
+          <div class="scenario-card-tag">Defend the farmstead</div>
+          <p>A compact defensive battle. Poland holds a farmhouse and barn while Germany attacks through fields, walls, and woods.</p>
+          <div class="scenario-card-meta"><span>4 rounds</span><span>Defensive</span><span>Fixed deployment</span></div>
+          <button type="button" onclick="window.CrossroadsFlow.selectScenario('hold_the_farm');">SELECT HOLD THE FARM</button>
         </article>
       </div>
       <button class="scenario-menu-back" type="button" onclick="window.CrossroadsFlow.backToMainMenu();">BACK</button>
@@ -217,7 +225,7 @@ DOCUMENT LAYOUT
         <h2>Scenario</h2>
         <select id="scenarioSelect" class="scenario-select">
           <option value="take_the_crossroads">Take the Crossroads</option>
-          <option value="hold_the_farm">Hold the Farm (validation)</option>
+          <option value="hold_the_farm">Hold the Farm</option>
           <option value="breakthrough">Breakthrough</option>
         </select>
         <div id="scenarioBrief" class="scenario-brief"></div>
