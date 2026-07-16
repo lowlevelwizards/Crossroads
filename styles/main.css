@@ -6469,20 +6469,73 @@ body.targeting-confirmed
   font-size: 34px !important;
 }
 /* ==========================================================================
-   INFANTRY CORE PRESENTATION 3N-F.2 HOTFIX — COMPACT LABELS + RESPONSIVE LOD
+   INFANTRY CORE PRESENTATION 3N-F.3 HOTFIX — ZERO-SIZE REPRESENTATION LAYERS
    ========================================================================== */
 
-.unit,
+/*
+ * Medium/close representations are coordinate layers, never cards.
+ * This explicitly clears every generic panel/button property that leaked onto
+ * them through the historical stylesheet.
+ */
 .unit-visual-travel,
 .unit-representation,
-.unit-model-group,
-.unit-formation-shell,
-.unit-formation {
+.unit-representation-medium,
+.unit-representation-close {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  inset: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   max-width: none !important;
   max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  contain: none !important;
+}
+
+/* Far representation remains a zero-size anchor too; its counter paints outward. */
+.unit-representation-far {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* Only the actual content may paint or receive taps. */
+.unit-model-group {
+  pointer-events: none !important;
 }
 
 .unit-label {
+  position: absolute !important;
+  left: 50% !important;
+  top: calc(50% + var(--unit-label-offset)) !important;
+  right: auto !important;
+  bottom: auto !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -6490,85 +6543,59 @@ body.targeting-confirmed
   height: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  max-width: 190px !important;
-  padding: 5px 9px !important;
+  max-width: 150px !important;
+  padding: 4px 8px !important;
   margin: 0 !important;
-  box-sizing: border-box !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  line-height: 1 !important;
+  transform: translateX(-50%) !important;
+  border-radius: 7px !important;
+  background: rgba(246, 240, 227, .96) !important;
+  box-shadow: 0 3px 0 rgba(70, 62, 49, .18) !important;
   aspect-ratio: auto !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
 }
 
 .unit-label-name {
-  display: inline-block !important;
   width: auto !important;
+  max-width: 88px !important;
   min-width: 0 !important;
-  max-width: 110px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
-.unit-label-stats {
-  flex: 0 0 auto !important;
-}
-
 .nameplate-order {
-  flex: 0 0 auto !important;
   width: auto !important;
   height: auto !important;
-  min-width: 22px !important;
-  min-height: 20px !important;
-  padding: 3px 5px !important;
+  min-width: 20px !important;
+  min-height: 18px !important;
+  padding: 2px 5px !important;
+  flex: 0 0 auto !important;
   aspect-ratio: auto !important;
 }
 
-.unit-label,
-.unit-label *,
-.building-occupancy-nameplate,
-.building-occupancy-nameplate * {
-  flex-grow: 0 !important;
-}
-
-.building-occupancy-nameplate {
-  width: max-content !important;
-  height: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  max-width: calc(100% - 20px) !important;
-  aspect-ratio: auto !important;
-}
-
+/* Mobile and desktop LOD values remain explicit and independent. */
 @media (max-width: 899px) {
   .unit-representation-medium {
-    --unit-visual-scale: .84 !important;
+    --unit-visual-scale: .86 !important;
     --unit-label-offset: 43px !important;
   }
 
   .unit-representation-close {
-    --unit-visual-scale: .96 !important;
+    --unit-visual-scale: .98 !important;
     --unit-label-offset: 50px !important;
   }
 
   .unit-label {
-    max-width: 150px !important;
-    padding: 5px 8px !important;
-    font-size: 13px !important;
-  }
-
-  .unit-label-medium {
+    max-width: 138px !important;
     font-size: 12px !important;
-  }
-
-  .unit-label-close {
-    font-size: 13px !important;
   }
 }
 
 @media (min-width: 900px) {
   .unit-representation-medium {
-    --unit-visual-scale: 1.04 !important;
+    --unit-visual-scale: 1.05 !important;
     --unit-label-offset: 48px !important;
   }
 
@@ -6578,26 +6605,18 @@ body.targeting-confirmed
   }
 
   .unit-label {
-    max-width: 165px !important;
-    padding: 5px 9px !important;
+    max-width: 150px !important;
     font-size: 13px !important;
-  }
-
-  .unit-label-medium {
-    font-size: 12px !important;
-  }
-
-  .unit-label-close {
-    font-size: 14px !important;
-  }
-
-  .far-unit-counter {
-    transform: scale(.94);
   }
 }
 
-.unit-representation-far .unit-label,
-.unit-representation-far .unit-label-medium,
-.unit-representation-far .unit-label-close {
+/* Generic card styles must never generate pseudo-panels on unit layers. */
+.unit-representation::before,
+.unit-representation::after,
+.unit-representation-medium::before,
+.unit-representation-medium::after,
+.unit-representation-close::before,
+.unit-representation-close::after {
+  content: none !important;
   display: none !important;
 }
