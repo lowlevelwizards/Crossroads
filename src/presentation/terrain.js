@@ -23,13 +23,13 @@
     return label;
   }
 
-  function createBuildingChildren(element) {
-    const plaque = terrainLabel("Farmhouse", "Occupiable · hard cover");
+  function createBuildingChildren(element, definition) {
+    const name = definition.label ?? "building";
+    const plaque = terrainLabel(name, "Occupiable · hard cover");
     plaque.classList.add("building-title-plaque");
     element.appendChild(plaque);
 
     const badge = document.createElement("button");
-    badge.id = "buildingOccupancyBadge";
     badge.className = "building-occupancy-nameplate";
     badge.type = "button";
     badge.hidden = true;
@@ -40,7 +40,6 @@
     element.appendChild(door);
 
     const approach = document.createElement("span");
-    approach.id = "buildingApproachMarker";
     approach.className = "building-approach-marker";
     approach.hidden = true;
     element.appendChild(approach);
@@ -59,6 +58,7 @@
     const element = document.createElement("div");
     element.dataset.terrainInstanceId = instance.id;
     element.dataset.terrainId = instance.terrainId;
+    element.dataset.terrainFamily = definition.family;
 
     if (definition.renderer === "road") {
       element.className = `road ${instance.terrainId === "road_vertical" ? "vertical" : "horizontal"}`;
@@ -68,15 +68,14 @@
 
     if (definition.renderer === "woods") {
       element.title = "Woods: soft cover and rough ground";
-      element.appendChild(terrainLabel("Woods", "Soft cover · rough ground"));
+      element.appendChild(terrainLabel(definition.label, "Soft cover · rough ground"));
     } else if (definition.renderer === "wall") {
       element.title = "Low wall: hard cover and +2 inch crossing cost";
-      element.appendChild(terrainLabel("Wall", "Hard cover · +2″ crossing"));
+      element.appendChild(terrainLabel(definition.label, "Hard cover · +2″ crossing"));
     } else if (definition.renderer === "building") {
-      element.id = "farmhouseTerrain";
       element.setAttribute("role", "button");
       element.tabIndex = 0;
-      createBuildingChildren(element);
+      createBuildingChildren(element, definition);
     }
 
     return element;
@@ -103,22 +102,15 @@
     }
   }
 
-  function legacyInstanceMap(scenario) {
-    const map = Object.create(null);
-    for (const instance of scenario?.terrain ?? []) {
-      if (["woods", "wall", "building"].includes(instance.terrainId)) {
-        map[instance.terrainId] = instance;
-      }
-    }
-    return map;
+  function elementForInstance(layer, id) {
+    return layer?.querySelector(`[data-terrain-instance-id="${CSS.escape(id)}"]`) ?? null;
   }
 
   window.CrossroadsTerrainPresentation = Object.freeze({
     renderScenarioTerrain,
-    legacyInstanceMap
+    elementForInstance
   });
 
-  // Bootstrap the default scenario before the engine caches DOM references.
   const layer = document.getElementById("terrainLayer");
   const select = document.getElementById("scenarioSelect");
   const scenario = window.CROSSROADS_SCENARIOS?.[select?.value ?? "take_the_crossroads"];

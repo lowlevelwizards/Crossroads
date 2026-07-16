@@ -121,37 +121,38 @@
     weaponProfiles,
     inchesToPixels
   }) {
-    const occupant = livingUnits().find(unit => Boolean(unit.inBuilding));
-    if (!occupant) return;
+    for (const occupant of livingUnits().filter(unit => Boolean(unit.inBuilding))) {
+      const selected = occupant.id === selectedUnitId;
+      const relevant =
+        occupant.ambush ||
+        (selected && ["choose-order", "choose-target"].includes(phase));
+      if (!relevant) continue;
 
-    const selected = occupant.id === selectedUnitId;
-    const relevant =
-      occupant.ambush ||
-      (selected && ["choose-order", "choose-target"].includes(phase));
-    if (!relevant) return;
+      const range = maximumWeaponRange(occupant, weaponProfiles);
+      const building = battlefield.querySelector(
+        `[data-terrain-instance-id="${CSS.escape(occupant.inBuilding)}"]`
+      );
+      if (!building || range <= 0) continue;
 
-    const range = maximumWeaponRange(occupant, weaponProfiles);
-    const building = battlefield.querySelector("#farmhouseTerrain");
-    if (!building || range <= 0) return;
+      const box = elementBoxWithin(building, battlefield);
+      const origins = [
+        { x: box.x + box.width, y: box.y + box.height / 2, facing: 0 },
+        { x: box.x + box.width / 2, y: box.y + box.height, facing: 90 },
+        { x: box.x, y: box.y + box.height / 2, facing: 180 },
+        { x: box.x + box.width / 2, y: box.y, facing: 270 }
+      ];
 
-    const box = elementBoxWithin(building, battlefield);
-    const origins = [
-      { x: box.x + box.width, y: box.y + box.height / 2, facing: 0 },
-      { x: box.x + box.width / 2, y: box.y + box.height, facing: 90 },
-      { x: box.x, y: box.y + box.height / 2, facing: 180 },
-      { x: box.x + box.width / 2, y: box.y, facing: 270 }
-    ];
-
-    for (const origin of origins) {
-      appendFireArc({
-        battlefield,
-        center: origin,
-        radius: inchesToPixels(range),
-        facing: origin.facing,
-        faction: occupant.faction,
-        kind: "building",
-        modifiers: [occupant.ambush ? "is-ambush" : "is-preview"]
-      });
+      for (const origin of origins) {
+        appendFireArc({
+          battlefield,
+          center: origin,
+          radius: inchesToPixels(range),
+          facing: origin.facing,
+          faction: occupant.faction,
+          kind: "building",
+          modifiers: [occupant.ambush ? "is-ambush" : "is-preview"]
+        });
+      }
     }
   }
 
