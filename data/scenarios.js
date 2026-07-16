@@ -46,11 +46,13 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         red: Object.freeze({ xMin: 60, xMax: 72, yMin: 0, yMax: 48, label: "Germany deployment · 12″" })
       })
     }),
-    terrain: Object.freeze({
-      woods: Object.freeze({ x: 15, y: 28, width: 18, height: 14 }),
-      wall: Object.freeze({ x: 38, y: 30, width: 17, height: 2.5 }),
-      building: Object.freeze({ x: 28, y: 4, width: 13, height: 13 })
-    }),
+    terrain: Object.freeze([
+      Object.freeze({ id: "main-road", terrainId: "road_horizontal", x: 0, y: 22.08, width: 72, height: 4.32 }),
+      Object.freeze({ id: "cross-road", terrainId: "road_vertical", x: 33.48, y: 0, width: 5.04, height: 48 }),
+      Object.freeze({ id: "woods", terrainId: "woods", x: 15, y: 28, width: 18, height: 14 }),
+      Object.freeze({ id: "wall", terrainId: "wall", x: 38, y: 30, width: 17, height: 2.5 }),
+      Object.freeze({ id: "building", terrainId: "building", x: 28, y: 4, width: 13, height: 13 })
+    ]),
     objectives: Object.freeze([
       Object.freeze({ id: "crossroads", x: 36, y: 24, radius: 3, label: "Crossroads" })
     ]),
@@ -74,11 +76,13 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         red: Object.freeze({ xMin: 54, xMax: 72, yMin: 0, yMax: 48, label: "German attack area" })
       })
     }),
-    terrain: Object.freeze({
-      woods: Object.freeze({ x: 8, y: 5, width: 18, height: 15 }),
-      wall: Object.freeze({ x: 29, y: 26, width: 18, height: 2.5 }),
-      building: Object.freeze({ x: 31, y: 14, width: 14, height: 13 })
-    }),
+    terrain: Object.freeze([
+      Object.freeze({ id: "main-road", terrainId: "road_horizontal", x: 0, y: 22.08, width: 72, height: 4.32 }),
+      Object.freeze({ id: "cross-road", terrainId: "road_vertical", x: 33.48, y: 0, width: 5.04, height: 48 }),
+      Object.freeze({ id: "woods", terrainId: "woods", x: 8, y: 5, width: 18, height: 15 }),
+      Object.freeze({ id: "wall", terrainId: "wall", x: 29, y: 26, width: 18, height: 2.5 }),
+      Object.freeze({ id: "building", terrainId: "building", x: 31, y: 14, width: 14, height: 13 })
+    ]),
     objectives: Object.freeze([
       Object.freeze({ id: "farm_yard", x: 38, y: 24, radius: 4, label: "Farm Yard" })
     ]),
@@ -115,11 +119,13 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
         red: Object.freeze({ xMin: 60, xMax: 72, yMin: 0, yMax: 48, label: "German attack deployment · 12″" })
       })
     }),
-    terrain: Object.freeze({
-      woods: Object.freeze({ x: 13, y: 7, width: 18, height: 16 }),
-      wall: Object.freeze({ x: 32, y: 25, width: 14, height: 2.5 }),
-      building: Object.freeze({ x: 49, y: 8, width: 15, height: 17 })
-    }),
+    terrain: Object.freeze([
+      Object.freeze({ id: "main-road", terrainId: "road_horizontal", x: 0, y: 22.08, width: 72, height: 4.32 }),
+      Object.freeze({ id: "cross-road", terrainId: "road_vertical", x: 33.48, y: 0, width: 5.04, height: 48 }),
+      Object.freeze({ id: "woods", terrainId: "woods", x: 13, y: 7, width: 18, height: 16 }),
+      Object.freeze({ id: "wall", terrainId: "wall", x: 32, y: 25, width: 14, height: 2.5 }),
+      Object.freeze({ id: "building", terrainId: "building", x: 49, y: 8, width: 15, height: 17 })
+    ]),
     objectives: Object.freeze([
       Object.freeze({
         id: "red_exit",
