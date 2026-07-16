@@ -2,17 +2,18 @@
 
 (() => {
   const TYPE_DEFINITIONS = window.CROSSROADS_TERRAIN_TYPES;
+  const MATS = window.CROSSROADS_TERRAIN_MATS ?? {};
 
-  function percent(value, total) {
-    return `${(Number(value) / Number(total)) * 100}%`;
-  }
+  function percent(value, total) { return `${(Number(value) / Number(total)) * 100}%`; }
 
   function applyRect(element, instance, table) {
     element.style.left = percent(instance.x, table.width);
     element.style.top = percent(instance.y, table.height);
     element.style.width = percent(instance.width, table.width);
     element.style.height = percent(instance.height, table.height);
-    element.style.transform = instance.rotation ? `rotate(${instance.rotation}deg)` : "";
+    element.style.setProperty("--terrain-rotation", `${Number(instance.rotation) || 0}deg`);
+    element.style.setProperty("--terrain-variant", String(Number(instance.variant) || 0));
+    element.style.transform = `rotate(var(--terrain-rotation))`;
   }
 
   function terrainLabel(text, detail) {
@@ -23,7 +24,16 @@
     return label;
   }
 
-  function createBuildingChildren(element, definition) {
+  function addPrimitive(parent, className, count = 1) {
+    for (let index = 0; index < count; index += 1) {
+      const node = document.createElement("span");
+      node.className = `${className} ${className}-${index + 1}`;
+      node.setAttribute("aria-hidden", "true");
+      parent.appendChild(node);
+    }
+  }
+
+  function createBuildingChildren(element, definition, instance) {
     const name = definition.label ?? "building";
     const plaque = terrainLabel(name, "Occupiable · hard cover");
     plaque.classList.add("building-title-plaque");
@@ -35,20 +45,36 @@
     badge.hidden = true;
     element.appendChild(badge);
 
-    const door = document.createElement("span");
-    door.className = "building-door";
-    element.appendChild(door);
+    addPrimitive(element, "terrain-roof");
+    addPrimitive(element, "terrain-roof-ridge");
+    addPrimitive(element, "building-door");
+    addPrimitive(element, "building-window", definition.id === "shed" ? 1 : 3);
+    if (["farmhouse", "building", "cottage"].includes(instance.terrainId)) addPrimitive(element, "building-chimney");
 
     const approach = document.createElement("span");
     approach.className = "building-approach-marker";
     approach.hidden = true;
     element.appendChild(approach);
+  }
 
-    for (const position of ["one", "two", "three"]) {
-      const windowElement = document.createElement("span");
-      windowElement.className = `building-window ${position}`;
-      element.appendChild(windowElement);
-    }
+  function decorate(element, definition, instance) {
+    const renderer = definition.renderer;
+    if (renderer === "woods") addPrimitive(element, "tree-canopy", instance.terrainId === "woods_dense" ? 9 : 7);
+    else if (renderer === "orchard") addPrimitive(element, "orchard-tree", 9);
+    else if (renderer === "wall") addPrimitive(element, "wall-stone", 8);
+    else if (renderer === "hedge") addPrimitive(element, "hedge-clump", 7);
+    else if (renderer === "fence") { addPrimitive(element, "fence-rail", 2); addPrimitive(element, "fence-post", 5); }
+    else if (renderer === "rail" || renderer === "rail_crossing") { addPrimitive(element, "rail-line", 2); addPrimitive(element, "rail-sleeper", 10); }
+    else if (renderer === "road_curve") addPrimitive(element, "road-curve-inner");
+    else if (renderer === "road_crossroads") { addPrimitive(element, "road-arm", 2); }
+    else if (renderer === "ditch") addPrimitive(element, "ditch-channel");
+    else if (renderer === "stream") addPrimitive(element, "stream-water");
+    else if (renderer === "foxholes") addPrimitive(element, "foxhole-pit", 3);
+    else if (renderer === "sandbags") addPrimitive(element, "sandbag", 8);
+    else if (renderer === "haystack") addPrimitive(element, "hay-bundle", 3);
+    else if (renderer === "well") { addPrimitive(element, "well-ring"); addPrimitive(element, "well-water"); }
+    else if (renderer === "crates") addPrimitive(element, "crate", 3);
+    else if (renderer === "woodpile") addPrimitive(element, "log", 6);
   }
 
   function createElement(instance) {
@@ -59,46 +85,43 @@
     element.dataset.terrainInstanceId = instance.id;
     element.dataset.terrainId = instance.terrainId;
     element.dataset.terrainFamily = definition.family;
+    element.dataset.renderer = definition.renderer;
+    element.className = `terrain-piece terrain-${definition.family} terrain-${definition.renderer} terrain-id-${instance.terrainId}`;
+    if (Number(instance.height) > Number(instance.width) * 1.5) element.classList.add("is-vertical");
 
-    if (definition.renderer === "road") {
-      element.className = `road ${instance.terrainId === "road_vertical" ? "vertical" : "horizontal"}`;
-    } else {
-      element.className = `terrain ${definition.renderer}`;
-    }
-
-    if (definition.renderer === "woods") {
-      element.title = "Woods: soft cover and rough ground";
-      element.appendChild(terrainLabel(definition.label, "Soft cover · rough ground"));
-    } else if (definition.renderer === "wall") {
-      element.title = "Low wall: hard cover and +2 inch crossing cost";
-      element.appendChild(terrainLabel(definition.label, "Hard cover · +2″ crossing"));
-    } else if (definition.renderer === "building") {
+    if (definition.renderer === "building") {
+      element.classList.add("terrain", "building");
       element.setAttribute("role", "button");
       element.tabIndex = 0;
-      createBuildingChildren(element, definition);
+      createBuildingChildren(element, definition, instance);
+    } else {
+      if (["woods", "orchard", "wall", "hedge", "fence", "ditch", "stream", "foxholes", "sandbags"].includes(definition.renderer)) {
+        element.appendChild(terrainLabel(definition.label, definition.label));
+      }
+      decorate(element, definition, instance);
     }
-
+    element.title = definition.label;
     return element;
+  }
+
+  function applyMat(layer, scenario) {
+    const battlefield = layer?.closest(".battlefield");
+    if (!battlefield) return;
+    for (const mat of Object.values(MATS)) battlefield.classList.remove(mat.cssClass);
+    const matId = scenario.table?.mat ?? "grass_temperate";
+    battlefield.classList.add(MATS[matId]?.cssClass ?? "mat-grass-temperate");
+    battlefield.dataset.terrainMat = matId;
   }
 
   function renderScenarioTerrain({ layer, scenario }) {
     if (!layer || !scenario) return;
+    applyMat(layer, scenario);
     const instances = Array.isArray(scenario.terrain) ? scenario.terrain : [];
-    const liveIds = new Set(instances.map(instance => instance.id));
-
-    layer.querySelectorAll("[data-terrain-instance-id]").forEach(element => {
-      if (!liveIds.has(element.dataset.terrainInstanceId)) element.remove();
-    });
-
+    layer.replaceChildren();
     for (const instance of instances) {
-      let element = layer.querySelector(
-        `[data-terrain-instance-id="${CSS.escape(instance.id)}"]`
-      );
-      if (!element) {
-        element = createElement(instance);
-        layer.appendChild(element);
-      }
+      const element = createElement(instance);
       applyRect(element, instance, scenario.table);
+      layer.appendChild(element);
     }
   }
 
@@ -106,10 +129,7 @@
     return layer?.querySelector(`[data-terrain-instance-id="${CSS.escape(id)}"]`) ?? null;
   }
 
-  window.CrossroadsTerrainPresentation = Object.freeze({
-    renderScenarioTerrain,
-    elementForInstance
-  });
+  window.CrossroadsTerrainPresentation = Object.freeze({ renderScenarioTerrain, elementForInstance });
 
   const layer = document.getElementById("terrainLayer");
   const select = document.getElementById("scenarioSelect");
