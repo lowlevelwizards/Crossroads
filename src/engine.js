@@ -1283,7 +1283,8 @@
       brickSoldierHtml,
       pinScatterHtml,
       roleAscii,
-      orderAscii,
+      ORDER_PRESENTATION,
+      orderPresentation,
       packedMMGFormationHtml,
       deployedMMGFormationHtml,
       qualityStripeHtml,
@@ -2121,6 +2122,8 @@
 
       waypointArmed = !waypointArmed;
       addWaypointButton.classList.toggle("active", waypointArmed);
+      addWaypointButton.textContent =
+        waypointArmed ? "Tap Waypoint" : "Add Waypoint";
       setStatus(
         waypointArmed
           ? "Waypoint armed. Tap the battlefield to place it."
@@ -2147,6 +2150,7 @@
       waypointArmed = false;
       addWaypointButton.hidden = true;
       addWaypointButton.classList.remove("active");
+      addWaypointButton.textContent = "Add Waypoint";
       clearWaypointButton.hidden = false;
       pendingTouchMovement = null;
       setStatus(
@@ -2164,6 +2168,7 @@
       waypointArmed = false;
       addWaypointButton.hidden = !FEATURES.movementIntegrity;
       addWaypointButton.classList.remove("active");
+      addWaypointButton.textContent = "Add Waypoint";
       clearWaypointButton.hidden = true;
       clearRouteLines();
       waypointMarker.hidden = true;
@@ -3861,7 +3866,7 @@
       return { available: true, reason: "Available." };
     }
 
-    const ORDER_COMMAND_LABELS = Object.freeze({
+    const ORDER_COMMAND_TEXT = Object.freeze({
       Run: Object.freeze({ desktop: "Run · 12″", mobile: "Run" }),
       Advance: Object.freeze({ desktop: "Advance · 6″", mobile: "Adv" }),
       Fire: Object.freeze({ desktop: "Fire", mobile: "Fire" }),
@@ -3873,15 +3878,17 @@
 
     function orderCommand(unit, order, presentation = "desktop") {
       const availability = orderAvailability(unit, order);
-      const labels = ORDER_COMMAND_LABELS[order] ?? Object.freeze({
+      const labels = ORDER_COMMAND_TEXT[order] ?? Object.freeze({
         desktop: order,
         mobile: order
       });
-
-      const commandLabel =
+      const orderVisual = orderPresentation(order);
+      const baseLabel =
         isMMGTeam(unit) && order === "Fire" && !unit.mmgDeployed
           ? "Deploy MMG"
           : labels[presentation] ?? labels.desktop;
+      const commandLabel =
+        `${orderVisual?.symbol ?? ""} ${baseLabel}`.trim();
 
       return window.CrossroadsCommands.makeCommand({
         id: `order-${order.toLowerCase()}`,
@@ -4273,16 +4280,31 @@
           });
         }
       } else if (phase === "plan-movement") {
-        addTrayAction(
-          movementWaypoint
-            ? "Clear Waypoint"
-            : waypointArmed
-              ? "Waypoint Armed"
-              : "Add Waypoint",
-          movementWaypoint ? clearWaypoint : armWaypoint
-        );
-        addTrayAction("Confirm", confirmPendingTouchMovement, { disabled: !pendingTouchMovement || pendingTouchMovement.state === "blocked", className: "tray-confirm tray-wide" });
-        addTrayAction("Cancel", cancelAndReselect, { disabled: Boolean(transactionLockReason), className: "tray-danger" });
+        if (movementWaypoint) {
+          addTrayAction("Tap Destination", () => {}, {
+            disabled: true,
+            className: "tray-confirm tray-wide"
+          });
+          addTrayAction("Clear Waypoint", clearWaypoint);
+        } else {
+          addTrayAction(
+            waypointArmed ? "Tap Waypoint" : "Add Waypoint",
+            armWaypoint,
+            {
+              className: waypointArmed ? "tray-confirm tray-wide" : ""
+            }
+          );
+          addTrayAction("Confirm Direct Move", confirmPendingTouchMovement, {
+            disabled:
+              !pendingTouchMovement ||
+              pendingTouchMovement.state === "blocked",
+            className: "tray-confirm"
+          });
+        }
+        addTrayAction("Cancel", cancelAndReselect, {
+          disabled: Boolean(transactionLockReason),
+          className: "tray-danger"
+        });
         addTrayCommand(mobileDetailsCommand());
       } else if (phase === "choose-target") {
         addTrayAction(pendingTouchTargetId ? "Confirm Fire" : "Tap enemy", confirmPendingTouchTarget, { disabled: !pendingTouchTargetId, className: "tray-confirm tray-wide" });
@@ -4416,16 +4438,29 @@
       if (phase === "plan-movement") {
         const unit = getUnit(selectedUnitId);
         if (!unit) return false;
+
         if (waypointArmed && !movementWaypoint) {
           placeWaypoint(unit, point);
+          queueAdaptiveUI();
           return true;
         }
+
         previewMovementAt(point);
         pendingTouchMovement = lastMovementPreview ? {
           path: lastMovementPreview.path.map(p => ({ x: p.x, y: p.y })),
           analysis: lastMovementPreview.analysis,
           state: lastMovementPreview.state
         } : null;
+
+        if (
+          movementWaypoint &&
+          pendingTouchMovement &&
+          pendingTouchMovement.state !== "blocked"
+        ) {
+          confirmPendingTouchMovement();
+          return true;
+        }
+
         queueAdaptiveUI();
         return true;
       }

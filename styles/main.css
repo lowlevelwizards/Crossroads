@@ -2902,127 +2902,6 @@ that no visual behavior changes. These banners identify the effective systems:
       100% { opacity: 0; transform: translate(-50%, -42%) scale(.92); }
     }
 
-    .unit.effect-eligible .unit-formation,
-    .unit.effect-eligible .far-unit-counter {
-      animation: eligiblePulse .75s ease both;
-    }
-
-    @keyframes eligiblePulse {
-      0%, 100% { filter: none; }
-      30% { filter: drop-shadow(0 0 8px rgba(255,225,113,.95)); transform: translateY(-4px) scale(1.05); }
-      65% { filter: drop-shadow(0 0 4px rgba(255,225,113,.55)); transform: translateY(-1px) scale(1.01); }
-    }
-
-    .unit.selected::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 34%;
-      width: 74%;
-      height: 36%;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: rgba(255,214,95,.20);
-      box-shadow: 0 0 16px rgba(255,196,55,.55);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .physical-state-marker {
-      position: absolute;
-      left: 50%;
-      bottom: -1px;
-      z-index: 14;
-      display: grid;
-      place-items: center;
-      min-width: 18px;
-      height: 16px;
-      padding: 0 4px;
-      border: 1px solid #62584b;
-      border-radius: 4px;
-      background: #efe3c8;
-      color: #302b26;
-      box-shadow: 1px 2px 0 rgba(0,0,0,.18);
-      font: 1000 8px/1 ui-monospace, monospace;
-      transform: translateX(-50%) rotate(-2deg);
-      pointer-events: none;
-    }
-
-    .physical-state-marker.ambush { background: #e4d6ef; border-color: #665079; }
-    .physical-state-marker.down { background: #d8ddd2; border-color: #576352; }
-    .physical-state-marker.activated { opacity: .68; filter: grayscale(.4); }
-
-    .effect-dust,
-    .effect-impact,
-    .effect-casualty-mark {
-      position: absolute;
-      pointer-events: none;
-      z-index: 18;
-    }
-
-    .effect-dust {
-      left: 50%;
-      bottom: 6px;
-      width: 28px;
-      height: 15px;
-      transform: translateX(-50%);
-    }
-
-    .effect-dust::before,
-    .effect-dust::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      border-radius: 50%;
-      background: rgba(113,96,65,.38);
-      animation: dustPuff .42s ease-out both;
-    }
-
-    .effect-dust::before { left: 1px; width: 12px; height: 8px; }
-    .effect-dust::after { right: 1px; width: 15px; height: 10px; animation-delay: .05s; }
-
-    .effect-impact {
-      left: 50%;
-      top: 28%;
-      width: 26px;
-      height: 26px;
-      transform: translate(-50%, -50%);
-    }
-
-    .effect-impact::before {
-      content: "✣";
-      color: #6e5c43;
-      font: 1000 25px/1 ui-monospace, monospace;
-      animation: impactBurst .30s ease-out both;
-    }
-
-    .effect-casualty-mark {
-      left: 50%;
-      top: 38%;
-      width: 20px;
-      height: 8px;
-      transform: translate(-50%, -50%) rotate(-18deg);
-      border-radius: 50%;
-      background: rgba(55,45,36,.22);
-      animation: casualtyMark .65s ease both;
-    }
-
-    @keyframes dustPuff {
-      from { opacity: .75; transform: translateY(0) scale(.5); }
-      to { opacity: 0; transform: translateY(-9px) scale(1.35); }
-    }
-
-    @keyframes impactBurst {
-      from { opacity: 1; transform: scale(.35) rotate(-18deg); }
-      to { opacity: 0; transform: scale(1.35) rotate(18deg); }
-    }
-
-    @keyframes casualtyMark {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(-18deg); }
-      35% { opacity: .55; transform: translate(-50%, -50%) scale(1.1) rotate(-18deg); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(-18deg); }
-    }
-
     @media (max-width: 820px), (pointer: coarse) and (max-width: 1180px) {
       .target-readout {
         min-width: 86px;
@@ -3628,10 +3507,7 @@ that no visual behavior changes. These banners identify the effective systems:
     }
     body:not(.camera-far) .unit-label,
     body:not(.camera-far) .unit-state-line,
-    body:not(.camera-far) .physical-state-marker {
-      scale: clamp(.96, var(--miniature-scale), 1.18);
-      transform-origin: center top;
-    }
+    body:not(.camera-far)
 
     body.camera-close .unit {
       width: 112px !important;
@@ -4429,7 +4305,6 @@ that no visual behavior changes. These banners identify the effective systems:
     .far-unit-counter .counter-pins { grid-area: pins; }
 
     /* Prevent stale legacy markers from reappearing. */
-    .physical-state-marker,
     .pin-scatter {
       display: none !important;
     }
@@ -6317,72 +6192,180 @@ body.targeting-confirmed
   }
 }
 
+/*
+
 /* ==========================================================================
-   INFANTRY CORE PRESENTATION 3N-F — UNIFIED BATTLEFIELD LANGUAGE
+   INFANTRY CORE PRESENTATION 3N-F.1 — CORRECTION AND OWNERSHIP CLEANUP
    ========================================================================== */
 
-/* One order vocabulary across action buttons and every zoom tier. */
-.orderButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .48em;
+/* Selection/state never changes soldier geometry. */
+.unit.selected .unit-model-group,
+.unit.ambush .unit-model-group,
+.unit.down .unit-model-group,
+.unit.command-supported .unit-model-group,
+.unit.confirmed-target .unit-model-group,
+.unit.targetable-legal .unit-model-group,
+.unit.targetable-protected .unit-model-group,
+.unit.targetable-blocked .unit-model-group {
+  transform:
+    translate(-50%, -50%)
+    scale(var(--unit-visual-scale)) !important;
 }
 
-.orderButton > b {
-  display: inline-grid;
-  min-width: 1.25em;
-  place-items: center;
-  font: 900 1.05em/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.unit-state-line-far,
-.unit-state-line-medium,
-.unit-state-line-close {
+.unit-feedback-layer {
   position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 75;
+  width: 92px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  opacity: 0;
   pointer-events: none;
 }
 
-.unit-state-line-far {
-  right: -17px;
-  top: -15px;
+.unit-feedback-layer.feedback-rally,
+.unit-feedback-layer:not([class*="feedback-"]) {
+  background:
+    radial-gradient(circle, rgba(92,190,104,.55), rgba(92,190,104,0) 70%);
 }
 
-.unit-state-line-medium {
-  left: calc(50% + 33px);
-  top: calc(50% + var(--unit-label-offset) - 9px);
+.unit-feedback-layer.feedback-command {
+  background:
+    radial-gradient(circle, rgba(235,190,67,.68), rgba(235,190,67,0) 70%);
 }
 
+.unit-feedback-layer.feedback-ambush {
+  background:
+    radial-gradient(circle, rgba(129,84,169,.72), rgba(129,84,169,0) 70%);
+}
+
+.unit-feedback-layer.feedback-down {
+  background:
+    radial-gradient(ellipse, rgba(100,98,92,.72), rgba(100,98,92,0) 72%);
+}
+
+/* Order state is part of the nameplate, never a floating sibling. */
+.unit-state-line-medium,
 .unit-state-line-close {
-  left: calc(50% + 47px);
-  top: calc(50% + var(--unit-label-offset) - 10px);
+  display: none !important;
 }
 
-.physical-order-chit.detail-medium,
-.physical-order-chit.detail-far {
-  min-width: 23px;
-  padding: 4px 6px;
+.unit-state-line-far {
+  position: absolute;
+  right: -16px;
+  top: -14px;
+  pointer-events: none;
 }
 
-.physical-order-chit.detail-medium span,
-.physical-order-chit.detail-far span {
+.unit-label {
+  gap: 7px;
+}
+
+.nameplate-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 24px;
+  min-height: 22px;
+  padding: 3px 6px;
+  border: 1px solid #6a6254;
+  border-radius: 6px;
+  background: #eee6d6;
+  box-shadow: 1px 2px 0 rgba(60,53,43,.20);
+  font: 900 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+
+.unit-label-medium .nameplate-order span {
   display: none;
 }
 
-.physical-order-chit.detail-far {
-  min-width: 18px;
-  padding: 3px 4px;
-  transform: scale(.82);
+.nameplate-order.order-ambush {
+  color: #5f3d79;
+  border-color: #73518d;
+  background: #e8ddef;
 }
 
-/* Compact building occupant presentation reuses ordinary unit nameplate markup. */
+.nameplate-order.order-down {
+  color: #53514c;
+  border-color: #74716b;
+  background: #dedcd5;
+}
+
+.nameplate-order.order-rally {
+  color: #3f7449;
+  border-color: #5b9064;
+  background: #dfeddf;
+}
+
+/* Persistent states are unmistakable but do not move the formation. */
+.unit.ambush .unit-label {
+  outline: 3px solid #76518f !important;
+  outline-offset: 1px;
+  box-shadow:
+    0 0 0 3px rgba(118,81,143,.22),
+    0 5px 0 rgba(70,62,49,.18);
+}
+
+.unit.ambush .model-base-ring {
+  opacity: 1 !important;
+  border-color: #76518f !important;
+  box-shadow: 0 0 0 2px rgba(118,81,143,.28);
+}
+
+.unit.down .unit-model-group {
+  filter: saturate(.35) brightness(.78);
+}
+
+.unit.down .unit-label {
+  outline: 3px solid #74716b !important;
+  outline-offset: 1px;
+  background: #dedbd2;
+}
+
+.unit.down .model-base-ring {
+  opacity: 1 !important;
+  border-color: #77736c !important;
+  background: rgba(103,99,91,.15);
+}
+
+.command-support-star {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 1px;
+  color: #e2aa2f;
+  font: 1000 17px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-shadow:
+    0 1px 0 #6c5522,
+    0 0 7px rgba(232,179,53,.9);
+}
+
+.unit.command-supported .unit-label {
+  outline: 2px solid rgba(224,171,48,.74);
+  outline-offset: 1px;
+}
+
+/* The officer radius remains attached to the same travel layer as the unit. */
+.unit-visual-travel > .command-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -2;
+}
+
+/* Compact farmhouse occupant nameplate uses the same exact component. */
 .building-occupancy-nameplate {
   position: absolute;
   left: 50%;
   top: -15px;
   z-index: 28;
   width: max-content;
-  max-width: 90%;
+  max-width: 94%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -6415,10 +6398,6 @@ body.targeting-confirmed
     0 5px 0 rgba(76,67,52,.22);
 }
 
-.unit-label-building {
-  gap: 9px;
-}
-
 .unit-label-stats {
   display: inline-flex;
   align-items: center;
@@ -6426,115 +6405,64 @@ body.targeting-confirmed
   font: 900 .82em/1 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.nameplate-men {
-  color: #48453f;
-}
-
 .nameplate-pins {
   color: #a9362f;
 }
 
-/* Command radius belongs to the officer's travel layer. */
-.unit-visual-travel > .command-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: -2;
+/* Every action surface receives registry-generated symbols. */
+.orderButton,
+.mobile-command-actions button {
+  white-space: nowrap;
 }
 
-.command-support-star {
-  display: inline-grid;
-  place-items: center;
-  margin-left: 4px;
-  color: #d8a735;
-  font: 900 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-shadow:
-    0 1px 0 #67562f,
-    0 0 5px rgba(226,182,77,.65);
-}
-
-.unit.command-supported .unit-label {
-  box-shadow:
-    inset 0 -2px 0 rgba(218,171,52,.5),
-    0 4px 0 rgba(70,62,49,.18);
-}
-
-/* Ambush and Down use the same order language with quiet persistent states. */
-.unit.ambush .unit-label {
-  outline-color: #74558d !important;
-  box-shadow:
-    inset 0 0 0 2px rgba(116,85,141,.42),
-    0 4px 0 rgba(70,62,49,.18);
-}
-
-.unit.ambush .model-base-ring {
-  opacity: .72;
-  border-color: #74558d;
-}
-
-.unit.down .unit-model-group {
-  filter: saturate(.48) brightness(.9);
-}
-
-.unit.down .unit-label {
-  outline-color: #77736b !important;
-  box-shadow:
-    inset 0 0 0 2px rgba(105,101,94,.38),
-    0 4px 0 rgba(70,62,49,.18);
-}
-
-/* Explicit waypoint mode reads as a temporary active tool. */
-#addWaypointButton.active {
+#addWaypointButton.active,
+.mobile-command-actions .tray-confirm {
   border-color: #d39a24;
   box-shadow:
     inset 0 0 0 2px rgba(211,154,36,.3),
     0 3px 0 rgba(80,68,45,.22);
 }
 
-/* Weapon-specific barrel-tip anchors. */
-.brick-soldier {
-  --muzzle-x: calc(100% - 1px);
-  --muzzle-y: 50%;
+/* Muzzle anchors are weapon-local. The weapon's own rotation/facing carries them. */
+.brick-weapon,
+.mmg-barrel {
+  --muzzle-tip-right: -3px;
 }
 
-.role-rifle {
-  --muzzle-x: calc(100% - 2px);
-  --muzzle-y: 48%;
+.role-rifle .brick-weapon,
+.role-loader .brick-weapon {
+  --muzzle-tip-right: -7px;
 }
 
-.role-smg,
-.role-officer {
-  --muzzle-x: calc(100% - 1px);
-  --muzzle-y: 52%;
+.role-smg .brick-weapon,
+.role-officer .brick-weapon {
+  --muzzle-tip-right: -4px;
 }
 
-.role-lmg {
-  --muzzle-x: calc(100% - 3px);
-  --muzzle-y: 49%;
+.role-lmg .brick-weapon {
+  --muzzle-tip-right: -6px;
 }
 
-.brick-weapon .weapon-muzzle {
-  left: var(--muzzle-x) !important;
-  right: auto !important;
-  top: var(--muzzle-y) !important;
-  width: 29px !important;
-  height: 29px !important;
-  transform: translate(-50%, -50%);
-}
-
-.facing-left .brick-weapon .weapon-muzzle {
-  left: calc(100% - var(--muzzle-x)) !important;
-}
-
+.brick-weapon .weapon-muzzle,
 .mmg-barrel .weapon-muzzle {
-  left: calc(100% - 1px) !important;
-  right: auto !important;
+  position: absolute !important;
+  left: auto !important;
+  right: var(--muzzle-tip-right) !important;
   top: 50% !important;
   width: 30px !important;
   height: 30px !important;
-  transform: translate(-50%, -50%);
+  transform: translate(50%, -50%) !important;
+  transform-origin: center !important;
+  pointer-events: none;
+}
+
+/* No facing-specific muzzle mirror: the transformed weapon carries the anchor. */
+.facing-left .brick-weapon .weapon-muzzle,
+.facing-right .brick-weapon .weapon-muzzle,
+.facing-up .brick-weapon .weapon-muzzle,
+.facing-down .brick-weapon .weapon-muzzle {
+  left: auto !important;
+  right: var(--muzzle-tip-right) !important;
 }
 
 .weapon-muzzle.muzzle-pulse::before {

@@ -169,16 +169,32 @@
       (detail === "medium" ? roleAbbreviation(unit) : unit.name);
 
     const stats = [];
-    if (options.showMen) stats.push(`<span class="nameplate-men">♟${unit.soldiers}</span>`);
+    if (options.showMen) {
+      stats.push(`<span class="nameplate-men">♟${unit.soldiers}</span>`);
+    }
     if (options.showPins && unit.pins > 0) {
       stats.push(`<span class="nameplate-pins">P${unit.pins}</span>`);
     }
+
+    const showOrder = options.showOrder ?? true;
+    const order = showOrder ? orderPresentation(unit) : null;
+    const orderLabel =
+      order
+        ? `<span class="nameplate-order ${order.cls}"
+                 aria-label="${order.short}">
+             <b>${order.symbol}</b>
+             ${detail === "close" || detail === "building"
+               ? `<span>${order.short}</span>`
+               : ""}
+           </span>`
+        : "";
 
     return `
       <span class="unit-label unit-label-${detail}">
         ${qualityStripeHtml(unit)}
         <span class="unit-label-name">${name}</span>
         ${stats.length ? `<span class="unit-label-stats">${stats.join("")}</span>` : ""}
+        ${orderLabel}
       </span>
     `;
   }
@@ -264,8 +280,6 @@
           ).join("");
 
     const farOrderChit = orderChitHtml(unit, "far");
-    const mediumOrderChit = orderChitHtml(unit, "medium");
-    const closeOrderChit = orderChitHtml(unit, "close");
 
     const stateClass = isMMGTeam(unit)
       ? (unit.mmgDeployed ? " is-mmg-deployed" : " is-mmg-packed")
@@ -273,6 +287,7 @@
 
     return `
       <span class="unit-visual-travel">
+        <span class="unit-feedback-layer" aria-hidden="true"></span>
         <span class="unit-representation unit-representation-far${stateClass}">
           ${farCounterHtml(unit)}
           <span class="unit-state-line unit-state-line-far">${farOrderChit}</span>
@@ -289,7 +304,6 @@
             </span>
           </span>
           ${unitNameplateHtml(unit, { detail: "medium" })}
-          <span class="unit-state-line unit-state-line-medium">${mediumOrderChit}</span>
         </span>
 
         <span class="unit-representation unit-representation-close${stateClass}">
@@ -303,7 +317,6 @@
             </span>
           </span>
           ${unitNameplateHtml(unit, { detail: "close" })}
-          <span class="unit-state-line unit-state-line-close">${closeOrderChit}</span>
         </span>
       </span>
     `;

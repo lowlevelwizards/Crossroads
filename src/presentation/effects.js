@@ -344,16 +344,12 @@
           )
         );
 
-        const modelGroup = root.querySelector(".unit-model-group");
-        const pulse = modelGroup?.animate(
+        const feedback = root.querySelector(".unit-feedback-layer");
+        const pulse = feedback?.animate(
           [
-            { filter: "none" },
-            {
-              filter:
-                "drop-shadow(0 0 7px rgba(94,190,104,.95)) brightness(1.12)",
-              offset: .45
-            },
-            { filter: "none" }
+            { opacity: 0, transform: "translate(-50%, -50%) scale(.75)" },
+            { opacity: .92, transform: "translate(-50%, -50%) scale(1.08)", offset: .42 },
+            { opacity: 0, transform: "translate(-50%, -50%) scale(1.28)" }
           ],
           { duration: 470, easing: "ease-out" }
         );
@@ -380,17 +376,48 @@
 
       for (const unitId of supportedUnitIds) {
         const root = unitElement(unitId);
-        root?.querySelectorAll(".unit-label").forEach(label => {
-          label.animate(
-            [
-              { filter: "none" },
-              { filter: "drop-shadow(0 0 7px rgba(224,182,77,.95))" },
-              { filter: "none" }
-            ],
-            { duration: 620, easing: "ease-out" }
-          );
-        });
+        const feedback = root?.querySelector(".unit-feedback-layer");
+        if (!feedback) continue;
+        feedback.classList.add("feedback-command");
+        const animation = feedback.animate(
+          [
+            { opacity: 0, transform: "translate(-50%, -50%) scale(.72)" },
+            { opacity: 1, transform: "translate(-50%, -50%) scale(1.12)", offset: .4 },
+            { opacity: 0, transform: "translate(-50%, -50%) scale(1.3)" }
+          ],
+          { duration: 680, easing: "ease-out" }
+        );
+        animation.finished.finally(() =>
+          feedback.classList.remove("feedback-command")
+        );
       }
+    }
+
+    function playStatePulse(unitId, state) {
+      const root = unitElement(unitId);
+      const feedback = root?.querySelector(".unit-feedback-layer");
+      if (!feedback) return;
+
+      feedback.classList.remove(
+        "feedback-ambush",
+        "feedback-down",
+        "feedback-command",
+        "feedback-rally"
+      );
+      feedback.classList.add(`feedback-${state}`);
+
+      const animation = feedback.animate(
+        [
+          { opacity: 0, transform: "translate(-50%, -50%) scale(.7)" },
+          { opacity: .95, transform: "translate(-50%, -50%) scale(1.08)", offset: .42 },
+          { opacity: 0, transform: "translate(-50%, -50%) scale(1.3)" }
+        ],
+        { duration: 620, easing: "cubic-bezier(.2,.8,.25,1)" }
+      );
+
+      animation.finished.finally(() =>
+        feedback.classList.remove(`feedback-${state}`)
+      );
     }
 
     return Object.freeze({
@@ -399,6 +426,7 @@
       playCasualtyPuffs,
       playRally,
       playCommandPulse,
+      playStatePulse,
       isBusy
     });
   }
