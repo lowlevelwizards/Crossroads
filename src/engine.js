@@ -195,6 +195,7 @@
     // loudly if any source is missing, preventing silent fallback drift.
     const WEAPON_PROFILES = window.CROSSROADS_WEAPON_PROFILES;
     const TERRAIN = window.CROSSROADS_TERRAIN;
+    const TERRAIN_GEOMETRY = window.CrossroadsTerrainGeometry;
     const UNIT_QUALITY = window.CROSSROADS_UNIT_QUALITY;
 
     function qualityProfile(unitOrQuality) {
@@ -459,7 +460,7 @@
           typeof buildingCombatContext === "function" &&
           typeof reconcileBuildingAfterUnitChange === "function",
         buildingOccupant: buildingOccupant()?.id ?? "none",
-        buildingCardVisible: Boolean(buildingOccupant()) === !buildingOccupancyBadge.hidden,
+        buildingCardVisible: !buildingOccupant() || Boolean(document.querySelector(".building-occupancy-nameplate:not([hidden])")),
         qualitySystem:
           Boolean(window.CROSSROADS_UNIT_QUALITY) &&
           units.every(unit => Boolean(UNIT_QUALITY[unit.quality])),
@@ -476,7 +477,7 @@
           typeof packedMMGFormationHtml === "function" &&
           typeof deployedMMGFormationHtml === "function",
         visualStability:
-          Boolean(buildingOccupancyBadge) &&
+          Boolean(document.querySelector(".building-occupancy-nameplate")) &&
           typeof qualityStripeHtml === "function",
         simpleUnitUI:
           typeof farCounterHtml === "function" &&
@@ -560,9 +561,9 @@
       blueObjectiveDistance: document.getElementById("blueObjectiveDistance"),
       redObjectiveDistance: document.getElementById("redObjectiveDistance"),
       objectiveLabel: document.getElementById("objectiveLabel"),
-      farmhouseTerrain: document.getElementById("farmhouseTerrain"),
-      buildingOccupancyBadge: document.getElementById("buildingOccupancyBadge"),
-      buildingApproachMarker: document.getElementById("buildingApproachMarker"),
+      farmhouseTerrain: document.querySelector(".terrain.building[data-terrain-instance-id]"),
+      buildingOccupancyBadge: document.querySelector(".terrain.building .building-occupancy-nameplate"),
+      buildingApproachMarker: document.querySelector(".terrain.building .building-approach-marker"),
       buildingActionButton: document.getElementById("buildingActionButton"),
       objectiveRing: document.getElementById("objectiveRing"),
       objectiveMarker: document.getElementById("objectiveMarker"),
@@ -1658,31 +1659,39 @@
     function analyzeShot(shooter, target) { return analyzeShotAtPoint(shooter, target); }
 
     function analyzeShotAtPoint(shooter, targetPoint) {
-      const shooterPoint = shooter?.inBuilding ? buildingWindowPointToward(targetPoint) : shooter;
+      const shooterPoint = shooter?.inBuilding ? buildingWindowPointToward(shooter.inBuilding, targetPoint) : shooter;
       const targetUnit = targetPoint?.id ? targetPoint : null;
-      const targetAimPoint = targetUnit?.inBuilding ? buildingCenterPoint() : targetPoint;
+      const targetAimPoint = targetUnit?.inBuilding ? buildingCenterPoint(targetUnit.inBuilding) : targetPoint;
       const distance = distanceBetweenPoints(shooterPoint, targetAimPoint);
       const range = weaponRange(shooter, false);
       const inRange = distance <= range + 0.001;
 
       const mmgArc = analyzeMMGFireArc(shooter, targetAimPoint);
-      let buildingHit = segmentRectClip(shooterPoint, targetAimPoint, TERRAIN.building);
-      if (shooter?.inBuilding || targetUnit?.inBuilding) buildingHit = null;
+      const shooterBuildingId = shooter?.inBuilding ?? null;
+      const targetBuildingId = targetUnit?.inBuilding ?? null;
+      const blockingBuilding = (TERRAIN.instances ?? [])
+        .filter(instance => instance.rules?.los === "blocking")
+        .find(instance => {
+          if (instance.id === shooterBuildingId || instance.id === targetBuildingId) return false;
+          return segmentRectClip(shooterPoint, targetAimPoint, instance) !== null;
+        }) ?? null;
 
-      const blockedByBuilding = buildingHit !== null;
+      const blockedByBuilding = Boolean(blockingBuilding);
       const blockedByArc = !mmgArc.insideArc;
       const blocked = blockedByBuilding || blockedByArc;
       const blockReason = blockedByArc
         ? "Outside the deployed MMG firing arc."
         : blockedByBuilding
-          ? "The farmhouse completely blocks line of sight."
+          ? `The ${blockingBuilding.definition?.label ?? "building"} completely blocks line of sight.`
           : "";
 
       let cover = blocked
         ? { label: "No shot", saveTarget: null, sources: [] }
         : determineLineCover(shooterPoint, targetAimPoint);
       if (!blocked && targetUnit?.inBuilding) {
-        cover = { label: "Hard cover inside farmhouse", saveTarget: 3, sources: ["target occupies the farmhouse"] };
+        const occupiedBuilding = TERRAIN_GEOMETRY.get(targetUnit.inBuilding);
+        const label = occupiedBuilding?.definition?.label ?? "building";
+        cover = { label: `Hard cover inside ${label}`, saveTarget: occupiedBuilding?.rules?.save ?? 3, sources: [`target occupies the ${label}`] };
       }
       return {
         distance,
@@ -1702,21 +1711,26 @@
       let saveTarget = null;
       let label = "No cover";
 
-      const woodsClip = segmentRectClip(shooter, target, TERRAIN.woods);
-      if (woodsClip !== null) {
-        sources.push("line passes through woods");
-        saveTarget = TERRAIN.woods.save;
-        label = "Soft cover from woods";
+      for (const woods of (TERRAIN.instances ?? []).filter(instance => instance.rules?.cover === "soft")) {
+        if (segmentRectClip(shooter, target, woods) === null) continue;
+        const terrainSave = woods.rules?.save ?? 5;
+        sources.push(`line passes through ${woods.definition?.label ?? "soft terrain"}`);
+        if (saveTarget === null || terrainSave < saveTarget) {
+          saveTarget = terrainSave;
+          label = `Soft cover from ${woods.definition?.label ?? "terrain"}`;
+        }
       }
 
-      const wallClip = segmentRectClip(shooter, target, TERRAIN.wall);
-      if (wallClip !== null) {
+      for (const wall of (TERRAIN.instances ?? []).filter(instance => instance.rules?.movement === "crossing")) {
+        const wallClip = segmentRectClip(shooter, target, wall);
+        if (wallClip === null) continue;
         const nearest = distanceBetweenPoints(target, wallClip.exit);
         if (nearest <= RULES.wallProtectionDepth + 0.001) {
-          sources.push(`wall crossed ${nearest.toFixed(1)}″ from target`);
-          if (saveTarget === null || TERRAIN.wall.save < saveTarget) {
-            saveTarget = TERRAIN.wall.save;
-            label = "Hard cover from low wall";
+          const terrainSave = wall.rules?.save ?? 4;
+          sources.push(`${wall.definition?.label ?? "wall"} crossed ${nearest.toFixed(1)}″ from target`);
+          if (saveTarget === null || terrainSave < saveTarget) {
+            saveTarget = terrainSave;
+            label = `Hard cover from ${wall.definition?.label ?? "wall"}`;
           }
         }
       }
@@ -2643,7 +2657,8 @@
     // =========================================================================
     function analyzeAssault(attacker, defender) {
       if (defender?.inBuilding) {
-        const door = buildingDoorPoint();
+        const assaultedBuildingId = defender.inBuilding;
+        const door = buildingDoorPoint(assaultedBuildingId);
         const distance = distanceBetweenPoints(attacker, door);
         if (attacker?.inBuilding) return { legal:false, reason:"Exit the farmhouse before assaulting.", distance };
         if (distance > RULES.assaultDistance + 0.001) return { legal:false, reason:`Doorway is ${distance.toFixed(1)}″ away; assault range is 12″.`, distance };
@@ -2651,7 +2666,7 @@
         if (!pathAnalysis.legal) return { legal:false, reason:pathAnalysis.reason, distance };
         const shotTrace = analyzeShot(defender, attacker);
         const reactionFire = !defender.down && shotTrace.inRange && !shotTrace.blocked;
-        return { legal:true, reason:"", distance, pathAnalysis, reactionFire, ambushReaction:defender.ambush, defensivePosition:true, buildingAssault:true, shotTrace };
+        return { legal:true, reason:"", distance, pathAnalysis, reactionFire, ambushReaction:defender.ambush, defensivePosition:true, buildingAssault:true, buildingId: assaultedBuildingId, shotTrace };
       }
       const distance = distanceBetweenUnits(attacker, defender);
       if (distance > RULES.assaultDistance + 0.001) return { legal: false, reason: `Out of assault range: ${distance.toFixed(1)}″ exceeds 12″.`, distance };
@@ -2662,8 +2677,12 @@
       const shotTrace = analyzeShot(defender, attacker);
       const ambushReaction = FEATURES.ambush && defender.ambush && shotTrace.inRange && !shotTrace.blocked;
       const reactionFire = !defender.down && shotTrace.inRange && !shotTrace.blocked && (ambushReaction || distance > RULES.reactionFireThreshold);
-      const crossesWoods = segmentRectClip(attacker, defender, TERRAIN.woods) !== null;
-      const crossesWall = segmentRectClip(attacker, defender, TERRAIN.wall) !== null;
+      const crossesWoods = (TERRAIN.instances ?? []).some(instance =>
+        instance.rules?.movement === "rough" && segmentRectClip(attacker, defender, instance) !== null
+      );
+      const crossesWall = (TERRAIN.instances ?? []).some(instance =>
+        instance.rules?.movement === "crossing" && segmentRectClip(attacker, defender, instance) !== null
+      );
       const defensivePosition = !defender.down && (crossesWoods || crossesWall);
 
       return { legal: true, reason: "", distance, pathAnalysis, reactionFire, ambushReaction, defensivePosition, crossesWoods, crossesWall, shotTrace };
@@ -2776,9 +2795,9 @@
         attacker.x = safe.x;
         attacker.y = safe.y;
         if (analysis.buildingAssault) {
-          occupyBuilding(attacker, { fromAssault: true });
-      showBattleAnnouncement("FARMHOUSE CLEARED", `${attacker.name} takes the position`, attacker.faction, 1200);
-          addLog(`${capitalize(attacker.faction)} ${attacker.name} clears and occupies the farmhouse.`, "assault");
+          occupyBuilding(attacker, { fromAssault: true, buildingId: analysis.buildingId });
+      showBattleAnnouncement(`${buildingLabel(analysis.buildingId).toUpperCase()} CLEARED`, `${attacker.name} takes the position`, attacker.faction, 1200);
+          addLog(`${capitalize(attacker.faction)} ${attacker.name} clears and occupies the ${buildingLabel(analysis.buildingId)}.`, "assault");
         } else {
           addLog(`${capitalize(attacker.faction)} ${attacker.name} wins; ${defender.name} is destroyed and the attacker occupies the position.`, "assault");
         }
@@ -2821,7 +2840,7 @@
       })));
       for (const candidate of candidates) {
         const point = clampPoint(candidate);
-        if (!pointInsideRect(point, expandRect(TERRAIN.building, RULES.unitCollisionRadius)) && !analyzeDestinationCollision(attacker, point, null).blocked) return point;
+        if (!(TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(point, expandRect(instance, RULES.unitCollisionRadius))) && !analyzeDestinationCollision(attacker, point, null).blocked) return point;
       }
       return clampPoint(attackerStart);
     }
@@ -3375,12 +3394,18 @@
         throw new Error("Terrain presentation module is unavailable.");
       }
 
-      const legacyTerrain = terrainPresentation.legacyInstanceMap(activeScenario);
+      if (!TERRAIN_GEOMETRY) {
+        throw new Error("Terrain geometry module is unavailable.");
+      }
+      TERRAIN.instances = TERRAIN_GEOMETRY.setActiveScenario(activeScenario);
+
+      // Build T2 keeps first-instance aliases only for low-risk compatibility
+      // while all generic rule paths consume TERRAIN.instances.
       for (const key of ["woods", "wall", "building"]) {
-        if (!legacyTerrain[key]) {
-          throw new Error(`Scenario ${activeScenario.id} is missing required terrain: ${key}`);
-        }
-        Object.assign(TERRAIN[key], legacyTerrain[key]);
+        const match = TERRAIN.instances.find(instance =>
+          key === "building" ? instance.rules?.occupiable : instance.terrainId === key
+        );
+        if (match) Object.assign(TERRAIN[key], match);
       }
 
       terrainPresentation.renderScenarioTerrain({
@@ -3438,7 +3463,7 @@
       const factionUnits = livingUnits().filter(unit => unit.faction === faction);
       return factionUnits.every(unit => {
         if (!pointInDeploymentZone(unit, faction)) return false;
-        if (pointInsideRect(unit, expandRect(TERRAIN.building, RULES.unitCollisionRadius))) return false;
+        if ((TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(unit, expandRect(instance, RULES.unitCollisionRadius)))) return false;
         return !analyzeDestinationCollision(unit, unit, null).blocked;
       });
     }
@@ -3488,7 +3513,7 @@
         return;
       }
       const destination = clampPoint(point);
-      if (pointInsideRect(destination, expandRect(TERRAIN.building, RULES.unitCollisionRadius))) {
+      if ((TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) {
         setStatus("Cannot deploy inside the impassable building.");
         return;
       }
@@ -4035,7 +4060,7 @@
       const destination = clampPoint(point);
       let legal = pointInDeploymentZone(destination, unit.faction);
       let reason = legal ? "Inside deployment zone." : "Outside deployment zone.";
-      if (legal && pointInsideRect(destination, expandRect(TERRAIN.building, RULES.unitCollisionRadius))) {
+      if (legal && (TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) {
         legal = false; reason = "Impassable building overlaps this position.";
       }
       if (legal) {
@@ -4429,7 +4454,7 @@
       const destination = clampPoint(point);
       let legal = pointInDeploymentZone(destination, unit.faction);
       let reason = legal ? "Inside deployment zone." : "Outside deployment zone.";
-      if (legal && pointInsideRect(destination, expandRect(TERRAIN.building, RULES.unitCollisionRadius))) { legal = false; reason = "Impassable building overlaps this position."; }
+      if (legal && (TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) { legal = false; reason = "Impassable building overlaps this position."; }
       if (legal) {
         const collision = analyzeDestinationCollision(unit, destination, null);
         if (collision.blocked) { legal = false; reason = collision.reason; }
@@ -4753,47 +4778,75 @@
     // Integrated through explicit engine seams; no function replacement wrappers.
     // =========================================================================
     const BUILDING_RULES = Object.freeze({
-      id: "farmhouse",
       capacity: 1,
       entryDistance: 3.5,
       hardCoverSave: 3
     });
 
-    function buildingCenterPoint() {
-      return { x: TERRAIN.building.x + TERRAIN.building.width / 2, y: TERRAIN.building.y + TERRAIN.building.height / 2 };
+    function buildingInstance(id) {
+      return id ? TERRAIN_GEOMETRY.get(id) : null;
     }
 
-    function buildingDoorPoint() {
-      return { x: TERRAIN.building.x - 0.6, y: TERRAIN.building.y + TERRAIN.building.height * 0.5 };
+    function buildingInstances() {
+      return TERRAIN_GEOMETRY.buildings();
     }
 
-    function buildingApproachPoint() {
-      const door = buildingDoorPoint();
+    function buildingLabel(buildingOrId) {
+      const building = typeof buildingOrId === "string" ? buildingInstance(buildingOrId) : buildingOrId;
+      return building?.definition?.label ?? "building";
+    }
+
+    function buildingCenterPoint(id) {
+      const building = buildingInstance(id) ?? buildingInstances()[0];
+      return building ? TERRAIN_GEOMETRY.center(building) : { x: 0, y: 0 };
+    }
+
+    function buildingDoorPoint(id) {
+      const building = buildingInstance(id) ?? buildingInstances()[0];
+      if (!building) return { x: 0, y: 0 };
+      return { x: building.x - 0.6, y: building.y + building.height * 0.5 };
+    }
+
+    function buildingApproachPoint(id) {
+      const door = buildingDoorPoint(id);
       return { x: door.x - 1.8, y: door.y };
     }
 
-    function buildingEntryAnalysis(unit) {
-      if (!unit || unit.inBuilding || buildingOccupant()) {
-        return {
-          legal: false,
-          reason: buildingOccupant()
-            ? "The farmhouse is already occupied."
-            : "The selected unit cannot enter the farmhouse."
-        };
-      }
-
-      const approach = buildingApproachPoint();
-      return analyzeMovementPath(
-        unit,
-        [unit, approach],
-        "Advance",
-        unit.id
-      );
+    function buildingOccupant(buildingId = null) {
+      return livingUnits().find(unit =>
+        buildingId ? unit.inBuilding === buildingId : Boolean(unit.inBuilding)
+      ) ?? null;
     }
 
-    function buildingWindowPointToward(target) {
-      const b = TERRAIN.building;
-      const c = buildingCenterPoint();
+    function buildingEntryAnalysis(unit, requestedBuildingId = null) {
+      if (!unit || unit.inBuilding) {
+        return { legal: false, reason: "The selected unit cannot enter a building." };
+      }
+
+      const candidates = requestedBuildingId
+        ? [buildingInstance(requestedBuildingId)].filter(Boolean)
+        : buildingInstances();
+      const analyses = [];
+
+      for (const building of candidates) {
+        if (buildingOccupant(building.id)) continue;
+        const approach = buildingApproachPoint(building.id);
+        const analysis = analyzeMovementPath(unit, [unit, approach], "Advance", unit.id);
+        analyses.push({ ...analysis, building, approach });
+      }
+
+      const legal = analyses.filter(analysis => analysis.legal).sort((a, b) => a.cost - b.cost)[0];
+      if (legal) return legal;
+      if (candidates.length && candidates.every(building => buildingOccupant(building.id))) {
+        return { legal: false, reason: "Every nearby building is occupied." };
+      }
+      return { legal: false, reason: "No empty building can be reached with an Advance." };
+    }
+
+    function buildingWindowPointToward(buildingId, target) {
+      const b = buildingInstance(buildingId);
+      if (!b) return target;
+      const c = buildingCenterPoint(buildingId);
       const dx = (target?.x ?? c.x) - c.x;
       const dy = (target?.y ?? c.y) - c.y;
       if (Math.abs(dx) >= Math.abs(dy)) {
@@ -4802,22 +4855,23 @@
       return { x: clamp(target?.x ?? c.x, b.x + 2, b.x + b.width - 2), y: dy < 0 ? b.y - .15 : b.y + b.height + .15 };
     }
 
-    function buildingOccupant() {
-      return livingUnits().find(unit => unit.inBuilding === BUILDING_RULES.id) ?? null;
-    }
-
     function unitCanEnterBuilding(unit) {
       return Boolean(buildingEntryAnalysis(unit).legal);
     }
 
     function occupyBuilding(unit, options = {}) {
-      if (!unit || (!options.fromAssault && !unitCanEnterBuilding(unit))) return false;
-      const center = buildingCenterPoint();
+      const analysis = options.buildingId
+        ? { legal: true, building: buildingInstance(options.buildingId) }
+        : buildingEntryAnalysis(unit);
+      const building = analysis.building;
+      if (!unit || !building || (!options.fromAssault && !analysis.legal)) return false;
+      if (buildingOccupant(building.id) && buildingOccupant(building.id)?.id !== unit.id) return false;
+      const center = buildingCenterPoint(building.id);
       if (!options.fromAssault && !options.preserveEntry) {
         unit.buildingEntryX = unit.x;
         unit.buildingEntryY = unit.y;
       }
-      unit.inBuilding = BUILDING_RULES.id;
+      unit.inBuilding = building.id;
       unit.x = center.x;
       unit.y = center.y;
       unit.down = false;
@@ -4829,76 +4883,73 @@
       const entryAnalysis = exiting ? null : buildingEntryAnalysis(unit);
       const entering = Boolean(entryAnalysis?.legal);
       const enabled = phase === "choose-order" && Boolean(unit) && (exiting || entering);
-      const label = exiting ? "Exit Farmhouse" : "Enter Farmhouse";
+      const building = exiting ? buildingInstance(unit.inBuilding) : entryAnalysis?.building;
+      const name = buildingLabel(building);
+      const label = `${exiting ? "Exit" : "Enter"} ${capitalize(name)}`;
 
       return window.CrossroadsCommands.makeCommand({
-        id: exiting ? "exit-farmhouse" : "enter-farmhouse",
+        id: exiting ? `exit-${unit.inBuilding}` : `enter-${building?.id ?? "building"}`,
         label,
         enabled,
         execute: exiting ? exitBuildingAction : enterBuildingAction,
         reason: enabled
           ? exiting
-            ? "Leave the farmhouse through its doorway."
-            : `Advance ${entryAnalysis.cost.toFixed(1)}″ to the doorway and occupy the farmhouse.`
-          : entryAnalysis?.reason ?? "The selected unit cannot interact with the farmhouse.",
-        meta: {
-          presentation,
-          className: "tray-confirm tray-wide building-action"
-        }
+            ? `Leave the ${name} through its doorway.`
+            : `Advance ${entryAnalysis.cost.toFixed(1)}″ to the doorway and occupy the ${name}.`
+          : entryAnalysis?.reason ?? "The selected unit cannot interact with a building.",
+        meta: { presentation, className: "tray-confirm tray-wide building-action" }
       });
     }
 
     function enterBuildingAction() {
       const unit = getUnit(selectedUnitId);
-      if (phase !== "choose-order" || !unitCanEnterBuilding(unit)) return;
+      const analysis = buildingEntryAnalysis(unit);
+      if (phase !== "choose-order" || !analysis.legal) return;
       chosenOrder = "Enter Building";
       if (!attemptOrder(unit, "Advance")) return;
-      const approach = buildingApproachPoint();
-      unit.buildingEntryX = approach.x;
-      unit.buildingEntryY = approach.y;
-      occupyBuilding(unit, { preserveEntry: true });
-      addLog(`${capitalize(unit.faction)} ${unit.name} advances through the doorway and occupies the farmhouse.`, "terrain");
-      showBattleAnnouncement("FARMHOUSE OCCUPIED", `${activeScenario.factions[unit.faction].name} takes defensive positions`, unit.faction, 1250);
+      unit.buildingEntryX = analysis.approach.x;
+      unit.buildingEntryY = analysis.approach.y;
+      occupyBuilding(unit, { preserveEntry: true, buildingId: analysis.building.id });
+      const name = buildingLabel(analysis.building);
+      addLog(`${capitalize(unit.faction)} ${unit.name} advances through the doorway and occupies the ${name}.`, "terrain");
+      showBattleAnnouncement(`${name.toUpperCase()} OCCUPIED`, `${activeScenario.factions[unit.faction].name} takes defensive positions`, unit.faction, 1250);
       completeActivation("Enter Building");
     }
 
     function exitBuildingAction() {
       const unit = getUnit(selectedUnitId);
       if (phase !== "choose-order" || !unit?.inBuilding) return;
+      const buildingId = unit.inBuilding;
+      const name = buildingLabel(buildingId);
       chosenOrder = "Exit Building";
       if (!attemptOrder(unit, "Advance")) return;
       const exitPoint = {
-        x: unit.buildingEntryX ?? buildingApproachPoint().x,
-        y: unit.buildingEntryY ?? buildingApproachPoint().y
+        x: unit.buildingEntryX ?? buildingApproachPoint(buildingId).x,
+        y: unit.buildingEntryY ?? buildingApproachPoint(buildingId).y
       };
       unit.inBuilding = null;
       unit.x = exitPoint.x;
       unit.y = exitPoint.y;
       unit.buildingEntryX = null;
       unit.buildingEntryY = null;
-      addLog(`${capitalize(unit.faction)} ${unit.name} exits the farmhouse through the doorway.`, "terrain");
-      showBattleAnnouncement("FARMHOUSE CLEARED", `${unit.name} returns to the doorway`, unit.faction, 1000);
+      addLog(`${capitalize(unit.faction)} ${unit.name} exits the ${name} through the doorway.`, "terrain");
+      showBattleAnnouncement(`${name.toUpperCase()} CLEARED`, `${unit.name} returns to the doorway`, unit.faction, 1000);
       completeActivation("Exit Building");
     }
 
     function buildingCombatContext(attacker, target) {
-      const attackerInside = Boolean(attacker?.inBuilding);
-      const targetInside = Boolean(target?.inBuilding);
       const parts = [];
-
-      if (attackerInside) parts.push("Firing from farmhouse window");
-      if (targetInside) parts.push("Target inside farmhouse · hard cover");
-      if (targetInside && target?.down) parts.push("Target is Down");
-      if (attackerInside && attacker?.ambush) parts.push("Ambush fire");
-
+      if (attacker?.inBuilding) parts.push(`Firing from ${buildingLabel(attacker.inBuilding)} window`);
+      if (target?.inBuilding) parts.push(`Target inside ${buildingLabel(target.inBuilding)} · hard cover`);
+      if (target?.inBuilding && target?.down) parts.push("Target is Down");
+      if (attacker?.inBuilding && attacker?.ambush) parts.push("Ambush fire");
       return parts;
     }
 
     function buildingDefenseLabel(target) {
       if (!target?.inBuilding) return "";
-      return target.down
-        ? "Farmhouse hard cover + Down"
-        : "Farmhouse hard cover";
+      const name = capitalize(buildingLabel(target.inBuilding));
+      return target.down ? `${name} hard cover + Down` : `${name} hard cover`;
     }
 
     function buildingOrderLabel(unit) {
@@ -4908,8 +4959,8 @@
       return unit.order ? String(unit.order).toUpperCase() : "READY";
     }
 
-    function selectBuildingOccupant() {
-      const occupant = buildingOccupant();
+    function selectBuildingOccupant(buildingId = null) {
+      const occupant = buildingOccupant(buildingId);
       if (!occupant) return;
       if (phase === "choose-target") chooseTarget(occupant.id);
       else if (phase === "choose-assault-target") chooseAssaultTarget(occupant.id);
@@ -4918,69 +4969,57 @@
     }
 
     function renderBuildingState() {
-      const occupant = buildingOccupant();
+      const layer = document.getElementById("terrainLayer");
       const selected = getUnit(selectedUnitId);
-      const entryCommand = buildingCommand(selected, "desktop");
-      const canEnter = Boolean(entryCommand.enabled && !selected?.inBuilding);
+      const entryAnalysis = selected?.inBuilding ? null : buildingEntryAnalysis(selected);
 
-      if (farmhouseTerrain) {
-        farmhouseTerrain.classList.toggle("occupied-blue", occupant?.faction === "blue");
-        farmhouseTerrain.classList.toggle("occupied-red", occupant?.faction === "red");
-        farmhouseTerrain.classList.toggle("occupant-selected", occupant?.id === selectedUnitId);
-        farmhouseTerrain.classList.toggle("entry-available", canEnter);
-        farmhouseTerrain.classList.toggle("eligible-current", Boolean(occupant && unitIsEligibleForCurrentDie(occupant)));
-        farmhouseTerrain.setAttribute(
-          "aria-label",
-          occupant
-            ? `Farmhouse occupied by ${occupant.name}, ${occupant.soldiers} soldiers, ${occupant.pins} pins`
-            : "Empty farmhouse"
-        );
-      }
+      for (const building of buildingInstances()) {
+        const element = window.CrossroadsTerrainPresentation.elementForInstance(layer, building.id);
+        if (!element) continue;
+        const occupant = buildingOccupant(building.id);
+        const canEnter = Boolean(phase === "choose-order" && entryAnalysis?.legal && entryAnalysis.building.id === building.id);
+        const badge = element.querySelector(".building-occupancy-nameplate");
+        const marker = element.querySelector(".building-approach-marker");
 
-      if (buildingOccupancyBadge) {
-        buildingOccupancyBadge.hidden = !occupant;
-        buildingOccupancyBadge.className =
-          `building-occupancy-nameplate ${occupant?.faction ?? ""}` +
-          `${occupant?.id === selectedUnitId ? " selected" : ""}` +
-          `${occupant && unitIsEligibleForCurrentDie(occupant) ? " ready" : ""}`;
+        element.classList.toggle("occupied-blue", occupant?.faction === "blue");
+        element.classList.toggle("occupied-red", occupant?.faction === "red");
+        element.classList.toggle("occupant-selected", occupant?.id === selectedUnitId);
+        element.classList.toggle("entry-available", canEnter);
+        element.classList.toggle("eligible-current", Boolean(occupant && unitIsEligibleForCurrentDie(occupant)));
+        element.setAttribute("aria-label", occupant
+          ? `${capitalize(buildingLabel(building))} occupied by ${occupant.name}, ${occupant.soldiers} soldiers, ${occupant.pins} pins`
+          : `Empty ${buildingLabel(building)}`);
 
-        buildingOccupancyBadge.innerHTML = occupant
-          ? unitNameplateHtml(occupant, {
-              detail: "building",
-              showMen: true,
-              showPins: true
-            })
-          : "";
+        if (badge) {
+          badge.hidden = !occupant;
+          badge.className = `building-occupancy-nameplate ${occupant?.faction ?? ""}` +
+            `${occupant?.id === selectedUnitId ? " selected" : ""}` +
+            `${occupant && unitIsEligibleForCurrentDie(occupant) ? " ready" : ""}`;
+          badge.innerHTML = occupant ? unitNameplateHtml(occupant, { detail: "building", showMen: true, showPins: true }) : "";
+          badge.onclick = occupant ? event => {
+            event.stopPropagation();
+            if (!gestureSuppressed()) selectBuildingOccupant(building.id);
+          } : null;
+        }
 
-        buildingOccupancyBadge.onclick = occupant
-          ? event => {
-              event.stopPropagation();
-              if (!gestureSuppressed()) selectBuildingOccupant();
-            }
-          : null;
-      }
+        if (marker) {
+          marker.hidden = !canEnter;
+          if (canEnter) {
+            const approach = buildingApproachPoint(building.id);
+            marker.style.left = `${((approach.x - building.x) / building.width) * 100}%`;
+            marker.style.top = `${((approach.y - building.y) / building.height) * 100}%`;
+          }
+        }
 
-      if (buildingApproachMarker) {
-        buildingApproachMarker.hidden = !canEnter;
-        if (canEnter) {
-          const approach = buildingApproachPoint();
-          const building = TERRAIN.building;
-          buildingApproachMarker.style.left =
-            `${((approach.x - building.x) / building.width) * 100}%`;
-          buildingApproachMarker.style.top =
-            `${((approach.y - building.y) / building.height) * 100}%`;
+        if (!element.dataset.selectionBound) {
+          element.dataset.selectionBound = "true";
+          element.addEventListener("click", event => {
+            if (!buildingOccupant(building.id) || gestureSuppressed()) return;
+            event.stopPropagation();
+            selectBuildingOccupant(building.id);
+          });
         }
       }
-
-      if (farmhouseTerrain && !farmhouseTerrain.dataset.selectionBound) {
-        farmhouseTerrain.dataset.selectionBound = "true";
-        farmhouseTerrain.addEventListener("click", event => {
-          if (!buildingOccupant() || gestureSuppressed()) return;
-          event.stopPropagation();
-          selectBuildingOccupant();
-        });
-      }
-
       updateBuildingActionButton();
     }
 
@@ -4995,33 +5034,33 @@
     }
 
     function clearInvalidBuildingOccupancy() {
-      const occupants = livingUnits().filter(unit => unit.inBuilding === BUILDING_RULES.id);
-      occupants.slice(1).forEach(unit => { unit.inBuilding = null; });
+      const validIds = new Set(buildingInstances().map(building => building.id));
+      const firstOccupantByBuilding = new Set();
+      for (const unit of livingUnits()) {
+        if (!unit.inBuilding) continue;
+        if (!validIds.has(unit.inBuilding) || firstOccupantByBuilding.has(unit.inBuilding)) {
+          unit.inBuilding = null;
+          unit.buildingEntryX = null;
+          unit.buildingEntryY = null;
+          continue;
+        }
+        firstOccupantByBuilding.add(unit.inBuilding);
+      }
     }
 
     function reconcileBuildingAfterUnitChange(unit) {
-      if (!unit) {
-        clearInvalidBuildingOccupancy();
-        return;
+      if (unit) {
+        const noLongerActive = unit.outcome && unit.outcome !== UNIT_OUTCOME.ACTIVE;
+        const noSoldiers = Number(unit.soldiers) <= 0;
+        if (unit.inBuilding && (noLongerActive || noSoldiers)) {
+          unit.inBuilding = null;
+          unit.buildingEntryX = null;
+          unit.buildingEntryY = null;
+        }
+        if (selectedUnitId === unit.id && (noLongerActive || noSoldiers)) selectedUnitId = null;
       }
-
-      const noLongerActive =
-        unit.outcome && unit.outcome !== UNIT_OUTCOME.ACTIVE;
-      const noSoldiers = Number(unit.soldiers) <= 0;
-
-      if (unit.inBuilding && (noLongerActive || noSoldiers)) {
-        unit.inBuilding = null;
-        unit.buildingEntryX = null;
-        unit.buildingEntryY = null;
-      }
-
       clearInvalidBuildingOccupancy();
-
-      if (selectedUnitId === unit.id && (noLongerActive || noSoldiers)) {
-        selectedUnitId = null;
-      }
     }
-
 
     // Building behavior is integrated explicitly into restartBattle(),
     // orderAvailability(), the shared command model, and the render coordinator.
