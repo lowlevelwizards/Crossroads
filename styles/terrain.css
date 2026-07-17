@@ -238,33 +238,97 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
 .stream-stone { position:absolute; width:8%; aspect-ratio:1; border-radius:45%; background:#a39c7d; box-shadow:0 0 0 1px #625f4e; z-index:4; }
 .stream-stone-1{left:12%;top:14%}.stream-stone-2{right:11%;top:43%}.stream-stone-3{left:11%;bottom:13%}
 
-/* BUILDINGS — fixed map-facing perspective: roof behind a pentagonal front facade */
-.terrain-piece.terrain-building { pointer-events:auto; overflow:visible; background:transparent; border:0; box-shadow:none; }
-.terrain-building .terrain-art { inset:1% 2% 1% 1%; overflow:visible; filter:none; }
-.building-shadow { position:absolute; left:7%; right:2%; top:8%; bottom:1%; background:rgba(49,43,34,.27); transform:translate(4%,5%); border-radius:5%; z-index:0; filter:blur(.08em); }
-.building-side-wall { position:absolute; right:5%; top:27%; bottom:18%; width:13%; background:#9d7e58; clip-path:polygon(0 8%,100% 0,100% 88%,0 100%); box-shadow:0 0 0 .12em #524537; z-index:2; }
-.terrain-roof { position:absolute; left:7%; right:12%; top:5%; bottom:28%; background:#a85d3e; clip-path:polygon(5% 0,95% 0,100% 82%,77% 100%,23% 100%,0 82%); box-shadow:inset 0 .24em rgba(255,220,167,.12),0 0 0 .14em #493e32; z-index:4; }
-.terrain-roof::after { content:""; position:absolute; left:50%; top:0; bottom:2%; width:2.5%; background:#6a4432; box-shadow:.1em 0 rgba(244,194,137,.14); transform:translateX(-50%); }
-.terrain-roof-ridge { display:none; }
-.building-front-wall { position:absolute; left:16%; right:20%; bottom:4%; height:34%; background:#d0bf95; clip-path:polygon(50% 0,100% 25%,100% 100%,0 100%,0 25%); box-shadow:inset 0 .22em rgba(255,245,213,.22),0 0 0 .14em #524537; z-index:6; }
-.terrain-piece .building-door { position:absolute; left:44%; bottom:4%; width:15%; height:24%; background:#4e3927; box-shadow:inset .16em 0 rgba(143,107,69,.28),0 0 0 .11em #30251d; border-radius:5% 5% 0 0; z-index:8; }
-.terrain-piece .building-door::after { content:""; position:absolute; right:13%; top:48%; width:10%; aspect-ratio:1; border-radius:50%; background:#b79a58; }
-.terrain-piece .building-window { position:absolute; bottom:12%; width:12%; height:12%; background:#789198; box-shadow:inset 0 0 0 .12em rgba(210,224,211,.22),0 0 0 .11em #443d34; z-index:8; }
-.terrain-piece .building-window-1{left:24%}.terrain-piece .building-window-2{right:27%}
-.terrain-piece .building-chimney { position:absolute; right:18%; top:0; width:9%; height:19%; background:#d3c5a3; box-shadow:inset 0 .2em rgba(255,246,219,.25),0 0 0 .11em #4d4236; border-radius:8%; z-index:9; }
-.terrain-id-barn .building-front-wall { left:12%; right:16%; background:#9a6238; }
-.terrain-id-barn .building-side-wall { background:#734b31; }
-.terrain-id-barn .terrain-roof { left:5%; right:9%; background:#46513c; }
-.terrain-id-barn .building-door { left:35%; width:30%; height:28%; background:#674329; }
-.terrain-id-barn .building-door::before { content:"×"; position:absolute; inset:-10% 0 0; display:grid; place-items:center; color:#b18451; font-weight:900; font-size:1.4em; }
-.terrain-id-barn .building-window { display:none; }
-.terrain-id-cottage .terrain-roof { background:#4d5757; }
-.terrain-id-cottage .building-front-wall { background:#c9b991; }
-.terrain-id-shed .terrain-roof { left:9%; right:13%; top:9%; bottom:30%; background:#6a6044; }
-.terrain-id-shed .building-front-wall { left:19%; right:23%; height:32%; background:#8a663f; }
-.terrain-id-shed .building-side-wall { height:42%; }
-.terrain-id-shed .building-window { display:none; }
-.terrain-id-shed .building-door { left:39%; width:22%; height:25%; }
+/* BUILDINGS — one SVG family, shared rules wrapper, future roof-fade hook */
+.terrain-piece.terrain-building {
+  pointer-events:auto;
+  overflow:visible;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+.terrain-building .terrain-art {
+  inset:-3%;
+  overflow:visible;
+  filter:none;
+}
+.building-svg {
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:visible;
+  pointer-events:none;
+}
+.building-svg-shadow {
+  fill:rgba(49,43,34,.15);
+}
+.building-svg-structure,
+.building-svg-detail,
+.building-svg-fine,
+.building-svg-micro {
+  stroke:var(--building-outline,#40372f);
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.building-svg-structure,
+.building-svg-detail {
+  stroke-width:5;
+}
+.building-svg-fine {
+  stroke-width:3.15;
+}
+.building-svg-micro {
+  stroke-width:2.6;
+}
+.building-svg-roof-shape {
+  stroke:var(--building-roof-outline,#693d2e);
+  stroke-width:5;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.building-svg-ridge {
+  fill:none;
+  stroke:var(--building-roof-outline,#693d2e);
+  stroke-width:4;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.building-svg-brace {
+  fill:none;
+  stroke:var(--building-brace,#a87549);
+  stroke-width:8;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.building-svg-thatch-eave {
+  fill:none;
+  stroke:var(--building-roof-outline,#6f512d);
+  stroke-width:9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.building-svg-cross {
+  fill:var(--building-outline,#40372f);
+}
+.building-svg-roof,
+.building-svg-body,
+.building-svg-shadow {
+  transition:opacity .18s ease, filter .18s ease;
+}
+.terrain-building.roof-faded .building-svg-roof,
+.terrain-building.show-interior .building-svg-roof {
+  opacity:.14;
+  filter:saturate(.72);
+}
+body.camera-far .building-svg-micro { display:none; }
+body.camera-far .building-svg-fine { opacity:.58; }
+body.camera-far .building-svg-shadow { opacity:.72; }
+body.camera-normal .building-svg-micro { opacity:.68; }
+body.camera-close .building-svg,
+body.camera-inspection .building-svg { overflow:visible; }
 
 /* DEFENCES AND SCATTER — compact top-down silhouettes */
 .terrain-foxholes .terrain-art { overflow:visible; }

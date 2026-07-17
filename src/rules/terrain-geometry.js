@@ -61,6 +61,74 @@
     };
   }
 
+  function resolve(instanceOrId) {
+    return typeof instanceOrId === "string" ? get(instanceOrId) : instanceOrId;
+  }
+
+  function rotateVector(vector, degrees) {
+    const radians = (Number(degrees) || 0) * Math.PI / 180;
+    const cosine = Math.cos(radians);
+    const sine = Math.sin(radians);
+    return {
+      x: vector.x * cosine - vector.y * sine,
+      y: vector.x * sine + vector.y * cosine
+    };
+  }
+
+  function entryDefinition(instanceOrId) {
+    const instance = resolve(instanceOrId);
+    const presentation = instance?.definition?.presentation ?? {};
+    return {
+      instance,
+      anchor: presentation.entryAnchor ?? { x: 0.5, y: 1 },
+      normal: presentation.entryNormal ?? { x: 0, y: 1 }
+    };
+  }
+
+  function entryPoint(instanceOrId, outward = 0.15) {
+    const { instance, anchor, normal } = entryDefinition(instanceOrId);
+    if (!instance) return { x: 0, y: 0 };
+
+    const localAnchor = {
+      x: (Number(anchor.x) - 0.5) * instance.width,
+      y: (Number(anchor.y) - 0.5) * instance.height
+    };
+    const rotatedAnchor = rotateVector(localAnchor, instance.rotation);
+    const rotatedNormal = rotateVector(
+      { x: Number(normal.x) || 0, y: Number(normal.y) || 0 },
+      instance.rotation
+    );
+    const origin = center(instance);
+
+    return {
+      x: origin.x + rotatedAnchor.x + rotatedNormal.x * outward,
+      y: origin.y + rotatedAnchor.y + rotatedNormal.y * outward
+    };
+  }
+
+  function approachPoint(instanceOrId, distance = 1.8) {
+    const { instance, normal } = entryDefinition(instanceOrId);
+    if (!instance) return { x: 0, y: 0 };
+    const door = entryPoint(instance, 0.15);
+    const rotatedNormal = rotateVector(
+      { x: Number(normal.x) || 0, y: Number(normal.y) || 0 },
+      instance.rotation
+    );
+    return {
+      x: door.x + rotatedNormal.x * distance,
+      y: door.y + rotatedNormal.y * distance
+    };
+  }
+
+  function entryMarker(instanceOrId, distance = 1.8) {
+    const { instance, anchor, normal } = entryDefinition(instanceOrId);
+    if (!instance) return { x: 0.5, y: 1 };
+    return {
+      x: Number(anchor.x) + (Number(normal.x) || 0) * ((distance + 0.15) / instance.width),
+      y: Number(anchor.y) + (Number(normal.y) || 0) * ((distance + 0.15) / instance.height)
+    };
+  }
+
   window.CrossroadsTerrainGeometry = Object.freeze({
     setActiveScenario,
     all,
@@ -76,6 +144,9 @@
     expand,
     containingPoint,
     buildingContainingPoint,
-    center
+    center,
+    entryPoint,
+    approachPoint,
+    entryMarker
   });
 })();

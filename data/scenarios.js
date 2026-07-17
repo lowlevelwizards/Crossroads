@@ -51,7 +51,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id: "cross-road", terrainId: "road_straight", x: 33.48, y: 0, width: 5.04, height: 48, rotation: 0 }),
       Object.freeze({ id: "woods", terrainId: "woods", x: 15, y: 28, width: 18, height: 14 }),
       Object.freeze({ id: "wall", terrainId: "wall", x: 38, y: 30, width: 17, height: 2.5 }),
-      Object.freeze({ id: "building", terrainId: "farmhouse", x: 28, y: 4, width: 13, height: 13 })
+      Object.freeze({ id: "crossroads-cottage", terrainId: "medium_cottage", appearance: "peach_plaster_red", x: 28, y: 4, width: 13, height: 10 })
     ]),
     objectives: Object.freeze([
       Object.freeze({ id: "crossroads", x: 36, y: 24, radius: 3, label: "Crossroads" })
@@ -83,8 +83,8 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id: "south-copse", terrainId: "woods", x: 12, y: 34, width: 12, height: 9 }),
       Object.freeze({ id: "yard-wall", terrainId: "wall", x: 29, y: 26, width: 18, height: 2.5 }),
       Object.freeze({ id: "garden-wall", terrainId: "wall", x: 45, y: 11, width: 10, height: 2.5 }),
-      Object.freeze({ id: "farmhouse", terrainId: "farmhouse", x: 31, y: 14, width: 14, height: 13 }),
-      Object.freeze({ id: "east-barn", terrainId: "barn", x: 49, y: 30, width: 11, height: 10 })
+      Object.freeze({ id: "farmhouse", terrainId: "long_farmhouse", appearance: "mixed_plaster_red", x: 29, y: 14, width: 17, height: 8 }),
+      Object.freeze({ id: "east-barn", terrainId: "barn", appearance: "weathered_charcoal", x: 49, y: 30, width: 12, height: 8 })
     ]),
     objectives: Object.freeze([
       Object.freeze({ id: "farm_yard", x: 38, y: 24, radius: 4, label: "Farm Yard" })
@@ -127,7 +127,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id: "cross-road", terrainId: "road_straight", x: 33.48, y: 0, width: 5.04, height: 48, rotation: 0 }),
       Object.freeze({ id: "woods", terrainId: "woods", x: 13, y: 7, width: 18, height: 16 }),
       Object.freeze({ id: "wall", terrainId: "wall", x: 32, y: 25, width: 14, height: 2.5 }),
-      Object.freeze({ id: "building", terrainId: "farmhouse", x: 49, y: 8, width: 15, height: 17 })
+      Object.freeze({ id: "breakthrough-cottage", terrainId: "medium_cottage", appearance: "concrete_thatch", x: 49, y: 8, width: 14, height: 10 })
     ]),
     objectives: Object.freeze([
       Object.freeze({
@@ -201,22 +201,27 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id:"ditch-a", terrainId:"ditch", x:17, y:26, width:13, height:2.5 }),
       Object.freeze({ id:"stream-a", terrainId:"stream", x:32, y:25.5, width:13, height:3 }),
       Object.freeze({ id:"fox-a", terrainId:"foxholes", x:49, y:25, width:11, height:4 }),
-      Object.freeze({ id:"farm-a", terrainId:"farmhouse", x:2, y:32, width:9, height:8 }),
-      Object.freeze({ id:"barn-a", terrainId:"barn", x:13, y:32, width:10, height:8 }),
-      Object.freeze({ id:"cottage-a", terrainId:"cottage", x:25, y:33, width:8, height:7 }),
-      Object.freeze({ id:"shed-a", terrainId:"shed", x:35, y:34, width:6, height:5 }),
-      Object.freeze({ id:"bags-a", terrainId:"sandbags", x:44, y:33, width:10, height:2.2 }),
-      Object.freeze({ id:"hay-a", terrainId:"haystack", x:57, y:33, width:4, height:4 }),
-      Object.freeze({ id:"well-a", terrainId:"well", x:63, y:33, width:3.5, height:3.5 }),
-      Object.freeze({ id:"crate-a", terrainId:"crates", x:44, y:38, width:4, height:3 }),
-      Object.freeze({ id:"wood-a", terrainId:"woodpile", x:51, y:38, width:5, height:3 })
+
+      Object.freeze({ id:"small-cottage-a", terrainId:"small_cottage", appearance:"whitewash_red", x:2, y:30.5, width:7, height:6 }),
+      Object.freeze({ id:"medium-cottage-a", terrainId:"medium_cottage", appearance:"peach_plaster_red", x:10, y:30.5, width:8, height:6.5 }),
+      Object.freeze({ id:"long-farmhouse-a", terrainId:"long_farmhouse", appearance:"mixed_plaster_red", x:19, y:30.5, width:12, height:6 }),
+      Object.freeze({ id:"barn-a", terrainId:"barn", appearance:"weathered_charcoal", x:32, y:30.5, width:10, height:6.5 }),
+      Object.freeze({ id:"shed-a", terrainId:"shed", appearance:"timber_brown", x:43, y:30.5, width:7, height:6 }),
+      Object.freeze({ id:"church-a", terrainId:"church", appearance:"plaster_charcoal", x:51, y:30.5, width:12, height:6.5 }),
+
+      Object.freeze({ id:"small-cottage-b", terrainId:"small_cottage", appearance:"log_thatch", x:2, y:39, width:7, height:6 }),
+      Object.freeze({ id:"medium-cottage-b", terrainId:"medium_cottage", appearance:"concrete_thatch", x:10, y:39, width:8, height:6.5 }),
+      Object.freeze({ id:"long-farmhouse-b", terrainId:"long_farmhouse", appearance:"timber_thatch", x:19, y:39, width:12, height:6 }),
+      Object.freeze({ id:"barn-b", terrainId:"barn", appearance:"straw_thatch", x:32, y:39, width:10, height:6.5 }),
+      Object.freeze({ id:"shed-b", terrainId:"shed", appearance:"concrete_red", x:43, y:39, width:7, height:6 }),
+      Object.freeze({ id:"church-b", terrainId:"church", appearance:"wooden_brown_red", x:51, y:39, width:12, height:6.5 })
     ]),
     objectives: Object.freeze([Object.freeze({ id:"library_center", x:36, y:24, radius:1, label:"Terrain Library" })]),
     scoring: Object.freeze({ roundControl:0, finalControl:0 }),
     victory: Object.freeze({ elimination:false, tiebreaker:"survivingUnits" }),
     forces: Object.freeze({
-      blue: Object.freeze([Object.freeze({ id:"blue-rifle", unitType:"rifleSquad", quality:"regular", x:7, y:44 })]),
-      red: Object.freeze([Object.freeze({ id:"red-rifle", unitType:"rifleSquad", quality:"regular", x:65, y:44 })])
+      blue: Object.freeze([Object.freeze({ id:"blue-rifle", unitType:"rifleSquad", quality:"regular", x:68, y:34 })]),
+      red: Object.freeze([Object.freeze({ id:"red-rifle", unitType:"rifleSquad", quality:"regular", x:68, y:44 })])
     })
   })
 });

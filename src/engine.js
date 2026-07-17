@@ -561,9 +561,6 @@
       blueObjectiveDistance: document.getElementById("blueObjectiveDistance"),
       redObjectiveDistance: document.getElementById("redObjectiveDistance"),
       objectiveLabel: document.getElementById("objectiveLabel"),
-      farmhouseTerrain: document.querySelector(".terrain.building[data-terrain-instance-id]"),
-      buildingOccupancyBadge: document.querySelector(".terrain.building .building-occupancy-nameplate"),
-      buildingApproachMarker: document.querySelector(".terrain.building .building-approach-marker"),
       buildingActionButton: document.getElementById("buildingActionButton"),
       objectiveRing: document.getElementById("objectiveRing"),
       objectiveMarker: document.getElementById("objectiveMarker"),
@@ -638,9 +635,6 @@
       "blueObjectiveDistance",
       "redObjectiveDistance",
       "objectiveLabel",
-      "farmhouseTerrain",
-      "buildingOccupancyBadge",
-      "buildingApproachMarker",
       "buildingActionButton",
       "objectiveRing",
       "objectiveMarker",
@@ -719,9 +713,6 @@
     const blueObjectiveDistance = DOM.blueObjectiveDistance;
     const redObjectiveDistance = DOM.redObjectiveDistance;
     const objectiveLabel = DOM.objectiveLabel;
-    const farmhouseTerrain = DOM.farmhouseTerrain;
-    const buildingOccupancyBadge = DOM.buildingOccupancyBadge;
-    const buildingApproachMarker = DOM.buildingApproachMarker;
     const buildingActionButton = DOM.buildingActionButton;
     const objectiveRing = DOM.objectiveRing;
     const objectiveMarker = DOM.objectiveMarker;
@@ -2660,7 +2651,7 @@
         const assaultedBuildingId = defender.inBuilding;
         const door = buildingDoorPoint(assaultedBuildingId);
         const distance = distanceBetweenPoints(attacker, door);
-        if (attacker?.inBuilding) return { legal:false, reason:"Exit the farmhouse before assaulting.", distance };
+        if (attacker?.inBuilding) return { legal:false, reason:"Exit the building before assaulting.", distance };
         if (distance > RULES.assaultDistance + 0.001) return { legal:false, reason:`Doorway is ${distance.toFixed(1)}″ away; assault range is 12″.`, distance };
         const pathAnalysis = analyzeMovementPath(attacker, [attacker, door], "Run", defender.id);
         if (!pathAnalysis.legal) return { legal:false, reason:pathAnalysis.reason, distance };
@@ -3879,7 +3870,7 @@
       if (unit.inBuilding && ["Run", "Advance", "Assault"].includes(order)) {
         return {
           available: false,
-          reason: "Exit the farmhouse before moving or assaulting."
+          reason: "Exit the building before moving or assaulting."
         };
       }
       if (order === "Rally" && unit.pins === 0) return { available: false, reason: "Unit has no Pins." };
@@ -4774,7 +4765,7 @@
     // ===== CROSSROADS 2.0A-D staged building module =====
     // =========================================================================
     // BUILDING OCCUPANCY PROTOTYPE
-    // Owns farmhouse occupancy, Enter/Exit commands, and occupancy rendering.
+    // Owns generic building occupancy, Enter/Exit commands, and occupancy rendering.
     // Integrated through explicit engine seams; no function replacement wrappers.
     // =========================================================================
     const BUILDING_RULES = Object.freeze({
@@ -4803,13 +4794,12 @@
 
     function buildingDoorPoint(id) {
       const building = buildingInstance(id) ?? buildingInstances()[0];
-      if (!building) return { x: 0, y: 0 };
-      return { x: building.x - 0.6, y: building.y + building.height * 0.5 };
+      return building ? TERRAIN_GEOMETRY.entryPoint(building) : { x: 0, y: 0 };
     }
 
     function buildingApproachPoint(id) {
-      const door = buildingDoorPoint(id);
-      return { x: door.x - 1.8, y: door.y };
+      const building = buildingInstance(id) ?? buildingInstances()[0];
+      return building ? TERRAIN_GEOMETRY.approachPoint(building, 1.8) : { x: 0, y: 0 };
     }
 
     function buildingOccupant(buildingId = null) {
@@ -5005,9 +4995,9 @@
         if (marker) {
           marker.hidden = !canEnter;
           if (canEnter) {
-            const approach = buildingApproachPoint(building.id);
-            marker.style.left = `${((approach.x - building.x) / building.width) * 100}%`;
-            marker.style.top = `${((approach.y - building.y) / building.height) * 100}%`;
+            const markerPoint = TERRAIN_GEOMETRY.entryMarker(building, 1.8);
+            marker.style.left = `${markerPoint.x * 100}%`;
+            marker.style.top = `${markerPoint.y * 100}%`;
           }
         }
 

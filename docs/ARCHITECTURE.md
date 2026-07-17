@@ -41,6 +41,14 @@ data/formations.js
 src/presentation/units.js
   Pure unit markup, labels, packed/deployed MMG views, and formation assembly.
 
+src/presentation/buildings.js
+  The six reusable SVG building shapes and twelve material appearances. It owns
+  building artwork only; occupancy and rules remain elsewhere.
+
+src/presentation/terrain.js
+  Generic terrain-instance DOM creation. Building instances delegate their art
+  to the building presentation module.
+
 src/presentation/battlefield.js
   Unit-layer DOM rendering, visual state classes, and current unit event binding.
 
@@ -59,6 +67,10 @@ src/input/battlefield-input.js
 src/rules/movement.js
   Pure movement legality, terrain cost, collision, and allowance fitting.
 
+src/rules/terrain-geometry.js
+  Normalized terrain instances, authored building doorway anchors, rotation-aware
+  entry points, and approach-marker geometry.
+
 tests/startup-smoke.html
   Loads the modular shell without starting the battle engine and reports missing
   globals or broken script references.
@@ -74,6 +86,8 @@ tests/startup-smoke.html
 6. `engine.js` coordinates modules and commits state while it is gradually reduced.
 7. Do not add silent fallback copies of external data.
 8. One subsystem extraction or behavior change per foundation commit.
+9. Building geometry and building appearance are separate registries; new colors
+   must not duplicate a shape implementation.
 
 ## Current known boundary leaks
 

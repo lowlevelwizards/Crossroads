@@ -516,7 +516,7 @@ body.camera-rotated #battlefield .unit.targetable-assault {
 }
 
 /* Building occupant reuses the same component without unit-local positioning. */
-#buildingOccupancyBadge.building-occupancy-nameplate {
+#battlefield .building-occupancy-nameplate {
   all: unset !important;
   position: absolute !important;
   left: 50% !important;
@@ -537,11 +537,11 @@ body.camera-rotated #battlefield .unit.targetable-assault {
   -webkit-appearance: none !important;
 }
 
-#buildingOccupancyBadge.building-occupancy-nameplate[hidden] {
+#battlefield .building-occupancy-nameplate[hidden] {
   display: none !important;
 }
 
-#buildingOccupancyBadge .unit-label {
+#battlefield .building-occupancy-nameplate .unit-label {
   position: relative !important;
   left: auto !important;
   top: auto !important;

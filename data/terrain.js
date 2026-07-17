@@ -6,8 +6,25 @@ const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscur
 const crossingHard = Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 });
 const buildingRules = Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 });
 
-function terrainType(id, family, renderer, label, rules, editor = {}) {
-  return Object.freeze({ id, family, renderer, label, rules, editor: Object.freeze(editor) });
+function terrainType(id, family, renderer, label, rules, editor = {}, presentation = {}) {
+  return Object.freeze({
+    id,
+    family,
+    renderer,
+    label,
+    rules,
+    editor: Object.freeze(editor),
+    presentation: Object.freeze(presentation)
+  });
+}
+
+function buildingPresentation(shape, defaultAppearance, entryX = 0.5) {
+  return Object.freeze({
+    shape,
+    defaultAppearance,
+    entryAnchor: Object.freeze({ x: entryX, y: 1 }),
+    entryNormal: Object.freeze({ x: 0, y: 1 })
+  });
 }
 
 window.CROSSROADS_TERRAIN_MATS = Object.freeze({
@@ -37,11 +54,36 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   ditch: terrainType("ditch", "linear", "ditch", "ditch", Object.freeze({ movement: "rough", cover: "soft", los: "clear", save: 5 }), { rotatable: true, resizable: true }),
   stream: terrainType("stream", "water", "stream", "stream", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
 
-  building: terrainType("building", "building", "building", "farmhouse", buildingRules),
-  farmhouse: terrainType("farmhouse", "building", "building", "farmhouse", buildingRules),
-  barn: terrainType("barn", "building", "building", "barn", buildingRules),
-  cottage: terrainType("cottage", "building", "building", "cottage", buildingRules),
-  shed: terrainType("shed", "building", "building", "shed", buildingRules),
+  small_cottage: terrainType(
+    "small_cottage", "building", "building", "small cottage", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("small-cottage", "whitewash_red", 0.50)
+  ),
+  medium_cottage: terrainType(
+    "medium_cottage", "building", "building", "medium cottage", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("medium-cottage", "peach_plaster_red", 0.50)
+  ),
+  long_farmhouse: terrainType(
+    "long_farmhouse", "building", "building", "long farmhouse", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("long-farmhouse", "mixed_plaster_red", 0.36)
+  ),
+  barn: terrainType(
+    "barn", "building", "building", "barn", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("barn", "weathered_charcoal", 0.50)
+  ),
+  shed: terrainType(
+    "shed", "building", "building", "shed", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("shed", "timber_brown", 0.40)
+  ),
+  church: terrainType(
+    "church", "building", "building", "church", buildingRules,
+    { rotatable: true, resizable: true },
+    buildingPresentation("church", "plaster_charcoal", 0.21)
+  ),
 
   foxholes: terrainType("foxholes", "defensive", "foxholes", "foxholes", Object.freeze({ movement: "open", cover: "hard", los: "clear", save: 4 })),
   sandbags: terrainType("sandbags", "defensive", "sandbags", "sandbags", crossingHard),
@@ -51,8 +93,4 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   woodpile: terrainType("woodpile", "scatter", "woodpile", "wood pile", Object.freeze({ movement: "open", cover: "soft", los: "clear", save: 5 }))
 });
 
-window.CROSSROADS_TERRAIN = {
-  woods: { id: "woods", label: "woods", type: "soft", x: 15, y: 28, width: 18, height: 14, save: 5 },
-  wall: { id: "wall", label: "low wall", type: "hard", x: 38, y: 30, width: 17, height: 2.5, save: 4 },
-  building: { id: "building", label: "farmhouse", type: "blocking", x: 28, y: 4, width: 13, height: 13 }
-};
+window.CROSSROADS_TERRAIN = { instances: [] };

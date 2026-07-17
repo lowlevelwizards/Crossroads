@@ -1,3 +1,15 @@
+## Terrain T3.4 — Polish Village Buildings
+
+- Replaced the old span-built building art with one modular inline-SVG presentation module.
+- Added six exact building types: small cottage, medium cottage, long farmhouse, barn, shed, and church.
+- Added twelve reusable Poland 1939 material appearances without duplicating geometry.
+- Added authored doorway anchors and rotation-aware entry/approach geometry.
+- Updated the three playable scenarios to use the new building family and proportional footprints.
+- Rebuilt the Terrain Library building section to show both appearances for all six shapes.
+- Removed obsolete farmhouse-specific DOM cache references and generic building-art CSS.
+- Added startup validation for building shapes, appearances, and doorway metadata.
+- Added a roof-group hook for future interior/roof-fade presentation.
+
 ## Terrain T3.3 — Layered Circle Woods
 
 - Replaced outlined single-blob woods trees with parented, three-layer circle crowns.

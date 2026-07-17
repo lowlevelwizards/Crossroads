@@ -3,6 +3,7 @@
 (() => {
   const TYPE_DEFINITIONS = window.CROSSROADS_TERRAIN_TYPES;
   const MATS = window.CROSSROADS_TERRAIN_MATS ?? {};
+  const BUILDINGS = window.CrossroadsBuildingPresentation;
 
   function percent(value, total) {
     return `${(Number(value) / Number(total)) * 100}%`;
@@ -99,6 +100,10 @@
   }
 
   function createBuildingChildren(element, definition, instance) {
+    if (!BUILDINGS?.createArt) {
+      throw new Error("Crossroads building presentation module is unavailable.");
+    }
+
     const name = definition.label ?? "building";
     const plaque = terrainLabel(name, "Occupiable · hard cover");
     plaque.classList.add("building-title-plaque");
@@ -111,16 +116,7 @@
     element.appendChild(badge);
 
     const art = createArtFrame(element);
-    addPrimitive(art, "building-shadow");
-    addPrimitive(art, "building-side-wall");
-    addPrimitive(art, "terrain-roof");
-    addPrimitive(art, "terrain-roof-ridge");
-    addPrimitive(art, "building-front-wall");
-    addPrimitive(art, "building-door");
-    addPrimitive(art, "building-window", definition.id === "shed" ? 0 : 2);
-    if (["farmhouse", "building", "cottage"].includes(instance.terrainId)) {
-      addPrimitive(art, "building-chimney");
-    }
+    art.appendChild(BUILDINGS.createArt({ definition, instance }));
 
     const approach = document.createElement("span");
     approach.className = "building-approach-marker";
@@ -191,6 +187,7 @@
     element.dataset.terrainId = instance.terrainId;
     element.dataset.terrainFamily = definition.family;
     element.dataset.renderer = definition.renderer;
+    if (instance.appearance) element.dataset.appearance = instance.appearance;
     element.className = `terrain-piece terrain-${definition.family} terrain-${definition.renderer} terrain-id-${instance.terrainId}`;
     if (Number(instance.height) > Number(instance.width) * 1.5) element.classList.add("is-vertical");
 

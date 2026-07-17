@@ -13,6 +13,7 @@
     ["CROSSROADS_FORMATIONS", "data/formations.js"],
     ["CROSSROADS_SCENARIOS", "data/scenarios.js"],
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
+    ["CrossroadsBuildingPresentation", "src/presentation/buildings.js"],
     ["CrossroadsTerrainPresentation", "src/presentation/terrain.js"],
     ["CrossroadsTerrainGeometry", "src/rules/terrain-geometry.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
@@ -118,6 +119,50 @@
   }
 
 
+  function validateBuildingPresentation() {
+    const types = window.CROSSROADS_TERRAIN_TYPES;
+    const scenarios = window.CROSSROADS_SCENARIOS;
+    const presentation = window.CrossroadsBuildingPresentation;
+    if (!types || !scenarios || !presentation) return [];
+
+    const issues = [];
+    const buildingTypes = Object.values(types).filter(type => type.family === "building");
+
+    for (const type of buildingTypes) {
+      const visual = type.presentation ?? {};
+      if (!presentation.hasShape(visual.shape)) {
+        issues.push(`Building type ${type.id} references unknown shape ${visual.shape}.`);
+      }
+      if (!presentation.hasAppearance(visual.defaultAppearance)) {
+        issues.push(`Building type ${type.id} references unknown default appearance ${visual.defaultAppearance}.`);
+      }
+
+      for (const [field, point] of [
+        ["entryAnchor", visual.entryAnchor],
+        ["entryNormal", visual.entryNormal]
+      ]) {
+        if (!Number.isFinite(Number(point?.x)) || !Number.isFinite(Number(point?.y))) {
+          issues.push(`Building type ${type.id} has invalid ${field}.`);
+        }
+      }
+    }
+
+    for (const scenario of Object.values(scenarios)) {
+      for (const instance of scenario.terrain ?? []) {
+        const type = types[instance.terrainId];
+        if (type?.family !== "building") continue;
+        const appearance = instance.appearance ?? type.presentation?.defaultAppearance;
+        if (!validToken(appearance)) {
+          issues.push(`${scenario.id}.${instance.id} has unsafe appearance ${appearance}.`);
+        } else if (!presentation.hasAppearance(appearance)) {
+          issues.push(`${scenario.id}.${instance.id} references unknown appearance ${appearance}.`);
+        }
+      }
+    }
+
+    return issues;
+  }
+
   function validateTerrainLibrary() {
     const types = window.CROSSROADS_TERRAIN_TYPES;
     const scenarios = window.CROSSROADS_SCENARIOS;
@@ -192,6 +237,7 @@
       : [
           ...validateFactionKits(),
           ...validateScenarioKits(),
+          ...validateBuildingPresentation(),
           ...validateTerrainLibrary(),
           ...validateUnitTypes()
         ];
