@@ -49,10 +49,19 @@ src/rules/shooting.js
   interpreted by the morale module rather than by shooting itself.
 
 src/rules/shooting-integration.js
-  Foundation 4B.1 combat integration seam. It installs the pure morale and
-  shooting callbacks before the battlefield renderer captures them. It keeps
-  logs, statistics, state mutation, effects, outcomes, and activation flow in
-  engine.js.
+  Foundation 4B.1 integration seam for pure morale and shooting callbacks. It
+  keeps logs, statistics, state mutation, effects, outcomes, and activation flow
+  in engine.js.
+
+src/rules/assault.js
+  Pure charge legality, reaction-fire eligibility, Defensive Position analysis,
+  assault dice order, combat rounds, casualties, and winner calculation. It does
+  not mutate units, move winners, occupy buildings, render, log, or update stats.
+
+src/rules/assault-integration.js
+  Foundation 4B.2 integration seam. It installs pure assault analysis and
+  close-combat resolution before the renderer captures target callbacks, while
+  leaving reaction-fire coordination and state commitment in engine.js.
 
 src/rules/terrain-geometry.js
   Normalized terrain instances, authored building doorway anchors, rotation-aware
@@ -63,10 +72,11 @@ src/presentation/
   presentation. Presentation reads current truth and does not resolve combat.
 
 tests/combat-rules.html
-  Combined browser dashboard for deterministic shooting and morale tests.
+  Combined browser dashboard for deterministic shooting, morale, and assault
+  tests.
 
 tests/run-combat-rules-node.js
-  Runs shooting, morale, integration, and architecture checks from Node.
+  Runs shooting, morale, assault, integration, and architecture checks from Node.
 
 tests/startup-smoke.html
   Loads the modular shell without starting the battle engine and reports missing
@@ -140,33 +150,62 @@ The engine still owns:
 - unit outcomes and building reconciliation
 - effects, rendering, and activation completion
 
+
+## Foundation 4B.2 assault boundary
+
+The pure assault module owns:
+
+- legal charge distance and path analysis
+- building assaults targeting the authored doorway
+- normal and Ambush reaction-fire eligibility
+- woods, walls, Down, and building Defensive Position analysis
+- defender-first versus simultaneous combat sequencing
+- attacker and defender dice counts and quality-based damage targets
+- tied combat rounds and the existing 30-round survivor fallback
+- casualty counts, mutual destruction, and winner calculation
+- describing loser cleanup without applying it
+
+The engine still owns:
+
+- declaring the assault and consuming Ambush
+- resolving reaction fire through the shooting module
+- supplying close-combat dice
+- transaction locking and combat logs
+- applying casualties and casualty-order weapon removal
+- destruction records and battle statistics
+- moving the winner and finding a safe final position
+- clearing and occupying buildings
+- announcements, effects, rendering, and activation completion
+
 ## Runtime integration status
 
-Foundation 4B.1 has one active runtime calculation path for shooting and morale:
-the integration seam replaces the coordinator callbacks before player input can
-invoke them. The original coordinator declarations remain physically present as
-dormant rollback code in this changed-files test stage. They are not the active
-runtime path.
+Foundation 4B.2 has one active runtime calculation path for shooting, morale,
+and assault. The ordered integration seams replace coordinator callbacks before
+player input can invoke them. The original coordinator declarations remain
+physically present as dormant rollback code in this changed-files test stage;
+they are not the active runtime path.
 
-After player parity testing, those dormant declarations can be removed from
-`engine.js` in a mechanical cleanup with no rule or UI changes.
+After player parity testing, the dormant shooting, morale, and assault
+declarations can be removed from `engine.js` in one mechanical cleanup with no
+rule or UI changes.
 
 ## Current known boundary leaks
 
 - `presentation/battlefield.js` still derives target classes and binds unit input.
-- `engine.js` still physically contains dormant pre-extraction shooting and morale
-  declarations during the rollback-safe test stage.
-- `engine.js` still owns assault, scenarios, reports, and mobile UI.
+- `engine.js` still physically contains dormant pre-extraction shooting, morale,
+  and assault declarations during the rollback-safe test stage.
+- `engine.js` still owns assault commitment, scenarios, reports, and mobile UI.
 - `styles/main.css` remains a cascade-preserving stylesheet monolith.
 - Medium and close unit views currently duplicate formation markup.
 - Visual edge containment is not yet implemented.
 
 ## Next likely foundation work
 
-1. Remove dormant shooting and morale declarations after Foundation 4B.1 parity
-   sign-off.
-2. Extract assault legality and resolution.
-3. Build the combined combat regression suite around shooting, morale, and assault.
-4. Build Mokra M1 using the stabilized infantry core.
+1. Player-test Foundation 4B.2 across open-ground, terrain, building, Ambush, and
+   reaction-fire assaults.
+2. Remove dormant shooting, morale, and assault declarations from `engine.js` in
+   one mechanical combat-foundation lock.
+3. Build Mokra M1 using the stabilized infantry core.
+4. Add only the support weapon that Mokra playtesting proves is needed first.
 5. Extract runtime state and app coordination only when player-facing work proves
    the need.

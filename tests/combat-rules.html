@@ -10,15 +10,15 @@
     #summary { font-weight: 800; padding: 10px 12px; background: #fff; border: 1px solid #aaa; }
     .ok { color: #245d35; }
     .fail { color: #8b2f29; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-top: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
     article { background: #fff; border: 1px solid #aaa; border-radius: 8px; overflow: hidden; }
     article h2 { margin: 0; padding: 10px 14px; border-bottom: 1px solid #bbb; font-size: 18px; }
     iframe { display: block; width: 100%; min-height: 620px; border: 0; }
   </style>
 </head>
 <body>
-  <h1>Foundation 4B.1 Combat Rules</h1>
-  <p id="summary">Running shooting and morale characterization suites…</p>
+  <h1>Foundation 4B.2 Combat Rules</h1>
+  <p id="summary">Running shooting, morale, and assault characterization suites…</p>
   <div class="grid">
     <article>
       <h2>Shooting</h2>
@@ -28,10 +28,14 @@
       <h2>Morale</h2>
       <iframe id="moraleFrame" src="morale-rules.html" title="Morale rules tests"></iframe>
     </article>
+    <article>
+      <h2>Assault</h2>
+      <iframe id="assaultFrame" src="assault-rules.html" title="Assault rules tests"></iframe>
+    </article>
   </div>
   <script>
     (() => {
-      const ids = ["shootingFrame", "moraleFrame"];
+      const ids = ["shootingFrame", "moraleFrame", "assaultFrame"];
       const states = new Map();
       const summary = document.getElementById("summary");
 

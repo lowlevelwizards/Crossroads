@@ -31,7 +31,9 @@
     ["CrossroadsMovementRules", "src/rules/movement.js"],
     ["CrossroadsMoraleRules", "src/rules/morale.js"],
     ["CrossroadsShootingRules", "src/rules/shooting.js"],
-    ["CrossroadsCombatIntegration", "src/rules/shooting-integration.js"]
+    ["CrossroadsCombatIntegration", "src/rules/shooting-integration.js"],
+    ["CrossroadsAssaultRules", "src/rules/assault.js"],
+    ["CrossroadsAssaultIntegration", "src/rules/assault-integration.js"]
   ]);
 
   const SAFE_TOKEN = /^[a-z0-9_-]+$/;
