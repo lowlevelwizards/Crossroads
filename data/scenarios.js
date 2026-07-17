@@ -107,21 +107,10 @@ const mokra = Object.freeze({
     {id:"center-field",terrainId:"field_tilled",x:18,y:31,width:12,height:8},
     {id:"reserve-field",terrainId:"field_cabbage",x:49,y:3,width:11,height:7},
 
-    {id:"rail-north-a",terrainId:"rail_embankment",x:41.5,y:0,width:4,height:6},
-    {id:"rail-north-b",terrainId:"rail_embankment",x:41.5,y:11,width:4,height:9},
-    {id:"rail-center",terrainId:"rail_embankment",x:41.5,y:27,width:4,height:7},
-    {id:"rail-south",terrainId:"rail_embankment",x:41.5,y:41,width:4,height:7},
     {id:"crossing-north",terrainId:"rail_crossing",x:39.5,y:6,width:8,height:5},
     {id:"crossing-central",terrainId:"rail_crossing",x:39.5,y:20,width:8,height:7},
     {id:"crossing-south",terrainId:"rail_crossing",x:39.5,y:34,width:8,height:7},
 
-    {id:"north-road",terrainId:"road_end",x:18,y:7.2,width:24,height:3.2},
-    {id:"central-road-west",terrainId:"road_straight",x:0,y:22,width:42,height:3.8},
-    {id:"central-road-east",terrainId:"road_straight",x:45,y:22,width:18,height:3.8},
-    {id:"east-junction",terrainId:"road_t",x:59,y:20,width:8,height:8,rotation:90},
-    {id:"east-road",terrainId:"road_end",x:61.3,y:25,width:3.4,height:18,rotation:90},
-    {id:"south-road-west",terrainId:"road_straight",x:17,y:36,width:25,height:3.2},
-    {id:"south-road-east",terrainId:"road_end",x:45,y:36,width:16,height:3.2},
 
     {id:"north-dense-wood",terrainId:"woods_dense",x:18,y:1,width:18,height:12,variant:3},
     {id:"north-orchard",terrainId:"orchard",x:4,y:2,width:10,height:9},
@@ -129,38 +118,54 @@ const mokra = Object.freeze({
     {id:"south-wood",terrainId:"woods",x:13,y:38,width:11,height:8,variant:1},
     {id:"reserve-wood",terrainId:"woods",x:54,y:8,width:15,height:14,variant:4},
 
-    {id:"stream-west-end",terrainId:"stream_end",x:0,y:29,width:11,height:2.7},
-    {id:"stream-west",terrainId:"stream",x:10,y:29,width:12,height:2.7},
-    {id:"stream-bend",terrainId:"stream_curve",x:21,y:27.8,width:8,height:5},
-    {id:"ditch-center",terrainId:"ditch",x:28,y:29.2,width:12,height:2.5},
-    {id:"stream-east",terrainId:"stream",x:45,y:29.5,width:12,height:2.7},
-    {id:"stream-east-end",terrainId:"stream_end",x:56,y:29.5,width:8,height:2.7},
 
-    {id:"village-church",terrainId:"church",appearance:"wooden_brown_red",x:13,y:13,width:12,height:10},
-    {id:"village-farmhouse",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:23,y:17,width:13,height:7},
-    {id:"village-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:32,y:13.5,width:8,height:7},
-    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:13,y:24.5,width:7,height:6},
-    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:22,y:25.5,width:9,height:7},
-    {id:"village-cottage-c",terrainId:"small_cottage",appearance:"log_thatch",x:32,y:25,width:7,height:6},
-    {id:"village-shed",terrainId:"shed",appearance:"timber_brown",x:35,y:18,width:5,height:4.5},
-    {id:"reserve-farm",terrainId:"medium_cottage",appearance:"concrete_thatch",x:52,y:33,width:9,height:7},
+    {id:"village-church",terrainId:"church",appearance:"wooden_brown_red",x:13,y:13,width:12,height:10,visualScale:1.30},
+    {id:"village-farmhouse",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:23,y:17,width:13,height:7,visualScale:1.15},
+    {id:"village-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:32,y:13.5,width:8,height:7,visualScale:1.15},
+    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:13,y:24.5,width:7,height:6,visualScale:1.15},
+    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:22,y:25.5,width:9,height:7,visualScale:1.15},
+    {id:"village-cottage-c",terrainId:"small_cottage",appearance:"log_thatch",x:32,y:25,width:7,height:6,visualScale:1.15},
+    {id:"village-shed",terrainId:"shed",appearance:"timber_brown",x:35,y:18,width:5,height:4.5,visualScale:1.15},
+    {id:"reserve-farm",terrainId:"medium_cottage",appearance:"concrete_thatch",x:52,y:33,width:9,height:7,visualScale:1.15},
 
     {id:"north-foxholes",terrainId:"foxholes",x:34,y:10,width:7,height:3.5},
     {id:"central-foxholes",terrainId:"foxholes",x:34,y:25.5,width:7,height:3.5},
     {id:"south-foxholes",terrainId:"foxholes",x:33,y:39,width:7,height:3.5},
 
-    {id:"hedge-north-a",terrainId:"hedge",x:4,y:12,width:8,height:1.8},
-    {id:"hedge-north-b",terrainId:"hedge",x:25,y:12,width:9,height:1.8},
-    {id:"hedge-center-a",terrainId:"hedge",x:4,y:27,width:8,height:1.8},
-    {id:"hedge-center-b",terrainId:"hedge",x:29,y:32,width:9,height:1.8},
-    {id:"hedge-east",terrainId:"hedge",x:49,y:27,width:9,height:1.8},
-    {id:"fence-village-a",terrainId:"fence_wood",x:8,y:31,width:6,height:1.6},
-    {id:"fence-village-b",terrainId:"fence_wood",x:15,y:31,width:6,height:1.6},
-    {id:"fence-village-c",terrainId:"fence_wood",x:27,y:11,width:6,height:1.6},
-    {id:"wall-village",terrainId:"wall",x:29,y:21,width:9,height:1.8},
-    {id:"wall-reserve",terrainId:"wall",x:50,y:41,width:10,height:1.8},
     {id:"haystack",terrainId:"haystack",x:20,y:34,width:4,height:4},
     {id:"woodpile",terrainId:"woodpile",x:25,y:14,width:4,height:3}
+  ]),
+  linearTerrain:freezeList([
+    {id:"rail-north-a",styleId:"railway_embankment",points:[{x:43.5,y:0},{x:43.5,y:6}],start:{cap:"off_table"},end:{cap:"junction"}},
+    {id:"rail-north-b",styleId:"railway_embankment",points:[{x:43.5,y:11},{x:43.5,y:20}]},
+    {id:"rail-center",styleId:"railway_embankment",points:[{x:43.5,y:27},{x:43.5,y:34}]},
+    {id:"rail-south",styleId:"railway_embankment",points:[{x:43.5,y:41},{x:43.5,y:48}],end:{cap:"off_table"}},
+
+    {id:"north-road",styleId:"dirt_road",width:3.2,smoothing:.25,points:[{x:18,y:8.8},{x:28,y:8.4},{x:39.5,y:8.5}],start:{cap:"grass"},end:{cap:"junction"}},
+    {id:"central-road-west",styleId:"dirt_road",width:3.8,points:[{x:0,y:23.9},{x:20,y:23.9},{x:39.5,y:23.5}],start:{cap:"off_table"},end:{cap:"junction"}},
+    {id:"central-road-east",styleId:"dirt_road",width:3.8,points:[{x:47.5,y:23.5},{x:62,y:23.5}],start:{cap:"junction"},end:{cap:"junction"}},
+    {id:"east-road",styleId:"dirt_road",width:3.4,points:[{x:62,y:23.5},{x:62,y:43}],start:{cap:"junction"},end:{cap:"grass"}},
+    {id:"south-road-west",styleId:"dirt_road",width:3.2,smoothing:.18,points:[{x:17,y:37.5},{x:28,y:37.2},{x:39.5,y:37.5}],start:{cap:"grass"},end:{cap:"junction"}},
+    {id:"south-road-east",styleId:"dirt_road",width:3.2,points:[{x:47.5,y:37.5},{x:60,y:37.5}],start:{cap:"junction"},end:{cap:"grass"}},
+
+    {id:"mokra-stream",styleId:"stream",smoothing:.68,points:[{x:0,y:30.4},{x:10,y:29.7},{x:20,y:29.5},{x:27,y:30.5},{x:36,y:30.2},{x:47,y:30.5},{x:56,y:30.1},{x:66,y:30.4}],start:{cap:"off_table"},end:{cap:"taper"}},
+    {id:"south-ditch",styleId:"ditch",smoothing:.42,points:[{x:2,y:34.2},{x:11,y:34.7},{x:20,y:33.8},{x:28,y:34.1}],start:{cap:"taper"},end:{cap:"taper"}},
+
+    {id:"hedge-north-a",styleId:"hedge",points:[{x:4,y:12.8},{x:12,y:12.8}]},
+    {id:"hedge-north-b",styleId:"hedge",smoothing:.25,points:[{x:25,y:12.8},{x:30,y:12.5},{x:34,y:12.8}]},
+    {id:"hedge-center-a",styleId:"hedge",points:[{x:4,y:27.8},{x:12,y:27.8}]},
+    {id:"hedge-center-b",styleId:"hedge",points:[{x:29,y:32.8},{x:38,y:32.8}]},
+    {id:"hedge-east",styleId:"hedge",points:[{x:49,y:27.8},{x:58,y:27.8}]},
+    {id:"fence-village",styleId:"wood_fence",smoothing:.18,points:[{x:8,y:31.8},{x:14,y:31.6},{x:21,y:31.8}]},
+    {id:"fence-north",styleId:"wood_fence",points:[{x:27,y:11.8},{x:33,y:11.8}]},
+    {id:"wall-village",styleId:"stone_wall",points:[{x:29,y:21.8},{x:38,y:21.8}]},
+    {id:"wall-reserve",styleId:"stone_wall",points:[{x:50,y:41.8},{x:60,y:41.8}]}
+  ]),
+  junctions:freezeList([
+    {id:"east-road-tee",type:"tee",styleId:"dirt_road",x:62,y:23.5,width:3.8,radius:3.2}
+  ]),
+  crossings:freezeList([
+    {id:"reserve-culvert",type:"culvert",pathIds:["east-road","mokra-stream"],length:4.8,width:3.6}
   ]),
   objectives:freezeList([{
     id:"mokra_crossings", type:"control_group", label:"Railway Crossings", x:43.5, y:23.5, radius:3.25,
@@ -175,7 +180,7 @@ const mokra = Object.freeze({
   forces:Object.freeze({
     blue:freezeList([
       {id:"mokra-blue-rifle-a",name:"1st Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:36.5,y:8.5,deploymentZone:"forward"},
-      {id:"mokra-blue-rifle-b",name:"2nd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:36.5,y:24,deploymentZone:"forward"},
+      {id:"mokra-blue-rifle-b",name:"2nd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:38.5,y:25,deploymentZone:"forward"},
       {id:"mokra-blue-rifle-c",name:"3rd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"regular",x:36,y:40,deploymentZone:"forward"},
       {id:"mokra-blue-mmg",name:"Heavy Machine-Gun Section",unitType:"mmgTeam",quality:"regular",x:30,y:10,deploymentZone:"forward"},
       {id:"mokra-blue-officer",name:"Regimental Command",unitType:"officer",quality:"veteran",x:50,y:25,deploymentZone:"reserve"},
