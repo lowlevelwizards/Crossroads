@@ -300,3 +300,55 @@ Closed terrain patches and an editor may reuse control-point concepts later, but
 ## Terrain L1.2 scene composition
 
 Linear terrain shares path geometry but retains family-specific visual recipes. Ground paths stay below discrete terrain. Buildings are promoted into the battlefield scene and depth-sort against units by their table Y position. Objectives and interaction overlays use fixed layers above the scene. `scene-compositor.js` is the sole owner of dynamic building/unit depth; arbitrary terrain z-index patches should not be added elsewhere.
+
+## Terrain Editor E1 — Internal Scenario Composer
+
+The editor is a separate application surface at `editor.html`. It deliberately
+loads scenario data, terrain registries, shared path geometry, and the existing
+terrain renderers without loading `src/engine.js`.
+
+The editor boundary is:
+
+```text
+frozen runtime scenario
+        ↓ clone
+mutable editor document
+        ↓ validate / render
+shared terrain and path presentation
+        ↓ export
+clean scenario JSON or JavaScript
+```
+
+`src/editor/editor-document.js` owns cloning, collection lookup, collision-safe
+ID generation, duplication, deletion, serialization, and playtest-document
+creation. It contains no DOM behavior.
+
+`src/editor/editor-validation.js` owns authoring-time validation for table
+bounds, IDs, registered terrain and unit definitions, path geometry, intentional
+off-table endpoints, deployment zones, hard-terrain overlap, unit spacing,
+objectives, and explicit junction/crossing attachments. It reports findings but
+does not mutate the document.
+
+`src/editor/editor.js` owns authoring interaction and presentation: selection,
+dragging, resize and rotation handles, waypoint editing, object creation,
+undo/redo, inspector fields, overlays, import/export, and launch controls.
+
+The editor reuses `CrossroadsTerrainPresentation`,
+`CrossroadsLinearTerrainPresentation`, `CrossroadsPathGeometry`, and the
+registries in `data/`. It must not create editor-only approximations of terrain
+geometry.
+
+`data/editor-playtest.js` is an optional pre-engine bridge. It runs only when
+`index.html?editorPlaytest=1` is opened, reads the editor document from
+same-origin local storage, injects it into `CROSSROADS_SCENARIOS`, selects it
+before engine startup, and leaves normal game startup unchanged otherwise.
+
+Run the editor regression check with:
+
+```text
+node tests/editor-e1.test.js
+```
+
+The next editor stage should rebuild Mokra from a clean duplicate using direct
+manipulation, then add explicit junction and crossing editing before any broad
+linear-terrain visual rewrite.

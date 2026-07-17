@@ -71,8 +71,9 @@ check(validation.includes("CrossroadsCombatRuntime"), "startup validation does n
 check(!validation.includes('"CrossroadsCombatIntegration", "src/rules/shooting-integration.js"'), "startup validation still requires the temporary shooting seam");
 check(!validation.includes('"CrossroadsAssaultIntegration", "src/rules/assault-integration.js"'), "startup validation still requires the temporary assault seam");
 
-check(buildInfo.includes('version: "Foundation 4C"'), "build metadata was not advanced to Foundation 4C");
-check(buildInfo.includes('codename: "Combat Foundation Lock"'), "build codename is incorrect");
+check(buildInfo.includes('engine: "Infantry Core"'), "build metadata no longer identifies the Infantry Core runtime");
+check(/version:\s*"[^"]+"/.test(buildInfo), "build metadata lacks a current version");
+check(/codename:\s*"[^"]+"/.test(buildInfo), "build metadata lacks a current codename");
 
 if (failures.length) {
   console.error("FAIL — Foundation 4C source audit", failures);

@@ -108,3 +108,15 @@
 - Created the clean folder architecture.
 - Relocated existing data and infrastructure modules.
 - Updated script paths.
+
+## Terrain Editor E1.0 — Internal Scenario Composer
+
+- Added `editor.html`, a desktop-first internal scenario authoring surface.
+- Added a mutable editor document model separate from frozen runtime scenario data.
+- Added direct manipulation for discrete terrain, units, objectives, deployment zones, and path waypoints.
+- Added discrete terrain and linear path creation, duplication, deletion, resize, and rotation controls.
+- Added path width, smoothing, style, cap, waypoint insertion, and waypoint removal editing.
+- Added table grid, deployment-zone, and authoritative rules-footprint overlays.
+- Added validation for IDs, bounds, unknown definitions, deployment zones, hard-terrain overlap, unit spacing, path geometry, junction caps, and objective placement.
+- Added undo/redo, JSON import/export, JavaScript copy output, and download support.
+- Added a localStorage playtest bridge that loads the editor document into the existing battle runtime without changing `engine.js`.

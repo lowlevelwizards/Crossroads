@@ -3082,7 +3082,7 @@ that no visual behavior changes. These banners identify the effective systems:
       .main-menu-card { padding: 20px 26px; }
       .main-menu-title { font-size: 44px; }
       .main-menu-years { margin-bottom: 15px; font-size: 17px; }
-      .main-menu-actions { grid-template-columns: repeat(3, 1fr); }
+      .main-menu-actions { grid-template-columns: repeat(2, 1fr); }
       .main-menu-actions button { min-height: 44px; font-size: 12px; }
       .main-menu-play { font-size: 14px !important; }
     }

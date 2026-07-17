@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Crossroads — Terrain Editor E1</title>
+  <link rel="stylesheet" href="styles/main.css?v=e1">
+  <link rel="stylesheet" href="styles/terrain.css?v=e1">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=e1">
+  <link rel="stylesheet" href="styles/mokra.css?v=e1">
+  <link rel="stylesheet" href="styles/stabilization.css?v=e1">
+  <link rel="stylesheet" href="styles/editor.css?v=e1">
+</head>
+<body class="editor-app">
+  <header class="editor-header">
+    <div>
+      <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
+      <h1>CROSSROADS — Terrain Editor E1</h1>
+      <p>Compose scenario data directly on the 72″ × 48″ tabletop. The editor document, renderer, validation, export, and playtest bridge are separate from the battle engine.</p>
+    </div>
+    <div class="editor-header-actions">
+      <a class="editor-button editor-button-quiet" href="index.html">Return to Game</a>
+      <button id="undoButton" class="editor-button editor-button-quiet" type="button" disabled>Undo</button>
+      <button id="redoButton" class="editor-button editor-button-quiet" type="button" disabled>Redo</button>
+      <button id="playtestButton" class="editor-button editor-button-primary" type="button">Launch Playtest</button>
+    </div>
+  </header>
+
+  <main class="editor-shell">
+    <aside class="editor-panel editor-library-panel" aria-label="Scenario and object library">
+      <section class="editor-panel-section">
+        <label class="editor-field-label" for="editorScenarioSelect">Scenario</label>
+        <select id="editorScenarioSelect" class="editor-control"></select>
+        <div class="editor-inline-actions">
+          <button id="resetScenarioButton" class="editor-button editor-button-quiet" type="button">Reset Source</button>
+          <button id="fitButton" class="editor-button editor-button-quiet" type="button">Fit Table</button>
+        </div>
+      </section>
+
+      <section class="editor-panel-section">
+        <h2>Add Objects</h2>
+        <label class="editor-field-label" for="terrainTypeSelect">Discrete terrain</label>
+        <div class="editor-row">
+          <select id="terrainTypeSelect" class="editor-control"></select>
+          <button id="addTerrainButton" class="editor-button" type="button">Add</button>
+        </div>
+
+        <label class="editor-field-label" for="linearStyleSelect">Linear terrain</label>
+        <div class="editor-row">
+          <select id="linearStyleSelect" class="editor-control"></select>
+          <button id="addLinearButton" class="editor-button" type="button">Add</button>
+        </div>
+
+        <label class="editor-field-label" for="unitTypeSelect">Unit</label>
+        <div class="editor-row editor-row-three">
+          <select id="unitFactionSelect" class="editor-control"><option value="blue">Poland</option><option value="red">Germany</option></select>
+          <select id="unitTypeSelect" class="editor-control"></select>
+          <button id="addUnitButton" class="editor-button" type="button">Add</button>
+        </div>
+
+        <button id="addObjectiveButton" class="editor-button editor-button-wide" type="button">Add Objective</button>
+      </section>
+
+      <section class="editor-panel-section editor-layer-controls">
+        <h2>View</h2>
+        <label><input id="showGridToggle" type="checkbox" checked> Inch grid</label>
+        <label><input id="showFootprintsToggle" type="checkbox"> Rules footprints</label>
+        <label><input id="showZonesToggle" type="checkbox" checked> Deployment zones</label>
+        <label><input id="snapToggle" type="checkbox" checked> Snap to ¼″</label>
+        <div class="editor-zoom-row">
+          <button id="zoomOutButton" class="editor-button editor-button-quiet" type="button" aria-label="Zoom out">−</button>
+          <output id="zoomReadout">100%</output>
+          <button id="zoomInButton" class="editor-button editor-button-quiet" type="button" aria-label="Zoom in">+</button>
+        </div>
+      </section>
+
+      <section class="editor-panel-section editor-object-browser">
+        <div class="editor-section-heading">
+          <h2>Objects</h2>
+          <span id="objectCount">0</span>
+        </div>
+        <div id="objectList" class="editor-object-list"></div>
+      </section>
+    </aside>
+
+    <section class="editor-workspace" aria-label="Scenario canvas">
+      <div class="editor-workspace-bar">
+        <div>
+          <strong id="scenarioTitleReadout">Scenario</strong>
+          <span id="scenarioSizeReadout">72″ × 48″</span>
+        </div>
+        <div class="editor-workspace-help">Drag objects and waypoints. Use the lower-right handle to resize and the round handle to rotate.</div>
+      </div>
+      <div id="editorViewport" class="editor-viewport">
+        <div id="editorStage" class="editor-stage">
+          <div id="editorBoard" class="battlefield editor-board" aria-label="Editable battlefield">
+            <div id="editorGridLayer" class="editor-grid-layer"></div>
+            <div id="editorDeploymentLayer" class="editor-deployment-layer"></div>
+            <div id="terrainLayer" class="terrain-layer" aria-label="Scenario terrain"></div>
+            <div id="editorFootprintLayer" class="editor-footprint-layer"></div>
+            <div id="editorObjectiveLayer" class="editor-objective-layer"></div>
+            <div id="editorUnitLayer" class="editor-unit-layer"></div>
+            <svg id="editorInteractionSvg" class="editor-interaction-svg" viewBox="0 0 72 48" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div id="editorSelectionLayer" class="editor-selection-layer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="editor-status-bar">
+        <span id="cursorReadout">Cursor: —</span>
+        <span id="selectionReadout">Nothing selected</span>
+        <span id="saveReadout">Source loaded</span>
+      </div>
+    </section>
+
+    <aside class="editor-panel editor-inspector-panel" aria-label="Inspector and validation">
+      <section class="editor-panel-section editor-inspector-section">
+        <div class="editor-section-heading">
+          <h2>Inspector</h2>
+          <span id="selectionKindBadge">NONE</span>
+        </div>
+        <div id="inspectorEmpty" class="editor-empty-state">Select terrain, a path, waypoint, unit, objective, or deployment zone.</div>
+        <form id="inspectorForm" class="editor-inspector-form" hidden></form>
+        <div id="selectionActions" class="editor-inline-actions" hidden>
+          <button id="duplicateSelectionButton" class="editor-button editor-button-quiet" type="button">Duplicate</button>
+          <button id="deleteSelectionButton" class="editor-button editor-button-danger" type="button">Delete</button>
+        </div>
+      </section>
+
+      <section class="editor-panel-section">
+        <div class="editor-section-heading">
+          <h2>Validation</h2>
+          <span id="validationCount">0</span>
+        </div>
+        <div id="validationSummary" class="editor-validation-summary">No validation run.</div>
+        <div id="validationList" class="editor-validation-list"></div>
+      </section>
+
+      <section class="editor-panel-section">
+        <h2>Scenario Data</h2>
+        <div class="editor-export-grid">
+          <button id="copyJsonButton" class="editor-button" type="button">Copy JSON</button>
+          <button id="copyJsButton" class="editor-button" type="button">Copy JS</button>
+          <button id="downloadJsonButton" class="editor-button editor-button-quiet" type="button">Download JSON</button>
+          <button id="importJsonButton" class="editor-button editor-button-quiet" type="button">Import JSON</button>
+        </div>
+        <input id="importFileInput" type="file" accept="application/json,.json" hidden>
+        <textarea id="scenarioDataPreview" class="editor-data-preview" spellcheck="false" readonly></textarea>
+      </section>
+    </aside>
+  </main>
+
+  <script src="data/terrain.js?v=e1"></script>
+  <script src="data/linear-terrain.js?v=e1"></script>
+  <script src="data/unit-quality.js?v=e1"></script>
+  <script src="data/unit-types.js?v=e1"></script>
+  <script src="data/scenarios.js?v=e1"></script>
+  <script src="src/presentation/buildings.js?v=e1"></script>
+  <script src="src/presentation/terrain.js?v=e1"></script>
+  <script src="src/rules/path-geometry.js?v=e1"></script>
+  <script src="src/rules/linear-terrain.js?v=e1"></script>
+  <script src="src/presentation/linear-terrain.js?v=e1"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e1"></script>
+  <script src="src/rules/terrain-geometry.js?v=e1"></script>
+  <script src="src/editor/editor-document.js?v=e1"></script>
+  <script src="src/editor/editor-validation.js?v=e1"></script>
+  <script src="src/editor/editor.js?v=e1"></script>
+</body>
+</html>
