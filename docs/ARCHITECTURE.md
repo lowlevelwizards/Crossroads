@@ -29,65 +29,48 @@ data/
   are authoritative. The engine must not contain fallback copies.
 
 src/engine.js
-  Remaining battle coordinator: runtime state, turn flow, combat commitment,
+  Remaining battle coordinator: runtime state, turn flow, rule commitment,
   deployment, scoring, reports, adaptive UI, and bootstrap.
 
 src/infrastructure/
   Shared browser helpers and startup validation.
 
-data/formations.js
-  Canonical unit formation slots and medium-zoom abbreviations.
-
-src/presentation/units.js
-  Pure unit markup, labels, packed/deployed MMG views, and formation assembly.
-
-src/presentation/buildings.js
-  The six reusable SVG building shapes and twelve material appearances. It owns
-  building artwork only; occupancy and rules remain elsewhere.
-
-src/presentation/terrain.js
-  Generic terrain-instance DOM creation. Building instances delegate their art
-  to the building presentation module.
-
-src/presentation/battlefield.js
-  Unit-layer DOM rendering, visual state classes, and current unit event binding.
-
-src/camera/camera.js
-  Camera state, fit, zoom, rotation, surface sizing, centering, and framing.
-
-src/camera/coordinates.js
-  Conversion between browser coordinates, battlefield pixels, and table inches.
-
-src/input/camera-input.js
-  Mouse and touch camera gestures.
-
-src/input/battlefield-input.js
-  Battlefield DOM event binding.
-
 src/rules/movement.js
   Pure movement legality, terrain cost, collision, and allowance fitting.
 
+src/rules/morale.js
+  Pure officer-support lookup, Order Test targets and outcomes, Rally outcomes,
+  and incoming-Pin routing analysis. It does not mutate units, render, log, or
+  update statistics.
+
 src/rules/shooting.js
-  Pure fire-group availability, range, MMG arcs, LOS, cover, hit targets, Pins,
-  damage rolls, cover saves, and casualty-count calculation. It does not mutate
-  units, render, log, or update statistics.
+  Pure fire-group availability, range, MMG arcs, LOS, cover, hit targets, damage
+  rolls, cover saves, and casualty-count calculation. Incoming Pins are
+  interpreted by the morale module rather than by shooting itself.
 
 src/rules/shooting-integration.js
-  Foundation 4A compatibility seam. It installs the pure shooting callbacks
-  before the battlefield renderer captures them and keeps combat commitment in
-  engine.js. The previous engine calculations remain dormant during this
-  user-test stage for low-risk rollback.
+  Foundation 4B.1 combat integration seam. It installs the pure morale and
+  shooting callbacks before the battlefield renderer captures them. It keeps
+  logs, statistics, state mutation, effects, outcomes, and activation flow in
+  engine.js.
 
 src/rules/terrain-geometry.js
   Normalized terrain instances, authored building doorway anchors, rotation-aware
   entry points, and approach-marker geometry.
 
+src/presentation/
+  Battlefield, unit, miniature, terrain, building, overlay, targeting, and effect
+  presentation. Presentation reads current truth and does not resolve combat.
+
+tests/combat-rules.html
+  Combined browser dashboard for deterministic shooting and morale tests.
+
+tests/run-combat-rules-node.js
+  Runs shooting, morale, integration, and architecture checks from Node.
+
 tests/startup-smoke.html
   Loads the modular shell without starting the battle engine and reports missing
   globals or broken script references.
-
-tests/shooting-rules.html
-  Runs deterministic characterization tests for the extracted shooting rules.
 ```
 
 ## Architectural rules
@@ -99,24 +82,52 @@ tests/shooting-rules.html
 5. Camera modules own view transforms; gameplay coordinates remain table-space.
 6. `engine.js` coordinates modules and commits state while it is gradually reduced.
 7. Do not add silent fallback copies of external data.
-8. One subsystem extraction or behavior change per foundation commit.
-9. Building geometry and building appearance are separate registries; new colors
-   must not duplicate a shape implementation.
-10. Random rule resolution must accept injected dice in pure modules so it can be
-    characterized deterministically.
+8. One subsystem extraction or behavior change per foundation stage.
+9. Random rule resolution accepts injected dice so it can be characterized
+   deterministically.
+10. A rule result describes intended state changes; the engine remains the only
+    owner of runtime mutation until the state layer is deliberately extracted.
 
-## Foundation 4A shooting boundary
+## Foundation 4B.1 morale boundary
 
-The pure module owns:
+The pure morale module owns:
 
-- legal fire groups
-- weapon ranges
-- moving/fixed restrictions
+- finding a friendly officer within the 6-inch command radius
+- excluding officers from receiving officer support
+- the +1 command Morale bonus
+- deciding whether an Order Test is required
+- Rally ignoring Pin penalties
+- Order Test target calculation and 2-to-11 clamping
+- 2d6 pass/fail calculation
+- the described one-Pin removal after an ordinary passed test
+- the described all-Pin removal after a successful Rally
+- the described Down state after a failed test
+- deciding whether newly received Pins reach the unit's Morale and cause routing
+
+The engine still owns:
+
+- deciding when an order becomes committed
+- preserving reversible Fire targeting until a legal target is confirmed
+- supplying dice
+- transaction locking
+- combat and morale logs
+- Order Test and battle statistics
+- mutating Pins, Down, activated, order, and outcome state
+- Rally presentation effects and final Pin clearing
+- finishing or continuing the activation
+
+## Foundation 4B.1 shooting boundary
+
+The pure shooting module owns:
+
+- legal fire groups and weapon range
+- moving and fixed-weapon restrictions
 - MMG crew output and firing arcs
 - building and terrain LOS
 - woods, walls, Down, and occupied-building cover
 - per-weapon hit targets
-- hit, Pin, route, damage, save, and casualty-count calculation
+- hit, damage, save, and casualty-count calculation
+- requesting incoming-Pin interpretation from morale
 
 The engine still owns:
 
@@ -129,23 +140,33 @@ The engine still owns:
 - unit outcomes and building reconciliation
 - effects, rendering, and activation completion
 
-After player parity testing, the dormant legacy shooting implementations can be
-removed from `engine.js` in a narrow cleanup build without changing behavior.
+## Runtime integration status
+
+Foundation 4B.1 has one active runtime calculation path for shooting and morale:
+the integration seam replaces the coordinator callbacks before player input can
+invoke them. The original coordinator declarations remain physically present as
+dormant rollback code in this changed-files test stage. They are not the active
+runtime path.
+
+After player parity testing, those dormant declarations can be removed from
+`engine.js` in a mechanical cleanup with no rule or UI changes.
 
 ## Current known boundary leaks
 
-- `presentation/battlefield.js` still derives target legality and binds unit input.
-- `engine.js` still contains dormant pre-4A shooting implementations until the
-  staged extraction receives user sign-off.
-- `engine.js` still owns assault, morale, scenarios, reports, and mobile UI.
+- `presentation/battlefield.js` still derives target classes and binds unit input.
+- `engine.js` still physically contains dormant pre-extraction shooting and morale
+  declarations during the rollback-safe test stage.
+- `engine.js` still owns assault, scenarios, reports, and mobile UI.
 - `styles/main.css` remains a cascade-preserving stylesheet monolith.
 - Medium and close unit views currently duplicate formation markup.
 - Visual edge containment is not yet implemented.
 
 ## Next likely foundation work
 
-1. Remove dormant engine shooting calculations after Foundation 4A parity sign-off.
-2. Assault and morale extraction.
-3. Runtime state and app coordinator.
-4. Presentation/input boundary cleanup.
-5. CSS split only after visual behavior stabilizes.
+1. Remove dormant shooting and morale declarations after Foundation 4B.1 parity
+   sign-off.
+2. Extract assault legality and resolution.
+3. Build the combined combat regression suite around shooting, morale, and assault.
+4. Build Mokra M1 using the stabilized infantry core.
+5. Extract runtime state and app coordination only when player-facing work proves
+   the need.

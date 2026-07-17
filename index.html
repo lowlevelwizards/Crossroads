@@ -2,9 +2,9 @@
 <!--
 ==============================================================================
 CROSSROADS 1939–1945 — INFANTRY CORE ENGINE
-FOUNDATION 4A: STAGED SHOOTING RULES EXTRACTION
+FOUNDATION 4B.1: SHOOTING STABILIZATION AND MORALE RULES
 
-Static definitions, presentation, camera, input, movement analysis, and shooting
+Static definitions, presentation, camera, input, movement, shooting, and morale
 calculation live in dedicated files. This document owns semantic application
 structure and script load order; startup validation prevents silent fallback to
 duplicated data.
@@ -153,7 +153,7 @@ DOCUMENT LAYOUT
        ====================================================================== -->
 
   <header>
-    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 4A</span></h1>
+    <h1>CROSSROADS — Infantry Core <span id="headerBuildBadge" class="build-badge">Foundation 4B.1</span></h1>
     <p>The complete adaptive infantry game supports desktop, phone, and tablet play with responsive battlefield zoom, touch-safe confirmations, contextual controls, orientation preservation, and mobile briefings and reports.</p>
   </header>
 
@@ -349,7 +349,7 @@ DOCUMENT LAYOUT
         <button id="referenceMainMenuButton" class="wide" type="button">Return to Main Menu</button>
         <button id="referenceCloseButton" class="wide primary-action" type="button">Close</button>
       </div>
-      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 4A · SHOOTING RULES EXTRACTION</div>
+      <div id="referenceBuildStamp" class="visual-build-stamp">FOUNDATION 4B.1 · SHOOTING + MORALE RULES</div>
       <div class="visual-checklist" aria-label="Visual pass verification">
         <div class="visual-check"><span>Board texture</span><span>ON</span></div>
         <div class="visual-check"><span>Terrain shadows</span><span>ON</span></div>
@@ -456,7 +456,7 @@ DOCUMENT LAYOUT
   </script>
 
   <!-- Ordered classic scripts keep GitHub Pages and phone uploads simple. -->
-  <script src="data/build-info.js?v=4a1"></script>
+  <script src="data/build-info.js?v=4b1"></script>
   <script>
     // Apply the version before the battle engine starts. This keeps the visible
     // badge trustworthy even if a later startup error prevents full bootstrap.
@@ -499,9 +499,10 @@ DOCUMENT LAYOUT
   <script src="src/input/battlefield-input.js"></script>
   <script src="src/rules/terrain-geometry.js?v=3t34"></script>
   <script src="src/rules/movement.js?v=3t2"></script>
-  <script src="src/rules/shooting.js?v=4a1"></script>
-  <script src="src/rules/shooting-integration.js?v=4a1"></script>
-  <script src="src/infrastructure/startup-validation.js?v=4a1"></script>
+  <script src="src/rules/morale.js?v=4b1"></script>
+  <script src="src/rules/shooting.js?v=4b1"></script>
+  <script src="src/rules/shooting-integration.js?v=4b1"></script>
+  <script src="src/infrastructure/startup-validation.js?v=4b1"></script>
   <script src="src/engine.js?v=3t34a"></script>
 </body>
 </html>

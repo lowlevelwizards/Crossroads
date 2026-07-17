@@ -94,7 +94,9 @@
   const rules = {
     baseHitTarget: 4,
     regularDamageTarget: 4,
-    wallProtectionDepth: 4
+    wallProtectionDepth: 4,
+    commandRadius: 6,
+    commandMoraleBonus: 1
   };
 
   const mmgRules = {
@@ -105,6 +107,10 @@
 
   const terrain = { instances: [] };
   const terrainById = new Map();
+  const morale = window.CrossroadsMoraleRules.create({
+    rules,
+    distanceBetweenUnits: distanceBetweenPoints
+  });
 
   function makeRules() {
     return window.CrossroadsShootingRules.create({
@@ -123,7 +129,8 @@
           ? terrainById.get(target.inBuilding)?.center ?? target
           : target
       }),
-      getTerrainInstance: id => terrainById.get(id) ?? null
+      getTerrainInstance: id => terrainById.get(id) ?? null,
+      analyzeIncomingPins: morale.analyzeIncomingPins
     });
   }
 
@@ -335,6 +342,39 @@
     equal(result.casualties, 4);
     equal(rollDice.remaining(), 0);
     equal(rollDice.consumed.length, 1);
+  });
+
+  test("Shooting delegates incoming-Pin routing to morale", () => {
+    let calls = 0;
+    const delegated = window.CrossroadsShootingRules.create({
+      rules,
+      weaponProfiles: WEAPONS,
+      unitQuality: QUALITY,
+      terrain,
+      mmgRules,
+      distanceBetweenPoints,
+      segmentRectClip,
+      resolveShooterPoint: shooter => shooter,
+      resolveTargetPoint: target => ({ unit: target, point: target }),
+      getTerrainInstance: () => null,
+      analyzeIncomingPins(target, delta) {
+        calls += 1;
+        return {
+          pinsBefore: target.pins,
+          pinDelta: delta,
+          pinsAfter: target.pins + delta,
+          morale: target.morale,
+          routed: false
+        };
+      }
+    });
+    delegated.resolveAttack({
+      shooter: unit({ weapons: { rifle: 1 } }),
+      target: unit({ id: "target" }),
+      trace: { distance: 12, cover: { saveTarget: null } },
+      rollDice: diceQueue([6], [1])
+    });
+    equal(calls, 1);
   });
 
   test("Casualties are capped by remaining soldiers", () => {

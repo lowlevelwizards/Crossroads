@@ -1,26 +1,38 @@
 "use strict";
 
 (() => {
-  // Foundation 4A staged integration seam.
+  // Foundation 4B.1 staged combat integration seam.
   //
-  // This file installs the pure shooting module when engine.js constructs the
-  // battlefield renderer. It deliberately keeps engine-owned logging, stats,
-  // casualty mutation, effects, outcomes, and activation flow in the engine.
-  // The previous engine calculations remain dormant during this test stage so
-  // the extraction can be rolled back without affecting unrelated systems.
+  // The pure morale module owns command support, Order Test calculation,
+  // Rally outcomes, and incoming-Pin routing. The pure shooting module owns
+  // firing analysis and attack calculation. The engine remains responsible
+  // for logs, statistics, state mutation, effects, outcomes, and activation
+  // flow. Installation occurs before the battlefield renderer captures its
+  // rule callbacks.
 
   const presentation = window.CrossroadsBattlefieldPresentation;
+  const moraleModule = window.CrossroadsMoraleRules;
   const shootingModule = window.CrossroadsShootingRules;
 
-  if (!presentation?.createUnitLayerRenderer || !shootingModule?.create) {
-    throw new Error("Shooting integration loaded before its dependencies.");
+  if (
+    !presentation?.createUnitLayerRenderer ||
+    !moraleModule?.create ||
+    !shootingModule?.create
+  ) {
+    throw new Error("Combat integration loaded before its dependencies.");
   }
 
   let installed = false;
+  let moraleRules = null;
   let shootingRules = null;
 
-  function installPureShootingRules() {
-    if (installed) return shootingRules;
+  function installPureCombatRules() {
+    if (installed) return { moraleRules, shootingRules };
+
+    moraleRules = moraleModule.create({
+      rules: RULES,
+      distanceBetweenUnits
+    });
 
     shootingRules = shootingModule.create({
       rules: RULES,
@@ -43,8 +55,76 @@
           point: buildingId ? buildingCenterPoint(buildingId) : targetPoint
         };
       },
-      getTerrainInstance: id => TERRAIN_GEOMETRY.get(id)
+      getTerrainInstance: id => TERRAIN_GEOMETRY.get(id),
+      analyzeIncomingPins: moraleRules.analyzeIncomingPins
     });
+
+    commandSupport = function commandSupportWithPureMorale(unit) {
+      return moraleRules.findCommandSupport(unit, livingUnits());
+    };
+
+    commandBonus = function commandBonusWithPureMorale(unit) {
+      return moraleRules.commandBonus(unit, livingUnits());
+    };
+
+    attemptOrder = function attemptOrderWithPureMorale(unit, order) {
+      const support = commandSupport(unit);
+      const analysis = moraleRules.analyzeOrderTest({
+        unit,
+        order,
+        support
+      });
+
+      if (!analysis.required) {
+        addLog(
+          `${capitalize(unit.faction)} ${unit.name}: ${order} ` +
+          "requires no Order Test."
+        );
+        return true;
+      }
+
+      const result = moraleRules.resolveOrderTest({
+        analysis,
+        unit,
+        order,
+        rollDice
+      });
+
+      lockActivationTransaction("dice rolled for the Order Test");
+      recordOrderTest(unit, result.passed);
+
+      addLog(
+        `${capitalize(unit.faction)} ${unit.name} (${qualityLabel(unit)}) ` +
+        `Order Test for ${order}: ${result.dice[0]} + ${result.dice[1]} = ` +
+        `${result.total}, needs ${result.target} or less` +
+        `${support ? ` (Officer +${analysis.officerBonus})` : ""}` +
+        `${analysis.ignoresPins ? " (Rally ignores Pins)" : ""}.`,
+        result.passed ? "morale" : "fail"
+      );
+
+      if (!result.passed) {
+        unit.down = result.failureState.down;
+        unit.order = result.failureState.order;
+        unit.activated = result.failureState.activated;
+        addLog(
+          `${capitalize(unit.faction)} ${unit.name} fails and goes Down.`,
+          "fail"
+        );
+        finishActivationState();
+        return false;
+      }
+
+      // Rally clearing remains engine-owned after its presentation effect.
+      if (!analysis.ignoresPins && result.pinsRemovedOnPass > 0) {
+        unit.pins = result.pinsAfterPass;
+        addLog(
+          `${unit.name} passes and removes 1 Pin; ${unit.pins} remain.`,
+          "morale"
+        );
+      }
+
+      return true;
+    };
 
     isMMGTeam = shootingRules.isMMGTeam;
     analyzeMMGFireArc = shootingRules.analyzeMMGFireArc;
@@ -197,30 +277,39 @@
     };
 
     installed = true;
-    window.CROSSROADS_SHOOTING_EXTRACTION = Object.freeze({
+    window.CROSSROADS_COMBAT_EXTRACTION = Object.freeze({
       active: true,
-      stage: "Foundation 4A",
-      mode: "pure-rules-with-engine-commit"
+      stage: "Foundation 4B.1",
+      mode: "pure-shooting-and-morale-with-engine-commit"
     });
+    window.CROSSROADS_SHOOTING_EXTRACTION = window.CROSSROADS_COMBAT_EXTRACTION;
+    window.CROSSROADS_MORALE_EXTRACTION = window.CROSSROADS_COMBAT_EXTRACTION;
 
-    return shootingRules;
+    return { moraleRules, shootingRules };
   }
 
   window.CrossroadsBattlefieldPresentation = Object.freeze({
     ...presentation,
     createUnitLayerRenderer(dependencies) {
-      const rules = installPureShootingRules();
+      const rules = installPureCombatRules();
       return presentation.createUnitLayerRenderer({
         ...dependencies,
-        isMMGTeam: rules.isMMGTeam,
-        analyzeShot: rules.analyzeShot,
-        availableFireGroups: rules.availableFireGroups
+        isMMGTeam: rules.shootingRules.isMMGTeam,
+        analyzeShot: rules.shootingRules.analyzeShot,
+        availableFireGroups: rules.shootingRules.availableFireGroups,
+        commandSupport
       });
     }
   });
 
-  window.CrossroadsShootingIntegration = Object.freeze({
+  const integrationApi = Object.freeze({
     isInstalled: () => installed,
+    getMoraleRules: () => moraleRules,
+    getShootingRules: () => shootingRules,
     getRules: () => shootingRules
   });
+
+  window.CrossroadsCombatIntegration = integrationApi;
+  // Compatibility alias for the already tested Foundation 4A diagnostic.
+  window.CrossroadsShootingIntegration = integrationApi;
 })();

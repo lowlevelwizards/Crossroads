@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crossroads Combat Rules Test Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.5; background: #f4f1e8; }
+    h1 { margin-bottom: 4px; }
+    #summary { font-weight: 800; padding: 10px 12px; background: #fff; border: 1px solid #aaa; }
+    .ok { color: #245d35; }
+    .fail { color: #8b2f29; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-top: 16px; }
+    article { background: #fff; border: 1px solid #aaa; border-radius: 8px; overflow: hidden; }
+    article h2 { margin: 0; padding: 10px 14px; border-bottom: 1px solid #bbb; font-size: 18px; }
+    iframe { display: block; width: 100%; min-height: 620px; border: 0; }
+  </style>
+</head>
+<body>
+  <h1>Foundation 4B.1 Combat Rules</h1>
+  <p id="summary">Running shooting and morale characterization suites…</p>
+  <div class="grid">
+    <article>
+      <h2>Shooting</h2>
+      <iframe id="shootingFrame" src="shooting-rules.html" title="Shooting rules tests"></iframe>
+    </article>
+    <article>
+      <h2>Morale</h2>
+      <iframe id="moraleFrame" src="morale-rules.html" title="Morale rules tests"></iframe>
+    </article>
+  </div>
+  <script>
+    (() => {
+      const ids = ["shootingFrame", "moraleFrame"];
+      const states = new Map();
+      const summary = document.getElementById("summary");
+
+      function update() {
+        if (states.size < ids.length) return;
+        const entries = [...states.values()];
+        const failed = entries.some(entry => !entry.ok);
+        summary.className = failed ? "fail" : "ok";
+        summary.textContent = `${failed ? "FAIL" : "PASS"} — ${entries.map(entry => entry.text).join(" · ")}`;
+      }
+
+      for (const id of ids) {
+        const frame = document.getElementById(id);
+        frame.addEventListener("load", () => {
+          const childSummary = frame.contentDocument?.getElementById("summary");
+          const text = childSummary?.textContent ?? `${id} did not report`;
+          states.set(id, {
+            text,
+            ok: childSummary?.classList.contains("ok") ?? false
+          });
+          update();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

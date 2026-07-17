@@ -3,5 +3,6 @@
 global.window = global;
 require("../data/weapons.js");
 require("../data/unit-quality.js");
+require("../src/rules/morale.js");
 require("../src/rules/shooting.js");
 require("./shooting-rules.test.js");

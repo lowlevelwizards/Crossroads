@@ -15,10 +15,20 @@
     segmentRectClip,
     resolveShooterPoint,
     resolveTargetPoint,
-    getTerrainInstance
+    getTerrainInstance,
+    analyzeIncomingPins
   }) {
-    if (!rules || !weaponProfiles || !unitQuality || !terrain || !mmgRules) {
-      throw new Error("Crossroads shooting rules require data and rule dependencies.");
+    if (
+      !rules ||
+      !weaponProfiles ||
+      !unitQuality ||
+      !terrain ||
+      !mmgRules ||
+      typeof analyzeIncomingPins !== "function"
+    ) {
+      throw new Error(
+        "Crossroads shooting rules require data, geometry, and morale dependencies."
+      );
     }
 
     function qualityProfile(unitOrQuality) {
@@ -347,9 +357,9 @@
       }
 
       const pinDelta = totalHits > 0 ? 1 : 0;
-      const pinsAfter = (target?.pins ?? 0) + pinDelta;
-      const routedByPins =
-        totalHits > 0 && pinsAfter >= (target?.morale ?? Infinity);
+      const pinImpact = analyzeIncomingPins(target, pinDelta);
+      const pinsAfter = pinImpact.pinsAfter;
+      const routedByPins = pinImpact.routed;
 
       if (routedByPins) {
         const casualties = Math.max(0, target?.soldiers ?? 0);
