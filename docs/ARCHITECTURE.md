@@ -263,3 +263,13 @@ tests/combat-rules.html
 2. Use playtesting to tune deployment, pressure, objectives, and terrain.
 3. Add only the support weapon Mokra proves is missing first.
 4. Keep combat rule changes separate from scenario-content commits.
+
+## Mokra M1 scenario extension
+
+Mokra introduces two reusable scenario capabilities without adding scenario-id branches to combat:
+
+- `src/rules/objectives.js` calculates ownership and scoring for grouped control points.
+- `src/rules/scenario-runtime.js` adapts grouped objectives and named deployment sub-zones to the existing coordinator while preserving legacy single-objective scenarios.
+- `rail_embankment` uses the existing crossing/hard-cover contract. Mokra places separate embankment segments between open railway-crossing pieces, so crossing exceptions emerge from terrain composition rather than bespoke movement code.
+
+Scenario definitions remain pure data. New grouped-control scenarios should use `type: "control_group"`; new split deployments should put `subzones` on the normal faction zone and assign `deploymentZone` on force entries.

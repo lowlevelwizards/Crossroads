@@ -29,6 +29,7 @@ DOCUMENT LAYOUT
     <link rel="stylesheet" href="styles/faction-kits.css?v=3ni6">
     <link rel="stylesheet" href="styles/unit-transforms.css?v=3t35">
     <link rel="stylesheet" href="styles/tactical-states.css?v=3nh3">
+    <link rel="stylesheet" href="styles/mokra.css?v=m1">
 
 </head>
 <body class="menu-open">
@@ -61,7 +62,7 @@ DOCUMENT LAYOUT
       <div class="scenario-menu-heading">
         <div class="modal-kicker">Choose Scenario</div>
         <h2 id="scenarioMenuTitle">Select a Mission</h2>
-        <p>Three battles and one terrain catalogue. All use the same modular battlefield system.</p>
+        <p>Four battles and one terrain catalogue. All use the same modular battlefield system.</p>
       </div>
       <div class="scenario-card-grid">
         <article class="scenario-card crossroads">
@@ -87,6 +88,14 @@ DOCUMENT LAYOUT
           <p>A compact defensive battle. Poland holds a farmhouse and barn while Germany attacks through fields, walls, and woods.</p>
           <div class="scenario-card-meta"><span>4 rounds</span><span>Defensive</span><span>Fixed deployment</span></div>
           <button type="button" onclick="window.CrossroadsFlow.selectScenario('hold_the_farm');">SELECT HOLD THE FARM</button>
+        </article>
+        <article class="scenario-card mokra">
+          <div class="scenario-card-symbol">║</div>
+          <h3>Battle of Mokra</h3>
+          <div class="scenario-card-tag">Hold the railway line</div>
+          <p>Polish dismounted cavalry defends woods, farms, and three railway crossings against a concentrated German attack.</p>
+          <div class="scenario-card-meta"><span>6 rounds</span><span>Asymmetric</span><span>Player deployment</span></div>
+          <button type="button" onclick="window.CrossroadsFlow.selectScenario('mokra');">SELECT MOKRA</button>
         </article>
         <article class="scenario-card terrain-library-card">
           <div class="scenario-card-symbol">▦</div>
@@ -237,6 +246,7 @@ DOCUMENT LAYOUT
           <option value="take_the_crossroads">Take the Crossroads</option>
           <option value="hold_the_farm">Hold the Farm</option>
           <option value="breakthrough">Breakthrough</option>
+          <option value="mokra">Battle of Mokra</option>
           <option value="terrain_library">Terrain Library</option>
         </select>
         <div id="scenarioBrief" class="scenario-brief"></div>
@@ -456,7 +466,7 @@ DOCUMENT LAYOUT
   </script>
 
   <!-- Ordered classic scripts keep GitHub Pages and phone uploads simple. -->
-  <script src="data/build-info.js?v=4b2"></script>
+  <script src="data/build-info.js?v=m1"></script>
   <script>
     // Apply the version before the battle engine starts. This keeps the visible
     // badge trustworthy even if a later startup error prevents full bootstrap.
@@ -474,11 +484,11 @@ DOCUMENT LAYOUT
   </script>
   <script src="data/stage.js"></script>
   <script src="data/weapons.js"></script>
-  <script src="data/terrain.js?v=3t34"></script>
+  <script src="data/terrain.js?v=m1"></script>
   <script src="data/unit-quality.js"></script>
   <script src="data/unit-types.js?v=3ni3"></script>
   <script src="data/faction-kits.js?v=3ni3"></script>
-  <script src="data/scenarios.js?v=3t34"></script>
+  <script src="data/scenarios.js?v=m1"></script>
   <script src="src/presentation/buildings.js?v=3t34"></script>
   <script src="src/presentation/terrain.js?v=3t34"></script>
   <script src="src/infrastructure/commands.js"></script>
@@ -499,11 +509,13 @@ DOCUMENT LAYOUT
   <script src="src/input/battlefield-input.js"></script>
   <script src="src/rules/terrain-geometry.js?v=3t34"></script>
   <script src="src/rules/movement.js?v=3t2"></script>
+  <script src="src/rules/objectives.js?v=m1"></script>
+  <script src="src/rules/scenario-runtime.js?v=m1"></script>
   <script src="src/rules/morale.js?v=4c"></script>
   <script src="src/rules/shooting.js?v=4c"></script>
   <script src="src/rules/assault.js?v=4c"></script>
   <script src="src/rules/combat-runtime.js?v=4c"></script>
-  <script src="src/infrastructure/startup-validation.js?v=4c"></script>
-  <script src="src/engine.js?v=4c"></script>
+  <script src="src/infrastructure/startup-validation.js?v=m1"></script>
+  <script src="src/engine.js?v=m1"></script>
 </body>
 </html>

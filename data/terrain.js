@@ -1,21 +1,13 @@
 "use strict";
 
-/* BUILD T3 — CROSSROADS TERRAIN LIBRARY MVP */
+/* CROSSROADS modular terrain registry. */
 const openRules = Object.freeze({ movement: "open", cover: null, los: "clear" });
 const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5 });
 const crossingHard = Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 });
 const buildingRules = Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 });
 
 function terrainType(id, family, renderer, label, rules, editor = {}, presentation = {}) {
-  return Object.freeze({
-    id,
-    family,
-    renderer,
-    label,
-    rules,
-    editor: Object.freeze(editor),
-    presentation: Object.freeze(presentation)
-  });
+  return Object.freeze({ id, family, renderer, label, rules, editor: Object.freeze(editor), presentation: Object.freeze(presentation) });
 }
 
 function buildingPresentation(shape, defaultAppearance, entryX = 0.5) {
@@ -43,6 +35,7 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   road_curve: terrainType("road_curve", "transport", "road_curve", "road bend", openRules, { rotatable: true }),
   road_crossroads: terrainType("road_crossroads", "transport", "road_crossroads", "crossroads", openRules, { rotatable: true }),
   rail_straight: terrainType("rail_straight", "transport", "rail", "railway", openRules, { rotatable: true, resizable: true }),
+  rail_embankment: terrainType("rail_embankment", "transport", "rail", "raised railway embankment", crossingHard, { rotatable: true, resizable: true }),
   rail_crossing: terrainType("rail_crossing", "transport", "rail_crossing", "rail crossing", openRules, { rotatable: true }),
 
   woods: terrainType("woods", "natural", "woods", "woods", roughSoft, { rotatable: true, resizable: true }),
@@ -54,36 +47,12 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   ditch: terrainType("ditch", "linear", "ditch", "ditch", Object.freeze({ movement: "rough", cover: "soft", los: "clear", save: 5 }), { rotatable: true, resizable: true }),
   stream: terrainType("stream", "water", "stream", "stream", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
 
-  small_cottage: terrainType(
-    "small_cottage", "building", "building", "small cottage", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("small-cottage", "whitewash_red", 0.50)
-  ),
-  medium_cottage: terrainType(
-    "medium_cottage", "building", "building", "medium cottage", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("medium-cottage", "peach_plaster_red", 0.50)
-  ),
-  long_farmhouse: terrainType(
-    "long_farmhouse", "building", "building", "long farmhouse", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("long-farmhouse", "mixed_plaster_red", 0.36)
-  ),
-  barn: terrainType(
-    "barn", "building", "building", "barn", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("barn", "weathered_charcoal", 0.50)
-  ),
-  shed: terrainType(
-    "shed", "building", "building", "shed", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("shed", "timber_brown", 0.40)
-  ),
-  church: terrainType(
-    "church", "building", "building", "church", buildingRules,
-    { rotatable: true, resizable: true },
-    buildingPresentation("church", "plaster_charcoal", 0.21)
-  ),
+  small_cottage: terrainType("small_cottage", "building", "building", "small cottage", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("small-cottage", "whitewash_red", 0.50)),
+  medium_cottage: terrainType("medium_cottage", "building", "building", "medium cottage", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("medium-cottage", "peach_plaster_red", 0.50)),
+  long_farmhouse: terrainType("long_farmhouse", "building", "building", "long farmhouse", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("long-farmhouse", "mixed_plaster_red", 0.36)),
+  barn: terrainType("barn", "building", "building", "barn", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("barn", "weathered_charcoal", 0.50)),
+  shed: terrainType("shed", "building", "building", "shed", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("shed", "timber_brown", 0.40)),
+  church: terrainType("church", "building", "building", "church", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("church", "plaster_charcoal", 0.21)),
 
   foxholes: terrainType("foxholes", "defensive", "foxholes", "foxholes", Object.freeze({ movement: "open", cover: "hard", los: "clear", save: 4 })),
   sandbags: terrainType("sandbags", "defensive", "sandbags", "sandbags", crossingHard),

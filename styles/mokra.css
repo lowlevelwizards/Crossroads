@@ -1,0 +1,12 @@
+/* Mokra M1: reusable grouped objectives and raised railway treatment. */
+.scenario-objective-layer { position:absolute; inset:0; pointer-events:none; z-index:17; }
+.scenario-objective-point { position:absolute; width:var(--objective-radius-x); height:var(--objective-radius-y); transform:translate(-50%,-50%); border:2px dashed rgba(253,225,133,.85); border-radius:50%; display:grid; place-items:center; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.scenario-objective-point span { width:22px; height:22px; display:grid; place-items:center; border-radius:50%; background:#242a2c; color:#fff3c4; border:2px solid #fff3c4; font:800 12px/1 sans-serif; }
+.scenario-objective-point b { position:absolute; top:calc(50% + 15px); padding:2px 5px; border-radius:4px; background:rgba(23,27,28,.82); color:#f7edcf; font:700 8px/1.1 sans-serif; letter-spacing:.04em; white-space:nowrap; }
+.scenario-objective-point.state-blue { border-color:#6ea4c7; background:rgba(62,119,157,.13); }
+.scenario-objective-point.state-red { border-color:#c86c58; background:rgba(157,66,48,.14); }
+.scenario-objective-point.state-contested { border-color:#e6c35f; background:rgba(230,195,95,.13); }
+.scenario-objective-point.state-none { opacity:.78; }
+.terrain-id-rail_embankment .rail-ballast { box-shadow:0 0 0 5px rgba(111,87,53,.48), inset 0 0 0 2px rgba(61,48,33,.42); }
+.terrain-id-rail_embankment { filter:drop-shadow(3px 2px 2px rgba(47,37,24,.28)); }
+@media (max-width:760px) { .scenario-objective-point b { display:none; } .scenario-objective-point span { width:18px; height:18px; font-size:10px; } }

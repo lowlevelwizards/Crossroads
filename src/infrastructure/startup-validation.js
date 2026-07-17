@@ -29,6 +29,8 @@
     ["CrossroadsCameraInput", "src/input/camera-input.js"],
     ["CrossroadsBattlefieldInput", "src/input/battlefield-input.js"],
     ["CrossroadsMovementRules", "src/rules/movement.js"],
+    ["CrossroadsObjectiveRules", "src/rules/objectives.js"],
+    ["CrossroadsScenarioRuntime", "src/rules/scenario-runtime.js"],
     ["CrossroadsMoraleRules", "src/rules/morale.js"],
     ["CrossroadsShootingRules", "src/rules/shooting.js"],
     ["CrossroadsAssaultRules", "src/rules/assault.js"],
