@@ -273,3 +273,11 @@ Mokra introduces two reusable scenario capabilities without adding scenario-id b
 - `rail_embankment` uses the existing crossing/hard-cover contract. Mokra places separate embankment segments between open railway-crossing pieces, so crossing exceptions emerge from terrain composition rather than bespoke movement code.
 
 Scenario definitions remain pure data. New grouped-control scenarios should use `type: "control_group"`; new split deployments should put `subzones` on the normal faction zone and assign `deploymentZone` on force entries.
+
+## Mokra M1.1 terrain contracts
+
+Terrain now separates its visual rectangle from its authoritative rules footprint. Scenario data continues to describe the artwork size; `terrain-geometry.js` normalizes inset building footprints once, and all existing movement, deployment, LOS, occupancy, and assault consumers receive that same rules rectangle.
+
+`terrain-polish.js` is a presentation-only decorator loaded immediately after the base terrain renderer. It owns primitive namespacing, field-row generation, and scene-depth metadata. It does not change terrain rules or scenario state.
+
+Road, stream, and field variants remain registry data using shared renderers. New scenarios should compose those reusable pieces rather than add scenario-specific CSS or combat branches.
