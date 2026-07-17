@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Terrain Editor E1</title>
-  <link rel="stylesheet" href="styles/main.css?v=e1">
-  <link rel="stylesheet" href="styles/terrain.css?v=e1">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=e1">
-  <link rel="stylesheet" href="styles/mokra.css?v=e1">
-  <link rel="stylesheet" href="styles/stabilization.css?v=e1">
-  <link rel="stylesheet" href="styles/editor.css?v=e1">
+  <title>Crossroads — Terrain Editor E1.2</title>
+  <link rel="stylesheet" href="styles/main.css?v=e12">
+  <link rel="stylesheet" href="styles/terrain.css?v=e12">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=e12">
+  <link rel="stylesheet" href="styles/mokra.css?v=e12">
+  <link rel="stylesheet" href="styles/stabilization.css?v=e12">
+  <link rel="stylesheet" href="styles/editor.css?v=e12">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Terrain Editor E1</h1>
-      <p>Compose scenario data directly on the 72″ × 48″ tabletop. The editor document, renderer, validation, export, and playtest bridge are separate from the battle engine.</p>
+      <h1>CROSSROADS — Terrain Editor E1.2</h1>
+      <p>Compose scenario data directly on the tabletop with pan/zoom, visibility controls, waypoint drawing, segment editing, and scenario templates.</p>
     </div>
     <div class="editor-header-actions">
       <a id="returnToGameLink" class="editor-button editor-button-quiet" href="index.html">Return to Game</a>
@@ -28,9 +28,20 @@
 
   <main class="editor-shell">
     <aside class="editor-panel editor-library-panel" aria-label="Scenario and object library">
-      <section class="editor-panel-section">
+      <section class="editor-panel-section editor-scenario-section">
+        <button id="newScenarioButton" class="editor-button editor-button-primary editor-button-wide editor-button-top" type="button">+ New Scenario</button>
         <label class="editor-field-label" for="editorScenarioSelect">Scenario</label>
         <select id="editorScenarioSelect" class="editor-control"></select>
+        <label class="editor-field-label" for="scenarioTypeSelect">Scenario type</label>
+        <select id="scenarioTypeSelect" class="editor-control">
+          <option value="control">Control</option>
+          <option value="breakthrough">Breakthrough</option>
+          <option value="delay">Delay</option>
+          <option value="elimination">Elimination</option>
+          <option value="survival">Survival</option>
+          <option value="escort">Escort</option>
+          <option value="custom">Custom</option>
+        </select>
         <div class="editor-inline-actions">
           <button id="resetScenarioButton" class="editor-button editor-button-quiet" type="button">Reset Source</button>
           <button id="fitButton" class="editor-button editor-button-quiet" type="button">Fit Table</button>
@@ -48,7 +59,11 @@
         <label class="editor-field-label" for="linearStyleSelect">Linear terrain</label>
         <div class="editor-row">
           <select id="linearStyleSelect" class="editor-control"></select>
-          <button id="addLinearButton" class="editor-button" type="button">Add</button>
+          <button id="addLinearButton" class="editor-button" type="button">Draw Path</button>
+        </div>
+        <div id="linearDrawActions" class="editor-draw-actions" hidden>
+          <button id="finishLinearButton" class="editor-button editor-button-primary" type="button">Finish Path</button>
+          <button id="cancelLinearButton" class="editor-button editor-button-quiet" type="button">Cancel</button>
         </div>
 
         <label class="editor-field-label" for="unitTypeSelect">Unit</label>
@@ -58,14 +73,32 @@
           <button id="addUnitButton" class="editor-button" type="button">Add</button>
         </div>
 
-        <button id="addObjectiveButton" class="editor-button editor-button-wide" type="button">Add Objective</button>
+        <label class="editor-field-label" for="objectiveTypeSelect">Objective</label>
+        <div class="editor-row">
+          <select id="objectiveTypeSelect" class="editor-control">
+            <option value="control_zone">Control point</option>
+            <option value="control_group">Control group</option>
+            <option value="crossing">Crossing</option>
+            <option value="exit_unit">Exit edge</option>
+            <option value="destroy_target">Destroy target</option>
+            <option value="protect_target">Protect target</option>
+            <option value="unit_objective">Unit objective</option>
+            <option value="custom">Custom marker</option>
+          </select>
+          <button id="addObjectiveButton" class="editor-button" type="button">Add</button>
+        </div>
       </section>
 
       <section class="editor-panel-section editor-layer-controls">
         <h2>View</h2>
         <label><input id="showGridToggle" type="checkbox" checked> Inch grid</label>
-        <label><input id="showFootprintsToggle" type="checkbox"> Rules footprints</label>
+        <label><input id="showTerrainToggle" type="checkbox" checked> Discrete terrain</label>
+        <label><input id="showLinearToggle" type="checkbox" checked> Linear terrain</label>
+        <label><input id="showUnitsToggle" type="checkbox" checked> Units</label>
+        <label><input id="showUnitLabelsToggle" type="checkbox" checked> Unit labels</label>
+        <label><input id="showObjectivesToggle" type="checkbox" checked> Objectives</label>
         <label><input id="showZonesToggle" type="checkbox" checked> Deployment zones</label>
+        <label><input id="showFootprintsToggle" type="checkbox"> Rules footprints</label>
         <label><input id="snapToggle" type="checkbox" checked> Snap to ¼″</label>
         <div class="editor-zoom-row">
           <button id="zoomOutButton" class="editor-button editor-button-quiet" type="button" aria-label="Zoom out">−</button>
@@ -79,6 +112,7 @@
           <h2>Objects</h2>
           <span id="objectCount">0</span>
         </div>
+        <input id="objectFilterInput" class="editor-control editor-object-filter" type="search" placeholder="Filter objects…" aria-label="Filter objects">
         <div id="objectList" class="editor-object-list"></div>
       </section>
     </aside>
@@ -89,7 +123,7 @@
           <strong id="scenarioTitleReadout">Scenario</strong>
           <span id="scenarioSizeReadout">72″ × 48″</span>
         </div>
-        <div class="editor-workspace-help">Drag objects and waypoints. Use the lower-right handle to resize and the round handle to rotate.</div>
+        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. Draw paths by clicking waypoints, then press Enter or Finish Path.</div>
       </div>
       <div id="editorViewport" class="editor-viewport">
         <div id="editorStage" class="editor-stage">
@@ -149,20 +183,57 @@
     </aside>
   </main>
 
-  <script src="data/terrain.js?v=e1"></script>
-  <script src="data/linear-terrain.js?v=e1"></script>
-  <script src="data/unit-quality.js?v=e1"></script>
-  <script src="data/unit-types.js?v=e1"></script>
-  <script src="data/scenarios.js?v=e1"></script>
-  <script src="src/presentation/buildings.js?v=e1"></script>
-  <script src="src/presentation/terrain.js?v=e1"></script>
-  <script src="src/rules/path-geometry.js?v=e1"></script>
-  <script src="src/rules/linear-terrain.js?v=e1"></script>
-  <script src="src/presentation/linear-terrain.js?v=e1"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e1"></script>
-  <script src="src/rules/terrain-geometry.js?v=e1"></script>
-  <script src="src/editor/editor-document.js?v=e1"></script>
-  <script src="src/editor/editor-validation.js?v=e1"></script>
-  <script src="src/editor/editor.js?v=e1"></script>
+  <dialog id="newScenarioDialog" class="editor-dialog">
+    <form id="newScenarioForm" method="dialog" class="editor-dialog-form">
+      <div class="editor-section-heading"><h2>New Scenario</h2><button class="editor-dialog-close" type="button" data-dialog-close aria-label="Close">×</button></div>
+      <label>Starting point
+        <select id="newScenarioTemplate" class="editor-control">
+          <option value="blank">Blank table</option>
+          <option value="duplicate">Duplicate current scenario</option>
+        </select>
+      </label>
+      <label>Scenario name<input id="newScenarioTitle" class="editor-control" type="text" value="Untitled Scenario" required></label>
+      <label>Internal ID<input id="newScenarioId" class="editor-control" type="text" value="untitled-scenario" required></label>
+      <div class="editor-dialog-grid">
+        <label>Width (inches)<input id="newScenarioWidth" class="editor-control" type="number" min="12" step="1" value="72" required></label>
+        <label>Height (inches)<input id="newScenarioHeight" class="editor-control" type="number" min="12" step="1" value="48" required></label>
+        <label>Rounds<input id="newScenarioRounds" class="editor-control" type="number" min="1" step="1" value="6" required></label>
+        <label>Scenario type
+          <select id="newScenarioType" class="editor-control">
+            <option value="control">Control</option>
+            <option value="breakthrough">Breakthrough</option>
+            <option value="delay">Delay</option>
+            <option value="elimination">Elimination</option>
+            <option value="survival">Survival</option>
+            <option value="escort">Escort</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+      </div>
+      <label>First deployment
+        <select id="newScenarioStartingFaction" class="editor-control"><option value="blue">Blue / Poland</option><option value="red">Red / Germany</option></select>
+      </label>
+      <div class="editor-dialog-actions">
+        <button class="editor-button editor-button-quiet" type="button" data-dialog-close>Cancel</button>
+        <button class="editor-button editor-button-primary" type="submit">Create Scenario</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="data/terrain.js?v=e12"></script>
+  <script src="data/linear-terrain.js?v=e12"></script>
+  <script src="data/unit-quality.js?v=e12"></script>
+  <script src="data/unit-types.js?v=e12"></script>
+  <script src="data/scenarios.js?v=e12"></script>
+  <script src="src/presentation/buildings.js?v=e12"></script>
+  <script src="src/presentation/terrain.js?v=e12"></script>
+  <script src="src/rules/path-geometry.js?v=e12"></script>
+  <script src="src/rules/linear-terrain.js?v=e12"></script>
+  <script src="src/presentation/linear-terrain.js?v=e12"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e12"></script>
+  <script src="src/rules/terrain-geometry.js?v=e12"></script>
+  <script src="src/editor/editor-document.js?v=e12"></script>
+  <script src="src/editor/editor-validation.js?v=e12"></script>
+  <script src="src/editor/editor.js?v=e12"></script>
 </body>
 </html>

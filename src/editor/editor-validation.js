@@ -1,6 +1,9 @@
 "use strict";
 
 (() => {
+  const OBJECTIVE_TYPES = new Set(["control_zone", "control_group", "crossing", "exit_unit", "destroy_target", "protect_target", "unit_objective", "custom"]);
+  const SCENARIO_TYPES = new Set(["control", "breakthrough", "delay", "elimination", "survival", "escort", "custom"]);
+
   function number(value, fallback = 0) {
     const result = Number(value);
     return Number.isFinite(result) ? result : fallback;
@@ -57,6 +60,10 @@
     const width = number(table.width);
     const height = number(table.height);
     const issues = [];
+    const scenarioType = String(scenario?.victory?.type || scenario?.scoring?.type || "control");
+    if (scenarioType && !SCENARIO_TYPES.has(scenarioType) && scenarioType !== "control_group") {
+      issues.push(issue("warning", "scenario-type", `Unknown scenario type: ${scenarioType}.`));
+    }
 
     if (width <= 0 || height <= 0) {
       issues.push(issue("error", "table-size", "Table width and height must be greater than zero."));
@@ -167,7 +174,22 @@
     for (const objective of scenario.objectives ?? []) {
       const selection = { kind:"objective", id:objective.id };
       registerId(objective.id, selection);
-      const points = objective.type === "control_group" ? objective.points ?? [] : [objective];
+      const objectiveType = objective.type || "control_zone";
+      if (!OBJECTIVE_TYPES.has(objectiveType)) issues.push(issue("error", "objective-type", `${objective.id} uses unknown objective type ${objectiveType}.`, selection));
+      if (objectiveType === "control_group" && (!Array.isArray(objective.points) || !objective.points.length)) {
+        issues.push(issue("error", "objective-points", `${objective.id} needs at least one control point.`, selection));
+      }
+      if (objectiveType === "exit_unit") {
+        if (!["blue", "red", "top", "bottom"].includes(objective.edge)) issues.push(issue("error", "objective-edge", `${objective.id} needs a valid exit edge.`, selection));
+        if (!["blue", "red"].includes(objective.faction)) issues.push(issue("error", "objective-faction", `${objective.id} needs a valid faction.`, selection));
+      }
+      if ((objectiveType === "destroy_target" || objectiveType === "protect_target") && !String(objective.targetId || "").trim()) {
+        issues.push(issue("warning", "objective-target", `${objective.id} has no target object ID.`, selection));
+      }
+      if (objectiveType === "unit_objective" && !String(objective.unitId || "").trim()) {
+        issues.push(issue("warning", "objective-unit", `${objective.id} has no target unit ID.`, selection));
+      }
+      const points = objectiveType === "control_group" ? objective.points ?? [] : [objective];
       for (const point of points) {
         const location = { x:number(point.x), y:number(point.y) };
         if (location.x < 0 || location.y < 0 || location.x > width || location.y > height) {

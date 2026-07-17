@@ -50,6 +50,19 @@ assert(copy && copy.id !== "field-1", "duplicate must create a new ID");
 assert.strictEqual(document.terrain.length, 2, "duplicate must append to the correct collection");
 assert(DOC.remove(document, { kind:"terrain", id:copy.id }), "remove must delete the selected object");
 
+
+const blank = DOC.createBlankScenario({ id:"blank", title:"Blank", width:60, height:40, rounds:5, type:"control", startingFaction:"red" });
+assert.strictEqual(blank.table.width, 60, "blank scenario must use requested table width");
+assert.strictEqual(blank.deployment.order[0], "red", "blank scenario must preserve the requested starting faction");
+
+const segmentDocument = DOC.create(source);
+segmentDocument.linearTerrain[0].points = [{x:0,y:24},{x:20,y:24},{x:40,y:24},{x:72,y:24}];
+const inserted = DOC.insertLinearWaypoint(segmentDocument, "road-1", 1);
+assert(inserted && segmentDocument.linearTerrain[0].points.length === 5, "segment waypoint insertion must add a midpoint");
+const split = DOC.deleteLinearSegment(segmentDocument, "road-1", 2);
+assert(split?.split, "deleting a middle section must split the path");
+assert.strictEqual(segmentDocument.linearTerrain.length, 2, "path split must create a second linear terrain object");
+
 const playtest = DOC.playtestScenario(document);
 assert.strictEqual(playtest.id, "editor_playtest", "playtest scenario must use the editor runtime ID");
 assert.strictEqual(playtest.deployment.mode, "fixed", "playtest must preserve current positions");
@@ -80,6 +93,14 @@ assert(editorSource.includes("requestedScenarioId"), "editor must resolve a scen
 assert(editorSource.includes("crossroads.editor.lastScenario"), "editor must remember the last scenario edited");
 assert(editorSource.includes("TERRAIN_PRESENTATION.renderScenarioTerrain"), "editor must reuse the runtime terrain renderer");
 assert(editorSource.includes("CrossroadsEditorValidation"), "editor must use the validation boundary");
+assert(editorSource.includes("onViewportWheel"), "editor must support wheel zoom");
+assert(editorSource.includes("startPan"), "editor must support click-drag panning");
+assert(editorSource.includes("finishLinearDraw"), "editor must support waypoint path generation");
+assert(editorSource.includes("deleteLinearSegment"), "editor must expose individual path-section deletion");
+assert(editorHtml.includes("showUnitsToggle"), "editor must expose unit visibility controls");
+assert(editorHtml.includes("newScenarioButton"), "editor must expose new scenario creation at the top of the panel");
+assert(editorHtml.includes("objectiveTypeSelect"), "editor must expose objective type selection");
+
 
 const playtestSelect = { value:"", appendChild(node) { this.option = node; } };
 const playtestMainMenu = { style:{} };
@@ -106,4 +127,4 @@ assert(playtestContext.window.CROSSROADS_SCENARIOS.editor_playtest, "playtest br
 assert.strictEqual(playtestSelect.value, "editor_playtest", "playtest bridge must select the injected scenario before engine startup");
 assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge must mark the runtime document");
 
-console.log("PASS — Terrain Editor E1 document, validation, source wiring, and playtest bridge checks passed.");
+console.log("PASS — Terrain Editor E1.2 document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");

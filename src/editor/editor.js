@@ -10,16 +10,20 @@
   const TERRAIN_PRESENTATION = window.CrossroadsTerrainPresentation;
 
   if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION) {
-    throw new Error("Terrain Editor E1 dependencies did not load.");
+    throw new Error("Terrain Editor E1.2 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
   const HISTORY_LIMIT = 40;
   const PLAYTEST_STORAGE_KEY = "crossroads.editor.playtest";
   const LAST_SCENARIO_STORAGE_KEY = "crossroads.editor.lastScenario";
+  const CUSTOM_SCENARIOS_STORAGE_KEY = "crossroads.editor.customScenarios";
+  const scenarioSources = new Map(Object.entries(SCENARIOS));
 
   const refs = Object.freeze({
     scenarioSelect: document.getElementById("editorScenarioSelect"),
+    scenarioTypeSelect: document.getElementById("scenarioTypeSelect"),
+    newScenarioButton: document.getElementById("newScenarioButton"),
     returnToGameLink: document.getElementById("returnToGameLink"),
     terrainTypeSelect: document.getElementById("terrainTypeSelect"),
     linearStyleSelect: document.getElementById("linearStyleSelect"),
@@ -27,18 +31,28 @@
     unitTypeSelect: document.getElementById("unitTypeSelect"),
     addTerrainButton: document.getElementById("addTerrainButton"),
     addLinearButton: document.getElementById("addLinearButton"),
+    linearDrawActions: document.getElementById("linearDrawActions"),
+    finishLinearButton: document.getElementById("finishLinearButton"),
+    cancelLinearButton: document.getElementById("cancelLinearButton"),
     addUnitButton: document.getElementById("addUnitButton"),
     addObjectiveButton: document.getElementById("addObjectiveButton"),
+    objectiveTypeSelect: document.getElementById("objectiveTypeSelect"),
     resetScenarioButton: document.getElementById("resetScenarioButton"),
     fitButton: document.getElementById("fitButton"),
     zoomOutButton: document.getElementById("zoomOutButton"),
     zoomInButton: document.getElementById("zoomInButton"),
     zoomReadout: document.getElementById("zoomReadout"),
     showGridToggle: document.getElementById("showGridToggle"),
+    showTerrainToggle: document.getElementById("showTerrainToggle"),
+    showLinearToggle: document.getElementById("showLinearToggle"),
+    showUnitsToggle: document.getElementById("showUnitsToggle"),
+    showUnitLabelsToggle: document.getElementById("showUnitLabelsToggle"),
+    showObjectivesToggle: document.getElementById("showObjectivesToggle"),
     showFootprintsToggle: document.getElementById("showFootprintsToggle"),
     showZonesToggle: document.getElementById("showZonesToggle"),
     snapToggle: document.getElementById("snapToggle"),
     objectList: document.getElementById("objectList"),
+    objectFilterInput: document.getElementById("objectFilterInput"),
     objectCount: document.getElementById("objectCount"),
     viewport: document.getElementById("editorViewport"),
     stage: document.getElementById("editorStage"),
@@ -73,7 +87,17 @@
     importFileInput: document.getElementById("importFileInput"),
     playtestButton: document.getElementById("playtestButton"),
     undoButton: document.getElementById("undoButton"),
-    redoButton: document.getElementById("redoButton")
+    redoButton: document.getElementById("redoButton"),
+    newScenarioDialog: document.getElementById("newScenarioDialog"),
+    newScenarioForm: document.getElementById("newScenarioForm"),
+    newScenarioTemplate: document.getElementById("newScenarioTemplate"),
+    newScenarioTitle: document.getElementById("newScenarioTitle"),
+    newScenarioId: document.getElementById("newScenarioId"),
+    newScenarioWidth: document.getElementById("newScenarioWidth"),
+    newScenarioHeight: document.getElementById("newScenarioHeight"),
+    newScenarioRounds: document.getElementById("newScenarioRounds"),
+    newScenarioType: document.getElementById("newScenarioType"),
+    newScenarioStartingFaction: document.getElementById("newScenarioStartingFaction")
   });
 
   const state = {
@@ -85,11 +109,21 @@
     history: [],
     future: [],
     drag: null,
+    pan: null,
+    drawingPath: null,
+    drawingCursor: null,
     issues: [],
     showGrid: true,
+    showTerrain: true,
+    showLinear: true,
+    showUnits: true,
+    showUnitLabels: true,
+    showObjectives: true,
     showFootprints: false,
     showZones: true,
     snap: true,
+    objectFilter: "",
+    spacePressed: false,
     status: "Source loaded"
   };
 
@@ -100,26 +134,58 @@
     return node;
   }
 
+  function loadCustomScenarioSources() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CUSTOM_SCENARIOS_STORAGE_KEY) || "[]");
+      if (!Array.isArray(saved)) return;
+      for (const source of saved) {
+        try {
+          const scenario = DOCUMENT.create(source);
+          scenarioSources.set(scenario.id, scenario);
+        } catch (_error) { /* Ignore invalid saved drafts. */ }
+      }
+    } catch (_error) { /* Storage is optional. */ }
+  }
+
+  function persistCustomScenario(source) {
+    try {
+      const builtInIds = new Set(Object.keys(SCENARIOS));
+      const custom = [...scenarioSources.values()].filter(item => !builtInIds.has(item.id));
+      const index = custom.findIndex(item => item.id === source.id);
+      if (index >= 0) custom[index] = DOCUMENT.create(source);
+      else custom.push(DOCUMENT.create(source));
+      localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(custom));
+    } catch (_error) { /* Storage is optional. */ }
+  }
+
+  function refreshScenarioSelect(selectedId = refs.scenarioSelect.value) {
+    refs.scenarioSelect.replaceChildren();
+    const scenarios = [...scenarioSources.values()].sort((a, b) => {
+      const aBuiltIn = Boolean(SCENARIOS[a.id]);
+      const bBuiltIn = Boolean(SCENARIOS[b.id]);
+      if (aBuiltIn !== bBuiltIn) return aBuiltIn ? -1 : 1;
+      return String(a.title).localeCompare(String(b.title));
+    });
+    for (const scenario of scenarios) refs.scenarioSelect.appendChild(option(scenario.id, scenario.title));
+    refs.scenarioSelect.value = scenarioSources.has(selectedId) ? selectedId : scenarios[0]?.id || "";
+  }
+
   function requestedScenarioId() {
-    const fallback = SCENARIOS.mokra ? "mokra" : Object.keys(SCENARIOS)[0];
+    const fallback = scenarioSources.has("mokra") ? "mokra" : scenarioSources.keys().next().value;
     const fromUrl = new URLSearchParams(window.location.search).get("scenario");
-    if (fromUrl && SCENARIOS[fromUrl]) return fromUrl;
+    if (fromUrl && scenarioSources.has(fromUrl)) return fromUrl;
     try {
       const remembered = localStorage.getItem(LAST_SCENARIO_STORAGE_KEY);
-      if (remembered && SCENARIOS[remembered]) return remembered;
-    } catch (error) {
-      // File-based and privacy-restricted browsers may block localStorage.
-    }
+      if (remembered && scenarioSources.has(remembered)) return remembered;
+    } catch (_error) { /* Storage is optional. */ }
     return fallback;
   }
 
   function initializeSelects() {
-    for (const scenario of Object.values(SCENARIOS)) refs.scenarioSelect.appendChild(option(scenario.id, scenario.title));
-    refs.scenarioSelect.value = requestedScenarioId();
-
+    loadCustomScenarioSources();
+    refreshScenarioSelect(requestedScenarioId());
     const terrainEntries = Object.values(TERRAIN_TYPES).sort((a, b) => `${a.family} ${a.label}`.localeCompare(`${b.family} ${b.label}`));
     for (const definition of terrainEntries) refs.terrainTypeSelect.appendChild(option(definition.id, `${definition.family} · ${definition.label}`));
-
     for (const style of Object.values(LINEAR_STYLES)) refs.linearStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
     for (const [id, definition] of Object.entries(UNIT_TYPES)) refs.unitTypeSelect.appendChild(option(id, definition.name));
   }
@@ -146,6 +212,23 @@
     return Math.round(value * 4) / 4;
   }
 
+  function scenarioType(scenario = state.document) {
+    const explicit = String(scenario?.victory?.type || "");
+    if (["control", "breakthrough", "delay", "elimination", "survival", "escort", "custom"].includes(explicit)) return explicit;
+    if (scenario?.id === "breakthrough") return "breakthrough";
+    if (scenario?.scoring?.type === "breakthrough") return "breakthrough";
+    return "control";
+  }
+
+  function saveCustomDraft() {
+    if (!state.document || SCENARIOS[state.sourceScenarioId]) return;
+    const draft = DOCUMENT.create(state.document);
+    scenarioSources.set(draft.id, draft);
+    persistCustomScenario(draft);
+    state.sourceScenarioId = draft.id;
+    refreshScenarioSelect(draft.id);
+  }
+
   function beforeMutation() {
     return DOCUMENT.serialize(state.document, 0);
   }
@@ -157,6 +240,7 @@
     if (state.history.length > HISTORY_LIMIT) state.history.shift();
     state.future = [];
     state.status = message;
+    saveCustomDraft();
     renderAll();
   }
 
@@ -180,16 +264,19 @@
   }
 
   function loadScenario(id) {
-    const source = SCENARIOS[id];
+    const source = scenarioSources.get(id);
     if (!source) return;
     state.sourceScenarioId = id;
     state.sourceDocument = DOCUMENT.create(source);
     state.document = DOCUMENT.create(source);
     state.selection = null;
+    state.drawingPath = null;
+    state.drawingCursor = null;
     state.history = [];
     state.future = [];
     state.status = `Loaded ${source.title}`;
     refs.scenarioSelect.value = id;
+    refs.scenarioTypeSelect.value = scenarioType(state.document);
     if (refs.returnToGameLink) refs.returnToGameLink.href = `index.html?fromEditor=1&scenario=${encodeURIComponent(id)}`;
     try { localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, id); } catch (error) { /* Storage is optional. */ }
     renderAll();
@@ -206,7 +293,7 @@
 
   function selectionKey(selection) {
     if (!selection) return "";
-    return [selection.kind, selection.faction, selection.id, selection.zoneId, selection.pointIndex].filter(value => value !== undefined && value !== null).join(":");
+    return [selection.kind, selection.faction, selection.id, selection.zoneId, selection.pointIndex, selection.segmentIndex].filter(value => value !== undefined && value !== null).join(":");
   }
 
   function select(selection) {
@@ -251,15 +338,26 @@
     refs.gridLayer.style.setProperty("--editor-grid-x", `${100 / width}%`);
     refs.gridLayer.style.setProperty("--editor-grid-y", `${100 / height}%`);
     refs.gridLayer.hidden = !state.showGrid;
+    refs.deploymentLayer.hidden = !state.showZones;
+    refs.footprintLayer.hidden = !state.showFootprints;
+    refs.objectiveLayer.hidden = !state.showObjectives;
+    refs.unitLayer.hidden = !state.showUnits;
+    refs.board.classList.toggle("is-drawing-path", Boolean(state.drawingPath));
+    refs.board.classList.toggle("is-panning", Boolean(state.pan));
+    refs.board.classList.toggle("can-pan", !state.drawingPath && !state.pan);
+    refs.viewport.classList.toggle("is-panning", Boolean(state.pan));
     refs.zoomReadout.textContent = `${Math.round(state.zoom * 100)}%`;
   }
 
   function renderTerrain() {
     TERRAIN_PRESENTATION.renderScenarioTerrain({ layer:refs.terrainLayer, scenario:state.document });
     for (const element of refs.terrainLayer.querySelectorAll(".terrain-piece")) {
+      element.hidden = !state.showTerrain;
       element.dataset.editorKind = "terrain";
       if (state.selection?.kind === "terrain" && String(state.selection.id) === String(element.dataset.terrainInstanceId)) element.classList.add("is-editor-selected");
     }
+    const linearSvg = refs.terrainLayer.querySelector(".linear-terrain-svg");
+    if (linearSvg) linearSvg.hidden = !state.showLinear;
   }
 
   function renderZones() {
@@ -308,7 +406,7 @@
         node.textContent = unitAbbreviation(unit);
         node.title = unit.name || UNIT_TYPES[unit.unitType]?.name || unit.id;
         const label = document.createElement("span");
-        label.className = "editor-unit-label";
+        label.className = `editor-unit-label${state.showUnitLabels ? "" : " is-hidden"}`;
         label.textContent = unit.name || unit.id;
         node.appendChild(label);
         refs.unitLayer.appendChild(node);
@@ -326,6 +424,7 @@
         node.className = "editor-objective";
         node.dataset.editorKind = "objective";
         node.dataset.objectiveId = objective.id;
+        node.dataset.objectiveType = objective.type || "control_zone";
         if (objective.type === "control_group") node.dataset.pointIndex = String(pointIndex);
         node.style.left = percent(point.x, table().width);
         node.style.top = percent(point.y, table().height);
@@ -348,14 +447,27 @@
 
   function renderLinearInteraction() {
     refs.interactionSvg.replaceChildren();
+    refs.interactionSvg.hidden = !state.showLinear && !state.drawingPath;
+    if (refs.interactionSvg.hidden) return;
     for (const path of state.document.linearTerrain ?? []) {
-      const points = (path.points ?? []).map(point => `${number(point.x)},${number(point.y)}`).join(" ");
-      const hit = svgNode("polyline", { points, class:"editor-linear-hit", "data-editor-kind":"linear", "data-linear-id":path.id });
-      refs.interactionSvg.appendChild(hit);
+      if (!Array.isArray(path.points) || path.points.length < 2) continue;
       const selected = state.selection?.kind === "linear" && String(state.selection.id) === String(path.id);
+      const points = path.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
+      if (selected) refs.interactionSvg.appendChild(svgNode("polyline", { points, class:"editor-linear-highlight" }));
+      for (let index = 0; index < path.points.length - 1; index += 1) {
+        const a = path.points[index];
+        const b = path.points[index + 1];
+        const segmentSelected = selected && state.selection.segmentIndex === index;
+        if (segmentSelected) {
+          refs.interactionSvg.appendChild(svgNode("line", { x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight" }));
+        }
+        refs.interactionSvg.appendChild(svgNode("line", {
+          x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-hit",
+          "data-editor-kind":"segment", "data-linear-id":path.id, "data-segment-index":index
+        }));
+      }
       if (!selected) continue;
-      refs.interactionSvg.appendChild(svgNode("polyline", { points, class:"editor-linear-highlight" }));
-      (path.points ?? []).forEach((point, index) => {
+      path.points.forEach((point, index) => {
         const circle = svgNode("circle", {
           cx:number(point.x), cy:number(point.y), r:.62,
           class:`editor-waypoint${state.selection.pointIndex === index ? " is-selected" : ""}`,
@@ -365,6 +477,19 @@
         text.textContent = String(index + 1);
         refs.interactionSvg.append(circle, text);
       });
+    }
+    if (state.drawingPath) {
+      const preview = [...state.drawingPath.points];
+      if (state.drawingCursor && preview.length) preview.push(state.drawingCursor);
+      if (preview.length >= 2) {
+        refs.interactionSvg.appendChild(svgNode("polyline", {
+          points:preview.map(point => `${number(point.x)},${number(point.y)}`).join(" "),
+          class:"editor-drawing-path"
+        }));
+      }
+      state.drawingPath.points.forEach(point => refs.interactionSvg.appendChild(svgNode("circle", {
+        cx:number(point.x), cy:number(point.y), r:.48, class:"editor-drawing-waypoint"
+      })));
     }
   }
 
@@ -390,6 +515,10 @@
     const selection = state.selection;
     const item = itemForSelection();
     if (!selection || !item) return;
+    if ((selection.kind === "terrain" && !state.showTerrain) ||
+        (selection.kind === "unit" && !state.showUnits) ||
+        (selection.kind === "objective" && !state.showObjectives) ||
+        (selection.kind === "zone" && !state.showZones)) return;
     let rect = null;
     let pointLike = false;
     let rotation = 0;
@@ -448,15 +577,25 @@
 
   function renderObjectList() {
     refs.objectList.replaceChildren();
+    const zones = [];
+    for (const faction of ["blue", "red"]) {
+      const root = state.document.deployment?.zones?.[faction];
+      if (!root) continue;
+      zones.push({ selection:{kind:"zone", faction, zoneId:"__main"}, label:root.label || `${faction} deployment`, detail:"zone" });
+      for (const zone of root.subzones ?? []) zones.push({ selection:{kind:"zone", faction, zoneId:zone.id}, label:zone.label || zone.id, detail:`${faction} subzone` });
+    }
     const groups = [
       ["Discrete terrain", (state.document.terrain ?? []).map(item => ({ selection:{kind:"terrain", id:item.id}, label:item.id, detail:TERRAIN_TYPES[item.terrainId]?.label || item.terrainId }))],
       ["Linear terrain", (state.document.linearTerrain ?? []).map(item => ({ selection:{kind:"linear", id:item.id}, label:item.id, detail:LINEAR_STYLES[item.styleId]?.label || item.styleId }))],
-      ["Objectives", (state.document.objectives ?? []).map(item => ({ selection:{kind:"objective", id:item.id}, label:item.label || item.id, detail:item.type || "point" }))],
-      ["Polish units", (state.document.forces?.blue ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"blue"}, label:item.name || item.id, detail:unitAbbreviation(item) }))],
-      ["German units", (state.document.forces?.red ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"red"}, label:item.name || item.id, detail:unitAbbreviation(item) }))]
+      ["Objectives", (state.document.objectives ?? []).map(item => ({ selection:{kind:"objective", id:item.id}, label:item.label || item.id, detail:(item.type || "control_zone").replaceAll("_", " ") }))],
+      ["Deployment zones", zones],
+      ["Polish / Blue units", (state.document.forces?.blue ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"blue"}, label:item.name || item.id, detail:unitAbbreviation(item) }))],
+      ["German / Red units", (state.document.forces?.red ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"red"}, label:item.name || item.id, detail:unitAbbreviation(item) }))]
     ];
+    const filter = state.objectFilter.trim().toLowerCase();
     let count = 0;
-    for (const [title, items] of groups) {
+    for (const [title, sourceItems] of groups) {
+      const items = filter ? sourceItems.filter(entry => `${entry.label} ${entry.detail} ${title}`.toLowerCase().includes(filter)) : sourceItems;
       if (!items.length) continue;
       const heading = document.createElement("div");
       heading.className = "editor-object-group-title";
@@ -472,7 +611,21 @@
         refs.objectList.appendChild(button);
       }
     }
+    if (!count) {
+      const empty = document.createElement("div");
+      empty.className = "editor-object-empty";
+      empty.textContent = filter ? "No objects match this filter." : "This scenario has no objects yet.";
+      refs.objectList.appendChild(empty);
+    }
     refs.objectCount.textContent = String(count);
+    requestAnimationFrame(() => {
+      const selected = refs.objectList.querySelector(".is-selected");
+      if (!selected) return;
+      const top = selected.offsetTop;
+      const bottom = top + selected.offsetHeight;
+      if (top < refs.objectList.scrollTop) refs.objectList.scrollTop = top;
+      else if (bottom > refs.objectList.scrollTop + refs.objectList.clientHeight) refs.objectList.scrollTop = bottom - refs.objectList.clientHeight;
+    });
   }
 
   function escapeHtml(value) {
@@ -506,6 +659,19 @@
     return ["none", "grass", "taper", "off_table", "junction"].map(value => ({ value, label:value.replace("_", " ") }));
   }
 
+  function objectiveTypeChoices() {
+    return [
+      ["control_zone", "Control point"],
+      ["control_group", "Control group"],
+      ["crossing", "Crossing"],
+      ["exit_unit", "Exit edge"],
+      ["destroy_target", "Destroy target"],
+      ["protect_target", "Protect target"],
+      ["unit_objective", "Unit objective"],
+      ["custom", "Custom marker"]
+    ].map(([value, label]) => ({ value, label }));
+  }
+
   function renderInspector() {
     const selection = state.selection;
     const item = itemForSelection();
@@ -513,7 +679,7 @@
     refs.inspectorEmpty.hidden = Boolean(item);
     refs.inspectorForm.hidden = !item;
     refs.selectionActions.hidden = !item;
-    refs.duplicateSelectionButton.disabled = !item || selection.kind === "zone" || selection.pointIndex !== undefined;
+    refs.duplicateSelectionButton.disabled = !item || selection.kind === "zone" || selection.pointIndex !== undefined || selection.segmentIndex !== undefined;
     refs.deleteSelectionButton.disabled = !item || selection.kind === "zone" || (selection.kind === "objective" && selection.pointIndex !== undefined);
     if (!item) {
       refs.inspectorForm.innerHTML = "";
@@ -543,8 +709,11 @@
         html += field("Waypoint X", "@point.x", point?.x ?? 0);
         html += field("Waypoint Y", "@point.y", point?.y ?? 0);
         html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="insert-waypoint">Insert after</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-waypoint"${item.points.length <= 2 ? " disabled" : ""}>Remove point</button></div>`;
+      } else if (selection.segmentIndex !== undefined) {
+        html += `<p class="editor-inspector-note">Section ${selection.segmentIndex + 1} of ${item.points.length - 1}. Deleting an end section shortens the path; deleting a middle section splits it into two paths.</p>`;
+        html += `<div class="editor-segment-actions"><button class="editor-button" type="button" data-editor-command="insert-segment-waypoint">Add midpoint</button><button class="editor-button editor-button-danger" type="button" data-editor-command="delete-segment">Delete section</button></div>`;
       } else {
-        html += `<p class="editor-inspector-note">Select a numbered waypoint to move, insert, or remove path points.</p>`;
+        html += `<p class="editor-inspector-note">Select a numbered waypoint to move it, or click an individual section to insert a midpoint or delete that section.</p>`;
       }
     } else if (selection.kind === "unit") {
       html += field("ID", "id", item.id, { type:"text", full:true });
@@ -558,12 +727,28 @@
     } else if (selection.kind === "objective") {
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Label", "label", item.label ?? "", { type:"text", full:true });
-      const point = pointForSelection() ?? item;
-      const prefix = pointForSelection() ? "@point." : "";
-      html += field("X", `${prefix}x`, point.x);
-      html += field("Y", `${prefix}y`, point.y);
+      html += field("Objective type", "type", item.type ?? "control_zone", { choices:objectiveTypeChoices(), full:true });
+      const selectedPoint = pointForSelection();
+      const point = selectedPoint ?? item;
+      const prefix = selectedPoint ? "@point." : "";
+      html += field("X", `${prefix}x`, point.x ?? table().width / 2);
+      html += field("Y", `${prefix}y`, point.y ?? table().height / 2);
       html += field("Radius", `${prefix}radius`, point.radius ?? item.radius ?? 2, { min:.25 });
-      if (item.type === "control_group") html += `<p class="editor-inspector-note">Editing control point ${selection.pointIndex + 1} of ${item.points.length}.</p>`;
+      if (item.type === "control_group") {
+        if (selectedPoint) html += `<p class="editor-inspector-note">Editing control point ${selection.pointIndex + 1} of ${item.points.length}.</p>`;
+        else html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="add-objective-point">Add control point</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-last-objective-point"${(item.points?.length ?? 0) <= 1 ? " disabled" : ""}>Remove last</button></div>`;
+      } else if (item.type === "exit_unit") {
+        html += field("Exit edge", "edge", item.edge ?? "red", { choices:["blue","red","top","bottom"].map(value => ({value,label:value})) });
+        html += field("Faction", "faction", item.faction ?? "red", { choices:[{value:"blue",label:"blue"},{value:"red",label:"red"}] });
+        html += field("Zone depth", "depth", item.depth ?? 3, { min:.25 });
+        html += field("Points / unit", "pointsPerUnit", item.pointsPerUnit ?? 2, { min:0 });
+      } else if (item.type === "destroy_target" || item.type === "protect_target") {
+        html += field("Target object ID", "targetId", item.targetId ?? "", { type:"text", full:true });
+      } else if (item.type === "unit_objective") {
+        html += field("Target unit ID", "unitId", item.unitId ?? "", { type:"text", full:true });
+      } else if (item.type === "crossing") {
+        html += field("Path / crossing ID", "pathId", item.pathId ?? "", { type:"text", full:true });
+      }
     } else if (selection.kind === "zone") {
       html += field("Label", "label", item.label ?? "", { type:"text", full:true });
       html += field("X min", "xMin", item.xMin);
@@ -607,7 +792,10 @@
     setupBoardGeometry();
     refs.scenarioTitleReadout.textContent = state.document.title || state.document.id;
     refs.scenarioSizeReadout.textContent = `${table().width}″ × ${table().height}″`;
+    refs.scenarioTypeSelect.value = scenarioType(state.document);
     refs.saveReadout.textContent = state.status;
+    refs.linearDrawActions.hidden = !state.drawingPath;
+    refs.finishLinearButton.disabled = (state.drawingPath?.points.length ?? 0) < 2;
     renderZones();
     renderTerrain();
     renderFootprints();
@@ -649,12 +837,14 @@
       state.drag.center = { x:rect.x + rect.width / 2, y:rect.y + rect.height / 2 };
       state.drag.startAngle = Math.atan2(start.y - state.drag.center.y, start.x - state.drag.center.x) * 180 / Math.PI;
     }
-    refs.board.setPointerCapture?.(event.pointerId);
+    refs.viewport.setPointerCapture?.(event.pointerId);
     renderSelectionAndInspector();
     renderObjectList();
   }
 
   function selectionFromTarget(target) {
+    const segment = target.closest?.("[data-editor-kind='segment']");
+    if (segment) return { kind:"linear", id:segment.dataset.linearId, segmentIndex:Number(segment.dataset.segmentIndex) };
     const waypoint = target.closest?.("[data-editor-kind='waypoint']");
     if (waypoint) return { kind:"linear", id:waypoint.dataset.linearId, pointIndex:Number(waypoint.dataset.pointIndex) };
     const linear = target.closest?.("[data-editor-kind='linear']");
@@ -674,8 +864,47 @@
     return null;
   }
 
+  function startPan(event) {
+    state.pan = {
+      pointerId:event.pointerId,
+      startClientX:event.clientX,
+      startClientY:event.clientY,
+      startScrollLeft:refs.viewport.scrollLeft,
+      startScrollTop:refs.viewport.scrollTop,
+      moved:false
+    };
+    refs.viewport.setPointerCapture?.(event.pointerId);
+    setupBoardGeometry();
+  }
+
+  function addDrawingPoint(event) {
+    const point = boardPoint(event);
+    const placed = { x:snap(clamp(point.x, 0, table().width)), y:snap(clamp(point.y, 0, table().height)) };
+    const previous = state.drawingPath.points[state.drawingPath.points.length - 1];
+    if (previous && Math.hypot(number(previous.x) - placed.x, number(previous.y) - placed.y) < .2) return;
+    state.drawingPath.points.push(placed);
+    state.drawingCursor = placed;
+    state.status = `${state.drawingPath.points.length} waypoint${state.drawingPath.points.length === 1 ? "" : "s"} placed · Enter to finish`;
+    refs.saveReadout.textContent = state.status;
+    refs.finishLinearButton.disabled = state.drawingPath.points.length < 2;
+    renderLinearInteraction();
+  }
+
   function onBoardPointerDown(event) {
-    if (event.button !== undefined && event.button !== 0) return;
+    const isMiddle = event.button === 1;
+    const isLeft = event.button === 0 || event.button === undefined;
+    if (!isMiddle && !isLeft) return;
+    if (state.drawingPath && isLeft) {
+      if (!refs.board.contains(event.target)) return;
+      event.preventDefault();
+      addDrawingPoint(event);
+      return;
+    }
+    if (isMiddle || (isLeft && state.spacePressed)) {
+      event.preventDefault();
+      startPan(event);
+      return;
+    }
     const action = event.target.dataset?.editorAction;
     if (action && state.selection) {
       event.preventDefault();
@@ -684,13 +913,14 @@
     }
     const selection = selectionFromTarget(event.target);
     if (!selection) {
-      select(null);
+      event.preventDefault();
+      startPan(event);
       return;
     }
     event.preventDefault();
-    const dragAction = selection.kind === "linear" && selection.pointIndex === undefined ? "select" : "move";
-    if (dragAction === "select") select(selection);
-    else startDrag(event, dragAction, selection);
+    const selectsOnly = selection.kind === "linear" && selection.pointIndex === undefined;
+    if (selectsOnly) select(selection);
+    else startDrag(event, "move", selection);
   }
 
   function moveSelected(point) {
@@ -752,17 +982,38 @@
   function onBoardPointerMove(event) {
     const point = boardPoint(event);
     refs.cursorReadout.textContent = `Cursor: ${point.x.toFixed(1)}″, ${point.y.toFixed(1)}″`;
+    if (state.drawingPath) {
+      state.drawingCursor = { x:snap(clamp(point.x, 0, table().width)), y:snap(clamp(point.y, 0, table().height)) };
+      renderLinearInteraction();
+    }
+    if (state.pan && state.pan.pointerId === event.pointerId) {
+      event.preventDefault();
+      const dx = event.clientX - state.pan.startClientX;
+      const dy = event.clientY - state.pan.startClientY;
+      if (Math.hypot(dx, dy) > 3) state.pan.moved = true;
+      refs.viewport.scrollLeft = state.pan.startScrollLeft - dx;
+      refs.viewport.scrollTop = state.pan.startScrollTop - dy;
+      return;
+    }
     if (!state.drag || state.drag.pointerId !== event.pointerId) return;
     event.preventDefault();
     moveSelected(point);
   }
 
   function onBoardPointerUp(event) {
+    if (state.pan && state.pan.pointerId === event.pointerId) {
+      const moved = state.pan.moved;
+      state.pan = null;
+      refs.viewport.releasePointerCapture?.(event.pointerId);
+      setupBoardGeometry();
+      if (!moved) select(null);
+      return;
+    }
     if (!state.drag || state.drag.pointerId !== event.pointerId) return;
     const before = state.drag.before;
     const action = state.drag.action;
     state.drag = null;
-    refs.board.releasePointerCapture?.(event.pointerId);
+    refs.viewport.releasePointerCapture?.(event.pointerId);
     commit(before, `${action.charAt(0).toUpperCase()}${action.slice(1)} committed`);
   }
 
@@ -792,7 +1043,9 @@
     const before = beforeMutation();
     const oldId = item.id;
     const value = parseControlValue(control);
-    if (fieldPath.startsWith("@point.")) {
+    if (state.selection.kind === "objective" && fieldPath === "type") {
+      normalizeObjectiveType(item, value);
+    } else if (fieldPath.startsWith("@point.")) {
       const point = pointForSelection();
       if (point) setByPath(point, fieldPath.slice(7), value);
     } else {
@@ -808,8 +1061,12 @@
     if (!path || state.selection.kind !== "linear" || index === undefined) return;
     const before = beforeMutation();
     const current = path.points[index];
-    const next = path.points[Math.min(path.points.length - 1, index + 1)];
-    path.points.splice(index + 1, 0, { x:(number(current.x) + number(next.x)) / 2, y:(number(current.y) + number(next.y)) / 2 });
+    const next = path.points[index + 1];
+    const previous = path.points[Math.max(0, index - 1)];
+    const point = next
+      ? { x:(number(current.x) + number(next.x)) / 2, y:(number(current.y) + number(next.y)) / 2 }
+      : { x:number(current.x) + (number(current.x) - number(previous.x) || 4), y:number(current.y) + (number(current.y) - number(previous.y)) };
+    path.points.splice(index + 1, 0, point);
     state.selection.pointIndex = index + 1;
     commit(before, "Inserted waypoint");
   }
@@ -854,22 +1111,62 @@
   }
 
   function addLinear() {
+    if (state.drawingPath) return;
     const styleId = refs.linearStyleSelect.value;
     const style = LINEAR_STYLES[styleId];
     if (!style) return;
-    const before = beforeMutation();
-    const center = { x:table().width / 2, y:table().height / 2 };
+    state.selection = null;
+    state.drawingPath = { styleId, width:style.width, points:[], before:beforeMutation() };
+    state.drawingCursor = null;
+    state.status = `Drawing ${style.label} · click to place waypoints`;
+    renderAll();
+  }
+
+  function finishLinearDraw() {
+    const drawing = state.drawingPath;
+    if (!drawing || drawing.points.length < 2) return;
+    const style = LINEAR_STYLES[drawing.styleId];
     const item = {
-      id:DOCUMENT.nextId(state.document, styleId),
-      styleId,
-      width:style.width,
-      points:[{ x:snap(center.x - 6), y:snap(center.y) }, { x:snap(center.x + 6), y:snap(center.y) }],
+      id:DOCUMENT.nextId(state.document, drawing.styleId),
+      styleId:drawing.styleId,
+      width:drawing.width,
+      points:drawing.points.map(point => ({ x:point.x, y:point.y })),
       start:{ cap:"taper" },
       end:{ cap:"taper" }
     };
     state.document.linearTerrain.push(item);
-    state.selection = { kind:"linear", id:item.id, pointIndex:0 };
-    commit(before, `Added ${style.label}`);
+    state.selection = { kind:"linear", id:item.id };
+    state.drawingPath = null;
+    state.drawingCursor = null;
+    commit(drawing.before, `Drew ${style?.label || drawing.styleId}`);
+  }
+
+  function cancelLinearDraw() {
+    if (!state.drawingPath) return;
+    state.drawingPath = null;
+    state.drawingCursor = null;
+    state.status = "Path drawing cancelled";
+    renderAll();
+  }
+
+  function insertSegmentWaypoint() {
+    const selection = state.selection;
+    if (selection?.kind !== "linear" || selection.segmentIndex === undefined) return;
+    const before = beforeMutation();
+    const inserted = DOCUMENT.insertLinearWaypoint(state.document, selection.id, selection.segmentIndex);
+    if (!inserted) return;
+    state.selection = { kind:"linear", id:selection.id, pointIndex:selection.segmentIndex + 1 };
+    commit(before, "Added waypoint to section");
+  }
+
+  function deleteSegment() {
+    const selection = state.selection;
+    if (selection?.kind !== "linear" || selection.segmentIndex === undefined) return;
+    const before = beforeMutation();
+    const result = DOCUMENT.deleteLinearSegment(state.document, selection.id, selection.segmentIndex);
+    if (!result) return;
+    state.selection = result.selection;
+    commit(before, result.split ? "Deleted section and split path" : result.deleted ? "Deleted path section" : "Deleted path section");
   }
 
   function addUnit() {
@@ -894,22 +1191,100 @@
     commit(before, `Added ${definition.name}`);
   }
 
+  function objectiveForType(type) {
+    const x = snap(table().width / 2);
+    const y = snap(table().height / 2);
+    const item = { id:DOCUMENT.nextId(state.document, type === "control_zone" ? "objective" : type), type, label:"New Objective", x, y, radius:3 };
+    if (type === "control_group") {
+      item.label = "Objective Group";
+      item.points = [
+        { id:`${item.id}-a`, label:"Point A", x:snap(x - 5), y, radius:3 },
+        { id:`${item.id}-b`, label:"Point B", x, y, radius:3 },
+        { id:`${item.id}-c`, label:"Point C", x:snap(x + 5), y, radius:3 }
+      ];
+    } else if (type === "crossing") {
+      item.label = "Crossing";
+      item.pathId = "";
+    } else if (type === "exit_unit") {
+      item.label = "Exit Edge";
+      item.edge = "blue";
+      item.faction = "red";
+      item.depth = 3;
+      item.pointsPerUnit = 2;
+      item.x = 0;
+    } else if (type === "destroy_target") {
+      item.label = "Destroy Target";
+      item.targetId = "";
+    } else if (type === "protect_target") {
+      item.label = "Protect Target";
+      item.targetId = "";
+    } else if (type === "unit_objective") {
+      item.label = "Unit Objective";
+      item.unitId = "";
+    } else if (type === "custom") {
+      item.label = "Custom Objective";
+    }
+    return item;
+  }
+
   function addObjective() {
     const before = beforeMutation();
-    const item = {
-      id:DOCUMENT.nextId(state.document, "objective"),
-      label:"New Objective",
-      x:snap(table().width / 2),
-      y:snap(table().height / 2),
-      radius:3
-    };
+    const item = objectiveForType(refs.objectiveTypeSelect.value || "control_zone");
     state.document.objectives.push(item);
     state.selection = { kind:"objective", id:item.id };
-    commit(before, "Added objective");
+    commit(before, `Added ${item.label}`);
+  }
+
+  function addObjectivePoint() {
+    const item = itemForSelection();
+    if (!item || state.selection?.kind !== "objective" || item.type !== "control_group") return;
+    const before = beforeMutation();
+    item.points = Array.isArray(item.points) ? item.points : [];
+    const previous = item.points[item.points.length - 1] ?? item;
+    item.points.push({
+      id:DOCUMENT.nextId(state.document, `${item.id}-point`),
+      label:`Point ${item.points.length + 1}`,
+      x:snap(clamp(number(previous.x) + 5, 0, table().width)),
+      y:snap(clamp(number(previous.y), 0, table().height)),
+      radius:number(previous.radius, number(item.radius, 3))
+    });
+    state.selection.pointIndex = item.points.length - 1;
+    commit(before, "Added control point");
+  }
+
+  function removeLastObjectivePoint() {
+    const item = itemForSelection();
+    if (!item || item.type !== "control_group" || (item.points?.length ?? 0) <= 1) return;
+    const before = beforeMutation();
+    item.points.pop();
+    if (state.selection.pointIndex !== undefined) state.selection.pointIndex = Math.min(state.selection.pointIndex, item.points.length - 1);
+    commit(before, "Removed control point");
+  }
+
+  function normalizeObjectiveType(item, type) {
+    const center = item.points?.[0] ?? item;
+    item.type = type;
+    item.x = number(item.x, number(center.x, table().width / 2));
+    item.y = number(item.y, number(center.y, table().height / 2));
+    item.radius = number(item.radius, number(center.radius, 3));
+    if (type === "control_group") {
+      if (!Array.isArray(item.points) || !item.points.length) {
+        item.points = [{ id:`${item.id}-a`, label:"Point A", x:item.x, y:item.y, radius:item.radius }];
+      }
+    } else {
+      delete item.points;
+      delete state.selection.pointIndex;
+    }
+    if (type === "exit_unit") {
+      item.edge = item.edge || "blue";
+      item.faction = item.faction || "red";
+      item.depth = number(item.depth, 3);
+      item.pointsPerUnit = number(item.pointsPerUnit, 2);
+    }
   }
 
   function duplicateSelection() {
-    if (!state.selection || state.selection.kind === "zone" || state.selection.pointIndex !== undefined) return;
+    if (!state.selection || state.selection.kind === "zone" || state.selection.pointIndex !== undefined || state.selection.segmentIndex !== undefined) return;
     const before = beforeMutation();
     const copy = DOCUMENT.duplicate(state.document, state.selection);
     if (!copy) return;
@@ -923,6 +1298,10 @@
       removeWaypoint();
       return;
     }
+    if (state.selection.kind === "linear" && state.selection.segmentIndex !== undefined) {
+      deleteSegment();
+      return;
+    }
     const before = beforeMutation();
     const label = state.selection.id;
     if (!DOCUMENT.remove(state.document, state.selection)) return;
@@ -930,18 +1309,115 @@
     commit(before, `Deleted ${label}`);
   }
 
-  function setZoom(value) {
-    state.zoom = clamp(value, .35, 2.5);
+  function updateScenarioType(type) {
+    const before = beforeMutation();
+    state.document.victory = state.document.victory ?? {};
+    state.document.scoring = state.document.scoring ?? {};
+    state.document.victory.type = type;
+    state.document.scoring.type = type;
+    if (type === "elimination") state.document.victory.elimination = true;
+    commit(before, `Scenario type set to ${type}`);
+  }
+
+  function setZoom(value, clientX = null, clientY = null) {
+    const previous = state.zoom;
+    const next = clamp(value, .35, 2.5);
+    if (Math.abs(next - previous) < .001) return;
+    const viewportRect = refs.viewport.getBoundingClientRect();
+    const anchorX = clientX == null ? viewportRect.width / 2 : clientX - viewportRect.left;
+    const anchorY = clientY == null ? viewportRect.height / 2 : clientY - viewportRect.top;
+    const stageLeft = refs.stage.offsetLeft;
+    const stageTop = refs.stage.offsetTop;
+    const contentX = refs.viewport.scrollLeft + anchorX;
+    const contentY = refs.viewport.scrollTop + anchorY;
+    const boardX = (contentX - stageLeft) / previous;
+    const boardY = (contentY - stageTop) / previous;
+    state.zoom = next;
     setupBoardGeometry();
+    refs.viewport.scrollLeft = stageLeft + boardX * next - anchorX;
+    refs.viewport.scrollTop = stageTop + boardY * next - anchorY;
+  }
+
+  function onViewportWheel(event) {
+    event.preventDefault();
+    const factor = Math.exp(-event.deltaY * .0015);
+    setZoom(state.zoom * factor, event.clientX, event.clientY);
   }
 
   function fitTable() {
     const horizontal = Math.max(200, refs.viewport.clientWidth - 56) / BASE_BOARD_WIDTH;
     const boardHeight = BASE_BOARD_WIDTH * table().height / table().width;
     const vertical = Math.max(160, refs.viewport.clientHeight - 56) / boardHeight;
-    setZoom(Math.min(1.4, horizontal, vertical));
-    refs.viewport.scrollLeft = 0;
-    refs.viewport.scrollTop = 0;
+    state.zoom = clamp(Math.min(1.4, horizontal, vertical), .35, 2.5);
+    setupBoardGeometry();
+    refs.viewport.scrollLeft = Math.max(0, (refs.viewport.scrollWidth - refs.viewport.clientWidth) / 2);
+    refs.viewport.scrollTop = Math.max(0, (refs.viewport.scrollHeight - refs.viewport.clientHeight) / 2);
+  }
+
+  function slugify(value) {
+    return String(value || "scenario").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "scenario";
+  }
+
+  function uniqueScenarioId(requested) {
+    const base = slugify(requested);
+    if (!scenarioSources.has(base)) return base;
+    let suffix = 2;
+    while (scenarioSources.has(`${base}-${suffix}`)) suffix += 1;
+    return `${base}-${suffix}`;
+  }
+
+  function openNewScenarioDialog() {
+    refs.newScenarioTemplate.value = "blank";
+    delete refs.newScenarioId.dataset.edited;
+    refs.newScenarioTitle.value = "Untitled Scenario";
+    refs.newScenarioId.value = "untitled-scenario";
+    refs.newScenarioWidth.value = table().width;
+    refs.newScenarioHeight.value = table().height;
+    refs.newScenarioRounds.value = state.document.rounds ?? 6;
+    refs.newScenarioType.value = scenarioType(state.document);
+    refs.newScenarioStartingFaction.value = state.document.deployment?.order?.[0] || "blue";
+    refs.newScenarioDialog.showModal();
+    refs.newScenarioTitle.focus();
+    refs.newScenarioTitle.select();
+  }
+
+  function defaultObjectiveForScenario(type, scenario) {
+    const x = scenario.table.width / 2;
+    const y = scenario.table.height / 2;
+    if (type === "breakthrough") return { id:"exit-edge", type:"exit_unit", label:"Breakthrough Edge", edge:"blue", faction:"red", depth:3, pointsPerUnit:2, x:0, y, radius:1 };
+    if (type === "control" || type === "delay") return { id:"center-objective", type:"control_zone", label:"Central Objective", x, y, radius:3 };
+    return null;
+  }
+
+  function createScenarioFromDialog(event) {
+    event.preventDefault();
+    const id = uniqueScenarioId(refs.newScenarioId.value || refs.newScenarioTitle.value);
+    const title = refs.newScenarioTitle.value.trim() || "Untitled Scenario";
+    const width = Math.max(12, number(refs.newScenarioWidth.value, 72));
+    const height = Math.max(12, number(refs.newScenarioHeight.value, 48));
+    const rounds = Math.max(1, number(refs.newScenarioRounds.value, 6));
+    const type = refs.newScenarioType.value || "control";
+    let scenario;
+    if (refs.newScenarioTemplate.value === "duplicate") {
+      scenario = DOCUMENT.create(state.document);
+      scenario.id = id;
+      scenario.title = title;
+      scenario.table.width = width;
+      scenario.table.height = height;
+      scenario.rounds = rounds;
+      scenario.victory = { ...(scenario.victory ?? {}), type };
+      scenario.scoring = { ...(scenario.scoring ?? {}), type };
+      scenario.description = `${scenario.description || ""} Duplicated in Terrain Editor E1.2.`.trim();
+    } else {
+      scenario = DOCUMENT.createBlankScenario({ id, title, width, height, rounds, type, startingFaction:refs.newScenarioStartingFaction.value });
+      const objective = defaultObjectiveForScenario(type, scenario);
+      if (objective) scenario.objectives.push(objective);
+    }
+    scenarioSources.set(id, scenario);
+    persistCustomScenario(scenario);
+    refreshScenarioSelect(id);
+    refs.newScenarioDialog.close();
+    loadScenario(id);
   }
 
   async function copyText(text, message) {
@@ -992,18 +1468,37 @@
 
   function bindEvents() {
     refs.scenarioSelect.addEventListener("change", () => loadScenario(refs.scenarioSelect.value));
+    refs.scenarioTypeSelect.addEventListener("change", () => updateScenarioType(refs.scenarioTypeSelect.value));
+    refs.newScenarioButton.addEventListener("click", openNewScenarioDialog);
+    refs.newScenarioForm.addEventListener("submit", createScenarioFromDialog);
+    refs.newScenarioDialog.addEventListener("click", event => {
+      if (event.target === refs.newScenarioDialog || event.target.closest("[data-dialog-close]")) refs.newScenarioDialog.close();
+    });
+    refs.newScenarioTitle.addEventListener("input", () => {
+      if (!refs.newScenarioId.dataset.edited) refs.newScenarioId.value = slugify(refs.newScenarioTitle.value);
+    });
+    refs.newScenarioId.addEventListener("input", () => { refs.newScenarioId.dataset.edited = "true"; });
     refs.addTerrainButton.addEventListener("click", addTerrain);
     refs.addLinearButton.addEventListener("click", addLinear);
+    refs.finishLinearButton.addEventListener("click", finishLinearDraw);
+    refs.cancelLinearButton.addEventListener("click", cancelLinearDraw);
     refs.addUnitButton.addEventListener("click", addUnit);
     refs.addObjectiveButton.addEventListener("click", addObjective);
     refs.resetScenarioButton.addEventListener("click", resetScenario);
     refs.fitButton.addEventListener("click", fitTable);
     refs.zoomOutButton.addEventListener("click", () => setZoom(state.zoom - .1));
     refs.zoomInButton.addEventListener("click", () => setZoom(state.zoom + .1));
+    refs.viewport.addEventListener("wheel", onViewportWheel, { passive:false });
     refs.showGridToggle.addEventListener("change", () => { state.showGrid = refs.showGridToggle.checked; renderAll(); });
+    refs.showTerrainToggle.addEventListener("change", () => { state.showTerrain = refs.showTerrainToggle.checked; renderAll(); });
+    refs.showLinearToggle.addEventListener("change", () => { state.showLinear = refs.showLinearToggle.checked; renderAll(); });
+    refs.showUnitsToggle.addEventListener("change", () => { state.showUnits = refs.showUnitsToggle.checked; renderAll(); });
+    refs.showUnitLabelsToggle.addEventListener("change", () => { state.showUnitLabels = refs.showUnitLabelsToggle.checked; renderAll(); });
+    refs.showObjectivesToggle.addEventListener("change", () => { state.showObjectives = refs.showObjectivesToggle.checked; renderAll(); });
     refs.showFootprintsToggle.addEventListener("change", () => { state.showFootprints = refs.showFootprintsToggle.checked; renderAll(); });
     refs.showZonesToggle.addEventListener("change", () => { state.showZones = refs.showZonesToggle.checked; renderAll(); });
     refs.snapToggle.addEventListener("change", () => { state.snap = refs.snapToggle.checked; });
+    refs.objectFilterInput.addEventListener("input", () => { state.objectFilter = refs.objectFilterInput.value; renderObjectList(); });
     refs.objectList.addEventListener("click", event => {
       const button = event.target.closest("[data-selection]");
       if (button) select(JSON.parse(button.dataset.selection));
@@ -1012,15 +1507,19 @@
       const button = event.target.closest("[data-selection]");
       if (button) select(JSON.parse(button.dataset.selection));
     });
-    refs.board.addEventListener("pointerdown", onBoardPointerDown);
-    refs.board.addEventListener("pointermove", onBoardPointerMove);
-    refs.board.addEventListener("pointerup", onBoardPointerUp);
-    refs.board.addEventListener("pointercancel", onBoardPointerUp);
+    refs.viewport.addEventListener("pointerdown", onBoardPointerDown);
+    refs.viewport.addEventListener("pointermove", onBoardPointerMove);
+    refs.viewport.addEventListener("pointerup", onBoardPointerUp);
+    refs.viewport.addEventListener("pointercancel", onBoardPointerUp);
     refs.inspectorForm.addEventListener("change", onInspectorChange);
     refs.inspectorForm.addEventListener("click", event => {
       const command = event.target.closest("[data-editor-command]")?.dataset.editorCommand;
       if (command === "insert-waypoint") insertWaypoint();
       if (command === "remove-waypoint") removeWaypoint();
+      if (command === "insert-segment-waypoint") insertSegmentWaypoint();
+      if (command === "delete-segment") deleteSegment();
+      if (command === "add-objective-point") addObjectivePoint();
+      if (command === "remove-last-objective-point") removeLastObjectivePoint();
     });
     refs.duplicateSelectionButton.addEventListener("click", duplicateSelection);
     refs.deleteSelectionButton.addEventListener("click", deleteSelection);
@@ -1039,10 +1538,23 @@
     refs.undoButton.addEventListener("click", undo);
     refs.redoButton.addEventListener("click", redo);
     window.addEventListener("resize", () => requestAnimationFrame(fitTable));
+    window.addEventListener("keyup", event => {
+      if (event.code === "Space") state.spacePressed = false;
+    });
     window.addEventListener("keydown", event => {
       const editable = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
+      if (event.code === "Space" && !editable) {
+        state.spacePressed = true;
+        event.preventDefault();
+      }
       if (editable) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      if (state.drawingPath && event.key === "Enter") {
+        event.preventDefault();
+        finishLinearDraw();
+      } else if (state.drawingPath && event.key === "Escape") {
+        event.preventDefault();
+        cancelLinearDraw();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo(); else undo();
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {

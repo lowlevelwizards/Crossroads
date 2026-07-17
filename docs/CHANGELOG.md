@@ -1,3 +1,12 @@
+# Terrain Editor E1.2 — Scenario Authoring Controls
+
+- Added cursor-centered wheel zoom and drag panning.
+- Added editor visibility controls and a filtered, independently scrollable object browser.
+- Added waypoint path drawing, segment selection, midpoint insertion, section deletion, and path splitting.
+- Added blank/duplicate scenario creation with persistent local drafts.
+- Added scenario types and objective-type-specific editor fields.
+- Extended editor document tests and preserved the full combat/terrain regression suite.
+
 ## Terrain T3.5 — Scaling, Placement, and Label Cleanup
 
 - Removed non-scaling SVG strokes so building outlines shrink naturally with battlefield zoom.

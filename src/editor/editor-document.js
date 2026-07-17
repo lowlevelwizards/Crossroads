@@ -1,6 +1,8 @@
 "use strict";
 
 (() => {
+  const SUPPORTED_RUNTIME_OBJECTIVES = new Set(["control_zone", "control_group", "exit_unit"]);
+
   function clone(value) {
     return value == null ? value : JSON.parse(JSON.stringify(value));
   }
@@ -15,17 +17,55 @@
   function create(source) {
     assertScenario(source);
     const document = clone(source);
+    document.id = String(document.id || "untitled-scenario");
+    document.title = String(document.title || "Untitled Scenario");
+    document.rounds = Math.max(1, Number(document.rounds) || 6);
     document.terrain = Array.isArray(document.terrain) ? document.terrain : [];
     document.linearTerrain = Array.isArray(document.linearTerrain) ? document.linearTerrain : [];
     document.junctions = Array.isArray(document.junctions) ? document.junctions : [];
     document.crossings = Array.isArray(document.crossings) ? document.crossings : [];
     document.objectives = Array.isArray(document.objectives) ? document.objectives : [];
-    document.forces = document.forces && typeof document.forces === "object"
-      ? document.forces
-      : { blue: [], red: [] };
+    document.forces = document.forces && typeof document.forces === "object" ? document.forces : { blue: [], red: [] };
     document.forces.blue = Array.isArray(document.forces.blue) ? document.forces.blue : [];
     document.forces.red = Array.isArray(document.forces.red) ? document.forces.red : [];
+    document.factions = document.factions && typeof document.factions === "object" ? document.factions : {};
+    document.factions.blue = document.factions.blue ?? { name:"Blue Force", shortName:"Blue" };
+    document.factions.red = document.factions.red ?? { name:"Red Force", shortName:"Red" };
+    document.deployment = document.deployment && typeof document.deployment === "object" ? document.deployment : { mode:"player", order:["blue", "red"], zones:{} };
+    document.deployment.zones = document.deployment.zones && typeof document.deployment.zones === "object" ? document.deployment.zones : {};
+    document.scoring = document.scoring && typeof document.scoring === "object" ? document.scoring : { roundControl:1, finalControl:0 };
+    document.victory = document.victory && typeof document.victory === "object" ? document.victory : { elimination:true, tiebreaker:"survivingUnits", type:"control" };
     return document;
+  }
+
+  function createBlankScenario(options = {}) {
+    const width = Math.max(12, Number(options.width) || 72);
+    const height = Math.max(12, Number(options.height) || 48);
+    const zoneDepth = Math.min(12, width / 4);
+    const type = String(options.type || "control");
+    return create({
+      id:String(options.id || "untitled-scenario"),
+      title:String(options.title || "Untitled Scenario"),
+      description:"Created in Terrain Editor E1.2.",
+      rounds:Math.max(1, Number(options.rounds) || 6),
+      table:{ width, height, mat:"grass_temperate" },
+      factions:{
+        blue:{ name:"Blue Force", shortName:"Blue" },
+        red:{ name:"Red Force", shortName:"Red" }
+      },
+      terrain:[], linearTerrain:[], junctions:[], crossings:[], objectives:[],
+      deployment:{
+        mode:"player",
+        order:[String(options.startingFaction || "blue"), String(options.startingFaction || "blue") === "blue" ? "red" : "blue"],
+        zones:{
+          blue:{ id:"blue-deployment", label:"Blue Deployment", xMin:0, xMax:zoneDepth, yMin:0, yMax:height },
+          red:{ id:"red-deployment", label:"Red Deployment", xMin:width - zoneDepth, xMax:width, yMin:0, yMax:height }
+        }
+      },
+      forces:{ blue:[], red:[] },
+      scoring:{ type, roundControl:type === "control" ? 1 : 0, finalControl:0 },
+      victory:{ type, elimination:type === "elimination" || type === "control", tiebreaker:"survivingUnits" }
+    });
   }
 
   function allIds(document) {
@@ -81,11 +121,49 @@
     copy.id = nextId(document, `${source.id}-copy`);
     if (Number.isFinite(Number(copy.x))) copy.x = Number(copy.x) + 1;
     if (Number.isFinite(Number(copy.y))) copy.y = Number(copy.y) + 1;
-    if (Array.isArray(copy.points)) {
-      copy.points = copy.points.map(point => ({ x: Number(point.x) + 1, y: Number(point.y) + 1 }));
-    }
+    if (Array.isArray(copy.points)) copy.points = copy.points.map(point => ({ x:Number(point.x) + 1, y:Number(point.y) + 1 }));
     collection.push(copy);
     return copy;
+  }
+
+  function insertLinearWaypoint(document, pathId, segmentIndex, point = null) {
+    const path = find(document, { kind:"linear", id:pathId });
+    const index = Number(segmentIndex);
+    if (!path || !Array.isArray(path.points) || index < 0 || index >= path.points.length - 1) return null;
+    const a = path.points[index];
+    const b = path.points[index + 1];
+    const inserted = point ? { x:Number(point.x), y:Number(point.y) } : { x:(Number(a.x) + Number(b.x)) / 2, y:(Number(a.y) + Number(b.y)) / 2 };
+    path.points.splice(index + 1, 0, inserted);
+    return inserted;
+  }
+
+  function deleteLinearSegment(document, pathId, segmentIndex) {
+    const collection = document.linearTerrain ?? [];
+    const pathIndex = collection.findIndex(item => String(item.id) === String(pathId));
+    const path = collection[pathIndex];
+    const index = Number(segmentIndex);
+    if (!path || !Array.isArray(path.points) || index < 0 || index >= path.points.length - 1) return null;
+    if (path.points.length === 2) {
+      collection.splice(pathIndex, 1);
+      return { deleted:true, selection:null };
+    }
+    if (index === 0) {
+      path.points.shift();
+      return { deleted:false, selection:{ kind:"linear", id:path.id, segmentIndex:0 } };
+    }
+    if (index === path.points.length - 2) {
+      path.points.pop();
+      return { deleted:false, selection:{ kind:"linear", id:path.id, segmentIndex:path.points.length - 2 } };
+    }
+    const original = clone(path);
+    const right = clone(original);
+    path.points = original.points.slice(0, index + 1);
+    path.end = { ...(path.end ?? {}), cap:"taper" };
+    right.id = nextId(document, `${original.id}-split`);
+    right.points = original.points.slice(index + 1);
+    right.start = { ...(right.start ?? {}), cap:"taper" };
+    collection.splice(pathIndex + 1, 0, right);
+    return { deleted:false, split:true, leftId:path.id, rightId:right.id, selection:{ kind:"linear", id:right.id, segmentIndex:0 } };
   }
 
   function cleanNumber(value) {
@@ -114,22 +192,32 @@
     const scenario = create(document);
     scenario.id = "editor_playtest";
     scenario.title = `${scenario.title || "Untitled Scenario"} — Editor Playtest`;
-    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.`.trim();
-    scenario.deployment = scenario.deployment ?? { zones: {} };
+    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.2.`.trim();
+    scenario.deployment = scenario.deployment ?? { zones:{} };
     scenario.deployment.mode = "fixed";
     scenario.deployment.order = [];
+    if (!scenario.objectives.length) {
+      scenario.objectives.push({ id:"editor-center", type:"control_zone", label:"Table Center", x:scenario.table.width / 2, y:scenario.table.height / 2, radius:3 });
+    }
+    scenario.objectives = scenario.objectives.map(objective => {
+      if (SUPPORTED_RUNTIME_OBJECTIVES.has(objective.type ?? "control_zone")) return objective;
+      return { ...objective, editorObjectiveType:objective.type, type:"control_zone", x:Number(objective.x) || scenario.table.width / 2, y:Number(objective.y) || scenario.table.height / 2, radius:Number(objective.radius) || 3 };
+    });
     return clean(scenario);
   }
 
   window.CrossroadsEditorDocument = Object.freeze({
     clone,
     create,
+    createBlankScenario,
     allIds,
     nextId,
     collectionFor,
     find,
     remove,
     duplicate,
+    insertLinearWaypoint,
+    deleteLinearSegment,
     clean,
     serialize,
     playtestScenario

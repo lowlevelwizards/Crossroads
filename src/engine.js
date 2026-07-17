@@ -1113,7 +1113,7 @@
     // Owns exit-zone eligibility, exit outcomes, progress, and containment.
     // =========================================================================
     function scenarioIsBreakthrough() {
-      return activeScenario.id === "breakthrough";
+      return activeScenario.id === "breakthrough" || activeScenario.victory?.type === "breakthrough" || activeScenario.scoring?.type === "breakthrough";
     }
 
     function exitObjective() {
