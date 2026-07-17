@@ -244,6 +244,7 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   overflow:visible;
   background:transparent;
   border:0;
+  border-radius:0;
   box-shadow:none;
 }
 .terrain-building .terrain-art {

@@ -1,3 +1,8 @@
+## Terrain T3.4a — Building Integration Hotfix
+
+- Removed an obsolete startup compatibility loop that attempted to assign into deleted legacy terrain aliases.
+- Explicitly neutralized the old farmhouse background, border, and shadow skin so only the new SVG building art renders.
+
 ## Terrain T3.4 — Polish Village Buildings
 
 - Replaced the old span-built building art with one modular inline-SVG presentation module.

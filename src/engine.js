@@ -3390,15 +3390,6 @@
       }
       TERRAIN.instances = TERRAIN_GEOMETRY.setActiveScenario(activeScenario);
 
-      // Build T2 keeps first-instance aliases only for low-risk compatibility
-      // while all generic rule paths consume TERRAIN.instances.
-      for (const key of ["woods", "wall", "building"]) {
-        const match = TERRAIN.instances.find(instance =>
-          key === "building" ? instance.rules?.occupiable : instance.terrainId === key
-        );
-        if (match) Object.assign(TERRAIN[key], match);
-      }
-
       terrainPresentation.renderScenarioTerrain({
         layer: document.getElementById("terrainLayer"),
         scenario: activeScenario
