@@ -295,3 +295,8 @@ Scenario terrain is now divided by geometry type:
 `path-geometry.js` owns deterministic centerline creation and sampling. `linear-terrain.js` compiles those paths into shared presentation data and conservative gameplay corridors. `presentation/linear-terrain.js` renders the same centerlines as layered SVG strokes and repeated details. Scenarios author waypoints; they do not position individual visual tiles.
 
 Closed terrain patches and an editor may reuse control-point concepts later, but remain separate systems.
+
+
+## Terrain L1.2 scene composition
+
+Linear terrain shares path geometry but retains family-specific visual recipes. Ground paths stay below discrete terrain. Buildings are promoted into the battlefield scene and depth-sort against units by their table Y position. Objectives and interaction overlays use fixed layers above the scene. `scene-compositor.js` is the sole owner of dynamic building/unit depth; arbitrary terrain z-index patches should not be added elsewhere.

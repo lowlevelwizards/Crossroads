@@ -12,7 +12,7 @@
 
   window.CROSSROADS_LINEAR_TERRAIN_STYLES = Object.freeze({
     dirt_road: style("dirt_road", "road", "transport", "dirt road", 3.6, open, {
-      shoulderWidth:4.35, color:"#ad9361", shoulder:"#748354", detail:"#d0bb87"
+      shoulderWidth:3.95, color:"#ad9361", shoulder:"#748354", detail:"#d0bb87"
     }),
     stream: style("stream", "stream", "water", "stream", 2.35, rough, {
       bankWidth:3.35, bank:"#6f8259", water:"#75b4c6", detail:"#b9d9df"
@@ -21,7 +21,7 @@
       bankWidth:3.0, bank:"#75845d", channel:"#66563d"
     }),
     railway_embankment: style("railway_embankment", "rail", "transport", "raised railway", 4.0, crossingHard, {
-      ballastWidth:5.2, ballast:"#8c795b", sleeperSpacing:2.15, sleeperLength:4.45
+      ballastWidth:3.75, ballast:"#8c795b", sleeperSpacing:2.75, sleeperLength:3.15
     }),
     hedge: style("hedge", "hedge", "linear", "hedge", 1.65, crossingHard, { repeatSpacing:1.35 }),
     wood_fence: style("wood_fence", "fence", "linear", "wood fence", 0.75, crossingHard, { postSpacing:2.1 }),

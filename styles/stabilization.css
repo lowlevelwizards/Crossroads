@@ -43,3 +43,31 @@
 .terrain-id-woodpile .woodpile-log-1{top:13%!important}.terrain-id-woodpile .woodpile-log-2{top:34%!important}.terrain-id-woodpile .woodpile-log-3{top:55%!important}.terrain-id-woodpile .woodpile-log-4{top:24%!important;left:20%!important}.terrain-id-woodpile .woodpile-log-5{top:45%!important;left:20%!important}.terrain-id-woodpile .woodpile-log:nth-of-type(n+6){display:none!important}
 .terrain-id-woodpile .log-support { background:#34383b!important; width:10%!important; left:34%!important; }
 .terrain-id-woodpile .log-support-2 { left:60%!important; }
+
+/* Terrain L1.2 — one explicit scene order. */
+.battlefield { isolation:isolate; overflow:hidden; }
+.terrain-layer { z-index:100!important; }
+.linear-terrain-svg { z-index:0!important; }
+.terrain-layer .terrain-piece { z-index:30; }
+.terrain-layer .terrain-piece[data-renderer="field"] { z-index:5; }
+.terrain-layer .terrain-piece[data-renderer="woods"],
+.terrain-layer .terrain-piece[data-renderer="orchard"] { z-index:25; }
+.terrain-layer .terrain-piece[data-renderer="wall"],
+.terrain-layer .terrain-piece[data-renderer="hedge"],
+.terrain-layer .terrain-piece[data-renderer="fence"] { z-index:40; }
+.scene-promoted-terrain,
+.battlefield > .unit { position:absolute; }
+.scene-depth-object { isolation:isolate; }
+.objective-ring, .objective-marker, .objective-point, .objective-layer { z-index:7200!important; }
+.range-ring, .trace-line, .trace-label, #routeLayer, .waypoint-marker, .ghost-token, .preview-dot { z-index:7600!important; }
+
+/* Linear family recovery. */
+.linear-road-shoulder { stroke:#73805d; opacity:.64; }
+.linear-road-surface, .linear-junction-surface { stroke:#94805b; fill:#94805b; }
+.linear-road-track { stroke:#cfbf91; opacity:.32; }
+.linear-junction-shoulder { fill:#73805d; opacity:.74; }
+.linear-rail-ballast { stroke:#8b7d68; opacity:.72; }
+.linear-rail-sleeper { fill:#654633; stroke:#493226; stroke-width:.045; }
+.linear-rail-line { stroke:#68757c; stroke-width:.12; }
+.linear-fence-rail { stroke:#684731; fill:none; }
+.linear-fence-post { fill:#72503a; stroke:#4d3426; stroke-width:.035; }

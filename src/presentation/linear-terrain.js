@@ -59,8 +59,8 @@
   function renderRoad(group, compiled) {
     const p = compiled.path.points;
     const presentation = compiled.style.presentation;
-    stroke(group, p, "linear-road-shoulder", presentation.shoulderWidth ?? compiled.width + 0.65);
-    stroke(group, p, "linear-road-surface", compiled.width);
+    stroke(group, p, "linear-road-shoulder", presentation.shoulderWidth ?? compiled.width + 0.45, { "stroke-linecap": "butt" });
+    stroke(group, p, "linear-road-surface", compiled.width, { "stroke-linecap": "butt" });
     stroke(group, offsetPath(compiled.path, -compiled.width * 0.20), "linear-road-track", 0.10, { "stroke-dasharray": "1.4 2.15" });
     stroke(group, offsetPath(compiled.path, compiled.width * 0.20), "linear-road-track", 0.10, { "stroke-dasharray": "1.25 2.35" });
 
@@ -93,8 +93,8 @@
   function renderStream(group, compiled) {
     const p = compiled.path.points;
     const presentation = compiled.style.presentation;
-    stroke(group, p, "linear-stream-bank", presentation.bankWidth ?? compiled.width + 0.85);
-    stroke(group, p, "linear-stream-water", compiled.width);
+    stroke(group, p, "linear-stream-bank", presentation.bankWidth ?? compiled.width + 0.65, { "stroke-linecap": "butt" });
+    stroke(group, p, "linear-stream-water", compiled.width, { "stroke-linecap": "butt" });
     stroke(group, offsetPath(compiled.path, -compiled.width * 0.12), "linear-stream-highlight", 0.10, { "stroke-dasharray": "2.2 2.8" });
 
     PATHS.samplePath(compiled.path, 7.2).slice(1, -1).forEach((sample, index) => {
@@ -125,22 +125,22 @@
   }
 
   function renderDitch(group, compiled) {
-    stroke(group, compiled.path.points, "linear-ditch-bank", compiled.width + 0.42);
-    stroke(group, compiled.path.points, "linear-ditch-channel", compiled.width * 0.52);
+    stroke(group, compiled.path.points, "linear-ditch-bank", compiled.width + 0.36, { "stroke-linecap": "butt" });
+    stroke(group, compiled.path.points, "linear-ditch-channel", compiled.width * 0.46, { "stroke-linecap": "butt" });
     stroke(group, compiled.path.points, "linear-ditch-highlight", 0.07, { "stroke-dasharray": "1.3 2.1" });
   }
 
   function renderRail(group, compiled) {
     const presentation = compiled.style.presentation;
     stroke(group, compiled.path.points, "linear-rail-ballast", presentation.ballastWidth ?? compiled.width + 0.72, { "stroke-linecap": "butt" });
-    const sleeperSpacing = presentation.sleeperSpacing ?? 2.75;
-    const sleeperLength = presentation.sleeperLength ?? 3.55;
+    const sleeperSpacing = presentation.sleeperSpacing ?? 2.65;
+    const sleeperLength = presentation.sleeperLength ?? 3.15;
     PATHS.samplePath(compiled.path, sleeperSpacing).forEach(sample => {
       const angle = Math.atan2(sample.normal.y, sample.normal.x) * 180 / Math.PI;
-      rect(group, sample.x, sample.y, sleeperLength, 0.42, angle, "linear-rail-sleeper", 0.10);
+      rect(group, sample.x, sample.y, sleeperLength, 0.34, angle, "linear-rail-sleeper", 0.08);
     });
-    stroke(group, offsetPath(compiled.path, -0.58), "linear-rail-line", 0.14, { "stroke-linecap": "butt" });
-    stroke(group, offsetPath(compiled.path, 0.58), "linear-rail-line", 0.14, { "stroke-linecap": "butt" });
+    stroke(group, offsetPath(compiled.path, -0.52), "linear-rail-line", 0.12, { "stroke-linecap": "butt" });
+    stroke(group, offsetPath(compiled.path, 0.52), "linear-rail-line", 0.12, { "stroke-linecap": "butt" });
   }
 
   function renderHedge(group, compiled) {
@@ -155,11 +155,18 @@
   }
 
   function renderFence(group, compiled) {
-    stroke(group, offsetPath(compiled.path, -0.16), "linear-fence-rail", 0.13);
-    stroke(group, offsetPath(compiled.path, 0.16), "linear-fence-rail", 0.13);
-    PATHS.samplePath(compiled.path, compiled.style.presentation.postSpacing ?? 2.0).forEach(sample => {
+    const samples = PATHS.samplePath(compiled.path, compiled.style.presentation.postSpacing ?? 2.2);
+    for (let index = 0; index < samples.length - 1; index += 1) {
+      const a = samples[index];
+      const b = samples[index + 1];
+      stroke(group, [a, b], "linear-fence-rail linear-fence-rail-top", 0.10, { "stroke-linecap": "round" });
+      const lowerA = { x:a.x + a.normal.x * 0.20, y:a.y + a.normal.y * 0.20 };
+      const lowerB = { x:b.x + b.normal.x * 0.20, y:b.y + b.normal.y * 0.20 };
+      stroke(group, [lowerA, lowerB], "linear-fence-rail linear-fence-rail-bottom", 0.10, { "stroke-linecap": "round" });
+    }
+    samples.forEach(sample => {
       const angle = Math.atan2(sample.normal.y, sample.normal.x) * 180 / Math.PI;
-      rect(group, sample.x, sample.y, 0.78, 0.26, angle, "linear-fence-post", 0.08);
+      rect(group, sample.x, sample.y, 0.62, 0.18, angle, "linear-fence-post", 0.05);
     });
   }
 
@@ -186,10 +193,20 @@
   function renderJunction(group, junction) {
     const style = window.CROSSROADS_LINEAR_TERRAIN_STYLES?.[junction.styleId ?? "dirt_road"];
     const width = Number(junction.width) || style?.width || 3.6;
-    const radius = Number(junction.radius) || width * 0.92;
-    const shoulder = circle(group, junction.x, junction.y, radius, "linear-junction-shoulder");
-    shoulder.dataset.junctionId = junction.id;
-    circle(group, junction.x, junction.y, radius * 0.83, "linear-junction-surface");
+    const shoulderWidth = Number(style?.presentation?.shoulderWidth) || width + 0.45;
+    const arm = Number(junction.armLength) || width * 1.9;
+    const pieces = junction.type === "tee"
+      ? [{ w:arm * 2, h:shoulderWidth }, { w:shoulderWidth, h:arm, y:arm * 0.5 }]
+      : [{ w:arm * 2, h:shoulderWidth }, { w:shoulderWidth, h:arm * 2 }];
+    for (const piece of pieces) {
+      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-shoulder", 0.35);
+    }
+    const surfaces = junction.type === "tee"
+      ? [{ w:arm * 2, h:width }, { w:width, h:arm, y:arm * 0.5 }]
+      : [{ w:arm * 2, h:width }, { w:width, h:arm * 2 }];
+    for (const piece of surfaces) {
+      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-surface", 0.28);
+    }
   }
 
   function renderCrossing(group, crossing, compiledById) {

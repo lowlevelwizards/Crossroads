@@ -4,6 +4,8 @@
   const base = window.CrossroadsTerrainPresentation;
   if (!base?.renderScenarioTerrain) throw new Error("Terrain presentation must load before terrain-runtime.js.");
 
+  let compositor = null;
+
   function addFieldRows(piece) {
     const art = piece.querySelector(".terrain-art");
     if (!art || art.childElementCount) return;
@@ -29,16 +31,24 @@
   function configurePiece(piece, instance) {
     namespaceWoodpile(piece);
     if (instance?.visualScale) piece.style.setProperty("--building-visual-scale", String(instance.visualScale));
+    if (instance?.depthAnchor) piece.dataset.depthAnchor = String(instance.depthAnchor);
     if (piece.dataset.renderer === "field") addFieldRows(piece);
   }
 
   function renderScenarioTerrain(args) {
+    args.battlefield?.querySelectorAll?.(".scene-promoted-terrain").forEach(node => node.remove());
     base.renderScenarioTerrain(args);
     const byId = new Map((args.scenario?.terrain ?? []).map(instance => [instance.id, instance]));
     for (const piece of args.layer.querySelectorAll(".terrain-piece")) {
       configurePiece(piece, byId.get(piece.dataset.terrainInstanceId));
     }
     window.CrossroadsLinearTerrainPresentation?.renderScenarioLinearTerrain(args);
+
+    const battlefield = args.battlefield ?? args.layer.closest(".battlefield");
+    if (!compositor && battlefield && window.CrossroadsSceneCompositor) {
+      compositor = window.CrossroadsSceneCompositor.create({ battlefield, terrainLayer: args.layer });
+    }
+    compositor?.composeTerrain();
   }
 
   window.CrossroadsTerrainPresentation = Object.freeze({ ...base, renderScenarioTerrain });

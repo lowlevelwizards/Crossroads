@@ -1,6 +1,6 @@
-/* CROSSROADS build metadata — update this file with every staged build. */
+"use strict";
 window.CROSSROADS_BUILD_INFO = Object.freeze({
   engine: "Infantry Core",
-  version: "Terrain L1.1",
-  codename: "Stabilization & Battlefield Cohesion"
+  version: "Terrain L1.2",
+  codename: "Scene Composition & Linear Visual Recovery"
 });

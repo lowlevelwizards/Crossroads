@@ -122,8 +122,8 @@ const mokra = Object.freeze({
     {id:"village-church",terrainId:"church",appearance:"wooden_brown_red",x:12,y:12.5,width:13,height:10.5,visualScale:1.30},
     {id:"village-farmhouse",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:23,y:16,width:14,height:7.5,visualScale:1.15},
     {id:"village-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:33,y:12.5,width:8.5,height:7,visualScale:1.15},
-    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:14,y:23.8,width:7.5,height:5.8,visualScale:1.15},
-    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:23,y:23.8,width:10,height:5.6,visualScale:1.15},
+    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:14.5,y:25.0,width:7.2,height:5.2,visualScale:1.15},
+    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:23.5,y:24.8,width:9.5,height:5.3,visualScale:1.15},
     {id:"reserve-farm",terrainId:"medium_cottage",appearance:"concrete_thatch",x:53,y:15.5,width:9,height:7,visualScale:1.15},
 
     {id:"north-foxholes",terrainId:"foxholes",x:34,y:10,width:7,height:3.5},
@@ -146,7 +146,7 @@ const mokra = Object.freeze({
     {id:"south-road-west",styleId:"dirt_road",width:3.2,smoothing:.18,points:[{x:17,y:37.5},{x:28,y:37.2},{x:39.5,y:37.5}],start:{cap:"grass"},end:{cap:"junction"}},
     {id:"south-road-east",styleId:"dirt_road",width:3.2,points:[{x:47.5,y:37.5},{x:60,y:37.5}],start:{cap:"junction"},end:{cap:"grass"}},
 
-    {id:"mokra-stream",styleId:"stream",smoothing:.68,points:[{x:0,y:30.4},{x:10,y:29.7},{x:20,y:29.5},{x:27,y:30.5},{x:36,y:30.2},{x:47,y:30.5},{x:56,y:30.1},{x:66,y:30.4}],start:{cap:"off_table"},end:{cap:"taper"}},
+    {id:"mokra-stream",styleId:"stream",smoothing:.68,points:[{x:0,y:32.0},{x:10,y:31.5},{x:20,y:31.4},{x:27,y:32.1},{x:36,y:31.9},{x:47,y:32.1},{x:56,y:31.8},{x:66,y:32.0}],start:{cap:"off_table"},end:{cap:"taper"}},
     {id:"south-ditch",styleId:"ditch",smoothing:.42,points:[{x:2,y:34.2},{x:11,y:34.7},{x:20,y:33.8},{x:28,y:34.1}],start:{cap:"taper"},end:{cap:"taper"}},
 
     {id:"hedge-north-a",styleId:"hedge",points:[{x:4,y:12.8},{x:12,y:12.8}]},
@@ -154,7 +154,7 @@ const mokra = Object.freeze({
     {id:"hedge-center-a",styleId:"hedge",points:[{x:4,y:27.8},{x:12,y:27.8}]},
     {id:"hedge-center-b",styleId:"hedge",points:[{x:29,y:32.8},{x:38,y:32.8}]},
     {id:"hedge-east",styleId:"hedge",points:[{x:49,y:27.8},{x:58,y:27.8}]},
-    {id:"fence-village",styleId:"wood_fence",smoothing:.18,points:[{x:8,y:31.8},{x:14,y:31.6},{x:21,y:31.8}]},
+    {id:"fence-village",styleId:"wood_fence",smoothing:.18,points:[{x:7,y:33.0},{x:13,y:32.8},{x:19,y:33.0}]},
     {id:"fence-north",styleId:"wood_fence",points:[{x:27,y:11.8},{x:33,y:11.8}]},
     {id:"wall-village",styleId:"stone_wall",points:[{x:29,y:21.8},{x:38,y:21.8}]},
     {id:"wall-reserve",styleId:"stone_wall",points:[{x:50,y:41.8},{x:60,y:41.8}]}
@@ -163,7 +163,7 @@ const mokra = Object.freeze({
     {id:"east-road-tee",type:"tee",styleId:"dirt_road",x:62,y:23.5,width:3.8,radius:3.2}
   ]),
   crossings:freezeList([
-    {id:"reserve-culvert",type:"culvert",pathIds:["east-road","mokra-stream"],length:4.8,width:3.6}
+    {id:"reserve-culvert",type:"culvert",pathIds:["east-road","mokra-stream"],length:4.2,width:3.2}
   ]),
   objectives:freezeList([{
     id:"mokra_crossings", type:"control_group", label:"Railway Crossings", x:43.5, y:23.5, radius:3.25,
