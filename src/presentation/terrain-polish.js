@@ -50,9 +50,12 @@
   }
 
   function postProcess(layer, scenario) {
+    const byId = new Map((scenario?.terrain ?? []).map(instance => [instance.id, instance]));
     for (const piece of layer.querySelectorAll(".terrain-piece")) {
       namespacePrimitives(piece);
       applyDepthMetadata(piece, scenario);
+      const instance = byId.get(piece.dataset.terrainInstanceId);
+      if (instance?.visualScale) piece.style.setProperty("--building-visual-scale", String(instance.visualScale));
       if (piece.dataset.renderer === "field") addFieldRows(piece);
     }
   }
@@ -79,6 +82,7 @@
 
   function renderScenarioTerrain(args) {
     base.renderScenarioTerrain(args);
+    window.CrossroadsLinearTerrainPresentation?.renderScenarioLinearTerrain(args);
     postProcess(args.layer, args.scenario);
     installDepthObserver();
     refreshUnitDepth();
