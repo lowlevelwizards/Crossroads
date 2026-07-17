@@ -71,3 +71,57 @@
 .linear-rail-line { stroke:#68757c; stroke-width:.12; }
 .linear-fence-rail { stroke:#684731; fill:none; }
 .linear-fence-post { fill:#72503a; stroke:#4d3426; stroke-width:.035; }
+
+
+/* Terrain L1.3 — visual contract before editor work. */
+:root { --unit-visual-scale:.85; --miniature-scale:1; }
+.battlefield .unit-model-group { scale:var(--unit-visual-scale)!important; transform-origin:center center; }
+
+/* Flat fields are true ground decals. Linear water and roads cut across them. */
+.terrain-layer { isolation:isolate; }
+.terrain-layer .terrain-piece[data-renderer="field"] { z-index:0!important; }
+.terrain-layer .linear-terrain-svg { z-index:10!important; }
+.terrain-layer .terrain-piece:not([data-renderer="field"]) { z-index:30; }
+
+/* Direct, deterministic label modes. */
+.battlefield .unit[data-label-mode="hidden"] .unit-label { display:none!important; opacity:0!important; visibility:hidden!important; }
+.battlefield .unit[data-label-mode="compact"] .unit-label-close { display:none!important; }
+.battlefield .unit[data-label-mode="compact"] .unit-label-medium { display:block!important; opacity:1!important; visibility:visible!important; }
+.battlefield .unit[data-label-mode="full"] .unit-label-medium { display:none!important; }
+.battlefield .unit[data-label-mode="full"] .unit-label-close { display:block!important; opacity:1!important; visibility:visible!important; }
+.camera-far .battlefield .unit .unit-label { display:none!important; }
+
+/* Grass texture is a dedicated board skin above the base color, below terrain. */
+.battlefield.mat-grass-temperate::before,
+.battlefield.mat-grass-dry::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  opacity:.48;
+  background-image:
+    repeating-linear-gradient(18deg, transparent 0 24px, rgba(62,102,59,.28) 25px 27px, transparent 28px 61px),
+    repeating-linear-gradient(108deg, transparent 0 42px, rgba(112,139,82,.20) 43px 45px, transparent 46px 89px),
+    radial-gradient(circle at 20% 30%, rgba(66,103,61,.16) 0 1.4px, transparent 1.8px),
+    radial-gradient(circle at 74% 68%, rgba(79,111,65,.14) 0 1.2px, transparent 1.7px);
+  background-size:86px 86px,119px 119px,63px 63px,97px 97px;
+}
+.terrain-layer, .deployment-zone, .deployment-label, .ruler-label { position:absolute; z-index:2; }
+
+/* Road details should read as dirt ruts and scattered aggregate, not paving marks. */
+.linear-road-track { stroke:#d0bd8d; opacity:.26; }
+.linear-road-pebble { fill:#77684e; opacity:.46; }
+.linear-road-cap-shoulder { fill:#73805d; opacity:.68; }
+.linear-road-cap-surface { fill:#94805b; }
+.linear-junction-shoulder { fill:#73805d; opacity:.72; }
+.linear-junction-surface { fill:#94805b; }
+
+/* Stream stones live on banks, never as a stepping-stone centerline. */
+.linear-stream-stone { fill:#8a846f; stroke:#665f4e; stroke-width:.025; opacity:.65; }
+
+/* Railway path uses the crossing's compact visual proportions. */
+.linear-rail-ballast { stroke:#8a806d; opacity:.58; }
+.linear-rail-sleeper { fill:#684733; stroke:#493226; stroke-width:.04; }
+.linear-rail-sleeper-highlight { fill:#8a6245; opacity:.48; }
+.linear-rail-line { stroke:#68757c; }

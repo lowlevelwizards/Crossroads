@@ -1,6 +1,6 @@
 "use strict";
 window.CROSSROADS_BUILD_INFO = Object.freeze({
   engine: "Infantry Core",
-  version: "Terrain L1.2",
-  codename: "Scene Composition & Linear Visual Recovery"
+  version: "L1.3",
+  codename: "Linear Visual Contract"
 });

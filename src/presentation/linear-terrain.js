@@ -49,6 +49,39 @@
     return element;
   }
 
+  function polygon(parent, points, className) {
+    const element = node("polygon", {
+      points: points.map(point => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      class: className
+    });
+    parent.appendChild(element);
+    return element;
+  }
+
+  function seeded(index, salt = 0) {
+    const value = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+    return value - Math.floor(value);
+  }
+
+  function taperedCap(group, compiled, endpoint, className, widthScale = 1) {
+    const atStart = endpoint.at === 0;
+    const sample = PATHS.sampleAt(compiled.path, endpoint.at);
+    const direction = atStart ? -1 : 1;
+    const length = Math.max(1.6, compiled.width * 0.72);
+    const outer = {
+      x: sample.x + sample.tangent.x * length * direction,
+      y: sample.y + sample.tangent.y * length * direction
+    };
+    const half = compiled.width * widthScale / 2;
+    const tip = Math.max(0.14, half * 0.16);
+    polygon(group, [
+      { x: sample.x + sample.normal.x * half, y: sample.y + sample.normal.y * half },
+      { x: sample.x - sample.normal.x * half, y: sample.y - sample.normal.y * half },
+      { x: outer.x - sample.normal.x * tip, y: outer.y - sample.normal.y * tip },
+      { x: outer.x + sample.normal.x * tip, y: outer.y + sample.normal.y * tip }
+    ], className);
+  }
+
   function offsetPath(path, amount) {
     return PATHS.samplePath(path, 0.65).map(sample => ({
       x: sample.x + sample.normal.x * amount,
@@ -59,10 +92,18 @@
   function renderRoad(group, compiled) {
     const p = compiled.path.points;
     const presentation = compiled.style.presentation;
-    stroke(group, p, "linear-road-shoulder", presentation.shoulderWidth ?? compiled.width + 0.45, { "stroke-linecap": "butt" });
+    const shoulder = presentation.shoulderWidth ?? compiled.width + 0.38;
+    stroke(group, p, "linear-road-shoulder", shoulder, { "stroke-linecap": "butt" });
     stroke(group, p, "linear-road-surface", compiled.width, { "stroke-linecap": "butt" });
-    stroke(group, offsetPath(compiled.path, -compiled.width * 0.20), "linear-road-track", 0.10, { "stroke-dasharray": "1.4 2.15" });
-    stroke(group, offsetPath(compiled.path, compiled.width * 0.20), "linear-road-track", 0.10, { "stroke-dasharray": "1.25 2.35" });
+    stroke(group, offsetPath(compiled.path, -compiled.width * 0.20), "linear-road-track linear-road-track-a", 0.085, { "stroke-dasharray": "1.25 2.65 .55 3.15", "stroke-dashoffset": ".35" });
+    stroke(group, offsetPath(compiled.path, compiled.width * 0.20), "linear-road-track linear-road-track-b", 0.085, { "stroke-dasharray": ".7 3.0 1.45 2.35", "stroke-dashoffset": "1.1" });
+
+    PATHS.samplePath(compiled.path, 2.75).slice(1, -1).forEach((sample, index) => {
+      if (seeded(index, 3) < 0.38) return;
+      const side = seeded(index, 7) < 0.5 ? -1 : 1;
+      const lateral = compiled.width * (0.15 + seeded(index, 11) * 0.27) * side;
+      circle(group, sample.x + sample.normal.x * lateral, sample.y + sample.normal.y * lateral, 0.045 + seeded(index, 13) * 0.035, "linear-road-pebble");
+    });
 
     const endpoints = [
       { definition: compiled.definition.start, at: 0 },
@@ -70,23 +111,8 @@
     ];
     for (const endpoint of endpoints) {
       if (endpoint.definition?.cap !== "grass") continue;
-      const sample = PATHS.sampleAt(compiled.path, endpoint.at);
-      const direction = endpoint.at === 0 ? -1 : 1;
-      for (let step = 0; step < 5; step += 1) {
-        const progress = step / 4;
-        const distance = progress * compiled.width * 0.95 * direction;
-        const width = compiled.width * (1 - progress * 0.82);
-        rect(
-          group,
-          sample.x + sample.tangent.x * distance,
-          sample.y + sample.tangent.y * distance,
-          Math.max(0.18, width),
-          compiled.width * 0.34,
-          Math.atan2(sample.tangent.y, sample.tangent.x) * 180 / Math.PI,
-          "linear-road-fade",
-          0.10
-        );
-      }
+      taperedCap(group, compiled, endpoint, "linear-road-cap-shoulder", shoulder / compiled.width);
+      taperedCap(group, compiled, endpoint, "linear-road-cap-surface", 1);
     }
   }
 
@@ -97,10 +123,11 @@
     stroke(group, p, "linear-stream-water", compiled.width, { "stroke-linecap": "butt" });
     stroke(group, offsetPath(compiled.path, -compiled.width * 0.12), "linear-stream-highlight", 0.10, { "stroke-dasharray": "2.2 2.8" });
 
-    PATHS.samplePath(compiled.path, 7.2).slice(1, -1).forEach((sample, index) => {
-      if (index % 2 !== 0) return;
-      const offset = index % 4 === 0 ? -0.25 : 0.25;
-      circle(group, sample.x + sample.normal.x * offset, sample.y + sample.normal.y * offset, 0.085, "linear-stream-stone");
+    PATHS.samplePath(compiled.path, 6.8).slice(1, -1).forEach((sample, index) => {
+      if (seeded(index, 19) < 0.45) return;
+      const side = index % 2 ? -1 : 1;
+      const offset = (compiled.width / 2 + 0.28 + seeded(index, 23) * 0.18) * side;
+      circle(group, sample.x + sample.normal.x * offset, sample.y + sample.normal.y * offset, 0.045 + seeded(index, 29) * 0.035, "linear-stream-stone");
     });
 
     const endpoints = [
@@ -132,15 +159,18 @@
 
   function renderRail(group, compiled) {
     const presentation = compiled.style.presentation;
-    stroke(group, compiled.path.points, "linear-rail-ballast", presentation.ballastWidth ?? compiled.width + 0.72, { "stroke-linecap": "butt" });
-    const sleeperSpacing = presentation.sleeperSpacing ?? 2.65;
-    const sleeperLength = presentation.sleeperLength ?? 3.15;
+    const ballastWidth = presentation.ballastWidth ?? 3.05;
+    const sleeperSpacing = presentation.sleeperSpacing ?? 2.35;
+    const sleeperLength = presentation.sleeperLength ?? 2.65;
+    const gauge = presentation.railGauge ?? 0.92;
+    stroke(group, compiled.path.points, "linear-rail-ballast", ballastWidth, { "stroke-linecap": "butt" });
     PATHS.samplePath(compiled.path, sleeperSpacing).forEach(sample => {
       const angle = Math.atan2(sample.normal.y, sample.normal.x) * 180 / Math.PI;
-      rect(group, sample.x, sample.y, sleeperLength, 0.34, angle, "linear-rail-sleeper", 0.08);
+      rect(group, sample.x, sample.y, sleeperLength, 0.30, angle, "linear-rail-sleeper", 0.055);
+      rect(group, sample.x, sample.y - 0.025, sleeperLength * 0.86, 0.045, angle, "linear-rail-sleeper-highlight", 0.02);
     });
-    stroke(group, offsetPath(compiled.path, -0.52), "linear-rail-line", 0.12, { "stroke-linecap": "butt" });
-    stroke(group, offsetPath(compiled.path, 0.52), "linear-rail-line", 0.12, { "stroke-linecap": "butt" });
+    stroke(group, offsetPath(compiled.path, -gauge / 2), "linear-rail-line linear-rail-line-left", 0.115, { "stroke-linecap": "butt" });
+    stroke(group, offsetPath(compiled.path, gauge / 2), "linear-rail-line linear-rail-line-right", 0.115, { "stroke-linecap": "butt" });
   }
 
   function renderHedge(group, compiled) {
@@ -194,18 +224,18 @@
     const style = window.CROSSROADS_LINEAR_TERRAIN_STYLES?.[junction.styleId ?? "dirt_road"];
     const width = Number(junction.width) || style?.width || 3.6;
     const shoulderWidth = Number(style?.presentation?.shoulderWidth) || width + 0.45;
-    const arm = Number(junction.armLength) || width * 1.9;
+    const arm = Number(junction.armLength) || width * 1.35;
     const pieces = junction.type === "tee"
       ? [{ w:arm * 2, h:shoulderWidth }, { w:shoulderWidth, h:arm, y:arm * 0.5 }]
       : [{ w:arm * 2, h:shoulderWidth }, { w:shoulderWidth, h:arm * 2 }];
     for (const piece of pieces) {
-      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-shoulder", 0.35);
+      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-shoulder", 0.18);
     }
     const surfaces = junction.type === "tee"
       ? [{ w:arm * 2, h:width }, { w:width, h:arm, y:arm * 0.5 }]
       : [{ w:arm * 2, h:width }, { w:width, h:arm * 2 }];
     for (const piece of surfaces) {
-      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-surface", 0.28);
+      rect(group, junction.x + (piece.x || 0), junction.y + (piece.y || 0), piece.w, piece.h, 0, "linear-junction-surface", 0.14);
     }
   }
 
