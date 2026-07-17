@@ -13,12 +13,14 @@
     };
     const footprint = definition?.presentation?.footprint;
     if (!footprint) return visual;
-    return {
-      x: visual.x + visual.width * (Number(footprint.x) || 0),
-      y: visual.y + visual.height * (Number(footprint.y) || 0),
-      width: visual.width * (Number(footprint.width) || 1),
-      height: visual.height * (Number(footprint.height) || 1)
-    };
+    const scale = Math.max(0.25, Number(instance.visualScale) || 1);
+    const baseWidth = visual.width * (Number(footprint.width) || 1);
+    const baseHeight = visual.height * (Number(footprint.height) || 1);
+    const width = baseWidth * scale;
+    const height = baseHeight * scale;
+    const centerX = visual.x + visual.width * ((Number(footprint.x) || 0) + (Number(footprint.width) || 1) / 2);
+    const centerY = visual.y + visual.height * ((Number(footprint.y) || 0) + (Number(footprint.height) || 1) / 2);
+    return { x:centerX-width/2, y:centerY-height/2, width, height };
   }
 
   function normalize(instance) {
@@ -42,7 +44,9 @@
   }
 
   function setActiveScenario(scenario) {
-    activeInstances = Object.freeze((scenario?.terrain ?? []).map(normalize));
+    const discrete = (scenario?.terrain ?? []).map(normalize);
+    const linear = window.CrossroadsLinearTerrain?.compileScenario(scenario)?.instances ?? [];
+    activeInstances = Object.freeze([...discrete, ...linear]);
     return activeInstances;
   }
 
@@ -111,16 +115,17 @@
   function entryPoint(instanceOrId, outward = 0.15) {
     const { instance, anchor, normal } = entryDefinition(instanceOrId);
     if (!instance) return { x: 0, y: 0 };
+    const rect = instance.visualRect ?? instance;
     const localAnchor = {
-      x: (Number(anchor.x) - 0.5) * instance.width,
-      y: (Number(anchor.y) - 0.5) * instance.height
+      x: (Number(anchor.x) - 0.5) * rect.width,
+      y: (Number(anchor.y) - 0.5) * rect.height
     };
     const rotatedAnchor = rotateVector(localAnchor, instance.rotation);
     const rotatedNormal = rotateVector(
       { x: Number(normal.x) || 0, y: Number(normal.y) || 0 },
       instance.rotation
     );
-    const origin = center(instance);
+    const origin = center(rect);
     return {
       x: origin.x + rotatedAnchor.x + rotatedNormal.x * outward,
       y: origin.y + rotatedAnchor.y + rotatedNormal.y * outward
@@ -145,8 +150,8 @@
     const { instance, anchor, normal } = entryDefinition(instanceOrId);
     if (!instance) return { x: 0.5, y: 1 };
     return {
-      x: Number(anchor.x) + (Number(normal.x) || 0) * ((distance + 0.15) / instance.width),
-      y: Number(anchor.y) + (Number(normal.y) || 0) * ((distance + 0.15) / instance.height)
+      x: Number(anchor.x) + (Number(normal.x) || 0) * ((distance + 0.15) / (instance.visualRect?.width ?? instance.width)),
+      y: Number(anchor.y) + (Number(normal.y) || 0) * ((distance + 0.15) / (instance.visualRect?.height ?? instance.height))
     };
   }
 
