@@ -51,7 +51,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id: "cross-road", terrainId: "road_straight", x: 33.48, y: 0, width: 5.04, height: 48, rotation: 0 }),
       Object.freeze({ id: "woods", terrainId: "woods", x: 15, y: 28, width: 18, height: 14 }),
       Object.freeze({ id: "wall", terrainId: "wall", x: 38, y: 30, width: 17, height: 2.5 }),
-      Object.freeze({ id: "crossroads-cottage", terrainId: "medium_cottage", appearance: "peach_plaster_red", x: 28, y: 4, width: 13, height: 10 })
+      Object.freeze({ id: "crossroads-cottage", terrainId: "medium_cottage", appearance: "peach_plaster_red", x: 40.5, y: 4.5, width: 13, height: 10 })
     ]),
     objectives: Object.freeze([
       Object.freeze({ id: "crossroads", x: 36, y: 24, radius: 3, label: "Crossroads" })
@@ -83,7 +83,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
       Object.freeze({ id: "south-copse", terrainId: "woods", x: 12, y: 34, width: 12, height: 9 }),
       Object.freeze({ id: "yard-wall", terrainId: "wall", x: 29, y: 26, width: 18, height: 2.5 }),
       Object.freeze({ id: "garden-wall", terrainId: "wall", x: 45, y: 11, width: 10, height: 2.5 }),
-      Object.freeze({ id: "farmhouse", terrainId: "long_farmhouse", appearance: "mixed_plaster_red", x: 29, y: 14, width: 17, height: 8 }),
+      Object.freeze({ id: "farmhouse", terrainId: "long_farmhouse", appearance: "mixed_plaster_red", x: 39.5, y: 13.5, width: 17, height: 8 }),
       Object.freeze({ id: "east-barn", terrainId: "barn", appearance: "weathered_charcoal", x: 49, y: 30, width: 12, height: 8 })
     ]),
     objectives: Object.freeze([

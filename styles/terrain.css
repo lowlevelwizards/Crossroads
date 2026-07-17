@@ -42,8 +42,19 @@
   color:#f4eedf;
   font-size:clamp(7px,.8vw,10px);
   letter-spacing:.05em;
-  opacity:.9;
+  opacity:0;
+  white-space:nowrap;
+  pointer-events:none;
   text-shadow:0 1px 0 rgba(0,0,0,.28);
+  transition:opacity .16s ease;
+}
+.terrain-piece.terrain-label-visible > .terrain-label,
+.terrain-piece:hover > .terrain-label,
+.terrain-piece:focus-visible > .terrain-label {
+  opacity:.95;
+}
+@media (hover:none) {
+  .terrain-piece:hover > .terrain-label { opacity:0; }
 }
 
 /* ROADS — one local silhouette, flush connection ends, restrained surface marks */
@@ -252,6 +263,15 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   overflow:visible;
   filter:none;
 }
+.terrain-layer[data-scenario-id="terrain_library"] .terrain-piece.terrain-has-label {
+  pointer-events:auto;
+}
+.terrain-layer[data-scenario-id="terrain_library"] .terrain-piece.terrain-has-label .terrain-art {
+  cursor:default;
+}
+.terrain-building {
+  cursor:pointer;
+}
 .building-svg {
   display:block;
   width:100%;
@@ -269,7 +289,6 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   stroke:var(--building-outline,#40372f);
   stroke-linejoin:round;
   stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
 }
 .building-svg-structure,
 .building-svg-detail {
@@ -286,7 +305,6 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   stroke-width:5;
   stroke-linejoin:round;
   stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
 }
 .building-svg-ridge {
   fill:none;
@@ -294,14 +312,12 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   stroke-width:4;
   stroke-linejoin:round;
   stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
 }
 .building-svg-brace {
   fill:none;
   stroke:var(--building-brace,#a87549);
   stroke-width:8;
   stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
 }
 .building-svg-thatch-eave {
   fill:none;
@@ -309,7 +325,6 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   stroke-width:9;
   stroke-linecap:round;
   stroke-linejoin:round;
-  vector-effect:non-scaling-stroke;
 }
 .building-svg-cross {
   fill:var(--building-outline,#40372f);
@@ -325,9 +340,12 @@ body.camera-inspection .woods-tree-trunk { opacity:1; }
   filter:saturate(.72);
 }
 body.camera-far .building-svg-micro { display:none; }
-body.camera-far .building-svg-fine { opacity:.58; }
-body.camera-far .building-svg-shadow { opacity:.72; }
-body.camera-normal .building-svg-micro { opacity:.68; }
+body.camera-far .building-svg-fine { opacity:.42; }
+body.camera-far .building-svg-shadow { opacity:.48; }
+body.camera-far .building-svg-detail { stroke-width:4; }
+body.camera-far .building-svg-brace { stroke-width:6; }
+body.camera-far .building-svg-thatch-eave { stroke-width:7; }
+body.camera-normal .building-svg-micro { opacity:.72; }
 body.camera-close .building-svg,
 body.camera-inspection .building-svg { overflow:visible; }
 
@@ -365,5 +383,3 @@ body.camera-inspection .building-svg { overflow:visible; }
 .log-support-1{left:18%}.log-support-2{right:18%}
 
 /* LABEL DISCIPLINE */
-body.camera-close .terrain-piece .terrain-label{opacity:.28}
-body.camera-close .terrain-piece:hover .terrain-label{opacity:.95}

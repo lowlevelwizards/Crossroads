@@ -10,10 +10,15 @@
   }
 
   function applyRect(element, instance, table) {
+    const width = Number(instance.width) || 0;
+    const height = Number(instance.height) || 0;
+
     element.style.left = percent(instance.x, table.width);
     element.style.top = percent(instance.y, table.height);
-    element.style.width = percent(instance.width, table.width);
-    element.style.height = percent(instance.height, table.height);
+    element.style.width = percent(width, table.width);
+    element.style.height = percent(height, table.height);
+    element.style.setProperty("--terrain-inch-width", String(width));
+    element.style.setProperty("--terrain-inch-height", String(height));
     element.style.setProperty("--terrain-rotation", `${Number(instance.rotation) || 0}deg`);
     element.style.setProperty("--terrain-variant", String(Number(instance.variant) || 0));
     element.style.transform = "rotate(var(--terrain-rotation))";
@@ -203,6 +208,12 @@
       const art = createArtFrame(element);
       decorate(art, definition, instance);
     }
+
+    if (element.querySelector('.terrain-label')) {
+      element.classList.add('terrain-has-label');
+      element.dataset.labelText = definition.label;
+    }
+
     element.title = definition.label;
     return element;
   }
@@ -219,12 +230,37 @@
   function renderScenarioTerrain({ layer, scenario }) {
     if (!layer || !scenario) return;
     applyMat(layer, scenario);
+    const battlefield = layer.closest('.battlefield');
     const instances = Array.isArray(scenario.terrain) ? scenario.terrain : [];
+    layer.dataset.scenarioId = scenario.id ?? '';
+    if (battlefield) battlefield.dataset.scenarioId = scenario.id ?? '';
     layer.replaceChildren();
     for (const instance of instances) {
       const element = createElement(instance);
       applyRect(element, instance, scenario.table);
       layer.appendChild(element);
+    }
+
+    if (!layer.dataset.labelTapBound) {
+      layer.dataset.labelTapBound = 'true';
+      layer.addEventListener('click', event => {
+        const piece = event.target instanceof Element ? event.target.closest('.terrain-piece.terrain-has-label') : null;
+        if (!piece) return;
+        const inLibrary = layer.dataset.scenarioId === 'terrain_library';
+        const touchPreferred = window.matchMedia?.('(hover: none)').matches;
+        if (!inLibrary && !piece.classList.contains('terrain-building')) return;
+        if (!inLibrary && !touchPreferred) return;
+        if (piece.classList.contains('terrain-building') && piece.querySelector('.building-occupancy-nameplate:not([hidden])')) return;
+        event.stopPropagation();
+        const opening = !piece.classList.contains('terrain-label-visible');
+        layer.querySelectorAll('.terrain-label-visible').forEach(node => node.classList.remove('terrain-label-visible'));
+        if (opening) piece.classList.add('terrain-label-visible');
+      });
+
+      document.addEventListener('click', event => {
+        if (layer.contains(event.target)) return;
+        layer.querySelectorAll('.terrain-label-visible').forEach(node => node.classList.remove('terrain-label-visible'));
+      });
     }
   }
 

@@ -1,3 +1,12 @@
+## Terrain T3.5 — Scaling, Placement, and Label Cleanup
+
+- Removed non-scaling SVG strokes so building outlines shrink naturally with battlefield zoom.
+- Added far-zoom building detail reduction while preserving silhouettes and defining features.
+- Hid persistent terrain labels; building labels now reveal on desktop hover and mobile tap, with Terrain Library tap support.
+- Moved the Crossroads cottage and Hold the Farm farmhouse beside their roads instead of directly over them.
+- Kept occupancy nameplates separate from terrain identification labels.
+- Preserved one parent transform per terrain piece and avoided child-level inverse scaling.
+
 ## Terrain T3.4a — Building Integration Hotfix
 
 - Removed an obsolete startup compatibility loop that attempted to assign into deleted legacy terrain aliases.
