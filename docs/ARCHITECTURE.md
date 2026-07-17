@@ -278,7 +278,7 @@ Scenario definitions remain pure data. New grouped-control scenarios should use 
 
 Terrain now separates its visual rectangle from its authoritative rules footprint. Scenario data continues to describe the artwork size; `terrain-geometry.js` normalizes inset building footprints once, and all existing movement, deployment, LOS, occupancy, and assault consumers receive that same rules rectangle.
 
-`terrain-polish.js` is a presentation-only decorator loaded immediately after the base terrain renderer. It owns primitive namespacing, field-row generation, and scene-depth metadata. It does not change terrain rules or scenario state.
+`terrain-runtime.js` is the concise composition boundary loaded after the base terrain renderer. It adds field decoration and invokes the connected linear renderer; it does not mutate terrain rules or scenario state. Camera transforms are continuous, while LOD and overlay refresh are deferred until zoom settles.
 
 Road, stream, and field variants remain registry data using shared renderers. New scenarios should compose those reusable pieces rather than add scenario-specific CSS or combat branches.
 

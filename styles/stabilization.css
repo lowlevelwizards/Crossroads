@@ -1,0 +1,45 @@
+/* Terrain Foundation L1.1 — battlefield cohesion and contextual information */
+.battlefield { overflow:hidden; transform-origin:var(--board-transform-origin, 0 0); }
+.battlefield-surface { contain:layout style paint; }
+.camera-transforming .battlefield *, .camera-transforming .battlefield::before, .camera-transforming .battlefield::after { transition:none!important; }
+
+/* Nameplates exist in the DOM but only contextually relevant ones display. */
+.battlefield .unit .unit-label { opacity:0; visibility:hidden; pointer-events:none; }
+.battlefield .unit.nameplate-visible .unit-label,
+.battlefield .unit.nameplate-hover .unit-label { opacity:1; visibility:visible; pointer-events:auto; }
+.battlefield .unit.nameplate-visible:not(.nameplate-full) .unit-label-close { display:none!important; }
+.battlefield .unit.nameplate-full .unit-label-medium { display:none!important; }
+.camera-far .battlefield .unit .unit-label { display:none!important; }
+
+/* Command radii only belong to the unit currently under direct inspection. */
+.battlefield .command-ring { display:none!important; }
+.battlefield .unit.selected .command-ring { display:block!important; }
+
+/* Quieter objectives; full labels remain discoverable on hover/tap. */
+.battlefield .objective-point-label { opacity:0; transition:opacity .12s ease; }
+.battlefield .objective-point:hover .objective-point-label,
+.battlefield .objective-point.is-inspected .objective-point-label { opacity:1; }
+
+/* Ground texture: sparse low-contrast marks that share the terrain palette. */
+.battlefield.mat-grass-temperate,
+.battlefield.mat-grass-dry {
+  background-image:
+    repeating-linear-gradient(12deg, transparent 0 34px, rgba(67,105,66,.12) 35px 37px, transparent 38px 71px),
+    repeating-linear-gradient(102deg, transparent 0 57px, rgba(97,126,74,.08) 58px 60px, transparent 61px 103px),
+    radial-gradient(circle at 22% 31%, rgba(73,105,66,.08) 0 2px, transparent 3px),
+    radial-gradient(circle at 71% 62%, rgba(86,116,72,.07) 0 2px, transparent 3px);
+  background-size:96px 96px,132px 132px,74px 74px,113px 113px;
+}
+
+/* Scatter refinements */
+.terrain-id-haystack .terrain-art::before { content:""; position:absolute; left:50%; top:50%; width:72%; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%); background:#8b6328; opacity:.72; }
+.terrain-id-haystack .hay-burst { left:50%!important; top:50%!important; right:auto!important; bottom:auto!important; transform-origin:center!important; }
+.terrain-id-haystack .hay-burst-1 { transform:translate(-50%,-50%) rotate(0deg) scale(1)!important; }
+.terrain-id-haystack .hay-burst-2 { transform:translate(-50%,-50%) rotate(22.5deg) scale(.82)!important; }
+.terrain-id-haystack .hay-burst-3 { transform:translate(-50%,-50%) rotate(0deg) scale(.46)!important; }
+
+.terrain-id-woodpile .woodpile-log { position:absolute; left:14%!important; width:72%!important; height:20%!important; border-radius:999px; background:#72503a!important; overflow:visible!important; }
+.terrain-id-woodpile .woodpile-log::after { content:""; position:absolute; right:-2%; top:50%; width:20%; aspect-ratio:1; border-radius:50%; transform:translateY(-50%); background:#c49a62; box-shadow:inset 0 0 0 2px #755138; }
+.terrain-id-woodpile .woodpile-log-1{top:13%!important}.terrain-id-woodpile .woodpile-log-2{top:34%!important}.terrain-id-woodpile .woodpile-log-3{top:55%!important}.terrain-id-woodpile .woodpile-log-4{top:24%!important;left:20%!important}.terrain-id-woodpile .woodpile-log-5{top:45%!important;left:20%!important}.terrain-id-woodpile .woodpile-log:nth-of-type(n+6){display:none!important}
+.terrain-id-woodpile .log-support { background:#34383b!important; width:10%!important; left:34%!important; }
+.terrain-id-woodpile .log-support-2 { left:60%!important; }

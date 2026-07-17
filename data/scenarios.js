@@ -119,21 +119,19 @@ const mokra = Object.freeze({
     {id:"reserve-wood",terrainId:"woods",x:54,y:8,width:15,height:14,variant:4},
 
 
-    {id:"village-church",terrainId:"church",appearance:"wooden_brown_red",x:13,y:13,width:12,height:10,visualScale:1.30},
-    {id:"village-farmhouse",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:23,y:17,width:13,height:7,visualScale:1.15},
-    {id:"village-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:32,y:13.5,width:8,height:7,visualScale:1.15},
-    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:13,y:24.5,width:7,height:6,visualScale:1.15},
-    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:22,y:25.5,width:9,height:7,visualScale:1.15},
-    {id:"village-cottage-c",terrainId:"small_cottage",appearance:"log_thatch",x:32,y:25,width:7,height:6,visualScale:1.15},
-    {id:"village-shed",terrainId:"shed",appearance:"timber_brown",x:35,y:18,width:5,height:4.5,visualScale:1.15},
-    {id:"reserve-farm",terrainId:"medium_cottage",appearance:"concrete_thatch",x:52,y:33,width:9,height:7,visualScale:1.15},
+    {id:"village-church",terrainId:"church",appearance:"wooden_brown_red",x:12,y:12.5,width:13,height:10.5,visualScale:1.30},
+    {id:"village-farmhouse",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:23,y:16,width:14,height:7.5,visualScale:1.15},
+    {id:"village-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:33,y:12.5,width:8.5,height:7,visualScale:1.15},
+    {id:"village-cottage-b",terrainId:"small_cottage",appearance:"whitewash_red",x:14,y:23.8,width:7.5,height:5.8,visualScale:1.15},
+    {id:"village-barn",terrainId:"barn",appearance:"weathered_charcoal",x:23,y:23.8,width:10,height:5.6,visualScale:1.15},
+    {id:"reserve-farm",terrainId:"medium_cottage",appearance:"concrete_thatch",x:53,y:15.5,width:9,height:7,visualScale:1.15},
 
     {id:"north-foxholes",terrainId:"foxholes",x:34,y:10,width:7,height:3.5},
     {id:"central-foxholes",terrainId:"foxholes",x:34,y:25.5,width:7,height:3.5},
     {id:"south-foxholes",terrainId:"foxholes",x:33,y:39,width:7,height:3.5},
 
-    {id:"haystack",terrainId:"haystack",x:20,y:34,width:4,height:4},
-    {id:"woodpile",terrainId:"woodpile",x:25,y:14,width:4,height:3}
+    {id:"haystack",terrainId:"haystack",x:19,y:34.5,width:4,height:4},
+    {id:"woodpile",terrainId:"woodpile",x:27,y:12.5,width:4,height:3}
   ]),
   linearTerrain:freezeList([
     {id:"rail-north-a",styleId:"railway_embankment",points:[{x:43.5,y:0},{x:43.5,y:6}],start:{cap:"off_table"},end:{cap:"junction"}},
@@ -179,12 +177,12 @@ const mokra = Object.freeze({
   victory:Object.freeze({elimination:true,tiebreaker:"survivingSoldiers"}),
   forces:Object.freeze({
     blue:freezeList([
-      {id:"mokra-blue-rifle-a",name:"1st Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:36.5,y:8.5,deploymentZone:"forward"},
-      {id:"mokra-blue-rifle-b",name:"2nd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:38.5,y:25,deploymentZone:"forward"},
-      {id:"mokra-blue-rifle-c",name:"3rd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"regular",x:36,y:40,deploymentZone:"forward"},
+      {id:"mokra-blue-rifle-a",name:"1st Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:35.5,y:8.5,deploymentZone:"forward"},
+      {id:"mokra-blue-rifle-b",name:"2nd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:36.5,y:24.5,deploymentZone:"forward"},
+      {id:"mokra-blue-rifle-c",name:"3rd Mounted Rifle Squadron",unitType:"rifleSquad",quality:"regular",x:34.5,y:40,deploymentZone:"forward"},
       {id:"mokra-blue-mmg",name:"Heavy Machine-Gun Section",unitType:"mmgTeam",quality:"regular",x:30,y:10,deploymentZone:"forward"},
-      {id:"mokra-blue-officer",name:"Regimental Command",unitType:"officer",quality:"veteran",x:50,y:25,deploymentZone:"reserve"},
-      {id:"mokra-blue-reserve",name:"Reserve Squadron",unitType:"assaultSquad",quality:"regular",x:58,y:28,deploymentZone:"reserve"}
+      {id:"mokra-blue-officer",name:"Regimental Command",unitType:"officer",quality:"veteran",x:51,y:24,deploymentZone:"reserve"},
+      {id:"mokra-blue-reserve",name:"Reserve Squadron",unitType:"assaultSquad",quality:"regular",x:57,y:31,deploymentZone:"reserve"}
     ]),
     red:freezeList([
       {id:"mokra-red-officer",name:"German Battle Group HQ",unitType:"officer",quality:"regular",x:5,y:5,deploymentZone:"attack"},

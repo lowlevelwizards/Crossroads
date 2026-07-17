@@ -1,39 +1,32 @@
-/* Terrain Foundation L1 — connected linear terrain */
-.linear-terrain-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:8; }
-.linear-road-shoulder { stroke:#78845b; opacity:.88; }
-.linear-road-surface, .linear-junction-surface { stroke:#a58d61; fill:#a58d61; }
-.linear-road-track { stroke:#d5c397; opacity:.52; }
-.linear-road-grass-cap { fill:#7d8a60; opacity:.72; }
-.linear-junction-shoulder { fill:#78845b; }
+/* Terrain Foundation L1.1 — stabilized family-specific linear renderers */
+.linear-terrain-svg { position:absolute; inset:0; width:100%; height:100%; overflow:hidden; pointer-events:none; z-index:8; }
+.linear-road-shoulder { stroke:#71805b; opacity:.82; }
+.linear-road-surface, .linear-junction-surface { stroke:#9b855d; fill:#9b855d; }
+.linear-road-track { stroke:#d2c293; opacity:.42; }
+.linear-road-fade { fill:#77845e; opacity:.52; }
+.linear-junction-shoulder { fill:#71805b; }
 .linear-junction-surface { stroke:none; }
-.linear-junction-mask { fill:#a58d61; opacity:.95; }
-.linear-stream-bank, .linear-stream-end-bank { stroke:#71835d; fill:#71835d; }
-.linear-stream-water, .linear-stream-end-water { stroke:#75b5c6; fill:#75b5c6; }
-.linear-stream-highlight { stroke:#c1e0e5; opacity:.78; }
-.linear-stream-stone { fill:#9b937a; stroke:#6f6a59; stroke-width:.05; }
-.linear-ditch-bank { stroke:#75825d; }
-.linear-ditch-channel { stroke:#66563e; }
-.linear-ditch-highlight { stroke:#a99670; opacity:.38; }
-.linear-rail-ballast { stroke:#8b795d; filter:drop-shadow(.12px .16px .12px rgba(40,31,22,.32)); }
-.linear-rail-sleeper { stroke:#684631; }
-.linear-rail-line { stroke:#697379; }
+.linear-stream-bank { stroke:#6d805c; fill:none; }
+.linear-stream-water, .linear-stream-taper-water { stroke:#73b1c3; fill:#73b1c3; }
+.linear-stream-highlight { stroke:#c7e3e7; opacity:.70; }
+.linear-stream-stone { fill:#a09a83; stroke:#716b5b; stroke-width:.035; }
+.linear-ditch-bank { stroke:#6f7d5b; }
+.linear-ditch-channel { stroke:#665842; }
+.linear-ditch-highlight { stroke:#a7936e; opacity:.30; }
+.linear-rail-ballast { stroke:#897a62; filter:drop-shadow(.08px .12px .08px rgba(40,31,22,.25)); }
+.linear-rail-sleeper { fill:#674632; stroke:#4e3427; stroke-width:.05; }
+.linear-rail-line { stroke:#6f797e; }
 .linear-hedge-base { stroke:#31573d; }
 .linear-hedge-dark { fill:#31573d; }
 .linear-hedge-mid { fill:#55784b; }
 .linear-hedge-light { fill:#78935e; }
-.linear-fence-rail, .linear-fence-post { stroke:#65442f; }
-.linear-wall-base { stroke:#8b887d; }
-.linear-wall-detail { stroke:#bbb7aa; }
-.linear-crossing { fill:#ad8854; stroke:#6c5135; stroke-width:.12; }
-.linear-crossing-culvert { fill:#9c815d; }
+.linear-fence-rail, .linear-fence-post { stroke:#65442f; fill:#65442f; }
+.linear-wall-stone { fill:#99968b; stroke:#67655e; stroke-width:.06; }
+.linear-wall-stone-1 { fill:#aaa79a; }
+.linear-wall-stone-2 { fill:#85837a; }
+.linear-crossing { fill:#aa8754; stroke:#6b5136; stroke-width:.11; }
+.linear-crossing-culvert { fill:#927858; }
 
-/* Cohesion tuning agreed for the L1 pass. */
-.battlefield .unit-model-group { scale:.90; transform-origin:center center; }
+:root { --unit-visual-scale:.85; }
+.battlefield .unit-model-group { scale:var(--unit-visual-scale); transform-origin:center center; }
 .terrain-building .terrain-art { scale:var(--building-visual-scale, 1); transform-origin:50% 78%; }
-.terrain-id-haystack .hay-burst { left:50%!important; top:50%!important; right:auto!important; bottom:auto!important; transform-origin:center!important; }
-.terrain-id-haystack .hay-burst-1 { transform:translate(-50%,-50%) scale(1)!important; }
-.terrain-id-haystack .hay-burst-2 { transform:translate(-50%,-50%) scale(.72)!important; }
-.terrain-id-haystack .hay-burst-3 { transform:translate(-50%,-50%) scale(.42)!important; }
-.terrain-id-woodpile .woodpile-log { height:18%!important; width:70%!important; left:15%!important; }
-.terrain-id-woodpile .woodpile-log-1{top:16%!important}.terrain-id-woodpile .woodpile-log-2{top:34%!important}.terrain-id-woodpile .woodpile-log-3{top:52%!important}.terrain-id-woodpile .woodpile-log-4{top:70%!important}
-.terrain-id-woodpile .woodpile-log:nth-of-type(n+5) { display:none!important; }
