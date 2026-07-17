@@ -10,3 +10,118 @@
 .terrain-id-rail_embankment .rail-ballast { box-shadow:0 0 0 5px rgba(111,87,53,.48), inset 0 0 0 2px rgba(61,48,33,.42); }
 .terrain-id-rail_embankment { filter:drop-shadow(3px 2px 2px rgba(47,37,24,.28)); }
 @media (max-width:760px) { .scenario-objective-point b { display:none; } .scenario-objective-point span { width:18px; height:18px; font-size:10px; } }
+
+/* M1.1 — battlefield terrain is self-explanatory; labels are inspection UI. */
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-piece .terrain-label,
+.battlefield:not([data-scenario-id="terrain_library"]) .building-title-plaque {
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translate(-50%, 3px) scale(.96);
+  transition:opacity .12s ease, transform .12s ease, visibility .12s;
+}
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-piece:hover .terrain-label,
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-piece:focus-within .terrain-label,
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-piece.terrain-label-visible .terrain-label,
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-building:hover .building-title-plaque,
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-building:focus-within .building-title-plaque,
+.battlefield:not([data-scenario-id="terrain_library"]) .terrain-building.terrain-label-visible .building-title-plaque {
+  opacity:1;
+  visibility:visible;
+  transform:translate(-50%, 0) scale(1);
+}
+.battlefield[data-scenario-id="terrain_library"] .terrain-label { opacity:.82; }
+
+/* Ground mats: quiet directional texture rather than a flat fill. */
+.battlefield.mat-grass-temperate {
+  background-color:#aeb08a;
+  background-image:
+    radial-gradient(ellipse at 18% 22%, rgba(83,105,66,.10) 0 1px, transparent 2px),
+    radial-gradient(ellipse at 72% 64%, rgba(224,219,164,.10) 0 1.5px, transparent 2.5px),
+    repeating-linear-gradient(104deg, transparent 0 18px, rgba(71,91,57,.035) 19px 20px, transparent 21px 35px),
+    linear-gradient(135deg, rgba(255,255,225,.08), transparent 42%, rgba(72,80,52,.055));
+  background-size:43px 37px, 57px 49px, auto, auto;
+}
+.battlefield.mat-grass-dry {
+  background-color:#b6ad7f;
+  background-image:
+    radial-gradient(ellipse at 22% 25%, rgba(99,83,49,.10) 0 1px, transparent 2px),
+    radial-gradient(ellipse at 68% 67%, rgba(230,211,143,.11) 0 1.5px, transparent 2.5px),
+    repeating-linear-gradient(102deg, transparent 0 20px, rgba(105,88,48,.04) 21px 22px, transparent 23px 38px),
+    linear-gradient(145deg, rgba(255,240,188,.07), transparent 45%, rgba(84,71,44,.055));
+  background-size:41px 35px, 61px 51px, auto, auto;
+}
+
+/* Ground decals remain beneath routes and playable terrain. */
+.terrain-ground { z-index:0!important; pointer-events:none; }
+.terrain-ground .terrain-art { overflow:hidden; border-radius:10px; opacity:.88; }
+.terrain-field .terrain-art { box-shadow:inset 0 0 0 2px rgba(68,60,36,.12); }
+.terrain-id-field_tilled .terrain-art { background:#806044; }
+.terrain-id-field_wheat .terrain-art { background:#b8974f; }
+.terrain-id-field_cabbage .terrain-art { background:#756b43; }
+.terrain-field .field-row { position:absolute; }
+.terrain-id-field_tilled .field-row,
+.terrain-id-field_wheat .field-row {
+  left:-5%; width:110%; height:4%; top:calc(var(--row, 0) * 8%);
+  border-radius:50%; transform:rotate(-2deg);
+}
+.terrain-id-field_tilled .field-row { background:rgba(54,38,29,.28); box-shadow:0 4px rgba(186,137,83,.16); }
+.terrain-id-field_wheat .field-row { background:rgba(219,187,91,.50); box-shadow:0 3px rgba(103,76,34,.12); }
+.terrain-id-field_cabbage .field-row { width:9%; aspect-ratio:1; border-radius:50%; background:#617349; box-shadow:inset -3px -3px #455739, inset 2px 2px #8b9a62; }
+.terrain-id-field_cabbage .field-row:nth-child(5n+1){left:8%}.terrain-id-field_cabbage .field-row:nth-child(5n+2){left:27%}.terrain-id-field_cabbage .field-row:nth-child(5n+3){left:46%}.terrain-id-field_cabbage .field-row:nth-child(5n+4){left:65%}.terrain-id-field_cabbage .field-row:nth-child(5n){left:84%}
+.terrain-id-field_cabbage .field-row:nth-child(-n+5){top:14%}.terrain-id-field_cabbage .field-row:nth-child(n+6):nth-child(-n+10){top:39%}.terrain-id-field_cabbage .field-row:nth-child(n+11):nth-child(-n+15){top:64%}.terrain-id-field_cabbage .field-row:nth-child(n+16){top:84%}
+.terrain-id-field_tilled .field-row:nth-child(1),.terrain-id-field_wheat .field-row:nth-child(1){top:5%}.terrain-id-field_tilled .field-row:nth-child(2),.terrain-id-field_wheat .field-row:nth-child(2){top:13%}.terrain-id-field_tilled .field-row:nth-child(3),.terrain-id-field_wheat .field-row:nth-child(3){top:21%}.terrain-id-field_tilled .field-row:nth-child(4),.terrain-id-field_wheat .field-row:nth-child(4){top:29%}.terrain-id-field_tilled .field-row:nth-child(5),.terrain-id-field_wheat .field-row:nth-child(5){top:37%}.terrain-id-field_tilled .field-row:nth-child(6),.terrain-id-field_wheat .field-row:nth-child(6){top:45%}.terrain-id-field_tilled .field-row:nth-child(7),.terrain-id-field_wheat .field-row:nth-child(7){top:53%}.terrain-id-field_tilled .field-row:nth-child(8),.terrain-id-field_wheat .field-row:nth-child(8){top:61%}.terrain-id-field_tilled .field-row:nth-child(9),.terrain-id-field_wheat .field-row:nth-child(9){top:69%}.terrain-id-field_tilled .field-row:nth-child(10),.terrain-id-field_wheat .field-row:nth-child(10){top:77%}.terrain-id-field_tilled .field-row:nth-child(11),.terrain-id-field_wheat .field-row:nth-child(11){top:85%}.terrain-id-field_tilled .field-row:nth-child(12),.terrain-id-field_wheat .field-row:nth-child(12){top:93%}
+
+/* Rail gauge stays fixed while the crossing deck may be wider. */
+.terrain-id-rail_crossing .terrain-art { left:25%; width:50%; overflow:visible; }
+.terrain-id-rail_crossing .crossing-plank { width:200%; left:-50%; }
+.terrain-id-rail_crossing::before {
+  content:""; position:absolute; left:0; right:0; top:35%; bottom:35%;
+  background:rgba(158,112,57,.94); box-shadow:inset 0 2px rgba(255,224,151,.20), inset 0 -2px rgba(74,49,28,.24);
+  z-index:0;
+}
+
+/* Organic hedge clusters instead of a stretched green bar. */
+.terrain-hedge .terrain-art { overflow:visible; background:transparent!important; }
+.terrain-hedge .hedge-clump { top:14%; height:72%; width:18%; border-radius:48% 55% 44% 52%; background:#49653d; box-shadow:inset -4px -4px #354c32, inset 3px 3px #71835a, 0 2px 3px rgba(34,42,29,.28); }
+.terrain-hedge .hedge-clump:nth-child(1){left:0}.terrain-hedge .hedge-clump:nth-child(2){left:14%}.terrain-hedge .hedge-clump:nth-child(3){left:28%}.terrain-hedge .hedge-clump:nth-child(4){left:42%}.terrain-hedge .hedge-clump:nth-child(5){left:56%}.terrain-hedge .hedge-clump:nth-child(6){left:70%}.terrain-hedge .hedge-clump:nth-child(7){left:84%}
+
+/* Repeated short fence rhythm; scenario data composes several sections. */
+.terrain-fence .terrain-art { overflow:hidden; }
+.terrain-fence .fence-rail { height:10%; left:2%; right:2%; background:#684831; border-radius:5px; }
+.terrain-fence .fence-rail-1{top:30%}.terrain-fence .fence-rail-2{top:60%}
+.terrain-fence .fence-post { width:7%; top:8%; bottom:8%; background:#775139; border-radius:5px; }
+
+/* Properly contained woodpile; namespaced to avoid combat-log CSS. */
+.terrain-id-woodpile, .terrain-id-woodpile * { overflow:hidden!important; scrollbar-width:none; }
+.terrain-id-woodpile .terrain-art { border-radius:8px; }
+.terrain-id-woodpile .woodpile-log { position:absolute; width:76%; height:12%; left:12%; border-radius:999px; background:#7b5339; box-shadow:inset 0 -3px #513725; }
+.terrain-id-woodpile .woodpile-log::after { content:""; position:absolute; right:1%; top:8%; height:84%; aspect-ratio:1; border-radius:50%; background:#a77950; box-shadow:inset 0 0 0 2px #60412f; }
+.terrain-id-woodpile .woodpile-log-1{top:12%}.terrain-id-woodpile .woodpile-log-2{top:25%}.terrain-id-woodpile .woodpile-log-3{top:38%}.terrain-id-woodpile .woodpile-log-4{top:51%}.terrain-id-woodpile .woodpile-log-5{top:64%}.terrain-id-woodpile .woodpile-log-6{top:77%}
+
+/* Layered star-built haystack. */
+.terrain-id-haystack .terrain-art { overflow:visible; }
+.terrain-id-haystack .hay-burst { position:absolute; inset:8%; clip-path:polygon(50% 0,60% 30%,82% 8%,72% 37%,100% 50%,70% 59%,91% 85%,61% 72%,50% 100%,40% 71%,12% 91%,29% 61%,0 50%,30% 40%,9% 13%,39% 29%); }
+.terrain-id-haystack .hay-burst-1{background:#8e6b2c;transform:scale(1)}
+.terrain-id-haystack .hay-burst-2{background:#c49a43;transform:scale(.72)}
+.terrain-id-haystack .hay-burst-3{background:#e5c56b;transform:scale(.42)}
+
+/* Road and stream terminals soften into the mat. */
+.terrain-id-road_end .terrain-art { clip-path:polygon(0 0,82% 7%,100% 25%,100% 75%,82% 93%,0 100%); mask-image:linear-gradient(90deg,#000 0 76%,transparent 100%); }
+.terrain-id-road_t .road-curve-cutout { display:none; }
+.terrain-id-road_t .terrain-art::after { content:""; position:absolute; left:38%; width:24%; top:0; bottom:50%; background:inherit; }
+.terrain-id-stream_end .terrain-art { clip-path:polygon(0 8%,76% 12%,100% 35%,100% 65%,76% 88%,0 92%); mask-image:linear-gradient(90deg,#000 0 78%,transparent 100%); }
+.terrain-id-stream_curve .terrain-art { border-radius:0 80% 0 0; transform:rotate(-4deg); }
+.terrain-stream .stream-water { left:5%; right:5%; top:31%; bottom:31%; border-radius:48% 52% 43% 57%; }
+.terrain-stream .stream-bank { border-radius:46% 54% 44% 56%; }
+
+/* Church landmark scale without restoring its old oversized collision box. */
+.terrain-id-church .building-svg { filter:drop-shadow(0 4px 3px rgba(45,36,26,.25)); }
+
+/* Keep objective information, but reduce its visual dominance. */
+.scenario-objective-point { border-width:1.5px; opacity:.72; }
+.scenario-objective-point:hover { opacity:1; }
+
+/* Terrain pieces and units share the battlefield stacking context. */
+.terrain-layer { display:contents; }
+.terrain-ground-plane { pointer-events:none; }
