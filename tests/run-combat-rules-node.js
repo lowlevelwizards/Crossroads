@@ -9,7 +9,7 @@ const tests = [
   "run-assault-rules-node.js",
   "run-combat-integration-node.js",
   "run-assault-integration-node.js",
-  "foundation-4b2-source-audit.js"
+  "foundation-4c-source-audit.js"
 ];
 
 for (const test of tests) {
@@ -18,4 +18,4 @@ for (const test of tests) {
   });
 }
 
-console.log("PASS — all Foundation 4B.2 combat checks passed.");
+console.log("PASS — all Foundation 4C combat checks passed.");

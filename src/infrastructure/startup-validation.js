@@ -31,9 +31,8 @@
     ["CrossroadsMovementRules", "src/rules/movement.js"],
     ["CrossroadsMoraleRules", "src/rules/morale.js"],
     ["CrossroadsShootingRules", "src/rules/shooting.js"],
-    ["CrossroadsCombatIntegration", "src/rules/shooting-integration.js"],
     ["CrossroadsAssaultRules", "src/rules/assault.js"],
-    ["CrossroadsAssaultIntegration", "src/rules/assault-integration.js"]
+    ["CrossroadsCombatRuntime", "src/rules/combat-runtime.js"]
   ]);
 
   const SAFE_TOKEN = /^[a-z0-9_-]+$/;
@@ -238,14 +237,20 @@
     if (typeof window.CrossroadsShootingRules?.create !== "function") {
       issues.push("Shooting rules module is missing its create() factory.");
     }
-    if (typeof window.CrossroadsCombatIntegration?.isInstalled !== "function") {
-      issues.push("Combat integration module is missing its installation diagnostic.");
+    if (typeof window.CrossroadsAssaultRules?.create !== "function") {
+      issues.push("Assault rules module is missing its create() factory.");
     }
-    if (typeof window.CrossroadsCombatIntegration?.getMoraleRules !== "function") {
-      issues.push("Combat integration cannot expose the active morale rules.");
+    if (typeof window.CrossroadsCombatRuntime?.isInstalled !== "function") {
+      issues.push("Combat runtime is missing its installation diagnostic.");
     }
-    if (typeof window.CrossroadsCombatIntegration?.getShootingRules !== "function") {
-      issues.push("Combat integration cannot expose the active shooting rules.");
+    if (typeof window.CrossroadsCombatRuntime?.getMoraleRules !== "function") {
+      issues.push("Combat runtime cannot expose the active morale rules.");
+    }
+    if (typeof window.CrossroadsCombatRuntime?.getShootingRules !== "function") {
+      issues.push("Combat runtime cannot expose the active shooting rules.");
+    }
+    if (typeof window.CrossroadsCombatRuntime?.getAssaultRules !== "function") {
+      issues.push("Combat runtime cannot expose the active assault rules.");
     }
     return issues;
   }

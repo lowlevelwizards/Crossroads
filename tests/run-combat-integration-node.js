@@ -27,7 +27,8 @@ vm.runInContext(`
 
 run("src/rules/morale.js");
 run("src/rules/shooting.js");
-run("src/rules/shooting-integration.js");
+run("src/rules/assault.js");
+run("src/rules/combat-runtime.js");
 
 vm.runInContext(`
   const RULES = {
@@ -35,15 +36,18 @@ vm.runInContext(`
     regularDamageTarget: 4,
     wallProtectionDepth: 4,
     commandRadius: 6,
-    commandMoraleBonus: 1
+    commandMoraleBonus: 1,
+    assaultDistance: 12,
+    reactionFireThreshold: 6
   };
+  const FEATURES = { ambush: true, movementIntegrity: true };
   const WEAPON_PROFILES = {
     rifle: { key: "rifle", label: "Rifle", range: 24, shots: 1, assault: false, fixed: false },
     smg: { key: "smg", label: "SMG", range: 12, shots: 2, assault: true, fixed: false },
     mmg: { key: "mmg", label: "MMG", range: 36, shots: 5, reducedShots: 2, crewWeapon: true, fixed: true, assault: false }
   };
   const UNIT_QUALITY = {
-    regular: { label: "Regular", shootingTargetModifier: 0 }
+    regular: { label: "Regular", shootingTargetModifier: 0, assaultDamageTarget: 4 }
   };
   const TERRAIN = { instances: [] };
   const MMG_RULES = { arcDegrees: 90, fullCrew: 3, reducedCrew: 2 };
@@ -54,6 +58,8 @@ vm.runInContext(`
   function segmentRectClip() { return null; }
   function buildingWindowPointToward(id, target) { return target; }
   function buildingCenterPoint() { return { x: 0, y: 0 }; }
+  function buildingDoorPoint() { return { x: 0, y: 0 }; }
+  function analyzeMovementPath() { return { legal: true, reason: "" }; }
 
   function isMMGTeam() { return "legacy"; }
   function analyzeMMGFireArc() { return { insideArc: false }; }
@@ -67,6 +73,8 @@ vm.runInContext(`
   function commandSupport() { return "legacy"; }
   function commandBonus() { return -1; }
   function attemptOrder() { return "legacy"; }
+  function analyzeAssault() { return { legal: false, reason: "legacy" }; }
+  function resolveCloseCombat() { return "legacy"; }
 
   const __logs = [];
   let __renderCount = 0;
@@ -121,6 +129,14 @@ vm.runInContext(`
   function fullLoadout(unit) { return unit.soldiers + " rifles"; }
   function renderUnits() { __renderCount += 1; }
   function finishActivationState() { __finishCount += 1; }
+  function qualityProfile(unit) { return UNIT_QUALITY[unit.quality]; }
+  function findSafeAssaultPosition(unit, targetPosition) { return targetPosition; }
+  function occupyBuilding() { return true; }
+  function showBattleAnnouncement() {}
+  function buildingLabel() { return "building"; }
+  function completeActivation() {}
+  function checkElimination() { return false; }
+
   function recordOrderTest(unit, passed) {
     __orderTests += 1;
     if (passed) __orderPasses += 1;
@@ -178,7 +194,7 @@ vm.runInContext(`
   const noTestPassed = attemptOrder(unpinnedActor, "Down");
 
   window.__integrationResult = {
-    installed: window.CrossroadsCombatIntegration.isInstalled(),
+    installed: window.CrossroadsCombatRuntime.isInstalled(),
     extraction: window.CROSSROADS_COMBAT_EXTRACTION,
     rendererUsesPureRules:
       window.__capturedRendererDeps.analyzeShot === analyzeShot &&
@@ -241,5 +257,5 @@ if (failures.length) {
   console.error("FAIL — combat integration", failures, result);
   process.exitCode = 1;
 } else {
-  console.log("PASS — staged shooting and morale integration delegates and commits correctly.");
+  console.log("PASS — permanent combat runtime delegates shooting and morale and commits correctly.");
 }

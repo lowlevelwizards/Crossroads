@@ -27,9 +27,8 @@ vm.runInContext(`
 
 run("src/rules/morale.js");
 run("src/rules/shooting.js");
-run("src/rules/shooting-integration.js");
 run("src/rules/assault.js");
-run("src/rules/assault-integration.js");
+run("src/rules/combat-runtime.js");
 
 vm.runInContext(`
   const RULES = {
@@ -172,7 +171,7 @@ vm.runInContext(`
   );
 
   window.__assaultIntegrationResult = {
-    assaultInstalled: window.CrossroadsAssaultIntegration.isInstalled(),
+    assaultInstalled: window.CrossroadsCombatRuntime.isInstalled(),
     extraction: window.CROSSROADS_COMBAT_EXTRACTION,
     rendererUsesPureAssault: window.__capturedRendererDeps.analyzeAssault === analyzeAssault,
     analysis,
@@ -199,7 +198,7 @@ const failures = [];
 function check(condition, label) { if (!condition) failures.push(label); }
 
 check(result.assaultInstalled === true, "assault integration did not install");
-check(result.extraction?.stage === "Foundation 4B.2", "combat extraction stage was not upgraded");
+check(result.extraction?.stage === "Foundation 4C", "combat runtime stage was not upgraded");
 check(result.rendererUsesPureAssault === true, "renderer did not receive pure assault analysis");
 check(result.analysis.legal === true, "legal assault was rejected");
 check(result.analysis.reactionFire === true, "reaction-fire eligibility changed");
@@ -222,5 +221,5 @@ if (failures.length) {
   console.error("FAIL — assault integration", failures, result);
   process.exitCode = 1;
 } else {
-  console.log("PASS — staged assault integration delegates calculation and commits engine state correctly.");
+  console.log("PASS — permanent combat runtime delegates assault calculation and commits engine state correctly.");
 }
