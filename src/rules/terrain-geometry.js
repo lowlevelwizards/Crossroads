@@ -4,11 +4,37 @@
   const TYPE_DEFINITIONS = window.CROSSROADS_TERRAIN_TYPES;
   let activeInstances = Object.freeze([]);
 
+  function normalizedRect(instance, definition) {
+    const visual = {
+      x: Number(instance.x) || 0,
+      y: Number(instance.y) || 0,
+      width: Number(instance.width) || 0,
+      height: Number(instance.height) || 0
+    };
+    const footprint = definition?.presentation?.footprint;
+    if (!footprint) return visual;
+    return {
+      x: visual.x + visual.width * (Number(footprint.x) || 0),
+      y: visual.y + visual.height * (Number(footprint.y) || 0),
+      width: visual.width * (Number(footprint.width) || 1),
+      height: visual.height * (Number(footprint.height) || 1)
+    };
+  }
+
   function normalize(instance) {
     const definition = TYPE_DEFINITIONS?.[instance?.terrainId];
     if (!definition) throw new Error(`Unknown terrain type: ${instance?.terrainId}`);
+    const visualRect = Object.freeze({
+      x: Number(instance.x) || 0,
+      y: Number(instance.y) || 0,
+      width: Number(instance.width) || 0,
+      height: Number(instance.height) || 0
+    });
+    const rulesRect = normalizedRect(instance, definition);
     return Object.freeze({
       ...instance,
+      ...rulesRect,
+      visualRect,
       rotation: Number(instance.rotation) || 0,
       definition,
       rules: definition.rules ?? Object.freeze({})
@@ -55,10 +81,7 @@
   }
 
   function center(instance) {
-    return {
-      x: instance.x + instance.width / 2,
-      y: instance.y + instance.height / 2
-    };
+    return { x: instance.x + instance.width / 2, y: instance.y + instance.height / 2 };
   }
 
   function resolve(instanceOrId) {
@@ -88,7 +111,6 @@
   function entryPoint(instanceOrId, outward = 0.15) {
     const { instance, anchor, normal } = entryDefinition(instanceOrId);
     if (!instance) return { x: 0, y: 0 };
-
     const localAnchor = {
       x: (Number(anchor.x) - 0.5) * instance.width,
       y: (Number(anchor.y) - 0.5) * instance.height
@@ -99,7 +121,6 @@
       instance.rotation
     );
     const origin = center(instance);
-
     return {
       x: origin.x + rotatedAnchor.x + rotatedNormal.x * outward,
       y: origin.y + rotatedAnchor.y + rotatedNormal.y * outward
@@ -130,23 +151,8 @@
   }
 
   window.CrossroadsTerrainGeometry = Object.freeze({
-    setActiveScenario,
-    all,
-    get,
-    matching,
-    byFamily,
-    byRenderer,
-    buildings,
-    blocking,
-    rough,
-    walls,
-    pointInside,
-    expand,
-    containingPoint,
-    buildingContainingPoint,
-    center,
-    entryPoint,
-    approachPoint,
-    entryMarker
+    setActiveScenario, all, get, matching, byFamily, byRenderer, buildings,
+    blocking, rough, walls, pointInside, expand, containingPoint,
+    buildingContainingPoint, center, entryPoint, approachPoint, entryMarker
   });
 })();
