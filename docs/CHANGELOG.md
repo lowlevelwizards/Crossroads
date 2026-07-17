@@ -1,3 +1,11 @@
+## Terrain T3.3 — Layered Circle Woods
+
+- Replaced outlined single-blob woods trees with parented, three-layer circle crowns.
+- Added authored balanced, broad, tall, left-heavy, and right-heavy canopy presets.
+- Added one shared soft patch shadow and a small optional trunk per tree.
+- Woods and dense woods now use fixed authored arrangements while preserving existing rules footprints.
+- Added far-zoom trunk suppression and a denser palette for dense woods.
+
 # Changelog
 
 ## Visual Stability 3K — Formation and silhouette pass
