@@ -108,27 +108,89 @@
 .crossing-plank { position:absolute; left:0; right:0; height:8.5%; background:#b2894d; box-shadow:0 0 0 1px #715633; z-index:6; }
 .crossing-plank-1{top:29%}.crossing-plank-2{top:38%}.crossing-plank-3{top:47%}.crossing-plank-4{top:56%}.crossing-plank-5{top:65%}
 
-/* TREES — cloud silhouettes with offset highlight lobes, not perfect discs */
-.terrain-woods,.terrain-orchard { border:2px dashed #3f6840; border-radius:18px; background:rgba(72,103,58,.14); overflow:hidden; }
-.tree-shadow,.tree-canopy,.tree-highlight,.orchard-shadow,.orchard-tree,.orchard-highlight { position:absolute; aspect-ratio:1; }
-.tree-shadow { width:32%; border-radius:45% 55% 48% 52%; background:rgba(46,58,36,.28); transform:translate(7%,10%); }
-.tree-canopy { width:31%; border-radius:44% 56% 48% 52%; background:#4e6f44; box-shadow:inset 0 -.36em 0 rgba(45,70,39,.35),0 0 0 .15em #36543a; }
-.tree-canopy::before,.tree-canopy::after { content:""; position:absolute; border-radius:50%; background:inherit; }
-.tree-canopy::before { width:58%; height:58%; left:-12%; top:24%; }
-.tree-canopy::after { width:54%; height:54%; right:-10%; top:9%; }
-.tree-highlight { width:19%; border-radius:46% 54% 44% 56%; background:#78945f; box-shadow:inset 0 .18em 0 rgba(172,184,118,.25); z-index:4; }
-.tree-highlight::before { content:""; position:absolute; width:58%; height:58%; left:-20%; top:25%; border-radius:50%; background:inherit; }
-.tree-shadow-1,.tree-canopy-1{left:4%;top:7%}.tree-highlight-1{left:9%;top:11%}
-.tree-shadow-2,.tree-canopy-2{left:34%;top:2%}.tree-highlight-2{left:39%;top:6%}
-.tree-shadow-3,.tree-canopy-3{right:4%;top:9%}.tree-highlight-3{right:9%;top:13%}
-.tree-shadow-4,.tree-canopy-4{left:11%;top:40%}.tree-highlight-4{left:16%;top:44%}
-.tree-shadow-5,.tree-canopy-5{left:41%;top:33%}.tree-highlight-5{left:46%;top:37%}
-.tree-shadow-6,.tree-canopy-6{right:3%;top:46%}.tree-highlight-6{right:8%;top:50%}
-.tree-shadow-7,.tree-canopy-7{left:28%;bottom:1%}.tree-highlight-7{left:33%;bottom:7%}
-.tree-shadow-8,.tree-canopy-8{right:26%;bottom:0}.tree-highlight-8{right:31%;bottom:6%}
-.terrain-id-woods_dense { background:rgba(50,76,48,.29); border-color:#315b39; }
-.terrain-id-woods_dense .tree-canopy { background:#3f633f; box-shadow:inset 0 -.38em 0 rgba(35,57,34,.4),0 0 0 .16em #294a32; }
-.terrain-id-woods_dense .tree-highlight { background:#678456; }
+/* WOODS — layered, outline-free circle crowns.
+   Each tree is a local parent group so the complete crown moves and scales together. */
+.terrain-woods,.terrain-orchard { border:2px dashed #3f6840; border-radius:18px; background:rgba(72,103,58,.12); overflow:hidden; }
+.terrain-woods .terrain-art { overflow:visible; }
+
+.woods-tree {
+  position:absolute;
+  left:var(--tree-x);
+  top:var(--tree-y);
+  width:var(--tree-size);
+  aspect-ratio:1;
+  transform:rotate(var(--tree-rotation)) scale(var(--tree-scale));
+  transform-origin:50% 58%;
+  isolation:isolate;
+}
+.woods-tree > span,.woods-tree-layer > span { position:absolute; display:block; }
+
+.woods-tree-shadow {
+  left:14%; top:24%; width:72%; height:62%;
+  border-radius:50%;
+  background:rgba(40,45,31,.22);
+  filter:blur(.24em);
+  transform:translate(7%,10%);
+  z-index:0;
+}
+.woods-tree-trunk {
+  left:45%; top:65%; width:11%; height:24%;
+  border-radius:22% 22% 34% 34%;
+  background:#73583c;
+  box-shadow:0 .08em 0 rgba(45,48,35,.24);
+  z-index:1;
+}
+.woods-tree-layer { inset:0; transform-origin:50% 50%; }
+.woods-tree-layer-dark { z-index:2; }
+.woods-tree-layer-mid { z-index:3; transform:translate(2%,-4%) rotate(10deg) scale(.84); }
+.woods-tree-layer-light { z-index:4; transform:translate(8%,-12%) rotate(-8deg) scale(.63); }
+.woods-tree-circle { border-radius:50%; border:0; }
+.woods-tree-layer-dark .woods-tree-circle { background:#35513d; }
+.woods-tree-layer-mid .woods-tree-circle { background:#58784f; }
+.woods-tree-layer-light .woods-tree-circle { background:#a9bd87; }
+
+/* Five-circle cloud arrangement shared by each color layer. */
+.woods-tree-circle-1 { left:7%;  top:31%; width:46%; height:44%; }
+.woods-tree-circle-2 { left:20%; top:11%; width:45%; height:46%; }
+.woods-tree-circle-3 { left:49%; top:7%;  width:44%; height:46%; }
+.woods-tree-circle-4 { right:3%; top:34%; width:44%; height:44%; }
+.woods-tree-circle-5 { left:30%; top:44%; width:47%; height:43%; }
+
+/* The mint layer is intentionally more selective than the two body layers. */
+.woods-tree-layer-light .woods-tree-circle-1 { left:14%; top:31%; }
+.woods-tree-layer-light .woods-tree-circle-2 { left:39%; top:6%; }
+.woods-tree-layer-light .woods-tree-circle-3 { left:58%; top:31%; }
+.woods-tree-layer-light .woods-tree-circle-4 { left:36%; top:48%; width:42%; height:40%; }
+
+/* Authored crown families. All keep the same construction method. */
+.tree-preset-broad .woods-tree-layer-dark { transform:scaleX(1.09) scaleY(.93); }
+.tree-preset-broad .woods-tree-layer-mid { transform:translate(1%,-3%) rotate(-7deg) scale(.84) scaleX(1.10); }
+.tree-preset-broad .woods-tree-layer-light { transform:translate(8%,-11%) rotate(11deg) scale(.63) scaleX(1.12); }
+
+.tree-preset-tall .woods-tree-layer-dark { transform:scaleX(.90) scaleY(1.07); }
+.tree-preset-tall .woods-tree-layer-mid { transform:translate(0,-4%) rotate(8deg) scale(.84) scaleX(.92) scaleY(1.06); }
+.tree-preset-tall .woods-tree-layer-light { transform:translate(7%,-14%) rotate(-8deg) scale(.62) scaleY(1.08); }
+
+.tree-preset-left .woods-tree-layer-dark { transform:translateX(-3%) rotate(-3deg); }
+.tree-preset-left .woods-tree-layer-mid { transform:translate(-5%,-4%) rotate(12deg) scale(.84); }
+.tree-preset-left .woods-tree-layer-light { transform:translate(-3%,-13%) rotate(-12deg) scale(.63); }
+
+.tree-preset-right .woods-tree-layer-dark { transform:translateX(3%) rotate(3deg); }
+.tree-preset-right .woods-tree-layer-mid { transform:translate(5%,-3%) rotate(-11deg) scale(.84); }
+.tree-preset-right .woods-tree-layer-light { transform:translate(11%,-12%) rotate(10deg) scale(.63); }
+
+/* Dense woods share the tree model but close gaps and deepen the lower mass. */
+.terrain-id-woods_dense { background:rgba(49,75,47,.24); border-color:#315b39; }
+.terrain-id-woods_dense .woods-tree-layer-dark .woods-tree-circle { background:#2f4c38; }
+.terrain-id-woods_dense .woods-tree-layer-mid .woods-tree-circle { background:#4c6e49; }
+.terrain-id-woods_dense .woods-tree-layer-light .woods-tree-circle { background:#91aa72; }
+.terrain-id-woods_dense .woods-tree-trunk { opacity:.55; }
+
+body.camera-far .woods-tree-trunk { opacity:0; }
+body.camera-far .woods-tree-shadow { filter:blur(.16em); }
+body.camera-inspection .woods-tree-trunk { opacity:1; }
+
+.orchard-shadow,.orchard-tree,.orchard-highlight { position:absolute; aspect-ratio:1; }
 .orchard-shadow,.orchard-tree { width:22%; border-radius:44% 56% 48% 52%; }
 .orchard-highlight { width:13%; border-radius:48% 52% 44% 56%; }
 .orchard-shadow{background:rgba(47,62,37,.28);transform:translate(8%,11%)}
