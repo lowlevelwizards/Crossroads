@@ -28,7 +28,9 @@
     ["CrossroadsCoordinates", "src/camera/coordinates.js"],
     ["CrossroadsCameraInput", "src/input/camera-input.js"],
     ["CrossroadsBattlefieldInput", "src/input/battlefield-input.js"],
-    ["CrossroadsMovementRules", "src/rules/movement.js"]
+    ["CrossroadsMovementRules", "src/rules/movement.js"],
+    ["CrossroadsShootingRules", "src/rules/shooting.js"],
+    ["CrossroadsShootingIntegration", "src/rules/shooting-integration.js"]
   ]);
 
   const SAFE_TOKEN = /^[a-z0-9_-]+$/;
@@ -117,7 +119,6 @@
     }
     return issues;
   }
-
 
   function validateBuildingPresentation() {
     const types = window.CROSSROADS_TERRAIN_TYPES;
@@ -209,7 +210,6 @@
   function validateUnitTypes() {
     const types = window.CROSSROADS_UNIT_TYPES;
     if (!types) return [];
-
     const issues = [];
     for (const [typeId, type] of Object.entries(types)) {
       if (!type.short) issues.push(`Unit type ${typeId} is missing short label.`);
@@ -227,6 +227,17 @@
     return issues;
   }
 
+  function validateShootingModules() {
+    const issues = [];
+    if (typeof window.CrossroadsShootingRules?.create !== "function") {
+      issues.push("Shooting rules module is missing its create() factory.");
+    }
+    if (typeof window.CrossroadsShootingIntegration?.isInstalled !== "function") {
+      issues.push("Shooting integration module is missing its installation diagnostic.");
+    }
+    return issues;
+  }
+
   function inspect() {
     const missing = requirements
       .filter(([globalName]) => !window[globalName])
@@ -239,7 +250,8 @@
           ...validateScenarioKits(),
           ...validateBuildingPresentation(),
           ...validateTerrainLibrary(),
-          ...validateUnitTypes()
+          ...validateUnitTypes(),
+          ...validateShootingModules()
         ];
 
     return Object.freeze({
