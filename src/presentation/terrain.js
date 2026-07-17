@@ -43,6 +43,61 @@
     return art;
   }
 
+  function createGroup(parent, className) {
+    const group = document.createElement("span");
+    group.className = className;
+    group.setAttribute("aria-hidden", "true");
+    parent.appendChild(group);
+    return group;
+  }
+
+  const WOODS_LAYOUTS = Object.freeze({
+    woods: Object.freeze([
+      { x: 3,  y: 6,  size: 36, scale: 1.05, rotation: -8, preset: "broad" },
+      { x: 31, y: 1,  size: 35, scale: .96, rotation: 7,  preset: "tall" },
+      { x: 60, y: 7,  size: 36, scale: 1.03, rotation: -4, preset: "right" },
+      { x: 8,  y: 37, size: 36, scale: 1.02, rotation: 10, preset: "left" },
+      { x: 37, y: 32, size: 37, scale: 1.08, rotation: -2, preset: "balanced" },
+      { x: 62, y: 43, size: 35, scale: .96, rotation: 8,  preset: "broad" },
+      { x: 27, y: 63, size: 37, scale: 1.04, rotation: -10, preset: "balanced" }
+    ]),
+    woods_dense: Object.freeze([
+      { x: 1,  y: 4,  size: 34, scale: 1.05, rotation: -8, preset: "broad" },
+      { x: 27, y: 0,  size: 34, scale: .98, rotation: 6,  preset: "tall" },
+      { x: 55, y: 4,  size: 35, scale: 1.03, rotation: -5, preset: "right" },
+      { x: 6,  y: 31, size: 35, scale: 1.02, rotation: 9,  preset: "left" },
+      { x: 33, y: 27, size: 36, scale: 1.08, rotation: -2, preset: "balanced" },
+      { x: 61, y: 33, size: 34, scale: .99, rotation: 8,  preset: "broad" },
+      { x: 19, y: 58, size: 36, scale: 1.04, rotation: -9, preset: "balanced" },
+      { x: 50, y: 60, size: 36, scale: 1.02, rotation: 5,  preset: "right" }
+    ])
+  });
+
+  function addCircleLayer(tree, className, count) {
+    const layer = createGroup(tree, `woods-tree-layer ${className}`);
+    addPrimitive(layer, "woods-tree-circle", count);
+  }
+
+  function createWoodsTree(art, placement, index) {
+    const tree = createGroup(art, `woods-tree woods-tree-${index + 1} tree-preset-${placement.preset}`);
+    tree.style.setProperty("--tree-x", `${placement.x}%`);
+    tree.style.setProperty("--tree-y", `${placement.y}%`);
+    tree.style.setProperty("--tree-size", `${placement.size}%`);
+    tree.style.setProperty("--tree-scale", String(placement.scale));
+    tree.style.setProperty("--tree-rotation", `${placement.rotation}deg`);
+
+    createGroup(tree, "woods-tree-shadow");
+    createGroup(tree, "woods-tree-trunk");
+    addCircleLayer(tree, "woods-tree-layer-dark", 5);
+    addCircleLayer(tree, "woods-tree-layer-mid", 5);
+    addCircleLayer(tree, "woods-tree-layer-light", 4);
+  }
+
+  function createWoodsPatch(art, instance) {
+    const layout = WOODS_LAYOUTS[instance.terrainId] ?? WOODS_LAYOUTS.woods;
+    layout.forEach((placement, index) => createWoodsTree(art, placement, index));
+  }
+
   function createBuildingChildren(element, definition, instance) {
     const name = definition.label ?? "building";
     const plaque = terrainLabel(name, "Occupiable · hard cover");
@@ -76,10 +131,7 @@
   function decorate(art, definition, instance) {
     const renderer = definition.renderer;
     if (renderer === "woods") {
-      const count = instance.terrainId === "woods_dense" ? 8 : 7;
-      addPrimitive(art, "tree-shadow", count);
-      addPrimitive(art, "tree-canopy", count);
-      addPrimitive(art, "tree-highlight", count);
+      createWoodsPatch(art, instance);
     } else if (renderer === "orchard") {
       addPrimitive(art, "orchard-shadow", 9);
       addPrimitive(art, "orchard-tree", 9);
