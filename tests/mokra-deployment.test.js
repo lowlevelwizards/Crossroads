@@ -5,7 +5,7 @@ const path = require("path");
 const vm = require("vm");
 const root = path.resolve(__dirname, "..");
 const context = vm.createContext({ window: {}, console });
-for (const file of ["data/terrain.js", "data/scenarios.js", "src/rules/terrain-geometry.js"]) {
+for (const file of ["data/terrain.js", "data/linear-terrain.js", "data/scenarios.js", "src/rules/path-geometry.js", "src/rules/linear-terrain.js", "src/rules/terrain-geometry.js"]) {
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename:file });
 }
 const scenario = context.window.CROSSROADS_SCENARIOS.mokra;
