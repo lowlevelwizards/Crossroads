@@ -3048,6 +3048,29 @@ that no visual behavior changes. These banners identify the effective systems:
       font-size: 18px !important;
     }
 
+    .main-menu-editor {
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      padding: 9px 14px;
+      background: #ddd0ad;
+      border-color: #695d3e;
+    }
+
+    .main-menu-editor-title {
+      font-size: 15px;
+      font-weight: 950;
+      letter-spacing: .07em;
+    }
+
+    .main-menu-editor-subtitle {
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .015em;
+      text-transform: none;
+      opacity: .78;
+    }
+
     .main-menu-continue:disabled {
       opacity: .48;
       background: #ddd5c5;

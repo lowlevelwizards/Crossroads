@@ -23,7 +23,7 @@ DOCUMENT LAYOUT
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Crossroads 1939–1945 — Infantry Core 1.7C</title>
-    <link rel="stylesheet" href="styles/main.css?v=3t35">
+    <link rel="stylesheet" href="styles/main.css?v=e11">
     <link rel="stylesheet" href="styles/terrain.css?v=3t35">
     <link rel="stylesheet" href="styles/linear-terrain.css?v=l13">
     <link rel="stylesheet" href="styles/miniatures.css?v=3ni6">
@@ -48,7 +48,10 @@ DOCUMENT LAYOUT
       <div class="main-menu-actions">
         <button id="mainMenuPlayButton" class="main-menu-play" type="button" onclick="window.CrossroadsFlow.showScenarios();">PLAY</button>
         <button id="mainMenuHowToButton" type="button" aria-expanded="false" onclick="window.CrossroadsFlow.toggleHowToPlay(this);">HOW TO PLAY</button>
-        <button type="button" onclick="window.location.href='editor.html';">SCENARIO EDITOR</button>
+        <button id="mainMenuEditorButton" class="main-menu-editor" type="button" onclick="window.CrossroadsFlow.openEditor();">
+          <span class="main-menu-editor-title">TERRAIN EDITOR</span>
+          <span class="main-menu-editor-subtitle">Build and edit scenarios using this same game data</span>
+        </button>
         <button class="main-menu-continue" type="button" disabled>CONTINUE</button>
       </div>
       <div id="mainMenuHowToPanel" class="how-to-panel" hidden>
@@ -151,11 +154,34 @@ DOCUMENT LAYOUT
         document.body.classList.remove("menu-open");
       }
 
+      function openEditor() {
+        const storageKey = "crossroads.editor.lastScenario";
+        let scenarioId = "mokra";
+        try {
+          const remembered = localStorage.getItem(storageKey);
+          if (remembered) scenarioId = remembered;
+        } catch (error) {
+          // File-based and privacy-restricted browsers may block localStorage.
+        }
+        window.location.href = `editor.html?scenario=${encodeURIComponent(scenarioId)}`;
+      }
+
+      function restoreScenarioFromUrl() {
+        const requested = new URLSearchParams(window.location.search).get("scenario");
+        const select = document.getElementById("scenarioSelect");
+        if (!requested || !select || !Array.from(select.options).some(option => option.value === requested)) return;
+        select.value = requested;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      window.addEventListener("DOMContentLoaded", restoreScenarioFromUrl);
+
       window.CrossroadsFlow = Object.freeze({
         showScenarios,
         backToMainMenu,
         toggleHowToPlay,
-        selectScenario
+        selectScenario,
+        openEditor
       });
     })();
   </script>
@@ -469,7 +495,7 @@ DOCUMENT LAYOUT
   </script>
 
   <!-- Ordered classic scripts keep GitHub Pages and phone uploads simple. -->
-  <script src="data/build-info.js?v=m1"></script>
+  <script src="data/build-info.js?v=e11"></script>
   <script>
     // Apply the version before the battle engine starts. This keeps the visible
     // badge trustworthy even if a later startup error prevents full bootstrap.

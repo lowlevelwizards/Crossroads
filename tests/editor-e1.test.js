@@ -73,7 +73,11 @@ const editorSource = fs.readFileSync(path.join(root, "src/editor/editor.js"), "u
 assert(editorHtml.includes("src/editor/editor-document.js"), "editor document model must load before editor controller");
 assert(editorHtml.includes("src/editor/editor-validation.js"), "editor validation must load before editor controller");
 assert(indexHtml.includes("data/editor-playtest.js"), "battle runtime must load the optional editor bridge");
-assert(indexHtml.includes("SCENARIO EDITOR"), "main menu must expose the internal editor");
+assert(indexHtml.includes("TERRAIN EDITOR"), "main menu must expose the internal editor");
+assert(indexHtml.includes("CrossroadsFlow.openEditor"), "main menu editor action must use the shared flow boundary");
+assert(indexHtml.includes("restoreScenarioFromUrl"), "game must restore the edited scenario when returning from the editor");
+assert(editorSource.includes("requestedScenarioId"), "editor must resolve a scenario from the live-game launch URL");
+assert(editorSource.includes("crossroads.editor.lastScenario"), "editor must remember the last scenario edited");
 assert(editorSource.includes("TERRAIN_PRESENTATION.renderScenarioTerrain"), "editor must reuse the runtime terrain renderer");
 assert(editorSource.includes("CrossroadsEditorValidation"), "editor must use the validation boundary");
 

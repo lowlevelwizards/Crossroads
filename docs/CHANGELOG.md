@@ -120,3 +120,11 @@
 - Added validation for IDs, bounds, unknown definitions, deployment zones, hard-terrain overlap, unit spacing, path geometry, junction caps, and objective placement.
 - Added undo/redo, JSON import/export, JavaScript copy output, and download support.
 - Added a localStorage playtest bridge that loads the editor document into the existing battle runtime without changing `engine.js`.
+
+
+## Terrain Editor E1.1 — Main Menu Editor Integration
+
+- Promoted Terrain Editor to a dedicated, clearly labeled live-game main-menu action.
+- Main-menu launch uses the same packaged scenario and terrain data as the game.
+- Editor launches Mokra by default and remembers the most recently edited scenario.
+- Scenario selection is preserved when returning to the game.

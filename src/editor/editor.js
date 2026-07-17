@@ -16,9 +16,11 @@
   const BASE_BOARD_WIDTH = 960;
   const HISTORY_LIMIT = 40;
   const PLAYTEST_STORAGE_KEY = "crossroads.editor.playtest";
+  const LAST_SCENARIO_STORAGE_KEY = "crossroads.editor.lastScenario";
 
   const refs = Object.freeze({
     scenarioSelect: document.getElementById("editorScenarioSelect"),
+    returnToGameLink: document.getElementById("returnToGameLink"),
     terrainTypeSelect: document.getElementById("terrainTypeSelect"),
     linearStyleSelect: document.getElementById("linearStyleSelect"),
     unitFactionSelect: document.getElementById("unitFactionSelect"),
@@ -98,9 +100,22 @@
     return node;
   }
 
+  function requestedScenarioId() {
+    const fallback = SCENARIOS.mokra ? "mokra" : Object.keys(SCENARIOS)[0];
+    const fromUrl = new URLSearchParams(window.location.search).get("scenario");
+    if (fromUrl && SCENARIOS[fromUrl]) return fromUrl;
+    try {
+      const remembered = localStorage.getItem(LAST_SCENARIO_STORAGE_KEY);
+      if (remembered && SCENARIOS[remembered]) return remembered;
+    } catch (error) {
+      // File-based and privacy-restricted browsers may block localStorage.
+    }
+    return fallback;
+  }
+
   function initializeSelects() {
     for (const scenario of Object.values(SCENARIOS)) refs.scenarioSelect.appendChild(option(scenario.id, scenario.title));
-    refs.scenarioSelect.value = SCENARIOS.mokra ? "mokra" : Object.keys(SCENARIOS)[0];
+    refs.scenarioSelect.value = requestedScenarioId();
 
     const terrainEntries = Object.values(TERRAIN_TYPES).sort((a, b) => `${a.family} ${a.label}`.localeCompare(`${b.family} ${b.label}`));
     for (const definition of terrainEntries) refs.terrainTypeSelect.appendChild(option(definition.id, `${definition.family} · ${definition.label}`));
@@ -175,6 +190,8 @@
     state.future = [];
     state.status = `Loaded ${source.title}`;
     refs.scenarioSelect.value = id;
+    if (refs.returnToGameLink) refs.returnToGameLink.href = `index.html?fromEditor=1&scenario=${encodeURIComponent(id)}`;
+    try { localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, id); } catch (error) { /* Storage is optional. */ }
     renderAll();
     requestAnimationFrame(fitTable);
   }
