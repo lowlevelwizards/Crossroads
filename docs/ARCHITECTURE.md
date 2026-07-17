@@ -281,3 +281,17 @@ Terrain now separates its visual rectangle from its authoritative rules footprin
 `terrain-polish.js` is a presentation-only decorator loaded immediately after the base terrain renderer. It owns primitive namespacing, field-row generation, and scene-depth metadata. It does not change terrain rules or scenario state.
 
 Road, stream, and field variants remain registry data using shared renderers. New scenarios should compose those reusable pieces rather than add scenario-specific CSS or combat branches.
+
+
+## Terrain Foundation L1 — Connected Linear Terrain
+
+Scenario terrain is now divided by geometry type:
+
+- `terrain`: discrete pieces such as buildings, woods, fields, foxholes, and scatter.
+- `linearTerrain`: waypoint-authored roads, streams, ditches, railways, hedges, fences, and walls.
+- `junctions`: explicit seam-hiding nodes such as T-junctions and crossroads.
+- `crossings`: explicit relationships such as a bridge or culvert where two paths intersect.
+
+`path-geometry.js` owns deterministic centerline creation and sampling. `linear-terrain.js` compiles those paths into shared presentation data and conservative gameplay corridors. `presentation/linear-terrain.js` renders the same centerlines as layered SVG strokes and repeated details. Scenarios author waypoints; they do not position individual visual tiles.
+
+Closed terrain patches and an editor may reuse control-point concepts later, but remain separate systems.
