@@ -6,11 +6,16 @@
   const SCENARIOS = window.CROSSROADS_SCENARIOS;
   const TERRAIN_TYPES = window.CROSSROADS_TERRAIN_TYPES;
   const LINEAR_STYLES = window.CROSSROADS_LINEAR_TERRAIN_STYLES;
+  const LINEAR_MATERIALS = window.CROSSROADS_LINEAR_TERRAIN_MATERIALS ?? {};
+  const PATCH_STYLES = window.CROSSROADS_TERRAIN_PATCH_STYLES ?? {};
   const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
   const TERRAIN_PRESENTATION = window.CrossroadsTerrainPresentation;
+  const BUILDINGS = window.CrossroadsBuildingPresentation;
+  const GEOMETRY = window.CrossroadsEditorGeometry;
+  const LAYERS = window.CrossroadsLayerPolicy;
 
-  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION) {
-    throw new Error("Terrain Editor E1.2 dependencies did not load.");
+  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS) {
+    throw new Error("Terrain Editor E1.3 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
@@ -27,6 +32,7 @@
     returnToGameLink: document.getElementById("returnToGameLink"),
     terrainTypeSelect: document.getElementById("terrainTypeSelect"),
     linearStyleSelect: document.getElementById("linearStyleSelect"),
+    patchStyleSelect: document.getElementById("patchStyleSelect"),
     unitFactionSelect: document.getElementById("unitFactionSelect"),
     unitTypeSelect: document.getElementById("unitTypeSelect"),
     addTerrainButton: document.getElementById("addTerrainButton"),
@@ -34,6 +40,10 @@
     linearDrawActions: document.getElementById("linearDrawActions"),
     finishLinearButton: document.getElementById("finishLinearButton"),
     cancelLinearButton: document.getElementById("cancelLinearButton"),
+    addPatchButton: document.getElementById("addPatchButton"),
+    patchDrawActions: document.getElementById("patchDrawActions"),
+    finishPatchButton: document.getElementById("finishPatchButton"),
+    cancelPatchButton: document.getElementById("cancelPatchButton"),
     addUnitButton: document.getElementById("addUnitButton"),
     addObjectiveButton: document.getElementById("addObjectiveButton"),
     objectiveTypeSelect: document.getElementById("objectiveTypeSelect"),
@@ -111,6 +121,7 @@
     drag: null,
     pan: null,
     drawingPath: null,
+    drawingPatch: null,
     drawingCursor: null,
     issues: [],
     showGrid: true,
@@ -187,6 +198,7 @@
     const terrainEntries = Object.values(TERRAIN_TYPES).sort((a, b) => `${a.family} ${a.label}`.localeCompare(`${b.family} ${b.label}`));
     for (const definition of terrainEntries) refs.terrainTypeSelect.appendChild(option(definition.id, `${definition.family} · ${definition.label}`));
     for (const style of Object.values(LINEAR_STYLES)) refs.linearStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
+    for (const style of Object.values(PATCH_STYLES)) refs.patchStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
     for (const [id, definition] of Object.entries(UNIT_TYPES)) refs.unitTypeSelect.appendChild(option(id, definition.name));
   }
 
@@ -210,6 +222,10 @@
   function snap(value) {
     if (!state.snap) return value;
     return Math.round(value * 4) / 4;
+  }
+
+  function isItemVisible(item) {
+    return item?.visible !== false && item?.hidden !== true;
   }
 
   function scenarioType(scenario = state.document) {
@@ -271,6 +287,7 @@
     state.document = DOCUMENT.create(source);
     state.selection = null;
     state.drawingPath = null;
+    state.drawingPatch = null;
     state.drawingCursor = null;
     state.history = [];
     state.future = [];
@@ -320,9 +337,83 @@
   function pointForSelection(selection = state.selection) {
     const item = itemForSelection(selection);
     if (!item || selection?.pointIndex === undefined || selection?.pointIndex === null) return null;
-    if (selection.kind === "linear") return item.points?.[selection.pointIndex] ?? null;
+    if (selection.kind === "linear" || selection.kind === "patch") return item.points?.[selection.pointIndex] ?? null;
     if (selection.kind === "objective" && item.type === "control_group") return item.points?.[selection.pointIndex] ?? null;
     return null;
+  }
+
+  function pointsForSelection(selection = state.selection) {
+    const item = itemForSelection(selection);
+    if (!item || !Array.isArray(item.points)) return null;
+    if (selection?.kind === "linear" || selection?.kind === "patch") return item.points;
+    return null;
+  }
+
+  function geometryBoundsFor(item, selection = state.selection) {
+    if (!item || !selection) return null;
+    if (selection.kind === "linear" || selection.kind === "patch") {
+      const base = GEOMETRY.bounds(item.points ?? []);
+      if (!base) return null;
+      const pad = selection.kind === "linear" ? Math.max(.25, Math.max(...(item.points ?? []).map(point => number(point.width, number(item.width, 2)))) / 2) : .2;
+      return { x:base.x - pad, y:base.y - pad, width:base.width + pad * 2, height:base.height + pad * 2 };
+    }
+    return null;
+  }
+
+  function materialChoicesForLinear(styleId) {
+    const registry = LINEAR_MATERIALS[styleId] ?? LINEAR_MATERIALS[LINEAR_STYLES[styleId]?.renderer] ?? [];
+    const source = Array.isArray(registry) ? registry : registry.choices ?? registry.materials ?? registry;
+    if (Array.isArray(source)) return source.map(entry => typeof entry === "string" ? { value:entry, label:entry.replaceAll("_", " ") } : { value:entry.id ?? entry.value, label:entry.label ?? entry.id ?? entry.value });
+    return Object.entries(source ?? {}).map(([value, entry]) => ({ value, label:entry?.label ?? value.replaceAll("_", " ") }));
+  }
+
+  function defaultLinearMaterial(styleId) {
+    const registry = LINEAR_MATERIALS[styleId] ?? LINEAR_MATERIALS[LINEAR_STYLES[styleId]?.renderer];
+    if (registry?.default) return registry.default;
+    const choices = materialChoicesForLinear(styleId);
+    return choices[0]?.value ?? "default";
+  }
+
+  function materialChoicesForPatch(styleId) {
+    const style = PATCH_STYLES[styleId];
+    const source = style?.materials ?? style?.materialChoices ?? [];
+    if (Array.isArray(source)) return source.map(entry => {
+      const value = typeof entry === "string" ? entry : entry.id ?? entry.value;
+      return { value, label:typeof entry === "string" ? entry.replaceAll("_", " ") : entry.label ?? value };
+    });
+    return Object.entries(source).map(([value, label]) => ({ value, label:typeof label === "string" ? label : label?.label ?? value.replaceAll("_", " ") }));
+  }
+
+  function defaultLayerFor(item, selection = state.selection) {
+    if (!item || !selection) return 0;
+    if (selection.kind === "terrain") return LAYERS.terrainLayer({ ...item, inheritLayer:true }, TERRAIN_TYPES[item.terrainId], table().height);
+    if (selection.kind === "linear") return LAYERS.linearLayer({ ...item, inheritLayer:true }, LINEAR_STYLES[item.styleId]);
+    if (selection.kind === "patch") return LAYERS.patchLayer({ ...item, inheritLayer:true }, PATCH_STYLES[item.styleId]);
+    if (selection.kind === "unit") return LAYERS.unitLayer({ ...item, inheritLayer:true }, table().height);
+    return 0;
+  }
+
+  function normalizePointData(item) {
+    if (!item?.points) return;
+    item.points = item.points.map(point => {
+      const clean = { ...point, x:Math.round(number(point.x) * 1000) / 1000, y:Math.round(number(point.y) * 1000) / 1000 };
+      if (point.width !== undefined) clean.width = Math.max(.1, Math.round(number(point.width) * 1000) / 1000);
+      return clean;
+    });
+  }
+
+  function scaleLinearWidths(item, sourceItem, scale) {
+    if (!item || !sourceItem || !Number.isFinite(scale) || scale <= 0) return;
+    item.width = Math.max(.1, number(sourceItem.width, LINEAR_STYLES[item.styleId]?.width ?? 2) * scale);
+    item.points = (item.points ?? []).map((point, index) => {
+      const sourcePoint = sourceItem.points?.[index];
+      if (sourcePoint?.width === undefined) {
+        const copy = { ...point };
+        delete copy.width;
+        return copy;
+      }
+      return { ...point, width:Math.max(.1, number(sourcePoint.width) * scale) };
+    });
   }
 
   function setupBoardGeometry() {
@@ -343,21 +434,32 @@
     refs.objectiveLayer.hidden = !state.showObjectives;
     refs.unitLayer.hidden = !state.showUnits;
     refs.board.classList.toggle("is-drawing-path", Boolean(state.drawingPath));
+    refs.board.classList.toggle("is-drawing-patch", Boolean(state.drawingPatch));
     refs.board.classList.toggle("is-panning", Boolean(state.pan));
-    refs.board.classList.toggle("can-pan", !state.drawingPath && !state.pan);
+    refs.board.classList.toggle("can-pan", !state.drawingPath && !state.drawingPatch && !state.pan);
     refs.viewport.classList.toggle("is-panning", Boolean(state.pan));
     refs.zoomReadout.textContent = `${Math.round(state.zoom * 100)}%`;
   }
 
   function renderTerrain() {
     TERRAIN_PRESENTATION.renderScenarioTerrain({ layer:refs.terrainLayer, scenario:state.document });
+    const terrainById = new Map((state.document.terrain ?? []).map(item => [String(item.id), item]));
     for (const element of refs.terrainLayer.querySelectorAll(".terrain-piece")) {
-      element.hidden = !state.showTerrain;
+      const item = terrainById.get(String(element.dataset.terrainInstanceId));
+      const definition = TERRAIN_TYPES[item?.terrainId];
+      element.hidden = !state.showTerrain || !isItemVisible(item);
       element.dataset.editorKind = "terrain";
-      if (state.selection?.kind === "terrain" && String(state.selection.id) === String(element.dataset.terrainInstanceId)) element.classList.add("is-editor-selected");
+      element.style.zIndex = String(LAYERS.terrainLayer(item, definition, table().height));
+      element.classList.toggle("is-editor-selected", state.selection?.kind === "terrain" && String(state.selection.id) === String(element.dataset.terrainInstanceId));
     }
-    const linearSvg = refs.terrainLayer.querySelector(".linear-terrain-svg");
-    if (linearSvg) linearSvg.hidden = !state.showLinear;
+    const patchesById = new Map((state.document.terrainPatches ?? []).map(item => [String(item.id), item]));
+    for (const patchSvg of refs.terrainLayer.querySelectorAll(".terrain-patch-svg")) {
+      patchSvg.hidden = !state.showTerrain || !isItemVisible(patchesById.get(String(patchSvg.dataset.patchId)));
+    }
+    const pathsById = new Map((state.document.linearTerrain ?? []).map(item => [String(item.id), item]));
+    for (const linearSvg of refs.terrainLayer.querySelectorAll(".linear-terrain-svg")) {
+      linearSvg.hidden = !state.showLinear || !isItemVisible(pathsById.get(String(linearSvg.dataset.linearId)));
+    }
   }
 
   function renderZones() {
@@ -366,8 +468,8 @@
     for (const faction of ["blue", "red"]) {
       const root = state.document.deployment?.zones?.[faction];
       if (!root) continue;
-      appendZone(root, faction, "__main", false);
-      for (const subzone of root.subzones ?? []) appendZone(subzone, faction, subzone.id, true);
+      if (isItemVisible(root)) appendZone(root, faction, "__main", false);
+      for (const subzone of root.subzones ?? []) if (isItemVisible(subzone)) appendZone(subzone, faction, subzone.id, true);
     }
   }
 
@@ -396,6 +498,7 @@
     refs.unitLayer.replaceChildren();
     for (const faction of ["blue", "red"]) {
       for (const unit of state.document.forces?.[faction] ?? []) {
+        if (!isItemVisible(unit)) continue;
         const node = document.createElement("div");
         node.className = `editor-unit ${faction}`;
         node.dataset.editorKind = "unit";
@@ -403,6 +506,7 @@
         node.dataset.faction = faction;
         node.style.left = percent(unit.x, table().width);
         node.style.top = percent(unit.y, table().height);
+        node.style.zIndex = String(LAYERS.unitLayer(unit, table().height));
         node.textContent = unitAbbreviation(unit);
         node.title = unit.name || UNIT_TYPES[unit.unitType]?.name || unit.id;
         const label = document.createElement("span");
@@ -417,6 +521,7 @@
   function renderObjectives() {
     refs.objectiveLayer.replaceChildren();
     for (const objective of state.document.objectives ?? []) {
+      if (!isItemVisible(objective)) continue;
       const points = objective.type === "control_group" ? objective.points ?? [] : [objective];
       points.forEach((point, pointIndex) => {
         const node = document.createElement("div");
@@ -447,48 +552,103 @@
 
   function renderLinearInteraction() {
     refs.interactionSvg.replaceChildren();
-    refs.interactionSvg.hidden = !state.showLinear && !state.drawingPath;
-    if (refs.interactionSvg.hidden) return;
-    for (const path of state.document.linearTerrain ?? []) {
-      if (!Array.isArray(path.points) || path.points.length < 2) continue;
-      const selected = state.selection?.kind === "linear" && String(state.selection.id) === String(path.id);
-      const points = path.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
-      if (selected) refs.interactionSvg.appendChild(svgNode("polyline", { points, class:"editor-linear-highlight" }));
-      for (let index = 0; index < path.points.length - 1; index += 1) {
-        const a = path.points[index];
-        const b = path.points[index + 1];
-        const segmentSelected = selected && state.selection.segmentIndex === index;
-        if (segmentSelected) {
-          refs.interactionSvg.appendChild(svgNode("line", { x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight" }));
-        }
-        refs.interactionSvg.appendChild(svgNode("line", {
-          x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-hit",
-          "data-editor-kind":"segment", "data-linear-id":path.id, "data-segment-index":index
+    const showAnything = state.showLinear || state.showTerrain || state.drawingPath || state.drawingPatch;
+    refs.interactionSvg.hidden = !showAnything;
+    if (!showAnything) return;
+
+    if (state.showTerrain || state.drawingPatch) {
+      for (const patch of state.document.terrainPatches ?? []) {
+        if (!isItemVisible(patch) || !Array.isArray(patch.points) || patch.points.length < 3) continue;
+        const selected = state.selection?.kind === "patch" && String(state.selection.id) === String(patch.id);
+        const points = patch.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
+        refs.interactionSvg.appendChild(svgNode("polygon", {
+          points,
+          class:"editor-patch-hit",
+          "data-editor-kind":"patch",
+          "data-patch-id":patch.id
         }));
-      }
-      if (!selected) continue;
-      path.points.forEach((point, index) => {
-        const circle = svgNode("circle", {
-          cx:number(point.x), cy:number(point.y), r:.62,
-          class:`editor-waypoint${state.selection.pointIndex === index ? " is-selected" : ""}`,
-          "data-editor-kind":"waypoint", "data-linear-id":path.id, "data-point-index":index
+        if (selected) refs.interactionSvg.appendChild(svgNode("polygon", { points, class:"editor-patch-highlight" }));
+        for (let index = 0; index < patch.points.length; index += 1) {
+          const a = patch.points[index];
+          const b = patch.points[(index + 1) % patch.points.length];
+          const sectionSelected = selected && state.selection.segmentIndex === index;
+          if (sectionSelected) refs.interactionSvg.appendChild(svgNode("line", {
+            x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight"
+          }));
+          refs.interactionSvg.appendChild(svgNode("line", {
+            x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-patch-edge-hit",
+            "data-editor-kind":"patch-segment", "data-patch-id":patch.id, "data-segment-index":index
+          }));
+        }
+        if (!selected) continue;
+        patch.points.forEach((point, index) => {
+          refs.interactionSvg.appendChild(svgNode("circle", {
+            cx:number(point.x), cy:number(point.y), r:.62,
+            class:`editor-patch-point${state.selection.pointIndex === index ? " is-selected" : ""}`,
+            "data-editor-kind":"patch-point", "data-patch-id":patch.id, "data-point-index":index
+          }));
         });
-        const text = svgNode("text", { x:number(point.x), y:number(point.y) + .05, class:"editor-waypoint-index" });
-        text.textContent = String(index + 1);
-        refs.interactionSvg.append(circle, text);
-      });
+      }
     }
+
+    if (state.showLinear || state.drawingPath) {
+      for (const path of state.document.linearTerrain ?? []) {
+        if (!isItemVisible(path) || !Array.isArray(path.points) || path.points.length < 2) continue;
+        const selected = state.selection?.kind === "linear" && String(state.selection.id) === String(path.id);
+        const points = path.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
+        if (selected) {
+          refs.interactionSvg.appendChild(svgNode("polyline", {
+            points,
+            class:"editor-linear-group-highlight",
+            "stroke-width":Math.max(.6, Math.max(...path.points.map(point => number(point.width, number(path.width, 2)))) + .45)
+          }));
+          refs.interactionSvg.appendChild(svgNode("polyline", { points, class:"editor-linear-highlight" }));
+        }
+        for (let index = 0; index < path.points.length - 1; index += 1) {
+          const a = path.points[index];
+          const b = path.points[index + 1];
+          const segmentSelected = selected && state.selection.segmentIndex === index;
+          if (segmentSelected) refs.interactionSvg.appendChild(svgNode("line", {
+            x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight"
+          }));
+          refs.interactionSvg.appendChild(svgNode("line", {
+            x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-hit",
+            "data-editor-kind":"segment", "data-linear-id":path.id, "data-segment-index":index
+          }));
+        }
+        if (!selected) continue;
+        path.points.forEach((point, index) => {
+          const circle = svgNode("circle", {
+            cx:number(point.x), cy:number(point.y), r:.62,
+            class:`editor-waypoint${state.selection.pointIndex === index ? " is-selected" : ""}`,
+            "data-editor-kind":"waypoint", "data-linear-id":path.id, "data-point-index":index
+          });
+          const text = svgNode("text", { x:number(point.x), y:number(point.y) + .05, class:"editor-waypoint-index" });
+          text.textContent = String(index + 1);
+          refs.interactionSvg.append(circle, text);
+        });
+      }
+    }
+
     if (state.drawingPath) {
       const preview = [...state.drawingPath.points];
       if (state.drawingCursor && preview.length) preview.push(state.drawingCursor);
-      if (preview.length >= 2) {
-        refs.interactionSvg.appendChild(svgNode("polyline", {
-          points:preview.map(point => `${number(point.x)},${number(point.y)}`).join(" "),
-          class:"editor-drawing-path"
-        }));
-      }
+      if (preview.length >= 2) refs.interactionSvg.appendChild(svgNode("polyline", {
+        points:preview.map(point => `${number(point.x)},${number(point.y)}`).join(" "), class:"editor-drawing-path"
+      }));
       state.drawingPath.points.forEach(point => refs.interactionSvg.appendChild(svgNode("circle", {
         cx:number(point.x), cy:number(point.y), r:.48, class:"editor-drawing-waypoint"
+      })));
+    }
+
+    if (state.drawingPatch) {
+      const preview = [...state.drawingPatch.points];
+      if (state.drawingCursor && preview.length) preview.push(state.drawingCursor);
+      if (preview.length >= 2) refs.interactionSvg.appendChild(svgNode("polygon", {
+        points:preview.map(point => `${number(point.x)},${number(point.y)}`).join(" "), class:"editor-drawing-patch"
+      }));
+      state.drawingPatch.points.forEach(point => refs.interactionSvg.appendChild(svgNode("circle", {
+        cx:number(point.x), cy:number(point.y), r:.48, class:"editor-drawing-patch-point"
       })));
     }
   }
@@ -497,6 +657,7 @@
     refs.footprintLayer.replaceChildren();
     if (!state.showFootprints) return;
     for (const terrain of state.document.terrain ?? []) {
+      if (!isItemVisible(terrain)) continue;
       const definition = TERRAIN_TYPES[terrain.terrainId];
       if (!definition || (definition.rules?.movement !== "impassable" && !definition.rules?.cover)) continue;
       const rect = VALIDATION.rulesRect(terrain, TERRAIN_TYPES);
@@ -515,7 +676,10 @@
     const selection = state.selection;
     const item = itemForSelection();
     if (!selection || !item) return;
+    if (!isItemVisible(item)) return;
     if ((selection.kind === "terrain" && !state.showTerrain) ||
+        (selection.kind === "patch" && !state.showTerrain) ||
+        (selection.kind === "linear" && !state.showLinear) ||
         (selection.kind === "unit" && !state.showUnits) ||
         (selection.kind === "objective" && !state.showObjectives) ||
         (selection.kind === "zone" && !state.showZones)) return;
@@ -531,6 +695,10 @@
       const definition = TERRAIN_TYPES[item.terrainId];
       resizable = Boolean(definition?.editor?.resizable);
       rotatable = Boolean(definition?.editor?.rotatable);
+    } else if (selection.kind === "linear" || selection.kind === "patch") {
+      rect = geometryBoundsFor(item, selection);
+      resizable = true;
+      rotatable = true;
     } else if (selection.kind === "unit") {
       rect = { x:number(item.x), y:number(item.y), width:1.8, height:1.8 };
       pointLike = true;
@@ -547,14 +715,9 @@
 
     if (!rect) return;
     const node = document.createElement("div");
-    node.className = `editor-selection-box${pointLike ? " is-point" : ""}`;
-    if (pointLike) {
-      node.style.left = percent(rect.x, table().width);
-      node.style.top = percent(rect.y, table().height);
-    } else {
-      node.style.left = percent(rect.x, table().width);
-      node.style.top = percent(rect.y, table().height);
-    }
+    node.className = `editor-selection-box${pointLike ? " is-point" : ""}${selection.kind === "linear" ? " is-linear" : ""}${selection.kind === "patch" ? " is-patch" : ""}`;
+    node.style.left = percent(rect.x, table().width);
+    node.style.top = percent(rect.y, table().height);
     node.style.width = percent(rect.width, table().width);
     node.style.height = percent(rect.height, table().height);
     if (rotation) node.style.transform = `rotate(${rotation}deg)`;
@@ -575,22 +738,57 @@
     refs.selectionLayer.appendChild(node);
   }
 
+  function makeObjectThumbnail(entry) {
+    const thumb = document.createElement("span");
+    thumb.className = "editor-object-thumb";
+    const item = entry.item;
+    if (entry.selection.kind === "terrain") {
+      const definition = TERRAIN_TYPES[item?.terrainId];
+      if (definition?.renderer === "building" && BUILDINGS?.createArt) {
+        thumb.classList.add("editor-object-thumb-building");
+        try { thumb.appendChild(BUILDINGS.createArt({ definition, instance:{ ...item, id:`thumb-${item.id}` } })); }
+        catch (_error) { thumb.classList.add("editor-object-thumb-terrain"); }
+      } else {
+        thumb.classList.add("editor-object-thumb-terrain");
+        const fill = definition?.renderer === "field" ? "#a58d57" : definition?.renderer === "woods" || definition?.renderer === "orchard" ? "#6f8259" : "#887c68";
+        thumb.style.setProperty("--thumb-fill", fill);
+      }
+    } else if (entry.selection.kind === "linear") {
+      const style = LINEAR_STYLES[item?.styleId];
+      const material = LINEAR_MATERIALS[item?.styleId]?.[item?.material] ?? {};
+      thumb.classList.add("editor-object-thumb-linear");
+      if (style?.renderer === "rail") thumb.classList.add("is-rail");
+      thumb.style.setProperty("--thumb-base", material.surface ?? material.water ?? material.ballast ?? "#94805b");
+      thumb.style.setProperty("--thumb-detail", material.detail ?? material.rail ?? "#d0bd8d");
+    } else if (entry.selection.kind === "patch") {
+      thumb.classList.add("editor-object-thumb-patch");
+      const fills = { woods:"#657f4c", woods_dense:"#3f6142", orchard:"#78915a", field_tilled:"#92724e", field_wheat:"#b9954e", field_cabbage:"#7c8952", concrete:"#9b9a90", cobblestone:"#898a82", mud:"#65513f", pond:"#72afc0" };
+      thumb.style.setProperty("--thumb-fill", fills[item?.styleId] ?? "#728450");
+    } else if (entry.selection.kind === "unit") {
+      thumb.classList.add("editor-object-thumb-unit");
+      thumb.style.setProperty("--thumb-color", entry.selection.faction === "red" ? "#a85850" : "#527da6");
+    } else if (entry.selection.kind === "objective") thumb.classList.add("editor-object-thumb-objective");
+    else if (entry.selection.kind === "zone") thumb.classList.add("editor-object-thumb-zone");
+    return thumb;
+  }
+
   function renderObjectList() {
     refs.objectList.replaceChildren();
     const zones = [];
     for (const faction of ["blue", "red"]) {
       const root = state.document.deployment?.zones?.[faction];
       if (!root) continue;
-      zones.push({ selection:{kind:"zone", faction, zoneId:"__main"}, label:root.label || `${faction} deployment`, detail:"zone" });
-      for (const zone of root.subzones ?? []) zones.push({ selection:{kind:"zone", faction, zoneId:zone.id}, label:zone.label || zone.id, detail:`${faction} subzone` });
+      zones.push({ selection:{kind:"zone", faction, zoneId:"__main"}, item:root, label:root.label || `${faction} deployment`, detail:"zone" });
+      for (const zone of root.subzones ?? []) zones.push({ selection:{kind:"zone", faction, zoneId:zone.id}, item:zone, label:zone.label || zone.id, detail:`${faction} subzone` });
     }
     const groups = [
-      ["Discrete terrain", (state.document.terrain ?? []).map(item => ({ selection:{kind:"terrain", id:item.id}, label:item.id, detail:TERRAIN_TYPES[item.terrainId]?.label || item.terrainId }))],
-      ["Linear terrain", (state.document.linearTerrain ?? []).map(item => ({ selection:{kind:"linear", id:item.id}, label:item.id, detail:LINEAR_STYLES[item.styleId]?.label || item.styleId }))],
-      ["Objectives", (state.document.objectives ?? []).map(item => ({ selection:{kind:"objective", id:item.id}, label:item.label || item.id, detail:(item.type || "control_zone").replaceAll("_", " ") }))],
+      ["Discrete terrain", (state.document.terrain ?? []).map(item => ({ selection:{kind:"terrain", id:item.id}, item, label:item.id, detail:TERRAIN_TYPES[item.terrainId]?.label || item.terrainId }))],
+      ["Terrain patches", (state.document.terrainPatches ?? []).map(item => ({ selection:{kind:"patch", id:item.id}, item, label:item.id, detail:PATCH_STYLES[item.styleId]?.label || item.styleId }))],
+      ["Linear terrain", (state.document.linearTerrain ?? []).map(item => ({ selection:{kind:"linear", id:item.id}, item, label:item.id, detail:`${LINEAR_STYLES[item.styleId]?.label || item.styleId} · ${item.material || defaultLinearMaterial(item.styleId)}` }))],
+      ["Objectives", (state.document.objectives ?? []).map(item => ({ selection:{kind:"objective", id:item.id}, item, label:item.label || item.id, detail:(item.type || "control_zone").replaceAll("_", " ") }))],
       ["Deployment zones", zones],
-      ["Polish / Blue units", (state.document.forces?.blue ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"blue"}, label:item.name || item.id, detail:unitAbbreviation(item) }))],
-      ["German / Red units", (state.document.forces?.red ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"red"}, label:item.name || item.id, detail:unitAbbreviation(item) }))]
+      ["Polish / Blue units", (state.document.forces?.blue ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"blue"}, item, label:item.name || item.id, detail:unitAbbreviation(item) }))],
+      ["German / Red units", (state.document.forces?.red ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"red"}, item, label:item.name || item.id, detail:unitAbbreviation(item) }))]
     ];
     const filter = state.objectFilter.trim().toLowerCase();
     let count = 0;
@@ -603,12 +801,33 @@
       refs.objectList.appendChild(heading);
       for (const entry of items) {
         count += 1;
+        const row = document.createElement("div");
+        const visible = isItemVisible(entry.item);
+        row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${selectionKey(entry.selection) === selectionKey(state.selection) || (entry.selection.kind === state.selection?.kind && String(entry.selection.id) === String(state.selection?.id)) ? " is-selected" : ""}`;
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `editor-object-item${selectionKey(entry.selection) === selectionKey(state.selection) ? " is-selected" : ""}`;
+        button.className = "editor-object-item";
         button.dataset.selection = JSON.stringify(entry.selection);
-        button.innerHTML = `<span>${escapeHtml(entry.label)}</span><small>${escapeHtml(entry.detail)}</small>`;
-        refs.objectList.appendChild(button);
+        const copy = document.createElement("span");
+        copy.className = "editor-object-copy";
+        const label = document.createElement("span");
+        label.textContent = entry.label;
+        const detail = document.createElement("small");
+        detail.textContent = entry.detail;
+        copy.append(label, detail);
+        const layer = document.createElement("small");
+        layer.className = "editor-object-layer-readout";
+        if (entry.item?.inheritLayer === false) layer.textContent = `L${number(entry.item.layerOrder)}`;
+        button.append(makeObjectThumbnail(entry), copy, layer);
+        const visibility = document.createElement("button");
+        visibility.type = "button";
+        visibility.className = `editor-object-visibility${visible ? " is-visible" : " is-hidden"}`;
+        visibility.dataset.visibilitySelection = JSON.stringify(entry.selection);
+        visibility.setAttribute("aria-label", `${visible ? "Hide" : "Show"} ${entry.label}`);
+        visibility.title = `${visible ? "Hide" : "Show"} ${entry.label}`;
+        visibility.textContent = visible ? "◉" : "○";
+        row.append(button, visibility);
+        refs.objectList.appendChild(row);
       }
     }
     if (!count) {
@@ -619,7 +838,7 @@
     }
     refs.objectCount.textContent = String(count);
     requestAnimationFrame(() => {
-      const selected = refs.objectList.querySelector(".is-selected");
+      const selected = refs.objectList.querySelector(".editor-object-row.is-selected");
       if (!selected) return;
       const top = selected.offsetTop;
       const bottom = top + selected.offsetHeight;
@@ -649,6 +868,38 @@
       options.readonly ? "readonly" : ""
     ].filter(Boolean).join(" ");
     return `<label${classes}>${escapeHtml(label)}<input ${attributes}></label>`;
+  }
+
+  function checkboxField(label, path, checked, options = {}) {
+    const classes = options.full ? " editor-field-full" : "";
+    return `<label class="editor-checkbox-field${classes}"><input type="checkbox" data-field="${escapeHtml(path)}"${checked ? " checked" : ""}><span>${escapeHtml(label)}</span></label>`;
+  }
+
+  function rangeField(label, path, value, min, max, step = .1) {
+    return `<label class="editor-range-field"><span>${escapeHtml(label)}</span><input type="range" data-field="${escapeHtml(path)}" value="${escapeHtml(value)}" min="${min}" max="${max}" step="${step}"><output class="editor-range-output">${escapeHtml(value)}</output></label>`;
+  }
+
+  function boundsFields(item, selection) {
+    const bounds = Array.isArray(item?.points) ? GEOMETRY.bounds(item.points) : geometryBoundsFor(item, selection);
+    if (!bounds) return "";
+    return field("Bounds X", "@bounds.x", Math.round(bounds.x * 100) / 100) +
+      field("Bounds Y", "@bounds.y", Math.round(bounds.y * 100) / 100) +
+      field("Bounds width", "@bounds.width", Math.round(bounds.width * 100) / 100, { min:.5 }) +
+      field("Bounds height", "@bounds.height", Math.round(bounds.height * 100) / 100, { min:.5 });
+  }
+
+  function layerControls(item) {
+    const inherited = item.inheritLayer !== false;
+    const layer = inherited ? defaultLayerFor(item) : number(item.layerOrder, defaultLayerFor(item));
+    return `<h3 class="editor-inspector-subheading">Layering</h3>` +
+      checkboxField("Inherit terrain-type layer", "inheritLayer", inherited, { full:true }) +
+      field("Layer order", "layerOrder", layer, { step:"1", min:0 }) +
+      `<div class="editor-layer-actions"><button class="editor-button" type="button" data-editor-command="layer-back">Send to back</button><button class="editor-button" type="button" data-editor-command="layer-down">Move down</button><button class="editor-button" type="button" data-editor-command="layer-up">Move up</button><button class="editor-button" type="button" data-editor-command="layer-front">Bring to front</button></div>`;
+  }
+
+  function transformActions(kind) {
+    const label = kind === "terrain" ? "Bake visual scale" : "Normalize point data";
+    return `<div class="editor-transform-actions"><button class="editor-button" type="button" data-editor-command="normalize-transform">${label}</button><button class="editor-button" type="button" data-editor-command="center-selection">Center on table</button></div>`;
   }
 
   function choiceEntries(source, labelKey = "label") {
@@ -686,35 +937,76 @@
       return;
     }
 
-    let html = "";
+    let html = checkboxField("Visible in editor and playtest", "@visible", isItemVisible(item), { full:true });
+    if (!isItemVisible(item)) html += `<p class="editor-inspector-note editor-hidden-note">This object is hidden on the table but remains available here and in the object list.</p>`;
     if (selection.kind === "terrain") {
+      const definition = TERRAIN_TYPES[item.terrainId];
       html += field("ID", "id", item.id, { type:"text", full:true });
-      html += field("Terrain type", "terrainId", item.terrainId, { choices:choiceEntries(TERRAIN_TYPES) , full:true });
+      html += field("Terrain type", "terrainId", item.terrainId, { choices:choiceEntries(TERRAIN_TYPES), full:true });
+      if (definition?.renderer === "building" && BUILDINGS?.appearanceIds?.length) {
+        html += field("Material / color", "appearance", item.appearance ?? definition.presentation?.defaultAppearance, {
+          choices:BUILDINGS.appearanceIds.map(value => ({ value, label:value.replaceAll("_", " ") })), full:true
+        });
+      }
       html += field("X", "x", item.x);
       html += field("Y", "y", item.y);
       html += field("Width", "width", item.width, { min:.25 });
       html += field("Height", "height", item.height, { min:.25 });
       html += field("Rotation", "rotation", item.rotation ?? 0, { step:"1" });
-      html += field("Visual scale", "visualScale", item.visualScale ?? 1, { step:".05", min:.25 });
+      html += rangeField("Visual scale", "visualScale", item.visualScale ?? 1, .25, 2.5, .05);
+      html += transformActions("terrain");
+      html += layerControls(item);
     } else if (selection.kind === "linear") {
+      const style = LINEAR_STYLES[item.styleId];
+      const materials = materialChoicesForLinear(item.styleId);
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Style", "styleId", item.styleId, { choices:choiceEntries(LINEAR_STYLES), full:true });
-      html += field("Width", "width", item.width ?? LINEAR_STYLES[item.styleId]?.width ?? 2, { min:.25 });
+      if (materials.length) html += field("Material", "material", item.material ?? defaultLinearMaterial(item.styleId), { choices:materials, full:true });
+      html += rangeField("Path width", "width", item.width ?? style?.width ?? 2, .25, 12, .1);
       html += field("Smoothing", "smoothing", item.smoothing ?? 0, { step:".05", min:0 });
       html += field("Start cap", "start.cap", item.start?.cap ?? "none", { choices:capChoices() });
       html += field("End cap", "end.cap", item.end?.cap ?? "none", { choices:capChoices() });
+      html += boundsFields(item, selection);
+      html += transformActions("linear");
       if (selection.pointIndex !== undefined) {
         const point = pointForSelection();
-        html += `<p class="editor-inspector-note">Waypoint ${selection.pointIndex + 1} of ${item.points.length}. Drag it on the table or edit its coordinates.</p>`;
+        html += `<p class="editor-inspector-note">Waypoint ${selection.pointIndex + 1} of ${item.points.length}. Its width overrides the path width and interpolates into neighboring sections.</p>`;
         html += field("Waypoint X", "@point.x", point?.x ?? 0);
         html += field("Waypoint Y", "@point.y", point?.y ?? 0);
-        html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="insert-waypoint">Insert after</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-waypoint"${item.points.length <= 2 ? " disabled" : ""}>Remove point</button></div>`;
+        html += rangeField("Waypoint width", "@point.width", point?.width ?? item.width ?? style?.width ?? 2, .15, 14, .1);
+        html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="insert-waypoint">Insert after</button><button class="editor-button" type="button" data-editor-command="branch-linear">Branch here</button><button class="editor-button" type="button" data-editor-command="clear-point-width">Use path width</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-waypoint"${item.points.length <= 2 ? " disabled" : ""}>Remove point</button></div>`;
       } else if (selection.segmentIndex !== undefined) {
-        html += `<p class="editor-inspector-note">Section ${selection.segmentIndex + 1} of ${item.points.length - 1}. Deleting an end section shortens the path; deleting a middle section splits it into two paths.</p>`;
+        html += `<p class="editor-inspector-note">Section ${selection.segmentIndex + 1} of ${item.points.length - 1}. Deleting an end section shortens the path; deleting a middle section splits it into two independent paths.</p>`;
         html += `<div class="editor-segment-actions"><button class="editor-button" type="button" data-editor-command="insert-segment-waypoint">Add midpoint</button><button class="editor-button editor-button-danger" type="button" data-editor-command="delete-segment">Delete section</button></div>`;
       } else {
-        html += `<p class="editor-inspector-note">Select a numbered waypoint to move it, or click an individual section to insert a midpoint or delete that section.</p>`;
+        html += `<p class="editor-inspector-note">Drag inside the highlighted bounds to move the complete path. Use the corner and rotation handles to scale or rotate it. Click the selected path again to choose a section or waypoint.</p>`;
       }
+      html += `<div class="editor-transform-actions"><button class="editor-button editor-button-danger" type="button" data-editor-command="delete-whole-selection">Delete entire path</button><button class="editor-button" type="button" data-editor-command="duplicate-whole-selection">Duplicate path</button></div>`;
+      html += layerControls(item);
+    } else if (selection.kind === "patch") {
+      const style = PATCH_STYLES[item.styleId];
+      const materials = materialChoicesForPatch(item.styleId);
+      html += field("ID", "id", item.id, { type:"text", full:true });
+      html += field("Patch type", "styleId", item.styleId, { choices:choiceEntries(PATCH_STYLES), full:true });
+      if (materials.length) html += field("Material", "material", item.material ?? style?.material, { choices:materials, full:true });
+      html += field("Pattern rotation", "patternRotation", item.patternRotation ?? 0, { step:"1" });
+      if (item.styleId === "pond") html += rangeField("Bank width", "bankWidth", item.bankWidth ?? .78, .1, 2.5, .05);
+      html += boundsFields(item, selection);
+      html += transformActions("patch");
+      if (selection.pointIndex !== undefined) {
+        const point = pointForSelection();
+        html += `<p class="editor-inspector-note">Patch vertex ${selection.pointIndex + 1} of ${item.points.length}. Drag it freely to reshape the patch.</p>`;
+        html += field("Vertex X", "@point.x", point?.x ?? 0);
+        html += field("Vertex Y", "@point.y", point?.y ?? 0);
+        html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="insert-patch-point">Insert after</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-patch-point"${item.points.length <= 3 ? " disabled" : ""}>Remove vertex</button></div>`;
+      } else if (selection.segmentIndex !== undefined) {
+        html += `<p class="editor-inspector-note">Patch edge ${selection.segmentIndex + 1}. Add a midpoint here, then drag it to create a new contour.</p>`;
+        html += `<div class="editor-segment-actions"><button class="editor-button" type="button" data-editor-command="insert-patch-segment-point">Add midpoint</button></div>`;
+      } else {
+        html += `<p class="editor-inspector-note">Drag the patch to move it as one object. Resize and rotate with the selection handles. Click the selected patch again to expose its vertices and edges.</p>`;
+      }
+      html += `<div class="editor-transform-actions"><button class="editor-button editor-button-danger" type="button" data-editor-command="delete-whole-selection">Delete entire patch</button><button class="editor-button" type="button" data-editor-command="duplicate-whole-selection">Duplicate patch</button></div>`;
+      html += layerControls(item);
     } else if (selection.kind === "unit") {
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Name", "name", item.name ?? "", { type:"text", full:true });
@@ -724,6 +1016,7 @@
       html += field("X", "x", item.x);
       html += field("Y", "y", item.y);
       html += field("Deployment zone", "deploymentZone", item.deploymentZone ?? "", { type:"text", full:true });
+      html += layerControls(item);
     } else if (selection.kind === "objective") {
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Label", "label", item.label ?? "", { type:"text", full:true });
@@ -796,6 +1089,8 @@
     refs.saveReadout.textContent = state.status;
     refs.linearDrawActions.hidden = !state.drawingPath;
     refs.finishLinearButton.disabled = (state.drawingPath?.points.length ?? 0) < 2;
+    refs.patchDrawActions.hidden = !state.drawingPatch;
+    refs.finishPatchButton.disabled = (state.drawingPatch?.points.length ?? 0) < 3;
     renderZones();
     renderTerrain();
     renderFootprints();
@@ -818,23 +1113,33 @@
     };
   }
 
-  function startDrag(event, action, selection) {
+  function startDrag(event, action, selection, options = {}) {
     if (selection) state.selection = { ...selection };
     const item = itemForSelection();
     if (!item) return;
     const start = boardPoint(event);
     const point = pointForSelection();
+    const originalPoints = Array.isArray(item.points) ? GEOMETRY.clonePoints(item.points) : null;
+    const originalBounds = originalPoints ? GEOMETRY.bounds(originalPoints) : null;
     state.drag = {
       pointerId:event.pointerId,
       action,
       start,
       before:beforeMutation(),
       original:DOCUMENT.clone(item),
-      originalPoint:point ? DOCUMENT.clone(point) : null
+      originalPoint:point ? DOCUMENT.clone(point) : null,
+      originalPoints,
+      originalBounds,
+      pendingDetail:options.pendingDetail ?? null,
+      moved:false
     };
     if (action === "rotate") {
-      const rect = { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
-      state.drag.center = { x:rect.x + rect.width / 2, y:rect.y + rect.height / 2 };
+      if (originalBounds && (state.selection.kind === "linear" || state.selection.kind === "patch")) {
+        state.drag.center = { x:originalBounds.centerX, y:originalBounds.centerY };
+      } else {
+        const rect = { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
+        state.drag.center = { x:rect.x + rect.width / 2, y:rect.y + rect.height / 2 };
+      }
       state.drag.startAngle = Math.atan2(start.y - state.drag.center.y, start.x - state.drag.center.x) * 180 / Math.PI;
     }
     refs.viewport.setPointerCapture?.(event.pointerId);
@@ -843,6 +1148,12 @@
   }
 
   function selectionFromTarget(target) {
+    const patchPoint = target.closest?.("[data-editor-kind='patch-point']");
+    if (patchPoint) return { kind:"patch", id:patchPoint.dataset.patchId, pointIndex:Number(patchPoint.dataset.pointIndex) };
+    const patchSegment = target.closest?.("[data-editor-kind='patch-segment']");
+    if (patchSegment) return { kind:"patch", id:patchSegment.dataset.patchId, segmentIndex:Number(patchSegment.dataset.segmentIndex) };
+    const patch = target.closest?.("[data-editor-kind='patch']");
+    if (patch) return { kind:"patch", id:patch.dataset.patchId };
     const segment = target.closest?.("[data-editor-kind='segment']");
     if (segment) return { kind:"linear", id:segment.dataset.linearId, segmentIndex:Number(segment.dataset.segmentIndex) };
     const waypoint = target.closest?.("[data-editor-kind='waypoint']");
@@ -878,23 +1189,31 @@
   }
 
   function addDrawingPoint(event) {
+    const drawing = state.drawingPath ?? state.drawingPatch;
+    if (!drawing) return;
     const point = boardPoint(event);
     const placed = { x:snap(clamp(point.x, 0, table().width)), y:snap(clamp(point.y, 0, table().height)) };
-    const previous = state.drawingPath.points[state.drawingPath.points.length - 1];
+    const previous = drawing.points[drawing.points.length - 1];
     if (previous && Math.hypot(number(previous.x) - placed.x, number(previous.y) - placed.y) < .2) return;
-    state.drawingPath.points.push(placed);
+    drawing.points.push(placed);
     state.drawingCursor = placed;
-    state.status = `${state.drawingPath.points.length} waypoint${state.drawingPath.points.length === 1 ? "" : "s"} placed · Enter to finish`;
+    const noun = state.drawingPatch ? "vertex" : "waypoint";
+    state.status = `${drawing.points.length} ${noun}${drawing.points.length === 1 ? "" : "s"} placed · Enter to finish`;
     refs.saveReadout.textContent = state.status;
-    refs.finishLinearButton.disabled = state.drawingPath.points.length < 2;
+    refs.finishLinearButton.disabled = (state.drawingPath?.points.length ?? 0) < 2;
+    refs.finishPatchButton.disabled = (state.drawingPatch?.points.length ?? 0) < 3;
     renderLinearInteraction();
+  }
+
+  function sameGroup(a, b) {
+    return a && b && a.kind === b.kind && String(a.id) === String(b.id);
   }
 
   function onBoardPointerDown(event) {
     const isMiddle = event.button === 1;
     const isLeft = event.button === 0 || event.button === undefined;
     if (!isMiddle && !isLeft) return;
-    if (state.drawingPath && isLeft) {
+    if ((state.drawingPath || state.drawingPatch) && isLeft) {
       if (!refs.board.contains(event.target)) return;
       event.preventDefault();
       addDrawingPoint(event);
@@ -911,16 +1230,28 @@
       startDrag(event, action, state.selection);
       return;
     }
-    const selection = selectionFromTarget(event.target);
-    if (!selection) {
+    const rawSelection = selectionFromTarget(event.target);
+    if (!rawSelection) {
       event.preventDefault();
       startPan(event);
       return;
     }
     event.preventDefault();
-    const selectsOnly = selection.kind === "linear" && selection.pointIndex === undefined;
-    if (selectsOnly) select(selection);
-    else startDrag(event, "move", selection);
+    if (rawSelection.kind === "linear" || rawSelection.kind === "patch") {
+      const currentMatches = sameGroup(state.selection, rawSelection);
+      const groupSelection = { kind:rawSelection.kind, id:rawSelection.id };
+      if (!currentMatches) {
+        startDrag(event, "move", groupSelection);
+      } else if (rawSelection.pointIndex !== undefined) {
+        startDrag(event, "move", rawSelection);
+      } else if (rawSelection.segmentIndex !== undefined) {
+        startDrag(event, "move", groupSelection, { pendingDetail:rawSelection });
+      } else {
+        startDrag(event, "move", groupSelection);
+      }
+      return;
+    }
+    startDrag(event, "move", rawSelection);
   }
 
   function moveSelected(point) {
@@ -932,6 +1263,7 @@
     const dy = point.y - drag.start.y;
     const width = table().width;
     const height = table().height;
+    if (Math.hypot(dx, dy) > .08) drag.moved = true;
 
     if (drag.action === "move") {
       if (selection.kind === "terrain") {
@@ -945,11 +1277,13 @@
         const original = drag.originalPoint ?? drag.original;
         target.x = snap(clamp(number(original.x) + dx, 0, width));
         target.y = snap(clamp(number(original.y) + dy, 0, height));
-      } else if (selection.kind === "linear") {
+      } else if (selection.kind === "linear" || selection.kind === "patch") {
         const target = pointForSelection();
         if (target && drag.originalPoint) {
           target.x = snap(clamp(number(drag.originalPoint.x) + dx, 0, width));
           target.y = snap(clamp(number(drag.originalPoint.y) + dy, 0, height));
+        } else if (drag.originalPoints) {
+          item.points = GEOMETRY.translate(drag.originalPoints, dx, dy).map(source => ({ ...source, x:snap(source.x), y:snap(source.y) }));
         }
       } else if (selection.kind === "zone") {
         const zoneWidth = number(drag.original.xMax) - number(drag.original.xMin);
@@ -963,6 +1297,17 @@
       if (selection.kind === "terrain") {
         item.width = snap(Math.max(.5, number(drag.original.width) + dx));
         item.height = snap(Math.max(.5, number(drag.original.height) + dy));
+      } else if (selection.kind === "linear" || selection.kind === "patch") {
+        const original = drag.originalBounds;
+        if (original) {
+          const target = { x:original.x, y:original.y, width:Math.max(.5, original.width + dx), height:Math.max(.5, original.height + dy) };
+          item.points = GEOMETRY.scaleToBounds(drag.originalPoints, original, target).map(source => ({ ...source, x:snap(source.x), y:snap(source.y) }));
+          if (selection.kind === "linear") {
+            const scaleX = target.width / Math.max(.01, original.width);
+            const scaleY = target.height / Math.max(.01, original.height);
+            scaleLinearWidths(item, drag.original, Math.sqrt(Math.max(.01, scaleX * scaleY)));
+          }
+        }
       } else if (selection.kind === "zone") {
         item.xMax = snap(clamp(number(drag.original.xMax) + dx, number(item.xMin) + .5, width));
         item.yMax = snap(clamp(number(drag.original.yMax) + dy, number(item.yMin) + .5, height));
@@ -974,7 +1319,12 @@
       target.radius = snap(Math.max(.25, Math.hypot(point.x - center.x, point.y - center.y)));
     } else if (drag.action === "rotate") {
       const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * 180 / Math.PI;
-      item.rotation = Math.round(number(drag.original.rotation) + angle - drag.startAngle);
+      const delta = angle - drag.startAngle;
+      if (selection.kind === "linear" || selection.kind === "patch") {
+        item.points = GEOMETRY.rotate(drag.originalPoints, drag.center, delta).map(source => ({ ...source, x:snap(source.x), y:snap(source.y) }));
+      } else {
+        item.rotation = Math.round(number(drag.original.rotation) + delta);
+      }
     }
     renderAll();
   }
@@ -982,7 +1332,7 @@
   function onBoardPointerMove(event) {
     const point = boardPoint(event);
     refs.cursorReadout.textContent = `Cursor: ${point.x.toFixed(1)}″, ${point.y.toFixed(1)}″`;
-    if (state.drawingPath) {
+    if (state.drawingPath || state.drawingPatch) {
       state.drawingCursor = { x:snap(clamp(point.x, 0, table().width)), y:snap(clamp(point.y, 0, table().height)) };
       renderLinearInteraction();
     }
@@ -1012,8 +1362,14 @@
     if (!state.drag || state.drag.pointerId !== event.pointerId) return;
     const before = state.drag.before;
     const action = state.drag.action;
+    const pendingDetail = state.drag.pendingDetail;
+    const moved = state.drag.moved;
     state.drag = null;
     refs.viewport.releasePointerCapture?.(event.pointerId);
+    if (pendingDetail && !moved) {
+      select(pendingDetail);
+      return;
+    }
     commit(before, `${action.charAt(0).toUpperCase()}${action.slice(1)} committed`);
   }
 
@@ -1029,7 +1385,8 @@
   }
 
   function parseControlValue(control) {
-    if (control.type === "number") return number(control.value);
+    if (control.type === "checkbox") return control.checked;
+    if (control.type === "number" || control.type === "range") return number(control.value);
     return control.value;
   }
 
@@ -1043,7 +1400,32 @@
     const before = beforeMutation();
     const oldId = item.id;
     const value = parseControlValue(control);
-    if (state.selection.kind === "objective" && fieldPath === "type") {
+
+    if (fieldPath === "@visible") {
+      item.visible = Boolean(value);
+      delete item.hidden;
+    } else if (fieldPath.startsWith("@bounds.")) {
+      const key = fieldPath.slice(8);
+      const original = GEOMETRY.bounds(item.points ?? []);
+      let target = { x:original.x, y:original.y, width:original.width, height:original.height };
+      target[key] = value;
+      if (key === "x" || key === "y") {
+        const dx = target.x - original.x;
+        const dy = target.y - original.y;
+        item.points = GEOMETRY.translate(item.points, dx, dy);
+      } else {
+        target.width = Math.max(.5, target.width);
+        target.height = Math.max(.5, target.height);
+        const sourceItem = DOCUMENT.clone(item);
+        item.points = GEOMETRY.scaleToBounds(item.points, original, target);
+        if (state.selection.kind === "linear") {
+          const scaleX = target.width / Math.max(.01, original.width);
+          const scaleY = target.height / Math.max(.01, original.height);
+          scaleLinearWidths(item, sourceItem, Math.sqrt(Math.max(.01, scaleX * scaleY)));
+        }
+      }
+      normalizePointData(item);
+    } else if (state.selection.kind === "objective" && fieldPath === "type") {
       normalizeObjectiveType(item, value);
     } else if (fieldPath.startsWith("@point.")) {
       const point = pointForSelection();
@@ -1051,6 +1433,22 @@
     } else {
       setByPath(item, fieldPath, value);
     }
+
+    if (fieldPath === "terrainId") {
+      const definition = TERRAIN_TYPES[item.terrainId];
+      if (definition?.presentation?.defaultAppearance) item.appearance = definition.presentation.defaultAppearance;
+    }
+    if (fieldPath === "styleId" && state.selection.kind === "linear") {
+      const choices = materialChoicesForLinear(item.styleId);
+      if (!choices.some(choice => String(choice.value) === String(item.material))) item.material = defaultLinearMaterial(item.styleId);
+      item.width = number(item.width, LINEAR_STYLES[item.styleId]?.width ?? 2);
+    }
+    if (fieldPath === "styleId" && state.selection.kind === "patch") {
+      const style = PATCH_STYLES[item.styleId];
+      const choices = materialChoicesForPatch(item.styleId);
+      if (!choices.some(choice => String(choice.value) === String(item.material))) item.material = style?.material;
+    }
+    if (fieldPath === "layerOrder") item.inheritLayer = false;
     if (fieldPath === "id" && state.selection.id === oldId) state.selection.id = value;
     commit(before, `Updated ${fieldPath}`);
   }
@@ -1064,7 +1462,7 @@
     const next = path.points[index + 1];
     const previous = path.points[Math.max(0, index - 1)];
     const point = next
-      ? { x:(number(current.x) + number(next.x)) / 2, y:(number(current.y) + number(next.y)) / 2 }
+      ? { x:(number(current.x) + number(next.x)) / 2, y:(number(current.y) + number(next.y)) / 2, ...(current.width !== undefined || next.width !== undefined ? { width:(number(current.width, path.width) + number(next.width, path.width)) / 2 } : {}) }
       : { x:number(current.x) + (number(current.x) - number(previous.x) || 4), y:number(current.y) + (number(current.y) - number(previous.y)) };
     path.points.splice(index + 1, 0, point);
     state.selection.pointIndex = index + 1;
@@ -1079,6 +1477,119 @@
     path.points.splice(index, 1);
     state.selection.pointIndex = Math.max(0, Math.min(index, path.points.length - 1));
     commit(before, "Removed waypoint");
+  }
+
+  function insertPatchPoint(afterIndex) {
+    const patch = itemForSelection();
+    if (!patch || state.selection?.kind !== "patch" || !Array.isArray(patch.points)) return;
+    const index = Number(afterIndex);
+    const nextIndex = (index + 1) % patch.points.length;
+    const a = patch.points[index];
+    const b = patch.points[nextIndex];
+    if (!a || !b) return;
+    const before = beforeMutation();
+    patch.points.splice(index + 1, 0, { x:(number(a.x) + number(b.x)) / 2, y:(number(a.y) + number(b.y)) / 2 });
+    state.selection = { kind:"patch", id:patch.id, pointIndex:index + 1 };
+    commit(before, "Inserted patch vertex");
+  }
+
+  function removePatchPoint() {
+    const patch = itemForSelection();
+    const index = state.selection?.pointIndex;
+    if (!patch || state.selection?.kind !== "patch" || index === undefined || patch.points.length <= 3) return;
+    const before = beforeMutation();
+    patch.points.splice(index, 1);
+    state.selection.pointIndex = Math.max(0, Math.min(index, patch.points.length - 1));
+    commit(before, "Removed patch vertex");
+  }
+
+  function branchLinear() {
+    const path = itemForSelection();
+    const point = pointForSelection();
+    if (!path || !point || state.selection?.kind !== "linear") return;
+    state.drawingPath = {
+      styleId:path.styleId,
+      material:path.material ?? defaultLinearMaterial(path.styleId),
+      width:number(point.width, number(path.width, LINEAR_STYLES[path.styleId]?.width ?? 2)),
+      points:[{ x:number(point.x), y:number(point.y) }],
+      start:{ cap:"junction" },
+      end:{ cap:"taper" },
+      before:beforeMutation(),
+      branchOf:path.id
+    };
+    state.drawingPatch = null;
+    state.drawingCursor = { x:number(point.x), y:number(point.y) };
+    state.selection = null;
+    state.status = `Branching from ${path.id} · click to place more waypoints`;
+    renderAll();
+  }
+
+  function clearPointWidth() {
+    const point = pointForSelection();
+    if (!point || state.selection?.kind !== "linear") return;
+    const before = beforeMutation();
+    delete point.width;
+    commit(before, "Waypoint now inherits path width");
+  }
+
+  function changeLayer(command) {
+    const item = itemForSelection();
+    if (!item || !["terrain", "linear", "patch", "unit"].includes(state.selection?.kind)) return;
+    const before = beforeMutation();
+    const current = item.inheritLayer === false ? number(item.layerOrder, defaultLayerFor(item)) : defaultLayerFor(item);
+    item.inheritLayer = false;
+    if (command === "layer-back") item.layerOrder = 0;
+    else if (command === "layer-front") item.layerOrder = 6999;
+    else if (command === "layer-down") item.layerOrder = Math.max(0, current - 10);
+    else item.layerOrder = Math.min(6999, current + 10);
+    commit(before, `Layer set to ${item.layerOrder}`);
+  }
+
+  function normalizeTransform() {
+    const item = itemForSelection();
+    if (!item) return;
+    const before = beforeMutation();
+    if (state.selection.kind === "terrain") {
+      const scale = Math.max(.01, number(item.visualScale, 1));
+      item.width = number(item.width) * scale;
+      item.height = number(item.height) * scale;
+      item.visualScale = 1;
+    } else if (state.selection.kind === "linear" || state.selection.kind === "patch") normalizePointData(item);
+    commit(before, "Transform normalized into scenario data");
+  }
+
+  function centerSelection() {
+    const item = itemForSelection();
+    if (!item) return;
+    const before = beforeMutation();
+    if (state.selection.kind === "terrain") {
+      item.x = table().width / 2 - number(item.width) / 2;
+      item.y = table().height / 2 - number(item.height) / 2;
+    } else if (state.selection.kind === "linear" || state.selection.kind === "patch") {
+      const bounds = GEOMETRY.bounds(item.points ?? []);
+      item.points = GEOMETRY.translate(item.points, table().width / 2 - bounds.centerX, table().height / 2 - bounds.centerY);
+      normalizePointData(item);
+    }
+    commit(before, "Selection centered on table");
+  }
+
+  function deleteWholeSelection() {
+    if (!state.selection || state.selection.kind === "zone") return;
+    const whole = { kind:state.selection.kind, id:state.selection.id, faction:state.selection.faction };
+    const before = beforeMutation();
+    if (!DOCUMENT.remove(state.document, whole)) return;
+    state.selection = null;
+    commit(before, `Deleted ${whole.id}`);
+  }
+
+  function duplicateWholeSelection() {
+    if (!state.selection) return;
+    const whole = { kind:state.selection.kind, id:state.selection.id, faction:state.selection.faction };
+    const before = beforeMutation();
+    const copy = DOCUMENT.duplicate(state.document, whole);
+    if (!copy) return;
+    state.selection = { ...whole, id:copy.id };
+    commit(before, `Duplicated ${copy.id}`);
   }
 
   function defaultTerrainSize(definition) {
@@ -1111,12 +1622,20 @@
   }
 
   function addLinear() {
-    if (state.drawingPath) return;
+    if (state.drawingPath || state.drawingPatch) return;
     const styleId = refs.linearStyleSelect.value;
     const style = LINEAR_STYLES[styleId];
     if (!style) return;
     state.selection = null;
-    state.drawingPath = { styleId, width:style.width, points:[], before:beforeMutation() };
+    state.drawingPath = {
+      styleId,
+      material:defaultLinearMaterial(styleId),
+      width:style.width,
+      points:[],
+      start:{ cap:"taper" },
+      end:{ cap:"taper" },
+      before:beforeMutation()
+    };
     state.drawingCursor = null;
     state.status = `Drawing ${style.label} · click to place waypoints`;
     renderAll();
@@ -1127,13 +1646,15 @@
     if (!drawing || drawing.points.length < 2) return;
     const style = LINEAR_STYLES[drawing.styleId];
     const item = {
-      id:DOCUMENT.nextId(state.document, drawing.styleId),
+      id:DOCUMENT.nextId(state.document, drawing.branchOf ? `${drawing.branchOf}-branch` : drawing.styleId),
       styleId:drawing.styleId,
+      material:drawing.material ?? defaultLinearMaterial(drawing.styleId),
       width:drawing.width,
-      points:drawing.points.map(point => ({ x:point.x, y:point.y })),
-      start:{ cap:"taper" },
-      end:{ cap:"taper" }
+      points:drawing.points.map(point => ({ ...point, x:point.x, y:point.y })),
+      start:{ ...(drawing.start ?? { cap:"taper" }) },
+      end:{ ...(drawing.end ?? { cap:"taper" }) }
     };
+    if (drawing.branchOf) item.branchOf = drawing.branchOf;
     state.document.linearTerrain.push(item);
     state.selection = { kind:"linear", id:item.id };
     state.drawingPath = null;
@@ -1146,6 +1667,44 @@
     state.drawingPath = null;
     state.drawingCursor = null;
     state.status = "Path drawing cancelled";
+    renderAll();
+  }
+
+  function addPatch() {
+    if (state.drawingPath || state.drawingPatch) return;
+    const styleId = refs.patchStyleSelect.value;
+    const style = PATCH_STYLES[styleId];
+    if (!style) return;
+    state.selection = null;
+    state.drawingPatch = { styleId, material:style.material, points:[], before:beforeMutation() };
+    state.drawingCursor = null;
+    state.status = `Drawing ${style.label} · click around its boundary`;
+    renderAll();
+  }
+
+  function finishPatchDraw() {
+    const drawing = state.drawingPatch;
+    if (!drawing || drawing.points.length < 3) return;
+    const style = PATCH_STYLES[drawing.styleId];
+    const item = {
+      id:DOCUMENT.nextId(state.document, `${drawing.styleId}-patch`),
+      styleId:drawing.styleId,
+      material:drawing.material ?? style?.material,
+      points:drawing.points.map(point => ({ x:point.x, y:point.y })),
+      inheritLayer:true
+    };
+    state.document.terrainPatches.push(item);
+    state.selection = { kind:"patch", id:item.id };
+    state.drawingPatch = null;
+    state.drawingCursor = null;
+    commit(drawing.before, `Drew ${style?.label || drawing.styleId}`);
+  }
+
+  function cancelPatchDraw() {
+    if (!state.drawingPatch) return;
+    state.drawingPatch = null;
+    state.drawingCursor = null;
+    state.status = "Patch drawing cancelled";
     renderAll();
   }
 
@@ -1302,11 +1861,31 @@
       deleteSegment();
       return;
     }
+    if (state.selection.kind === "patch" && state.selection.pointIndex !== undefined) {
+      removePatchPoint();
+      return;
+    }
+    if (state.selection.kind === "patch" && state.selection.segmentIndex !== undefined) {
+      insertPatchPoint(state.selection.segmentIndex);
+      return;
+    }
     const before = beforeMutation();
     const label = state.selection.id;
     if (!DOCUMENT.remove(state.document, state.selection)) return;
     state.selection = null;
     commit(before, `Deleted ${label}`);
+  }
+
+  function toggleObjectVisibility(selection) {
+    if (!selection) return;
+    const item = selection.kind === "zone" ? zoneForSelection(selection) : DOCUMENT.find(state.document, selection);
+    if (!item) return;
+    const before = beforeMutation();
+    const nextVisible = !isItemVisible(item);
+    item.visible = nextVisible;
+    delete item.hidden;
+    state.selection = { ...selection };
+    commit(before, `${nextVisible ? "Showed" : "Hid"} ${selection.id || selection.zoneId || "object"}`);
   }
 
   function updateScenarioType(type) {
@@ -1482,6 +2061,9 @@
     refs.addLinearButton.addEventListener("click", addLinear);
     refs.finishLinearButton.addEventListener("click", finishLinearDraw);
     refs.cancelLinearButton.addEventListener("click", cancelLinearDraw);
+    refs.addPatchButton.addEventListener("click", addPatch);
+    refs.finishPatchButton.addEventListener("click", finishPatchDraw);
+    refs.cancelPatchButton.addEventListener("click", cancelPatchDraw);
     refs.addUnitButton.addEventListener("click", addUnit);
     refs.addObjectiveButton.addEventListener("click", addObjective);
     refs.resetScenarioButton.addEventListener("click", resetScenario);
@@ -1500,6 +2082,13 @@
     refs.snapToggle.addEventListener("change", () => { state.snap = refs.snapToggle.checked; });
     refs.objectFilterInput.addEventListener("input", () => { state.objectFilter = refs.objectFilterInput.value; renderObjectList(); });
     refs.objectList.addEventListener("click", event => {
+      const visibilityButton = event.target.closest("[data-visibility-selection]");
+      if (visibilityButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleObjectVisibility(JSON.parse(visibilityButton.dataset.visibilitySelection));
+        return;
+      }
       const button = event.target.closest("[data-selection]");
       if (button) select(JSON.parse(button.dataset.selection));
     });
@@ -1511,6 +2100,10 @@
     refs.viewport.addEventListener("pointermove", onBoardPointerMove);
     refs.viewport.addEventListener("pointerup", onBoardPointerUp);
     refs.viewport.addEventListener("pointercancel", onBoardPointerUp);
+    refs.inspectorForm.addEventListener("input", event => {
+      const range = event.target.closest("input[type='range'][data-field]");
+      if (range) range.parentElement?.querySelector("output")?.replaceChildren(document.createTextNode(range.value));
+    });
     refs.inspectorForm.addEventListener("change", onInspectorChange);
     refs.inspectorForm.addEventListener("click", event => {
       const command = event.target.closest("[data-editor-command]")?.dataset.editorCommand;
@@ -1518,6 +2111,16 @@
       if (command === "remove-waypoint") removeWaypoint();
       if (command === "insert-segment-waypoint") insertSegmentWaypoint();
       if (command === "delete-segment") deleteSegment();
+      if (command === "branch-linear") branchLinear();
+      if (command === "clear-point-width") clearPointWidth();
+      if (command === "insert-patch-point") insertPatchPoint(state.selection?.pointIndex);
+      if (command === "insert-patch-segment-point") insertPatchPoint(state.selection?.segmentIndex);
+      if (command === "remove-patch-point") removePatchPoint();
+      if (["layer-back", "layer-down", "layer-up", "layer-front"].includes(command)) changeLayer(command);
+      if (command === "normalize-transform") normalizeTransform();
+      if (command === "center-selection") centerSelection();
+      if (command === "delete-whole-selection") deleteWholeSelection();
+      if (command === "duplicate-whole-selection") duplicateWholeSelection();
       if (command === "add-objective-point") addObjectivePoint();
       if (command === "remove-last-objective-point") removeLastObjectivePoint();
     });
@@ -1551,9 +2154,15 @@
       if (state.drawingPath && event.key === "Enter") {
         event.preventDefault();
         finishLinearDraw();
+      } else if (state.drawingPatch && event.key === "Enter") {
+        event.preventDefault();
+        finishPatchDraw();
       } else if (state.drawingPath && event.key === "Escape") {
         event.preventDefault();
         cancelLinearDraw();
+      } else if (state.drawingPatch && event.key === "Escape") {
+        event.preventDefault();
+        cancelPatchDraw();
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo(); else undo();

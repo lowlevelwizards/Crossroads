@@ -51,10 +51,16 @@
     return Object.freeze({ level, code, message, selection });
   }
 
+  function visible(item) {
+    return item?.visible !== false && item?.hidden !== true;
+  }
+
   function validateScenario(scenario, dependencies = {}) {
     const terrainTypes = dependencies.terrainTypes ?? window.CROSSROADS_TERRAIN_TYPES ?? {};
     const linearStyles = dependencies.linearStyles ?? window.CROSSROADS_LINEAR_TERRAIN_STYLES ?? {};
     const unitTypes = dependencies.unitTypes ?? window.CROSSROADS_UNIT_TYPES ?? {};
+    const patchStyles = dependencies.patchStyles ?? window.CROSSROADS_TERRAIN_PATCH_STYLES ?? {};
+    const linearMaterials = dependencies.linearMaterials ?? window.CROSSROADS_LINEAR_TERRAIN_MATERIALS ?? {};
     const pathGeometry = dependencies.pathGeometry ?? window.CrossroadsPathGeometry;
     const table = scenario?.table ?? {};
     const width = number(table.width);
@@ -90,6 +96,7 @@
         issues.push(issue("error", "unknown-terrain", `Unknown terrain type: ${terrain.terrainId}.`, selection));
         continue;
       }
+      if (!visible(terrain)) continue;
       const rect = visualRect(terrain);
       if (rect.width <= 0 || rect.height <= 0) issues.push(issue("error", "terrain-size", `${terrain.id} has a zero or negative size.`, selection));
       if (rect.x < 0 || rect.y < 0 || rect.x + rect.width > width || rect.y + rect.height > height) {
@@ -98,16 +105,42 @@
       if (definition.rules?.movement === "impassable") hardTerrain.push({ terrain, rect:rulesRect(terrain, terrainTypes) });
     }
 
+    for (const patch of scenario.terrainPatches ?? []) {
+      const selection = { kind:"patch", id:patch.id };
+      registerId(patch.id, selection);
+      const style = patchStyles[patch.styleId];
+      if (!style) {
+        issues.push(issue("error", "unknown-patch-style", `Unknown patch style: ${patch.styleId}.`, selection));
+        continue;
+      }
+      if (!visible(patch)) continue;
+      if (!Array.isArray(patch.points) || patch.points.length < 3) {
+        issues.push(issue("error", "patch-points", `${patch.id} needs at least three polygon points.`, selection));
+        continue;
+      }
+      if (patch.material && style.materials && !Object.prototype.hasOwnProperty.call(style.materials, patch.material)) {
+        issues.push(issue("warning", "patch-material", `${patch.id} uses unknown material ${patch.material}.`, selection));
+      }
+      patch.points.forEach((point, index) => {
+        if (number(point.x, -1) < 0 || number(point.y, -1) < 0 || number(point.x) > width || number(point.y) > height) {
+          issues.push(issue("warning", "patch-point-bounds", `${patch.id} point ${index + 1} is outside the table.`, { ...selection, pointIndex:index }));
+        }
+      });
+    }
+
     const junctions = scenario.junctions ?? [];
     for (const path of scenario.linearTerrain ?? []) {
       const selection = { kind:"linear", id:path.id };
       registerId(path.id, selection);
       if (!linearStyles[path.styleId]) issues.push(issue("error", "unknown-linear-style", `Unknown path style: ${path.styleId}.`, selection));
+      if (path.material && linearMaterials[path.styleId] && !linearMaterials[path.styleId][path.material]) issues.push(issue("warning", "linear-material", `${path.id} uses unknown material ${path.material}.`, selection));
+      if (!visible(path)) continue;
       if (!Array.isArray(path.points) || path.points.length < 2) {
         issues.push(issue("error", "path-points", `${path.id} needs at least two waypoints.`, selection));
         continue;
       }
       path.points.forEach((point, index) => {
+        if (point.width !== undefined && number(point.width) <= 0) issues.push(issue("error", "waypoint-width", `${path.id} waypoint ${index + 1} has an invalid width.`, { ...selection, pointIndex:index }));
         const isStart = index === 0;
         const isEnd = index === path.points.length - 1;
         const intentionallyOffTable = (isStart && path.start?.cap === "off_table") || (isEnd && path.end?.cap === "off_table");
@@ -146,8 +179,9 @@
       for (const unit of scenario.forces?.[faction] ?? []) {
         const selection = { kind:"unit", id:unit.id, faction };
         registerId(unit.id, selection);
-        units.push({ unit, faction, selection });
         if (!unitTypes[unit.unitType]) issues.push(issue("error", "unknown-unit", `${unit.id} uses unknown unit type ${unit.unitType}.`, selection));
+        if (!visible(unit)) continue;
+        units.push({ unit, faction, selection });
         const point = { x:number(unit.x), y:number(unit.y) };
         if (point.x < 0 || point.y < 0 || point.x > width || point.y > height) issues.push(issue("error", "unit-bounds", `${unit.id} is outside the table.`, selection));
         const intendedZone = zoneById(factionZone, unit.deploymentZone);
@@ -176,6 +210,7 @@
       registerId(objective.id, selection);
       const objectiveType = objective.type || "control_zone";
       if (!OBJECTIVE_TYPES.has(objectiveType)) issues.push(issue("error", "objective-type", `${objective.id} uses unknown objective type ${objectiveType}.`, selection));
+      if (!visible(objective)) continue;
       if (objectiveType === "control_group" && (!Array.isArray(objective.points) || !objective.points.length)) {
         issues.push(issue("error", "objective-points", `${objective.id} needs at least one control point.`, selection));
       }

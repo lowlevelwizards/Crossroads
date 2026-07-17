@@ -21,10 +21,27 @@
       bankWidth:3.0, bank:"#75845d", channel:"#66563d"
     }),
     railway_embankment: style("railway_embankment", "rail", "transport", "raised railway", 4.0, crossingHard, {
-      ballastWidth:3.05, ballast:"#8c795b", sleeperSpacing:2.35, sleeperLength:2.65, railGauge:0.92
+      ballastWidth:3.18, ballast:"#8f918b", sleeperSpacing:1.05, sleeperLength:2.86, sleeperHeight:0.48, railGauge:1.02
     }),
     hedge: style("hedge", "hedge", "linear", "hedge", 1.65, crossingHard, { repeatSpacing:1.35 }),
     wood_fence: style("wood_fence", "fence", "linear", "wood fence", 0.75, crossingHard, { postSpacing:2.1 }),
     stone_wall: style("stone_wall", "wall", "linear", "low wall", 1.05, crossingHard, { stoneSpacing:1.15 })
   });
+
+  window.CROSSROADS_LINEAR_TERRAIN_MATERIALS = Object.freeze({
+    dirt_road: Object.freeze({
+      dirt: Object.freeze({ id:"dirt", label:"Dirt", surface:"#94805b", shoulder:"#73805d", detail:"#d0bd8d" }),
+      paved: Object.freeze({ id:"paved", label:"Paved", surface:"#777a76", shoulder:"#676d69", detail:"#aeb2ad" }),
+      mud: Object.freeze({ id:"mud", label:"Mud", surface:"#6f5943", shoulder:"#657153", detail:"#9a7b59" })
+    }),
+    stream: Object.freeze({
+      clear: Object.freeze({ id:"clear", label:"Clear water", water:"#73b1c3", bank:"#6d805c", detail:"#c7e3e7" }),
+      dark: Object.freeze({ id:"dark", label:"Deep water", water:"#547f91", bank:"#627459", detail:"#a9c8d1" }),
+      marsh: Object.freeze({ id:"marsh", label:"Marsh water", water:"#78998f", bank:"#6f7d57", detail:"#bdd0b8" })
+    }),
+    railway_embankment: Object.freeze({
+      standard: Object.freeze({ id:"standard", label:"Standard rail", ballast:"#8f918b", stripe:"#73766f", sleeper:"#6b4732", sleeperEdge:"#493126", rail:"#7d888e", railEdge:"#3f474b" })
+    })
+  });
+
 })();

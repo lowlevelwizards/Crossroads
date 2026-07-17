@@ -77,4 +77,18 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   woodpile: terrainType("woodpile", "scatter", "woodpile", "wood pile", Object.freeze({ movement: "open", cover: "soft", los: "clear", save: 5 }))
 });
 
+
+window.CROSSROADS_TERRAIN_PATCH_STYLES = Object.freeze({
+  woods: Object.freeze({ id:"woods", label:"Woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:roughSoft }),
+  woods_dense: Object.freeze({ id:"woods_dense", label:"Dense woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:roughSoft }),
+  orchard: Object.freeze({ id:"orchard", label:"Orchard patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", autumn:"Autumn orchard" }), rules:roughSoft }),
+  field_tilled: Object.freeze({ id:"field_tilled", label:"Tilled field patch", family:"ground", material:"brown", materials:Object.freeze({ brown:"Brown earth", dark:"Dark earth", dry:"Dry earth" }), rules:openRules }),
+  field_wheat: Object.freeze({ id:"field_wheat", label:"Wheat field patch", family:"ground", material:"gold", materials:Object.freeze({ gold:"Ripe gold", green:"Green crop", cut:"Cut stubble" }), rules:openRules }),
+  field_cabbage: Object.freeze({ id:"field_cabbage", label:"Cabbage field patch", family:"ground", material:"green", materials:Object.freeze({ green:"Green rows", dark:"Dark rows" }), rules:openRules }),
+  concrete: Object.freeze({ id:"concrete", label:"Concrete patch", family:"ground", material:"weathered", materials:Object.freeze({ weathered:"Weathered concrete", pale:"Pale concrete", dark:"Dark concrete" }), rules:openRules }),
+  cobblestone: Object.freeze({ id:"cobblestone", label:"Cobblestone patch", family:"ground", material:"grey", materials:Object.freeze({ grey:"Grey cobble", warm:"Warm cobble", dark:"Dark cobble" }), rules:openRules }),
+  mud: Object.freeze({ id:"mud", label:"Mud patch", family:"ground", material:"wet", materials:Object.freeze({ wet:"Wet mud", churned:"Churned mud", dry:"Dry mud" }), rules:Object.freeze({ movement:"rough", cover:null, los:"clear" }) }),
+  pond: Object.freeze({ id:"pond", label:"Pond / lake patch", family:"water", material:"blue", materials:Object.freeze({ blue:"Clear blue", dark:"Deep water", marsh:"Marsh water" }), rules:Object.freeze({ movement:"rough", cover:null, los:"clear" }) })
+});
+
 window.CROSSROADS_TERRAIN = { instances: [] };

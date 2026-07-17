@@ -339,3 +339,76 @@
 .editor-library-panel > .editor-panel-section { display:block; }
 .editor-library-panel > .editor-object-browser { min-height:0; display:block; overflow:visible; }
 .editor-object-list { height:220px; min-height:160px; max-height:32vh; overflow:auto; }
+
+/* Terrain Editor E1.3 — transformable paths, polygon patches, materials, layers */
+.editor-patch-draw-actions::before { content:"Click around the table to draw an irregular patch."; }
+.editor-board.is-drawing-patch { cursor:crosshair; }
+.editor-object-item { display:grid; grid-template-columns:42px minmax(0,1fr) auto; gap:8px; min-height:46px; }
+.editor-object-copy { min-width:0; display:grid; gap:2px; }
+.editor-object-copy > span { font-weight:850; }
+.editor-object-copy > small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editor-object-thumb { width:42px; height:32px; border:1px solid rgba(84,74,62,.36); border-radius:5px; overflow:hidden; display:grid; place-items:center; background:#d9d0b8; position:relative; }
+.editor-object-thumb svg { width:100%; height:100%; display:block; }
+.editor-object-thumb-unit::before { content:""; width:17px; height:17px; border:2px solid #3f3a34; border-radius:50%; background:var(--thumb-color,#527da6); }
+.editor-object-thumb-objective::before { content:"◆"; color:#8b661d; font-size:18px; }
+.editor-object-thumb-zone::before { content:""; width:30px; height:19px; border:1px dashed #596d79; background:rgba(83,117,147,.16); }
+.editor-object-thumb-linear::before,.editor-object-thumb-linear::after { content:""; position:absolute; left:4px; right:4px; top:50%; transform:translateY(-50%) rotate(-8deg); border-radius:999px; }
+.editor-object-thumb-linear::before { height:9px; background:var(--thumb-base,#94805b); }
+.editor-object-thumb-linear::after { height:2px; background:var(--thumb-detail,#d0bd8d); }
+.editor-object-thumb-linear.is-rail::before { height:14px; border:1px solid #696b66; background:repeating-linear-gradient(35deg,#95978f 0 4px,#777a73 4px 6px); }
+.editor-object-thumb-linear.is-rail::after { height:12px; background:repeating-linear-gradient(90deg,transparent 0 5px,#684733 5px 8px,transparent 8px 11px); border-top:2px solid #7d888e; border-bottom:2px solid #7d888e; border-radius:0; }
+.editor-object-thumb-patch { background:var(--thumb-fill,#728450); clip-path:polygon(8% 24%,42% 5%,89% 20%,95% 71%,63% 94%,15% 80%); }
+.editor-object-thumb-building { padding:1px; background:#cfc5aa; }
+.editor-object-thumb-building svg { overflow:visible; }
+.editor-object-thumb-terrain::before { content:""; width:28px; height:20px; border-radius:7px; background:var(--thumb-fill,#6f8259); box-shadow:inset 0 0 0 4px rgba(255,255,255,.16); }
+
+.editor-linear-group-highlight { fill:none; stroke:rgba(244,207,91,.34); stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+.editor-linear-highlight { fill:none; stroke:rgba(242,224,135,.98); stroke-width:.18; stroke-dasharray:.45 .32; pointer-events:none; }
+.editor-linear-segment-highlight { stroke:#f09d43; stroke-width:.34; filter:drop-shadow(0 0 .18px #5e3924); }
+.editor-patch-hit { fill:rgba(0,0,0,.001); stroke:rgba(0,0,0,.001); stroke-width:1.3; pointer-events:all; cursor:pointer; }
+.editor-patch-highlight { fill:rgba(241,206,91,.13); stroke:#f1d06b; stroke-width:.20; stroke-dasharray:.55 .28; pointer-events:none; }
+.editor-patch-edge-hit { fill:none; stroke:rgba(0,0,0,.001); stroke-width:1.6; pointer-events:stroke; cursor:pointer; }
+.editor-patch-point { fill:#f7eedc; stroke:#4a443b; stroke-width:.12; vector-effect:non-scaling-stroke; pointer-events:all; cursor:move; }
+.editor-patch-point.is-selected { fill:#e2a960; stroke:#6b3829; stroke-width:.18; }
+.editor-drawing-patch { fill:rgba(240,206,102,.16); stroke:rgba(255,231,141,.96); stroke-width:.24; stroke-dasharray:.55 .28; pointer-events:none; }
+.editor-drawing-patch-point { fill:#fff3c2; stroke:#6b4128; stroke-width:.15; pointer-events:none; }
+.editor-selection-box.is-linear,.editor-selection-box.is-patch { background:rgba(241,208,107,.04); }
+.editor-selection-box.is-linear .editor-resize-handle,.editor-selection-box.is-patch .editor-resize-handle { background:#f2bf67; }
+.editor-inspector-form .editor-checkbox-field { display:flex; flex-direction:row; align-items:center; gap:7px; min-height:34px; padding:6px 8px; border:1px solid #b3a690; border-radius:5px; background:#eee4d2; }
+.editor-inspector-form .editor-checkbox-field input { width:auto; min-height:0; }
+.editor-range-field { grid-column:1/-1; display:grid!important; grid-template-columns:1fr 58px; align-items:center; gap:6px!important; }
+.editor-range-field > span { grid-column:1/-1; }
+.editor-range-field input[type="range"] { min-height:24px; padding:0; }
+.editor-range-output { min-height:28px; display:grid; place-items:center; border:1px solid #8a7e6d; border-radius:5px; background:#fffaf0; font-size:11px; }
+.editor-layer-actions { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.editor-layer-actions .editor-button { min-height:30px; font-size:10px; padding:5px; }
+.editor-transform-actions { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.editor-point-width-note { grid-column:1/-1; margin-top:-2px; font-size:10px; color:#766d61; }
+
+/* Terrain Editor E1.3 — per-object visibility */
+.editor-object-row { display:grid; grid-template-columns:minmax(0,1fr) 32px; gap:4px; align-items:stretch; }
+.editor-object-row .editor-object-item { min-width:0; }
+.editor-object-row.is-selected .editor-object-item { border-color:var(--editor-accent); background:#ead7c7; }
+.editor-object-row.is-hidden-object .editor-object-item { opacity:.50; filter:saturate(.55); }
+.editor-object-row.is-hidden-object .editor-object-copy > span { text-decoration:line-through; text-decoration-thickness:1px; }
+.editor-object-visibility {
+  width:32px;
+  min-height:42px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:#565047;
+  font-size:17px;
+  font-weight:900;
+  cursor:pointer;
+}
+.editor-object-visibility:hover { border-color:#9b8c78; background:#e9dfcd; }
+.editor-object-visibility.is-hidden { color:#9b9183; background:rgba(100,91,80,.07); }
+.editor-hidden-note { border-left:3px solid #96765b; padding-left:8px; color:#6f5b4b; }
+
+/* E1.3 editor scene uses the same numeric layer policy as playtest. */
+.editor-app .terrain-layer,
+.editor-app .editor-unit-layer { z-index:auto!important; isolation:auto; }
+.editor-app .editor-objective-layer { z-index:7200; }
+.editor-app .editor-interaction-svg { z-index:7600; }
+.editor-app .editor-selection-layer { z-index:7800; }

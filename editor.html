@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Terrain Editor E1.2</title>
-  <link rel="stylesheet" href="styles/main.css?v=e12">
-  <link rel="stylesheet" href="styles/terrain.css?v=e12">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=e12">
-  <link rel="stylesheet" href="styles/mokra.css?v=e12">
-  <link rel="stylesheet" href="styles/stabilization.css?v=e12">
-  <link rel="stylesheet" href="styles/editor.css?v=e12">
+  <title>Crossroads — Terrain Editor E1.3</title>
+  <link rel="stylesheet" href="styles/main.css?v=e13">
+  <link rel="stylesheet" href="styles/terrain.css?v=e13">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=e13">
+  <link rel="stylesheet" href="styles/mokra.css?v=e13">
+  <link rel="stylesheet" href="styles/stabilization.css?v=e13">
+  <link rel="stylesheet" href="styles/editor.css?v=e13">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Terrain Editor E1.2</h1>
-      <p>Compose scenario data directly on the tabletop with pan/zoom, visibility controls, waypoint drawing, segment editing, and scenario templates.</p>
+      <h1>CROSSROADS — Terrain Editor E1.3</h1>
+      <p>Compose scenario data directly with transformable paths, editable polygon patches, material variants, explicit layer control, and procedural width profiles.</p>
     </div>
     <div class="editor-header-actions">
       <a id="returnToGameLink" class="editor-button editor-button-quiet" href="index.html">Return to Game</a>
@@ -64,6 +64,16 @@
         <div id="linearDrawActions" class="editor-draw-actions" hidden>
           <button id="finishLinearButton" class="editor-button editor-button-primary" type="button">Finish Path</button>
           <button id="cancelLinearButton" class="editor-button editor-button-quiet" type="button">Cancel</button>
+        </div>
+
+        <label class="editor-field-label" for="patchStyleSelect">Terrain patch</label>
+        <div class="editor-row">
+          <select id="patchStyleSelect" class="editor-control"></select>
+          <button id="addPatchButton" class="editor-button" type="button">Draw Patch</button>
+        </div>
+        <div id="patchDrawActions" class="editor-draw-actions editor-patch-draw-actions" hidden>
+          <button id="finishPatchButton" class="editor-button editor-button-primary" type="button">Finish Patch</button>
+          <button id="cancelPatchButton" class="editor-button editor-button-quiet" type="button">Cancel</button>
         </div>
 
         <label class="editor-field-label" for="unitTypeSelect">Unit</label>
@@ -123,7 +133,7 @@
           <strong id="scenarioTitleReadout">Scenario</strong>
           <span id="scenarioSizeReadout">72″ × 48″</span>
         </div>
-        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. Draw paths by clicking waypoints, then press Enter or Finish Path.</div>
+        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Enter finishes drawing.</div>
       </div>
       <div id="editorViewport" class="editor-viewport">
         <div id="editorStage" class="editor-stage">
@@ -220,20 +230,24 @@
     </form>
   </dialog>
 
-  <script src="data/terrain.js?v=e12"></script>
-  <script src="data/linear-terrain.js?v=e12"></script>
-  <script src="data/unit-quality.js?v=e12"></script>
-  <script src="data/unit-types.js?v=e12"></script>
-  <script src="data/scenarios.js?v=e12"></script>
-  <script src="src/presentation/buildings.js?v=e12"></script>
-  <script src="src/presentation/terrain.js?v=e12"></script>
-  <script src="src/rules/path-geometry.js?v=e12"></script>
-  <script src="src/rules/linear-terrain.js?v=e12"></script>
-  <script src="src/presentation/linear-terrain.js?v=e12"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e12"></script>
-  <script src="src/rules/terrain-geometry.js?v=e12"></script>
-  <script src="src/editor/editor-document.js?v=e12"></script>
-  <script src="src/editor/editor-validation.js?v=e12"></script>
-  <script src="src/editor/editor.js?v=e12"></script>
+  <script src="data/terrain.js?v=e13"></script>
+  <script src="data/linear-terrain.js?v=e13"></script>
+  <script src="data/unit-quality.js?v=e13"></script>
+  <script src="data/unit-types.js?v=e13"></script>
+  <script src="data/scenarios.js?v=e13"></script>
+  <script src="src/presentation/layer-policy.js?v=e13"></script>
+  <script src="src/presentation/buildings.js?v=e13"></script>
+  <script src="src/presentation/terrain.js?v=e13"></script>
+  <script src="src/presentation/terrain-patches.js?v=e13"></script>
+  <script src="src/rules/path-geometry.js?v=e13"></script>
+  <script src="src/rules/linear-terrain.js?v=e13"></script>
+  <script src="src/presentation/linear-terrain.js?v=e13"></script>
+  <script src="src/presentation/scene-compositor.js?v=e13"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e13"></script>
+  <script src="src/rules/terrain-geometry.js?v=e13"></script>
+  <script src="src/editor/editor-document.js?v=e13"></script>
+  <script src="src/editor/editor-validation.js?v=e13"></script>
+  <script src="src/editor/editor-geometry.js?v=e13"></script>
+  <script src="src/editor/editor.js?v=e13"></script>
 </body>
 </html>

@@ -68,6 +68,16 @@ assert.strictEqual(playtest.id, "editor_playtest", "playtest scenario must use t
 assert.strictEqual(playtest.deployment.mode, "fixed", "playtest must preserve current positions");
 assert.strictEqual(playtest.deployment.order.length, 0, "playtest must skip deployment sequencing");
 
+const visibilityDocument = DOC.create(source);
+visibilityDocument.terrain[0].visible = false;
+visibilityDocument.forces.red[0].visible = false;
+visibilityDocument.objectives[0].visible = false;
+const visibilityPlaytest = DOC.playtestScenario(visibilityDocument);
+assert.strictEqual(visibilityPlaytest.terrain.length, 0, "hidden terrain must be omitted from playtest");
+assert.strictEqual(visibilityPlaytest.forces.red.length, 0, "hidden units must be omitted from playtest");
+assert(!visibilityPlaytest.objectives.some(item => item.id === "objective-1"), "hidden objectives must be omitted from playtest");
+assert(visibilityPlaytest.objectives.some(item => item.id === "editor-center"), "a fallback objective must be created when all objectives are hidden");
+
 document.linearTerrain.push({ id:"off-table-stream", styleId:"road", points:[{x:-1,y:10},{x:20,y:10}], start:{cap:"off_table"}, end:{cap:"taper"} });
 const cleanIssues = VALIDATE.validateScenario(document, { terrainTypes, linearStyles, unitTypes, pathGeometry });
 assert.strictEqual(cleanIssues.filter(item => item.level === "error").length, 0, "valid scenario should not produce errors");
@@ -100,6 +110,13 @@ assert(editorSource.includes("deleteLinearSegment"), "editor must expose individ
 assert(editorHtml.includes("showUnitsToggle"), "editor must expose unit visibility controls");
 assert(editorHtml.includes("newScenarioButton"), "editor must expose new scenario creation at the top of the panel");
 assert(editorHtml.includes("objectiveTypeSelect"), "editor must expose objective type selection");
+assert(editorHtml.includes("patchStyleSelect"), "editor must expose polygon terrain patch drawing");
+assert(editorSource.includes("branchLinear"), "editor must support branching linear terrain");
+assert(editorSource.includes("Waypoint width"), "editor must expose per-waypoint widths");
+assert(editorSource.includes("layer-back"), "editor must expose manual relayering");
+assert(editorSource.includes("makeObjectThumbnail"), "editor must render visual object-list previews");
+assert(editorSource.includes("toggleObjectVisibility"), "editor must expose per-object hide/show controls");
+assert(editorSource.includes("Visible in editor and playtest"), "selected-item inspector must expose visibility");
 
 
 const playtestSelect = { value:"", appendChild(node) { this.option = node; } };
@@ -127,4 +144,4 @@ assert(playtestContext.window.CROSSROADS_SCENARIOS.editor_playtest, "playtest br
 assert.strictEqual(playtestSelect.value, "editor_playtest", "playtest bridge must select the injected scenario before engine startup");
 assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge must mark the runtime document");
 
-console.log("PASS — Terrain Editor E1.2 document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");
+console.log("PASS — Terrain Editor E1.3 document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");

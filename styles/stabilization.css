@@ -44,18 +44,15 @@
 .terrain-id-woodpile .log-support { background:#34383b!important; width:10%!important; left:34%!important; }
 .terrain-id-woodpile .log-support-2 { left:60%!important; }
 
-/* Terrain L1.2 — one explicit scene order. */
+/* Terrain Editor E1.3 — one explicit scene order. Inline layer-policy values
+   are authoritative; these selectors only establish positioning contexts. */
 .battlefield { isolation:isolate; overflow:hidden; }
-.terrain-layer { z-index:100!important; }
-.linear-terrain-svg { z-index:0!important; }
-.terrain-layer .terrain-piece { z-index:30; }
-.terrain-layer .terrain-piece[data-renderer="field"] { z-index:5; }
-.terrain-layer .terrain-piece[data-renderer="woods"],
-.terrain-layer .terrain-piece[data-renderer="orchard"] { z-index:25; }
-.terrain-layer .terrain-piece[data-renderer="wall"],
-.terrain-layer .terrain-piece[data-renderer="hedge"],
-.terrain-layer .terrain-piece[data-renderer="fence"] { z-index:40; }
+.terrain-layer { z-index:100; }
+.linear-terrain-svg,
+.terrain-layer .terrain-piece,
+.terrain-patch-svg { position:absolute; }
 .scene-promoted-terrain,
+.scene-promoted-object,
 .battlefield > .unit { position:absolute; }
 .scene-depth-object { isolation:isolate; }
 .objective-ring, .objective-marker, .objective-point, .objective-layer { z-index:7200!important; }
@@ -77,11 +74,9 @@
 :root { --unit-visual-scale:.85; --miniature-scale:1; }
 .battlefield .unit-model-group { scale:var(--unit-visual-scale)!important; transform-origin:center center; }
 
-/* Flat fields are true ground decals. Linear water and roads cut across them. */
+/* Flat fields, patches, water, transport, low cover, tall terrain, and units
+   now receive their z-index from CrossroadsLayerPolicy. */
 .terrain-layer { isolation:isolate; }
-.terrain-layer .terrain-piece[data-renderer="field"] { z-index:0!important; }
-.terrain-layer .linear-terrain-svg { z-index:10!important; }
-.terrain-layer .terrain-piece:not([data-renderer="field"]) { z-index:30; }
 
 /* Direct, deterministic label modes. */
 .battlefield .unit[data-label-mode="hidden"] .unit-label { display:none!important; opacity:0!important; visibility:hidden!important; }

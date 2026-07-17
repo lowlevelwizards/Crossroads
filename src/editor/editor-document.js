@@ -22,6 +22,7 @@
     document.rounds = Math.max(1, Number(document.rounds) || 6);
     document.terrain = Array.isArray(document.terrain) ? document.terrain : [];
     document.linearTerrain = Array.isArray(document.linearTerrain) ? document.linearTerrain : [];
+    document.terrainPatches = Array.isArray(document.terrainPatches) ? document.terrainPatches : [];
     document.junctions = Array.isArray(document.junctions) ? document.junctions : [];
     document.crossings = Array.isArray(document.crossings) ? document.crossings : [];
     document.objectives = Array.isArray(document.objectives) ? document.objectives : [];
@@ -46,14 +47,14 @@
     return create({
       id:String(options.id || "untitled-scenario"),
       title:String(options.title || "Untitled Scenario"),
-      description:"Created in Terrain Editor E1.2.",
+      description:"Created in Terrain Editor E1.3.",
       rounds:Math.max(1, Number(options.rounds) || 6),
       table:{ width, height, mat:"grass_temperate" },
       factions:{
         blue:{ name:"Blue Force", shortName:"Blue" },
         red:{ name:"Red Force", shortName:"Red" }
       },
-      terrain:[], linearTerrain:[], junctions:[], crossings:[], objectives:[],
+      terrain:[], linearTerrain:[], terrainPatches:[], junctions:[], crossings:[], objectives:[],
       deployment:{
         mode:"player",
         order:[String(options.startingFaction || "blue"), String(options.startingFaction || "blue") === "blue" ? "red" : "blue"],
@@ -70,7 +71,7 @@
 
   function allIds(document) {
     const result = new Set();
-    for (const collection of [document.terrain, document.linearTerrain, document.junctions, document.crossings, document.objectives]) {
+    for (const collection of [document.terrain, document.linearTerrain, document.terrainPatches, document.junctions, document.crossings, document.objectives]) {
       for (const item of collection ?? []) if (item?.id) result.add(String(item.id));
     }
     for (const faction of ["blue", "red"]) {
@@ -91,6 +92,7 @@
   function collectionFor(document, kind, faction = null) {
     if (kind === "terrain") return document.terrain;
     if (kind === "linear") return document.linearTerrain;
+    if (kind === "patch") return document.terrainPatches;
     if (kind === "junction") return document.junctions;
     if (kind === "crossing") return document.crossings;
     if (kind === "objective") return document.objectives;
@@ -121,7 +123,7 @@
     copy.id = nextId(document, `${source.id}-copy`);
     if (Number.isFinite(Number(copy.x))) copy.x = Number(copy.x) + 1;
     if (Number.isFinite(Number(copy.y))) copy.y = Number(copy.y) + 1;
-    if (Array.isArray(copy.points)) copy.points = copy.points.map(point => ({ x:Number(point.x) + 1, y:Number(point.y) + 1 }));
+    if (Array.isArray(copy.points)) copy.points = copy.points.map(point => ({ ...point, x:Number(point.x) + 1, y:Number(point.y) + 1 }));
     collection.push(copy);
     return copy;
   }
@@ -190,9 +192,18 @@
 
   function playtestScenario(document) {
     const scenario = create(document);
+    const visible = item => item?.visible !== false && item?.hidden !== true;
+    scenario.terrain = scenario.terrain.filter(visible);
+    scenario.linearTerrain = scenario.linearTerrain.filter(visible);
+    scenario.terrainPatches = scenario.terrainPatches.filter(visible);
+    scenario.junctions = scenario.junctions.filter(visible);
+    scenario.crossings = scenario.crossings.filter(visible);
+    scenario.objectives = scenario.objectives.filter(visible);
+    scenario.forces.blue = scenario.forces.blue.filter(visible);
+    scenario.forces.red = scenario.forces.red.filter(visible);
     scenario.id = "editor_playtest";
     scenario.title = `${scenario.title || "Untitled Scenario"} — Editor Playtest`;
-    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.2.`.trim();
+    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.3.`.trim();
     scenario.deployment = scenario.deployment ?? { zones:{} };
     scenario.deployment.mode = "fixed";
     scenario.deployment.order = [];

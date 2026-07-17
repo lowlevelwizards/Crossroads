@@ -2,6 +2,8 @@
 
 (() => {
   const base = window.CrossroadsTerrainPresentation;
+  const TYPES = window.CROSSROADS_TERRAIN_TYPES ?? {};
+  const LAYERS = window.CrossroadsLayerPolicy;
   if (!base?.renderScenarioTerrain) throw new Error("Terrain presentation must load before terrain-runtime.js.");
 
   let compositor = null;
@@ -28,27 +30,36 @@
     });
   }
 
-  function configurePiece(piece, instance) {
+  function configurePiece(piece, instance, scenario) {
     namespaceWoodpile(piece);
     if (instance?.visualScale) piece.style.setProperty("--building-visual-scale", String(instance.visualScale));
     if (instance?.depthAnchor) piece.dataset.depthAnchor = String(instance.depthAnchor);
     if (piece.dataset.renderer === "field") addFieldRows(piece);
+    const definition = TYPES[instance?.terrainId];
+    piece.dataset.inheritLayer = String(instance?.inheritLayer !== false);
+    piece.dataset.sceneRole = LAYERS?.terrainRole(definition) ?? "low";
+    piece.style.zIndex = String(LAYERS?.terrainLayer(instance, definition, scenario?.table?.height) ?? 360);
   }
 
   function renderScenarioTerrain(args) {
-    args.battlefield?.querySelectorAll?.(".scene-promoted-terrain").forEach(node => node.remove());
+    const battlefield = args.battlefield ?? args.layer.closest(".battlefield");
+    battlefield?.querySelectorAll?.(":scope > .scene-promoted-terrain, :scope > .scene-promoted-object").forEach(node => node.remove());
     base.renderScenarioTerrain(args);
     const byId = new Map((args.scenario?.terrain ?? []).map(instance => [instance.id, instance]));
-    for (const piece of args.layer.querySelectorAll(".terrain-piece")) {
-      configurePiece(piece, byId.get(piece.dataset.terrainInstanceId));
+    for (const piece of args.layer.querySelectorAll(":scope > .terrain-piece")) {
+      const instance = byId.get(piece.dataset.terrainInstanceId);
+      if (instance?.visible === false || instance?.hidden === true) {
+        piece.remove();
+        continue;
+      }
+      configurePiece(piece, instance, args.scenario);
     }
+    window.CrossroadsTerrainPatchPresentation?.renderScenarioTerrainPatches(args);
     window.CrossroadsLinearTerrainPresentation?.renderScenarioLinearTerrain(args);
 
-    const battlefield = args.battlefield ?? args.layer.closest(".battlefield");
-    if (!compositor && battlefield && window.CrossroadsSceneCompositor) {
-      compositor = window.CrossroadsSceneCompositor.create({ battlefield, terrainLayer: args.layer });
-    }
-    compositor?.composeTerrain();
+    const editorMode = document.body?.classList?.contains("editor-app");
+    if (!editorMode && !compositor && battlefield && window.CrossroadsSceneCompositor) compositor = window.CrossroadsSceneCompositor.create({ battlefield, terrainLayer:args.layer });
+    if (!editorMode) compositor?.composeTerrain(args.scenario);
   }
 
   window.CrossroadsTerrainPresentation = Object.freeze({ ...base, renderScenarioTerrain });

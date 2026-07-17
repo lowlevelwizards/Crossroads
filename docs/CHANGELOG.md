@@ -1,3 +1,16 @@
+# Terrain Editor E1.3 — Advanced Terrain Authoring
+
+- Added full-path selection feedback and group move, resize, rotate, duplicate, normalize, layer, and delete controls.
+- Added second-click section/waypoint selection, per-waypoint widths, interpolated procedural widths, and branch authoring.
+- Added working start/end cap treatments for fade, taper, off-table continuation, and junctions.
+- Added irregular polygon terrain patches with editable vertices for woods, fields, hard-surface patches, mud, and ponds.
+- Added building, road, stream, and patch material/color choices.
+- Added explicit default layer bands plus per-object manual layer overrides.
+- Added object thumbnails and per-object hide/show controls in both the object list and inspector.
+- Hidden objects remain in scenario data and the editor list but are omitted from playtests.
+- Rebuilt railway presentation around striped gray ballast, thicker outlined sleepers, closer spacing, and outlined rails.
+- Added transform normalization controls and retained full E1.2 scenario-authoring behavior.
+
 # Terrain Editor E1.2 — Scenario Authoring Controls
 
 - Added cursor-centered wheel zoom and drag panning.
