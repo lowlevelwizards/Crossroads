@@ -1,3 +1,26 @@
+# Scenario Runtime S1.0 — Objective Foundation
+
+- Added a canonical scenario compiler, runtime session, scenario-event stream, and victory-policy boundary outside `engine.js`.
+- Added registry-driven control, grouped-control, presence, exit, casualty, destroy, protect, hold, and custom objective evaluators.
+- Migrated existing control, breakthrough, containment, and Mokra scoring into scenario data with no scenario-ID runtime branches.
+- Added Scenario Schema v2 and automatic migration of legacy objective/scoring fields.
+- Added runtime objective cards, exit lanes, control markers, and destroy/protect target badges.
+- Added Scenario Composer controls for victory policies, thresholds, objective configuration, and visual target selection.
+- Removed the old Mokra-specific scenario-runtime wrapper and temporary unsupported-objective conversion.
+- Preserved all 70 combat-rule characterizations and current terrain/editor behavior.
+
+# Terrain Editor E1.5 — Scene Depth, Terrain Semantics & Multi-Selection
+
+- Split generated woodland trees into body and canopy fragments that depth-sort naturally with units.
+- Added shallow building foreground fragments and centralized fragment offsets in the existing layer policy.
+- Added pure terrain-semantic and polygon-spatial modules shared by movement, shooting, assault, editor, and runtime geometry.
+- Promoted polygon terrain patches into authoritative gameplay footprints.
+- Added local-width semantics for procedural linear terrain, including impassable wide-stream thresholds.
+- Added Shift-click and marquee multi-selection, collective move/scale/rotate, and copy/paste across scenarios.
+- Added reference remapping and collision-safe IDs for pasted scenario compositions.
+- Added E1.5 regression tests for scene fragments, polygon clipping, terrain meaning, multi-selection, and clipboard behavior.
+- Preserved all 70 combat-rule characterizations and current Mokra/scenario behavior.
+
 # Terrain Editor E1.4.1 — Selection and Scenario Polish
 
 - Expanded linear-terrain hit regions to match their authored width, with a safe minimum for thin paths and walls.

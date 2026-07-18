@@ -53,6 +53,13 @@
     scenario.id = String(scenario.id || "untitled-scenario");
     scenario.title = String(scenario.title || "Untitled Scenario");
     scenario.rounds = Math.max(1, number(scenario.rounds, 6));
+    scenario.structure = scenario.structure && typeof scenario.structure === "object" ? scenario.structure : {};
+    scenario.structure.templateId = String(scenario.structure.templateId || "custom");
+    scenario.structure.roles = scenario.structure.roles && typeof scenario.structure.roles === "object" ? scenario.structure.roles : {};
+    scenario.victory = scenario.victory && typeof scenario.victory === "object" ? scenario.victory : {};
+    scenario.victory.policy = String(scenario.victory.policy || "points");
+    scenario.victory.tiebreaker = String(scenario.victory.tiebreaker || "survivingUnits");
+    scenario.victory.elimination = scenario.victory.elimination === true;
     scenario.table = scenario.table && typeof scenario.table === "object" ? scenario.table : { width:72, height:48, mat:"grass_temperate" };
     scenario.table.width = Math.max(1, number(scenario.table.width, 72));
     scenario.table.height = Math.max(1, number(scenario.table.height, 48));

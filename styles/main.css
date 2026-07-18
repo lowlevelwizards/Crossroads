@@ -6618,3 +6618,42 @@ body.targeting-confirmed
 /* Build T3: terrain library scenario card */
 .scenario-card.terrain-library-card { border-top: 10px solid #65766a; }
 .scenario-card.terrain-library-card button { background:#d5dfd4; border-color:#526257; }
+
+/* Scenario Runtime S1.0 objective progress */
+.scenario-objective-panel {
+  margin: 10px 0 12px;
+  border: 1px solid rgba(42, 48, 50, .28);
+  border-radius: 8px;
+  background: rgba(248, 241, 218, .72);
+  overflow: hidden;
+}
+.scenario-objective-panel-title {
+  padding: 7px 9px;
+  background: rgba(33, 39, 41, .86);
+  color: #f4ebce;
+  font: 800 10px/1 sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.scenario-objective-card-list { display:grid; gap:1px; background:rgba(42,48,50,.12); }
+.scenario-objective-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:start;
+  padding:8px 9px;
+  background:rgba(255,252,237,.92);
+  border-left:4px solid #8c8f83;
+}
+.scenario-objective-card.state-complete { border-left-color:#4f8568; background:rgba(231,244,229,.94); }
+.scenario-objective-card.state-failed { border-left-color:#a75348; background:rgba(247,228,222,.94); }
+.scenario-objective-card strong { display:block; font:800 11px/1.15 sans-serif; color:#282d2f; }
+.scenario-objective-card small { display:block; margin-top:3px; color:#6a6e68; font:700 8px/1.2 sans-serif; text-transform:uppercase; letter-spacing:.05em; }
+.scenario-objective-card-status { display:grid; justify-items:end; gap:2px; text-align:right; }
+.scenario-objective-card-status b { font:800 9px/1 sans-serif; text-transform:uppercase; }
+.scenario-objective-card-status span { font:800 11px/1 sans-serif; }
+.scenario-objective-card-status em { max-width:110px; color:#686b65; font:600 8px/1.15 sans-serif; font-style:normal; }
+@media (max-width:760px) {
+  .scenario-objective-panel { margin:8px 0; }
+  .scenario-objective-card { padding:7px; }
+}

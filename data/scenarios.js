@@ -30,6 +30,7 @@ window.CROSSROADS_CORE_SCENARIO_12A = Object.freeze({
 });
 
 const takeTheCrossroads = Object.freeze({
+  schemaVersion:2,
   id: "take_the_crossroads", title: "Take the Crossroads",
   description: "A six-round 1939 meeting engagement. Poland and Germany race to control the central crossroads.",
   rounds: 6, factions: CROSSROADS_1939_FACTIONS,
@@ -42,13 +43,13 @@ const takeTheCrossroads = Object.freeze({
     { id:"wall", terrainId:"wall", x:38, y:30, width:17, height:2.5 },
     { id:"crossroads-cottage", terrainId:"medium_cottage", appearance:"peach_plaster_red", x:40.5, y:4.5, width:13, height:10 }
   ]),
-  objectives: freezeList([{ id:"crossroads", x:36, y:24, radius:3, label:"Crossroads" }]),
-  scoring: Object.freeze({ roundControl:1, finalControl:0 }),
-  victory: Object.freeze({ elimination:true, tiebreaker:"survivingUnits" }),
+  objectives: freezeList([{ id:"crossroads", type:"control_zone", x:36, y:24, radius:3, label:"Crossroads", roundPoints:1, finalPoints:0 }]),
+  victory: Object.freeze({ policy:"points", elimination:true, tiebreaker:"survivingUnits" }),
   forces: window.CROSSROADS_CORE_SCENARIO_12A.forces
 });
 
 const holdTheFarm = Object.freeze({
+  schemaVersion:2,
   id:"hold_the_farm", title:"Hold the Farm",
   description:"A four-round 1939 validation battle. Poland defends the farm while Germany attacks from the road.",
   rounds:4, factions:CROSSROADS_1939_FACTIONS,
@@ -64,8 +65,8 @@ const holdTheFarm = Object.freeze({
     { id:"farmhouse", terrainId:"long_farmhouse", appearance:"mixed_plaster_red", x:39.5, y:13.5, width:17, height:8 },
     { id:"east-barn", terrainId:"barn", appearance:"weathered_charcoal", x:49, y:30, width:12, height:8 }
   ]),
-  objectives:freezeList([{ id:"farm_yard", x:38, y:24, radius:4, label:"Farm Yard" }]),
-  scoring:Object.freeze({ roundControl:0, finalControl:2 }), victory:Object.freeze({ elimination:true, tiebreaker:"survivingSoldiers" }),
+  objectives:freezeList([{ id:"farm_yard", type:"control_zone", x:38, y:24, radius:4, label:"Farm Yard", roundPoints:0, finalPoints:2 }]),
+  victory:Object.freeze({ policy:"points", elimination:true, tiebreaker:"survivingSoldiers" }),
   forces:Object.freeze({
     blue:freezeList([{id:"blue-officer",unitType:"officer",quality:"veteran",x:24,y:16},{id:"blue-rifle",unitType:"rifleSquad",quality:"veteran",x:25,y:25},{id:"blue-assault",unitType:"assaultSquad",quality:"regular",x:22,y:35},{id:"blue-mmg",unitType:"mmgTeam",quality:"regular",x:26,y:8}]),
     red:freezeList([{id:"red-officer",unitType:"officer",quality:"regular",x:64,y:8},{id:"red-rifle",unitType:"rifleSquad",quality:"inexperienced",x:62,y:18},{id:"red-assault",unitType:"assaultSquad",quality:"veteran",x:61,y:30},{id:"red-mmg",unitType:"mmgTeam",quality:"regular",x:65,y:40}])
@@ -73,14 +74,14 @@ const holdTheFarm = Object.freeze({
 });
 
 const breakthrough = Object.freeze({
+  schemaVersion:2,
   id:"breakthrough", title:"Breakthrough",
   description:"A six-round asymmetric battle. Germany must break through the Polish defensive edge; Poland must delay and contain.",
   rounds:6, factions:CROSSROADS_1939_FACTIONS, table:Object.freeze({width:72,height:48,mat:"grass_temperate"}),
   deployment:Object.freeze({mode:"player",order:Object.freeze(["blue","red"]),zones:Object.freeze({blue:zone(0,18,0,48,"Polish defensive deployment · 18″"),red:zone(60,72,0,48,"German attack deployment · 12″")})}),
   terrain:freezeList([{id:"main-road",terrainId:"road_straight",x:0,y:22.08,width:72,height:4.32},{id:"cross-road",terrainId:"road_straight",x:33.48,y:0,width:5.04,height:48},{id:"woods",terrainId:"woods",x:13,y:7,width:18,height:16},{id:"wall",terrainId:"wall",x:32,y:25,width:14,height:2.5},{id:"breakthrough-cottage",terrainId:"medium_cottage",appearance:"concrete_thatch",x:49,y:8,width:14,height:10}]),
-  objectives:freezeList([{id:"red_exit",type:"exit_unit",edge:"blue",faction:"red",depth:3,radius:0,x:0,y:24,label:"Breakthrough Edge",pointsPerUnit:2}]),
-  scoring:Object.freeze({roundControl:0,finalControl:0,exitPoints:2,containmentPointsPerUnit:1}),
-  victory:Object.freeze({elimination:false,tiebreaker:"survivingSoldiers",type:"breakthrough"}),
+  objectives:freezeList([{id:"red_exit",type:"exit_unit",edge:"blue",faction:"red",depth:3,radius:0,x:0,y:24,label:"Breakthrough Edge",pointsPerUnit:2,containmentPointsPerUnit:1}]),
+  victory:Object.freeze({policy:"points",elimination:false,tiebreaker:"survivingSoldiers"}),
   forces:Object.freeze({
     blue:freezeList([{id:"blue-officer",unitType:"officer",quality:"regular",x:12,y:7},{id:"blue-rifle-a",unitType:"rifleSquad",quality:"veteran",x:13,y:18},{id:"blue-rifle-b",unitType:"rifleSquad",quality:"veteran",x:13,y:31},{id:"blue-mmg",unitType:"mmgTeam",quality:"veteran",x:10,y:41}]),
     red:freezeList([{id:"red-officer",unitType:"officer",quality:"veteran",x:66,y:6},{id:"red-rifle-a",unitType:"rifleSquad",quality:"regular",x:68,y:15},{id:"red-rifle-b",unitType:"rifleSquad",quality:"regular",x:68,y:25},{id:"red-assault",unitType:"assaultSquad",quality:"veteran",x:68,y:35},{id:"red-mmg",unitType:"mmgTeam",quality:"inexperienced",x:68,y:43}])
@@ -88,6 +89,7 @@ const breakthrough = Object.freeze({
 });
 
 const mokra = Object.freeze({
+  schemaVersion:2,
   id:"mokra", title:"Battle of Mokra",
   description:"1 September 1939. Polish dismounted cavalry holds woods, farms, and three railway crossings against a concentrated German attack. This infantry-only M1 abstracts the wider battle before tanks, air attacks, and the armoured train are introduced.",
   rounds:6, factions:CROSSROADS_1939_FACTIONS,
@@ -173,10 +175,19 @@ const mokra = Object.freeze({
       Object.freeze({id:"north",label:"North Crossing",x:43.5,y:8.5,radius:3}),
       Object.freeze({id:"central",label:"Central Crossing",x:43.5,y:23.5,radius:3.5}),
       Object.freeze({id:"south",label:"South Crossing",x:43.5,y:37.5,radius:3})
+    ]),
+    roundScoring:Object.freeze([
+      Object.freeze({faction:"red",rule:"per_controlled",points:1,maxPoints:2,startRound:2}),
+      Object.freeze({faction:"blue",rule:"opponent_none",opponent:"red",points:1,startRound:2})
+    ])
+  },{
+    id:"mokra_breakthrough",type:"presence_zone",label:"Railway Breakthrough",shape:"rect",x:46,y:0,width:26,height:48,showMarker:false,
+    finalScoring:Object.freeze([
+      Object.freeze({faction:"red",rule:"faction_present",points:2}),
+      Object.freeze({faction:"blue",rule:"opponent_absent",opponent:"red",points:2})
     ])
   }]),
-  scoring:Object.freeze({type:"control_group",startRound:2,pointsPerCrossing:1,maxCrossingPoints:2,delayPoints:1,breakthroughLineX:46,breakthroughPoints:2,denialPoints:2}),
-  victory:Object.freeze({elimination:true,tiebreaker:"survivingSoldiers"}),
+  victory:Object.freeze({policy:"points",elimination:true,tiebreaker:"survivingSoldiers"}),
   forces:Object.freeze({
     blue:freezeList([
       {id:"mokra-blue-rifle-a",name:"1st Mounted Rifle Squadron",unitType:"rifleSquad",quality:"veteran",x:35.5,y:8.5,deploymentZone:"forward"},
@@ -198,6 +209,7 @@ const mokra = Object.freeze({
 });
 
 const terrainLibrary = Object.freeze({
+  schemaVersion:2,
   id:"terrain_library",title:"Terrain Library",description:"A playable visual catalogue of the modular Crossroads terrain pieces. Use it to compare scale, silhouettes, and zoom readability.",rounds:1,factions:CROSSROADS_1939_FACTIONS,
   table:Object.freeze({width:72,height:48,mat:"grass_temperate"}),deployment:Object.freeze({mode:"fixed",order:Object.freeze([]),zones:Object.freeze({blue:zone(0,10,0,48,"Scale reference"),red:zone(62,72,0,48,"Scale reference")})}),
   terrain:freezeList([
@@ -205,7 +217,7 @@ const terrainLibrary = Object.freeze({
     {id:"small-cottage-a",terrainId:"small_cottage",appearance:"whitewash_red",x:2,y:30.5,width:7,height:6},{id:"medium-cottage-a",terrainId:"medium_cottage",appearance:"peach_plaster_red",x:10,y:30.5,width:8,height:6.5},{id:"long-farmhouse-a",terrainId:"long_farmhouse",appearance:"mixed_plaster_red",x:19,y:30.5,width:12,height:6},{id:"barn-a",terrainId:"barn",appearance:"weathered_charcoal",x:32,y:30.5,width:10,height:6.5},{id:"shed-a",terrainId:"shed",appearance:"timber_brown",x:43,y:30.5,width:7,height:6},{id:"church-a",terrainId:"church",appearance:"plaster_charcoal",x:51,y:30.5,width:12,height:6.5},
     {id:"small-cottage-b",terrainId:"small_cottage",appearance:"log_thatch",x:2,y:39,width:7,height:6},{id:"medium-cottage-b",terrainId:"medium_cottage",appearance:"concrete_thatch",x:10,y:39,width:8,height:6.5},{id:"long-farmhouse-b",terrainId:"long_farmhouse",appearance:"timber_thatch",x:19,y:39,width:12,height:6},{id:"barn-b",terrainId:"barn",appearance:"straw_thatch",x:32,y:39,width:10,height:6.5},{id:"shed-b",terrainId:"shed",appearance:"concrete_red",x:43,y:39,width:7,height:6},{id:"church-b",terrainId:"church",appearance:"wooden_brown_red",x:51,y:39,width:12,height:6.5}
   ]),
-  objectives:freezeList([{id:"library_center",x:36,y:24,radius:1,label:"Terrain Library"}]),scoring:Object.freeze({roundControl:0,finalControl:0}),victory:Object.freeze({elimination:false,tiebreaker:"survivingUnits"}),
+  objectives:freezeList([{id:"library_center",type:"control_zone",x:36,y:24,radius:1,label:"Terrain Library",roundPoints:0,finalPoints:0}]),victory:Object.freeze({policy:"points",elimination:false,tiebreaker:"survivingUnits"}),
   forces:Object.freeze({blue:freezeList([{id:"blue-rifle",unitType:"rifleSquad",quality:"regular",x:68,y:34}]),red:freezeList([{id:"red-rifle",unitType:"rifleSquad",quality:"regular",x:68,y:44}])})
 });
 

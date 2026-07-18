@@ -34,7 +34,10 @@
     ["CrossroadsBattlefieldInput", "src/input/battlefield-input.js"],
     ["CrossroadsMovementRules", "src/rules/movement.js"],
     ["CrossroadsObjectiveRules", "src/rules/objectives.js"],
-    ["CrossroadsScenarioRuntime", "src/rules/scenario-runtime.js"],
+    ["CrossroadsObjectiveRegistry", "src/rules/objectives/objective-registry.js"],
+    ["CrossroadsScenarioCompiler", "src/scenario-runtime/scenario-compiler.js"],
+    ["CrossroadsScenarioRuntime", "src/scenario-runtime/scenario-runtime.js"],
+    ["CrossroadsScenarioPresentation", "src/scenario-runtime/scenario-presentation.js"],
     ["CrossroadsMoraleRules", "src/rules/morale.js"],
     ["CrossroadsShootingRules", "src/rules/shooting.js"],
     ["CrossroadsAssaultRules", "src/rules/assault.js"],
@@ -235,6 +238,17 @@
     return issues;
   }
 
+  function validateScenarioRuntime() {
+    const issues = [];
+    const runtime = window.CrossroadsScenarioRuntime;
+    const registry = window.CrossroadsObjectiveRegistry;
+    for (const type of ["control_zone", "control_group", "presence_zone", "crossing", "exit_unit", "casualty", "destroy_target", "protect_target", "hold", "custom"]) {
+      if (!registry?.has?.(type)) issues.push(`Scenario Runtime is missing objective evaluator ${type}.`);
+    }
+    if (typeof runtime?.createSession !== "function") issues.push("Scenario Runtime is missing createSession().");
+    return issues;
+  }
+
   function validateCombatModules() {
     const issues = [];
     if (typeof window.CrossroadsMoraleRules?.create !== "function") {
@@ -274,6 +288,7 @@
           ...validateBuildingPresentation(),
           ...validateTerrainLibrary(),
           ...validateUnitTypes(),
+          ...validateScenarioRuntime(),
           ...validateCombatModules()
         ];
 

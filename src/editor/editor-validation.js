@@ -1,8 +1,8 @@
 "use strict";
 
 (() => {
-  const OBJECTIVE_TYPES = new Set(["control_zone", "control_group", "crossing", "exit_unit", "destroy_target", "protect_target", "unit_objective", "custom"]);
-  const SCENARIO_TYPES = new Set(["control", "breakthrough", "delay", "elimination", "survival", "escort", "custom"]);
+  const OBJECTIVE_TYPES = new Set(["control_zone", "control_group", "presence_zone", "crossing", "exit_unit", "destroy_target", "protect_target", "hold", "casualty", "custom"]);
+  const SCENARIO_TYPES = new Set(["control", "breakthrough", "delay", "elimination", "survival", "escort", "raid", "custom"]);
 
   function number(value, fallback = 0) {
     const result = Number(value);
@@ -66,7 +66,7 @@
     const width = number(table.width);
     const height = number(table.height);
     const issues = [];
-    const scenarioType = String(scenario?.victory?.type || scenario?.scoring?.type || "control");
+    const scenarioType = String(scenario?.structure?.templateId || "control");
     if (scenarioType && !SCENARIO_TYPES.has(scenarioType) && scenarioType !== "control_group") {
       issues.push(issue("warning", "scenario-type", `Unknown scenario type: ${scenarioType}.`));
     }
@@ -218,11 +218,13 @@
         if (!["blue", "red", "top", "bottom"].includes(objective.edge)) issues.push(issue("error", "objective-edge", `${objective.id} needs a valid exit edge.`, selection));
         if (!["blue", "red"].includes(objective.faction)) issues.push(issue("error", "objective-faction", `${objective.id} needs a valid faction.`, selection));
       }
-      if ((objectiveType === "destroy_target" || objectiveType === "protect_target") && !String(objective.targetId || "").trim()) {
-        issues.push(issue("warning", "objective-target", `${objective.id} has no target object ID.`, selection));
+      if (objectiveType === "destroy_target" || objectiveType === "protect_target") {
+        if (!String(objective.targetId || "").trim()) issues.push(issue("error", "objective-target", `${objective.id} has no target object.`, selection));
+        else if (!ids.has(String(objective.targetId))) issues.push(issue("error", "objective-target-missing", `${objective.id} references missing target ${objective.targetId}.`, selection));
       }
-      if (objectiveType === "unit_objective" && !String(objective.unitId || "").trim()) {
-        issues.push(issue("warning", "objective-unit", `${objective.id} has no target unit ID.`, selection));
+      if (objectiveType === "hold") {
+        if (!["blue", "red"].includes(objective.faction)) issues.push(issue("error", "objective-faction", `${objective.id} needs a valid faction.`, selection));
+        if (number(objective.checkpointRound) < 1 || number(objective.checkpointRound) > number(scenario.rounds, 1)) issues.push(issue("error", "objective-round", `${objective.id} checkpoint must fall within the scenario round limit.`, selection));
       }
       const points = objectiveType === "control_group" ? objective.points ?? [] : [objective];
       for (const point of points) {
@@ -235,6 +237,20 @@
       }
     }
 
+    const victoryPolicy = String(scenario.victory?.policy || "points");
+    if (!["points", "asymmetric_thresholds", "immediate"].includes(victoryPolicy)) issues.push(issue("error", "victory-policy", `Unknown victory policy: ${victoryPolicy}.`));
+    if (!scenario.objectives?.length && !scenario.victory?.elimination) issues.push(issue("error", "no-victory-route", "Scenario has no objectives and elimination is disabled."));
+
+    const registry = window.CrossroadsObjectiveRegistry;
+    if (registry) {
+      for (const objective of scenario.objectives ?? []) {
+        if (!registry.has(objective.type ?? "control_zone")) continue;
+        for (const message of registry.get(objective.type ?? "control_zone").validate?.(objective, scenario) ?? []) {
+          const selection = { kind:"objective", id:objective.id };
+          if (!issues.some(entry => entry.selection?.id === objective.id && entry.message === message)) issues.push(issue("error", "objective-config", `${objective.id}: ${message}`, selection));
+        }
+      }
+    }
     return issues;
   }
 

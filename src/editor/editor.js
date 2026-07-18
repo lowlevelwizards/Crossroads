@@ -16,12 +16,14 @@
   const VISIBILITY = window.CrossroadsScenarioVisibility;
   const EDITOR_STATE = window.CrossroadsEditorState;
   const SELECTION = window.CrossroadsEditorSelection;
+  const MULTI = window.CrossroadsEditorMultiSelect;
   const TOOLS = window.CrossroadsEditorTools;
   const WOODLAND = window.CrossroadsWoodlandGenerator;
   const SCHEMA = window.CrossroadsScenarioSchema;
+  const SEMANTICS = window.CrossroadsTerrainSemantics;
 
-  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !TOOLS || !WOODLAND || !SCHEMA) {
-    throw new Error("Terrain Editor E1.4 dependencies did not load.");
+  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !MULTI || !TOOLS || !WOODLAND || !SCHEMA || !SEMANTICS) {
+    throw new Error("Scenario Composer S1.0 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
@@ -29,11 +31,17 @@
   const PLAYTEST_STORAGE_KEY = "crossroads.editor.playtest";
   const LAST_SCENARIO_STORAGE_KEY = "crossroads.editor.lastScenario";
   const CUSTOM_SCENARIOS_STORAGE_KEY = "crossroads.editor.customScenarios";
+  const EDITOR_CLIPBOARD_STORAGE_KEY = "crossroads.editor.clipboard";
   const scenarioSources = new Map(Object.entries(SCENARIOS));
 
   const refs = Object.freeze({
     scenarioSelect: document.getElementById("editorScenarioSelect"),
     scenarioTypeSelect: document.getElementById("scenarioTypeSelect"),
+    victoryPolicySelect: document.getElementById("victoryPolicySelect"),
+    victoryTiebreakerSelect: document.getElementById("victoryTiebreakerSelect"),
+    victoryBlueThreshold: document.getElementById("victoryBlueThreshold"),
+    victoryRedThreshold: document.getElementById("victoryRedThreshold"),
+    eliminationVictoryToggle: document.getElementById("eliminationVictoryToggle"),
     newScenarioButton: document.getElementById("newScenarioButton"),
     renameScenarioButton: document.getElementById("renameScenarioButton"),
     deleteScenarioButton: document.getElementById("deleteScenarioButton"),
@@ -92,6 +100,8 @@
     inspectorEmpty: document.getElementById("inspectorEmpty"),
     inspectorForm: document.getElementById("inspectorForm"),
     selectionActions: document.getElementById("selectionActions"),
+    copySelectionButton: document.getElementById("copySelectionButton"),
+    pasteSelectionButton: document.getElementById("pasteSelectionButton"),
     duplicateSelectionButton: document.getElementById("duplicateSelectionButton"),
     deleteSelectionButton: document.getElementById("deleteSelectionButton"),
     validationCount: document.getElementById("validationCount"),
@@ -123,7 +133,11 @@
   });
 
   const state = EDITOR_STATE.create();
-
+  try {
+    state.clipboard = JSON.parse(localStorage.getItem(EDITOR_CLIPBOARD_STORAGE_KEY) || "null");
+  } catch (_error) {
+    state.clipboard = null;
+  }
 
   function option(value, label) {
     const node = document.createElement("option");
@@ -232,11 +246,9 @@
   }
 
   function scenarioType(scenario = state.document) {
-    const explicit = String(scenario?.victory?.type || "");
-    if (["control", "breakthrough", "delay", "elimination", "survival", "escort", "custom"].includes(explicit)) return explicit;
-    if (scenario?.id === "breakthrough") return "breakthrough";
-    if (scenario?.scoring?.type === "breakthrough") return "breakthrough";
-    return "control";
+    const explicit = String(scenario?.structure?.templateId || "");
+    if (["control", "breakthrough", "delay", "elimination", "survival", "escort", "raid", "custom"].includes(explicit)) return explicit;
+    return scenario?.id === "breakthrough" ? "breakthrough" : "control";
   }
 
   function saveCustomDraft() {
@@ -297,6 +309,13 @@
     state.status = `Loaded ${source.title}`;
     refs.scenarioSelect.value = id;
     refs.scenarioTypeSelect.value = scenarioType(state.document);
+    refs.victoryPolicySelect.value = state.document.victory?.policy ?? "points";
+    refs.victoryTiebreakerSelect.value = state.document.victory?.tiebreaker ?? "survivingUnits";
+    refs.victoryBlueThreshold.value = state.document.victory?.thresholds?.blue ?? 5;
+    refs.victoryRedThreshold.value = state.document.victory?.thresholds?.red ?? 5;
+    refs.victoryBlueThreshold.disabled = refs.victoryPolicySelect.value !== "asymmetric_thresholds";
+    refs.victoryRedThreshold.disabled = refs.victoryPolicySelect.value !== "asymmetric_thresholds";
+    refs.eliminationVictoryToggle.checked = state.document.victory?.elimination === true;
     if (refs.returnToGameLink) refs.returnToGameLink.href = `index.html?fromEditor=1&scenario=${encodeURIComponent(id)}`;
     try { localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, id); } catch (error) { /* Storage is optional. */ }
     renderAll();
@@ -315,13 +334,33 @@
     return SELECTION.key(selection);
   }
 
-  function setSelection(selection) {
-    state.selection = SELECTION.normalize(selection);
+  function selectedObjectSelections() {
+    return MULTI.unique(state.selectionSet?.length ? state.selectionSet : (state.selection ? [state.selection] : []));
+  }
+
+  function isObjectSelected(selection) {
+    return MULTI.contains(selectedObjectSelections(), selection);
+  }
+
+  function setSelection(selection, options = {}) {
+    const normalized = SELECTION.normalize(selection);
+    if (!normalized) {
+      state.selection = null;
+      state.selectionSet = [];
+      return null;
+    }
+    if (options.additive && !normalized.component) {
+      state.selectionSet = MULTI.toggle(selectedObjectSelections(), normalized);
+      state.selection = state.selectionSet.length ? state.selectionSet[state.selectionSet.length - 1] : null;
+      return state.selection;
+    }
+    state.selection = normalized;
+    state.selectionSet = [SELECTION.objectOnly(normalized)];
     return state.selection;
   }
 
-  function select(selection) {
-    setSelection(selection);
+  function select(selection, options = {}) {
+    setSelection(selection, options);
     renderSelectionAndInspector();
     renderObjectList();
     renderValidation();
@@ -365,6 +404,25 @@
       return { x:base.x - pad, y:base.y - pad, width:base.width + pad * 2, height:base.height + pad * 2 };
     }
     return null;
+  }
+
+  function objectBoundsFor(selection) {
+    const normalized = SELECTION.objectOnly(selection);
+    const item = itemFromSelection(normalized);
+    if (!normalized || !item) return null;
+    if (normalized.kind === "terrain") return { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
+    if (normalized.kind === "linear" || normalized.kind === "patch") return geometryBoundsFor(item, normalized);
+    if (normalized.kind === "unit") return { x:number(item.x)-.9, y:number(item.y)-.9, width:1.8, height:1.8 };
+    if (normalized.kind === "objective") {
+      const radius = Math.max(.7, number(item.radius, 2));
+      return { x:number(item.x)-radius, y:number(item.y)-radius, width:radius*2, height:radius*2 };
+    }
+    if (normalized.kind === "zone") return { x:number(item.xMin), y:number(item.yMin), width:number(item.xMax)-number(item.xMin), height:number(item.yMax)-number(item.yMin) };
+    return null;
+  }
+
+  function selectedBounds() {
+    return MULTI.unionBounds(selectedObjectSelections().map(objectBoundsFor));
   }
 
   function materialChoicesForLinear(styleId) {
@@ -578,7 +636,8 @@
     if (state.showTerrain || state.drawingPatch) {
       for (const patch of state.document.terrainPatches ?? []) {
         if (!isItemVisible(patch) || !Array.isArray(patch.points) || patch.points.length < 3) continue;
-        const selected = state.selection?.kind === "patch" && String(state.selection.id) === String(patch.id);
+        const selected = isObjectSelected({ kind:"patch", id:patch.id });
+        const primary = SELECTION.sameObject(state.selection, { kind:"patch", id:patch.id });
         const points = patch.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
         refs.interactionSvg.appendChild(svgNode("polygon", {
           points,
@@ -590,7 +649,7 @@
         for (let index = 0; index < patch.points.length; index += 1) {
           const a = patch.points[index];
           const b = patch.points[(index + 1) % patch.points.length];
-          const sectionSelected = selected && state.selection.segmentIndex === index;
+          const sectionSelected = primary && state.selection.segmentIndex === index;
           if (sectionSelected) refs.interactionSvg.appendChild(svgNode("line", {
             x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight"
           }));
@@ -599,7 +658,7 @@
             "data-editor-kind":"patch-segment", "data-patch-id":patch.id, "data-segment-index":index
           }));
         }
-        if (!selected) continue;
+        if (!primary) continue;
         patch.points.forEach((point, index) => {
           refs.interactionSvg.appendChild(svgNode("circle", {
             cx:number(point.x), cy:number(point.y), r:.62,
@@ -613,7 +672,8 @@
     if (state.showLinear || state.drawingPath) {
       for (const path of state.document.linearTerrain ?? []) {
         if (!isItemVisible(path) || !Array.isArray(path.points) || path.points.length < 2) continue;
-        const selected = state.selection?.kind === "linear" && String(state.selection.id) === String(path.id);
+        const selected = isObjectSelected({ kind:"linear", id:path.id });
+        const primary = SELECTION.sameObject(state.selection, { kind:"linear", id:path.id });
         const points = path.points.map(point => `${number(point.x)},${number(point.y)}`).join(" ");
         if (selected) {
           refs.interactionSvg.appendChild(svgNode("polyline", {
@@ -626,7 +686,7 @@
         for (let index = 0; index < path.points.length - 1; index += 1) {
           const a = path.points[index];
           const b = path.points[index + 1];
-          const segmentSelected = selected && state.selection.segmentIndex === index;
+          const segmentSelected = primary && state.selection.segmentIndex === index;
           if (segmentSelected) refs.interactionSvg.appendChild(svgNode("line", {
             x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight"
           }));
@@ -637,7 +697,7 @@
             "data-editor-kind":"segment", "data-linear-id":path.id, "data-segment-index":index
           }));
         }
-        if (!selected) continue;
+        if (!primary) continue;
         path.points.forEach((point, index) => {
           const circle = svgNode("circle", {
             cx:number(point.x), cy:number(point.y), r:.62,
@@ -694,16 +754,69 @@
 
   function renderSelectionBox() {
     refs.selectionLayer.replaceChildren();
+    if (state.marquee) {
+      const x = Math.min(state.marquee.start.x, state.marquee.current.x);
+      const y = Math.min(state.marquee.start.y, state.marquee.current.y);
+      const width = Math.abs(state.marquee.current.x - state.marquee.start.x);
+      const height = Math.abs(state.marquee.current.y - state.marquee.start.y);
+      const marquee = document.createElement("div");
+      marquee.className = "editor-selection-marquee";
+      marquee.style.left = percent(x, table().width);
+      marquee.style.top = percent(y, table().height);
+      marquee.style.width = percent(width, table().width);
+      marquee.style.height = percent(height, table().height);
+      refs.selectionLayer.appendChild(marquee);
+    }
+    const selections = selectedObjectSelections();
+    if (!selections.length || !state.selection) return;
+
+    function allowed(selection, item) {
+      if (!item || !isItemVisible(item)) return false;
+      if ((selection.kind === "terrain" || selection.kind === "patch") && !state.showTerrain) return false;
+      if (selection.kind === "linear" && !state.showLinear) return false;
+      if (selection.kind === "unit" && !state.showUnits) return false;
+      if (selection.kind === "objective" && !state.showObjectives) return false;
+      if (selection.kind === "zone" && !state.showZones) return false;
+      return true;
+    }
+
+    function appendRect(rect, className) {
+      if (!rect) return null;
+      const node = document.createElement("div");
+      node.className = className;
+      node.style.left = percent(rect.x, table().width);
+      node.style.top = percent(rect.y, table().height);
+      node.style.width = percent(rect.width, table().width);
+      node.style.height = percent(rect.height, table().height);
+      refs.selectionLayer.appendChild(node);
+      return node;
+    }
+
+    if (selections.length > 1) {
+      const visibleSelections = selections.filter(selection => allowed(selection, itemFromSelection(selection)));
+      for (const selection of visibleSelections) appendRect(objectBoundsFor(selection), "editor-multi-selection-member");
+      const bounds = MULTI.unionBounds(visibleSelections.map(objectBoundsFor));
+      if (!bounds) return;
+      const locked = visibleSelections.every(selection => isItemLocked(itemFromSelection(selection)));
+      const node = appendRect(bounds, `editor-selection-box is-multi${locked ? " is-locked" : ""}`);
+      node.dataset.selectionCount = String(visibleSelections.length);
+      if (!locked) {
+        const resize = document.createElement("span");
+        resize.className = "editor-selection-handle editor-resize-handle";
+        resize.dataset.editorAction = "resize";
+        const stem = document.createElement("span");
+        stem.className = "editor-rotate-stem";
+        const rotate = document.createElement("span");
+        rotate.className = "editor-selection-handle editor-rotate-handle";
+        rotate.dataset.editorAction = "rotate";
+        node.append(resize, stem, rotate);
+      }
+      return;
+    }
+
     const selection = state.selection;
     const item = itemForSelection();
-    if (!selection || !item) return;
-    if (!isItemVisible(item)) return;
-    if ((selection.kind === "terrain" && !state.showTerrain) ||
-        (selection.kind === "patch" && !state.showTerrain) ||
-        (selection.kind === "linear" && !state.showLinear) ||
-        (selection.kind === "unit" && !state.showUnits) ||
-        (selection.kind === "objective" && !state.showObjectives) ||
-        (selection.kind === "zone" && !state.showZones)) return;
+    if (!allowed(selection, item)) return;
     let rect = null;
     let pointLike = false;
     let rotation = 0;
@@ -727,21 +840,16 @@
     } else if (selection.kind === "objective") {
       const point = pointForSelection() ?? item;
       const radius = Math.max(.7, number(point.radius, number(item.radius, 2)));
-      rect = { x:number(point.x), y:number(point.y), width:radius * 2, height:radius * 2 };
+      rect = { x:number(point.x), y:number(point.y), width:radius*2, height:radius*2 };
       pointLike = true;
       resizable = true;
     } else if (selection.kind === "zone") {
-      rect = { x:number(item.xMin), y:number(item.yMin), width:number(item.xMax) - number(item.xMin), height:number(item.yMax) - number(item.yMin) };
+      rect = { x:number(item.xMin), y:number(item.yMin), width:number(item.xMax)-number(item.xMin), height:number(item.yMax)-number(item.yMin) };
       resizable = true;
     }
 
     if (!rect) return;
-    const node = document.createElement("div");
-    node.className = `editor-selection-box${pointLike ? " is-point" : ""}${selection.kind === "linear" ? " is-linear" : ""}${selection.kind === "patch" ? " is-patch" : ""}${locked ? " is-locked" : ""}`;
-    node.style.left = percent(rect.x, table().width);
-    node.style.top = percent(rect.y, table().height);
-    node.style.width = percent(rect.width, table().width);
-    node.style.height = percent(rect.height, table().height);
+    const node = appendRect(rect, `editor-selection-box${pointLike ? " is-point" : ""}${selection.kind === "linear" ? " is-linear" : ""}${selection.kind === "patch" ? " is-patch" : ""}${locked ? " is-locked" : ""}`);
     if (rotation) node.style.transform = `rotate(${rotation}deg)`;
     if (resizable && !locked) {
       const handle = document.createElement("span");
@@ -757,7 +865,6 @@
       handle.dataset.editorAction = "rotate";
       node.append(stem, handle);
     }
-    refs.selectionLayer.appendChild(node);
   }
 
   function makeObjectThumbnail(entry) {
@@ -894,7 +1001,7 @@
         const row = document.createElement("div");
         const visible = isItemVisible(entry.item);
         const locked = isItemLocked(entry.item);
-        row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${locked ? " is-locked-object" : ""}${SELECTION.sameObject(entry.selection, state.selection) ? " is-selected" : ""}`;
+        row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${locked ? " is-locked-object" : ""}${isObjectSelected(entry.selection) ? " is-selected" : ""}`;
         const button = document.createElement("button");
         button.type = "button";
         button.className = "editor-object-item";
@@ -991,6 +1098,13 @@
       field("Bounds height", "@bounds.height", Math.round(bounds.height * 100) / 100, { min:.5 });
   }
 
+  function terrainRulesNote(rules, context = {}) {
+    const normalized = SEMANTICS.normalize(rules ?? {}, context);
+    const access = normalized.infantryAccess ? "infantry passable" : "infantry impassable";
+    const vehicle = `vehicles ${normalized.vehicleAccess}`;
+    return `<h3 class="editor-inspector-subheading">Gameplay</h3><p class="editor-inspector-note editor-field-full"><strong>${escapeHtml(SEMANTICS.describe(normalized))}</strong><br>${escapeHtml(access)} · ${escapeHtml(vehicle)}${normalized.defensivePosition ? " · defensive position" : ""}</p>`;
+  }
+
   function layerControls(item) {
     const inherited = item.inheritLayer !== false;
     const layer = inherited ? defaultLayerFor(item) : number(item.layerOrder, defaultLayerFor(item));
@@ -1021,7 +1135,8 @@
       ["exit_unit", "Exit edge"],
       ["destroy_target", "Destroy target"],
       ["protect_target", "Protect target"],
-      ["unit_objective", "Unit objective"],
+      ["hold", "Hold until round"],
+      ["casualty", "Casualty scoring"],
       ["custom", "Custom marker"]
     ].map(([value, label]) => ({ value, label }));
   }
@@ -1029,14 +1144,23 @@
   function renderInspector() {
     const selection = state.selection;
     const item = itemForSelection();
-    refs.selectionKindBadge.textContent = selection ? (SELECTION.componentLabel(selection)?.toUpperCase() || `WHOLE ${selection.kind}`.toUpperCase()) : "NONE";
+    const selectionCount = selectedObjectSelections().length;
+    refs.selectionKindBadge.textContent = selectionCount > 1 ? `${selectionCount} OBJECTS` : selection ? (SELECTION.componentLabel(selection)?.toUpperCase() || `WHOLE ${selection.kind}`.toUpperCase()) : "NONE";
     refs.inspectorEmpty.hidden = Boolean(item);
     refs.inspectorForm.hidden = !item;
-    refs.selectionActions.hidden = !item;
-    refs.duplicateSelectionButton.disabled = !item || selection.kind === "zone" || selection.pointIndex !== undefined || selection.segmentIndex !== undefined;
-    refs.deleteSelectionButton.disabled = !item || selection.kind === "zone" || (selection.kind === "objective" && selection.pointIndex !== undefined);
+    refs.selectionActions.hidden = !item && !state.clipboard;
+    refs.copySelectionButton.disabled = !selectionCount;
+    refs.pasteSelectionButton.disabled = !state.clipboard;
+    refs.duplicateSelectionButton.disabled = !item || (selectionCount === 1 && (selection.kind === "zone" || selection.pointIndex !== undefined || selection.segmentIndex !== undefined));
+    refs.deleteSelectionButton.disabled = !item || (selectionCount === 1 && (selection.kind === "zone" || (selection.kind === "objective" && selection.pointIndex !== undefined)));
     if (!item) {
       refs.inspectorForm.innerHTML = "";
+      return;
+    }
+    if (selectionCount > 1) {
+      const lockedCount = selectedObjectSelections().filter(entry => isItemLocked(itemFromSelection(entry))).length;
+      refs.inspectorForm.innerHTML = `<p class="editor-inspector-note editor-field-full"><strong>${selectionCount} objects selected.</strong> Drag the group bounds to move them together. Use the corner and rotation handles to scale or rotate around their shared center. ${lockedCount ? `${lockedCount} locked object${lockedCount === 1 ? " is" : "s are"} excluded from transforms.` : ""}</p>` +
+        `<div class="editor-transform-actions editor-field-full"><button class="editor-button" type="button" data-editor-command="show-selected">Show all</button><button class="editor-button" type="button" data-editor-command="hide-selected">Hide all</button><button class="editor-button" type="button" data-editor-command="lock-selected">Lock all</button><button class="editor-button" type="button" data-editor-command="unlock-selected">Unlock all</button></div>`;
       return;
     }
 
@@ -1053,6 +1177,7 @@
           choices:BUILDINGS.appearanceIds.map(value => ({ value, label:value.replaceAll("_", " ") })), full:true
         });
       }
+      html += terrainRulesNote(definition?.rules);
       html += field("X", "x", item.x);
       html += field("Y", "y", item.y);
       html += field("Width", "width", item.width, { min:.25 });
@@ -1067,6 +1192,7 @@
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Style", "styleId", item.styleId, { choices:choiceEntries(LINEAR_STYLES), full:true });
       if (materials.length) html += field("Material", "material", item.material ?? defaultLinearMaterial(item.styleId), { choices:materials, full:true });
+      html += terrainRulesNote(style?.rules, { width:item.width ?? style?.width ?? 2, family:style?.family, renderer:style?.renderer });
       html += rangeField("Path width", "width", item.width ?? style?.width ?? 2, .25, 12, .1);
       html += field("Smoothing", "smoothing", item.smoothing ?? 0, { step:".05", min:0 });
       html += field("Start cap", "start.cap", item.start?.cap ?? "none", { choices:capChoices() });
@@ -1094,6 +1220,7 @@
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Patch type", "styleId", item.styleId, { choices:choiceEntries(PATCH_STYLES), full:true });
       if (materials.length) html += field("Material", "material", item.material ?? style?.material, { choices:materials, full:true });
+      html += terrainRulesNote(style?.rules, { family:style?.family, renderer:"patch" });
       if (WOODLAND.isWoodland(item.styleId)) {
         const generator = item.generator ?? {};
         html += `<h3 class="editor-inspector-subheading">Generated trees</h3>`;
@@ -1149,15 +1276,33 @@
       if (item.type === "control_group") {
         if (selectedPoint) html += `<p class="editor-inspector-note">Editing control point ${selection.pointIndex + 1} of ${item.points.length}.</p>`;
         else html += `<div class="editor-waypoint-actions"><button class="editor-button" type="button" data-editor-command="add-objective-point">Add control point</button><button class="editor-button editor-button-danger" type="button" data-editor-command="remove-last-objective-point"${(item.points?.length ?? 0) <= 1 ? " disabled" : ""}>Remove last</button></div>`;
+        html += field("Scoring starts round", "roundScoring.0.startRound", item.roundScoring?.[0]?.startRound ?? 1, { min:1 });
+        html += field("Points / controlled point", "roundScoring.0.points", item.roundScoring?.[0]?.points ?? 1, { min:0 });
+        html += field("Maximum points / round", "roundScoring.0.maxPoints", item.roundScoring?.[0]?.maxPoints ?? 0, { min:0 });
+      } else if (item.type === "control_zone" || item.type === "crossing") {
+        html += field("Points each round", "roundPoints", item.roundPoints ?? 0, { min:0 });
+        html += field("Points at battle end", "finalPoints", item.finalPoints ?? 0, { min:0 });
       } else if (item.type === "exit_unit") {
         html += field("Exit edge", "edge", item.edge ?? "red", { choices:["blue","red","top","bottom"].map(value => ({value,label:value})) });
         html += field("Faction", "faction", item.faction ?? "red", { choices:[{value:"blue",label:"blue"},{value:"red",label:"red"}] });
         html += field("Zone depth", "depth", item.depth ?? 3, { min:.25 });
-        html += field("Points / unit", "pointsPerUnit", item.pointsPerUnit ?? 2, { min:0 });
+        html += field("Points / exited unit", "pointsPerUnit", item.pointsPerUnit ?? 2, { min:0 });
+        html += field("Opponent points / contained unit", "containmentPointsPerUnit", item.containmentPointsPerUnit ?? 0, { min:0 });
+        html += field("Minimum units", "minimumUnits", item.minimumUnits ?? 0, { min:0 });
       } else if (item.type === "destroy_target" || item.type === "protect_target") {
-        html += field("Target object ID", "targetId", item.targetId ?? "", { type:"text", full:true });
-      } else if (item.type === "unit_objective") {
-        html += field("Target unit ID", "unitId", item.unitId ?? "", { type:"text", full:true });
+        html += field("Assigned faction", "faction", item.faction ?? "blue", { choices:[{value:"blue",label:"blue"},{value:"red",label:"red"}] });
+        html += field("Target object ID", "targetId", item.targetId ?? "", { type:"text", full:true, readonly:true });
+        html += `<div class="editor-waypoint-actions editor-field-full"><button class="editor-button" type="button" data-editor-command="choose-objective-target">${state.targetPickerObjectiveId === item.id ? "Click a unit or terrain object…" : "Choose target on table"}</button><button class="editor-button editor-button-quiet" type="button" data-editor-command="clear-objective-target">Clear</button></div>`;
+        html += field("Points", "points", item.points ?? 3, { min:0 });
+        html += checkboxField("Immediate victory", "immediateVictory", item.immediateVictory === true, { full:true });
+      } else if (item.type === "hold") {
+        html += field("Assigned faction", "faction", item.faction ?? "blue", { choices:[{value:"blue",label:"blue"},{value:"red",label:"red"}] });
+        html += field("Checkpoint round", "checkpointRound", item.checkpointRound ?? state.document.rounds, { min:1, max:state.document.rounds });
+        html += field("Points", "points", item.points ?? 3, { min:0 });
+        html += checkboxField("Continuous hold", "continuous", item.continuous === true, { full:true });
+        html += checkboxField("Immediate victory", "immediateVictory", item.immediateVictory === true, { full:true });
+      } else if (item.type === "casualty") {
+        html += field("Points / destroyed unit", "pointsPerUnit", item.pointsPerUnit ?? 1, { min:0 });
       } else if (item.type === "crossing") {
         html += field("Path / crossing ID", "pathId", item.pathId ?? "", { type:"text", full:true });
       }
@@ -1193,7 +1338,8 @@
   function renderSelectionAndInspector() {
     renderSelectionBox();
     renderInspector();
-    refs.selectionReadout.textContent = SELECTION.describe(state.selection, itemForSelection());
+    const count = selectedObjectSelections().length;
+    refs.selectionReadout.textContent = count > 1 ? `${count} objects selected` : SELECTION.describe(state.selection, itemForSelection());
   }
 
   function renderDataPreview() {
@@ -1205,6 +1351,13 @@
     refs.scenarioTitleReadout.textContent = state.document.title || state.document.id;
     refs.scenarioSizeReadout.textContent = `${table().width}″ × ${table().height}″`;
     refs.scenarioTypeSelect.value = scenarioType(state.document);
+    refs.victoryPolicySelect.value = state.document.victory?.policy ?? "points";
+    refs.victoryTiebreakerSelect.value = state.document.victory?.tiebreaker ?? "survivingUnits";
+    refs.victoryBlueThreshold.value = state.document.victory?.thresholds?.blue ?? 5;
+    refs.victoryRedThreshold.value = state.document.victory?.thresholds?.red ?? 5;
+    refs.victoryBlueThreshold.disabled = refs.victoryPolicySelect.value !== "asymmetric_thresholds";
+    refs.victoryRedThreshold.disabled = refs.victoryPolicySelect.value !== "asymmetric_thresholds";
+    refs.eliminationVictoryToggle.checked = state.document.victory?.elimination === true;
     const customScenario = !isBuiltInScenario();
     refs.renameScenarioButton.disabled = !customScenario;
     refs.deleteScenarioButton.disabled = !customScenario;
@@ -1235,14 +1388,101 @@
     };
   }
 
+  function captureTransformEntry(selection) {
+    const normalized = SELECTION.objectOnly(selection);
+    const item = itemFromSelection(normalized);
+    if (!item || isItemLocked(item)) return null;
+    return {
+      selection:normalized,
+      original:DOCUMENT.clone(item),
+      originalPoints:Array.isArray(item.points) ? GEOMETRY.clonePoints(item.points) : null,
+      bounds:objectBoundsFor(normalized)
+    };
+  }
+
+  function applyGroupTranslation(entry, dx, dy) {
+    const item = itemFromSelection(entry.selection);
+    const original = entry.original;
+    if (!item) return;
+    if (Array.isArray(entry.originalPoints)) {
+      item.points = GEOMETRY.translate(entry.originalPoints, dx, dy).map(point => ({ ...point, x:snap(point.x), y:snap(point.y) }));
+    } else if (entry.selection.kind === "zone") {
+      item.xMin = snap(number(original.xMin)+dx); item.xMax = snap(number(original.xMax)+dx);
+      item.yMin = snap(number(original.yMin)+dy); item.yMax = snap(number(original.yMax)+dy);
+    } else {
+      if (Number.isFinite(Number(original.x))) item.x = snap(number(original.x)+dx);
+      if (Number.isFinite(Number(original.y))) item.y = snap(number(original.y)+dy);
+    }
+  }
+
+  function applyGroupScale(entry, origin, scaleX, scaleY) {
+    const item = itemFromSelection(entry.selection);
+    const original = entry.original;
+    if (!item) return;
+    const scalePoint = point => ({ ...point, x:snap(origin.x+(number(point.x)-origin.x)*scaleX), y:snap(origin.y+(number(point.y)-origin.y)*scaleY) });
+    if (Array.isArray(entry.originalPoints)) {
+      item.points = entry.originalPoints.map(scalePoint);
+      if (entry.selection.kind === "linear") scaleLinearWidths(item, original, Math.sqrt(Math.max(.01, Math.abs(scaleX*scaleY))));
+    } else if (entry.selection.kind === "terrain") {
+      item.x = snap(origin.x+(number(original.x)-origin.x)*scaleX);
+      item.y = snap(origin.y+(number(original.y)-origin.y)*scaleY);
+      item.width = snap(Math.max(.25, number(original.width)*Math.abs(scaleX)));
+      item.height = snap(Math.max(.25, number(original.height)*Math.abs(scaleY)));
+    } else if (entry.selection.kind === "zone") {
+      const a = scalePoint({ x:original.xMin, y:original.yMin });
+      const b = scalePoint({ x:original.xMax, y:original.yMax });
+      item.xMin = Math.min(a.x,b.x); item.xMax = Math.max(a.x,b.x);
+      item.yMin = Math.min(a.y,b.y); item.yMax = Math.max(a.y,b.y);
+    } else if (Number.isFinite(Number(original.x)) && Number.isFinite(Number(original.y))) {
+      const point = scalePoint(original);
+      item.x = point.x; item.y = point.y;
+      if (entry.selection.kind === "objective" && Number.isFinite(Number(original.radius))) item.radius = snap(Math.max(.25, number(original.radius)*Math.sqrt(Math.max(.01, Math.abs(scaleX*scaleY)))));
+    }
+  }
+
+  function applyGroupRotation(entry, center, degrees) {
+    const item = itemFromSelection(entry.selection);
+    const original = entry.original;
+    if (!item) return;
+    if (Array.isArray(entry.originalPoints)) {
+      item.points = entry.originalPoints.map(point => {
+        const rotated = MULTI.rotatePoint(point, center, degrees);
+        return { ...rotated, x:snap(rotated.x), y:snap(rotated.y) };
+      });
+    } else if (entry.selection.kind === "terrain") {
+      const originalCenter = { x:number(original.x)+number(original.width)/2, y:number(original.y)+number(original.height)/2 };
+      const nextCenter = MULTI.rotatePoint(originalCenter, center, degrees);
+      item.x = snap(nextCenter.x-number(original.width)/2);
+      item.y = snap(nextCenter.y-number(original.height)/2);
+      item.rotation = Math.round(number(original.rotation)+degrees);
+    } else if (entry.selection.kind === "zone") {
+      const corners = [
+        { x:original.xMin, y:original.yMin }, { x:original.xMax, y:original.yMin },
+        { x:original.xMax, y:original.yMax }, { x:original.xMin, y:original.yMax }
+      ].map(point => MULTI.rotatePoint(point, center, degrees));
+      item.xMin = snap(Math.min(...corners.map(point => point.x))); item.xMax = snap(Math.max(...corners.map(point => point.x)));
+      item.yMin = snap(Math.min(...corners.map(point => point.y))); item.yMax = snap(Math.max(...corners.map(point => point.y)));
+    } else if (Number.isFinite(Number(original.x)) && Number.isFinite(Number(original.y))) {
+      const point = MULTI.rotatePoint(original, center, degrees);
+      item.x = snap(point.x); item.y = snap(point.y);
+    }
+  }
+
   function startDrag(event, action, selection, options = {}) {
-    if (selection) setSelection(selection);
+    const normalized = SELECTION.normalize(selection);
+    const preserveGroup = normalized && !normalized.component && isObjectSelected(normalized) && selectedObjectSelections().length > 1;
+    if (normalized && !preserveGroup) setSelection(normalized);
+    else if (normalized && preserveGroup) state.selection = SELECTION.objectOnly(normalized);
     const item = itemForSelection();
     if (!item || isItemLocked(item)) return;
     const start = boardPoint(event);
     const point = pointForSelection();
     const originalPoints = Array.isArray(item.points) ? GEOMETRY.clonePoints(item.points) : null;
     const originalBounds = originalPoints ? GEOMETRY.bounds(originalPoints) : null;
+    const group = !state.selection?.component && selectedObjectSelections().length > 1
+      ? selectedObjectSelections().map(captureTransformEntry).filter(Boolean)
+      : [];
+    const groupBounds = MULTI.unionBounds(group.map(entry => entry.bounds));
     state.drag = {
       pointerId:event.pointerId,
       action,
@@ -1252,14 +1492,18 @@
       originalPoint:point ? DOCUMENT.clone(point) : null,
       originalPoints,
       originalBounds,
+      group,
+      groupBounds,
       pendingDetail:options.pendingDetail ?? null,
       moved:false
     };
     if (action === "rotate") {
-      if (originalBounds && (state.selection.kind === "linear" || state.selection.kind === "patch")) {
+      if (groupBounds && group.length > 1) {
+        state.drag.center = { x:groupBounds.centerX, y:groupBounds.centerY };
+      } else if (originalBounds && (state.selection.kind === "linear" || state.selection.kind === "patch")) {
         state.drag.center = { x:originalBounds.centerX, y:originalBounds.centerY };
       } else {
-        const rect = { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
+        const rect = objectBoundsFor(state.selection) ?? { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
         state.drag.center = { x:rect.x + rect.width / 2, y:rect.y + rect.height / 2 };
       }
       state.drag.startAngle = Math.atan2(start.y - state.drag.center.y, start.x - state.drag.center.x) * 180 / Math.PI;
@@ -1310,6 +1554,39 @@
     setupBoardGeometry();
   }
 
+  function startMarquee(event) {
+    const start = boardPoint(event);
+    state.marquee = {
+      pointerId:event.pointerId,
+      start,
+      current:start,
+      base:selectedObjectSelections()
+    };
+    refs.viewport.setPointerCapture?.(event.pointerId);
+    renderSelectionBox();
+  }
+
+  function finishMarquee() {
+    const marquee = state.marquee;
+    if (!marquee) return;
+    const rect = {
+      x:Math.min(marquee.start.x, marquee.current.x),
+      y:Math.min(marquee.start.y, marquee.current.y),
+      width:Math.abs(marquee.current.x-marquee.start.x),
+      height:Math.abs(marquee.current.y-marquee.start.y)
+    };
+    const candidates = objectGroups().flatMap(group => group.items.map(entry => entry.selection));
+    const hits = candidates.filter(selection => {
+      const item = itemFromSelection(selection);
+      return item && isItemVisible(item) && MULTI.intersects(rect, objectBoundsFor(selection));
+    });
+    state.selectionSet = MULTI.unique([...marquee.base, ...hits]);
+    state.selection = state.selectionSet.length ? state.selectionSet[state.selectionSet.length - 1] : null;
+    state.marquee = null;
+    renderSelectionAndInspector();
+    renderObjectList();
+  }
+
   function addDrawingPoint(event) {
     const drawing = state.drawingPath ?? state.drawingPatch;
     if (!drawing) return;
@@ -1349,6 +1626,11 @@
       return;
     }
     const rawSelection = selectionFromTarget(event.target);
+    if (state.targetPickerObjectiveId && rawSelection && ["unit", "terrain"].includes(rawSelection.kind)) {
+      event.preventDefault();
+      assignObjectiveTarget(rawSelection);
+      return;
+    }
     const rawItem = rawSelection ? (rawSelection.kind === "zone" ? zoneForSelection(rawSelection) : DOCUMENT.find(state.document, rawSelection)) : null;
     if (rawSelection && isItemLocked(rawItem)) {
       event.preventDefault();
@@ -1357,11 +1639,19 @@
     }
     if (!rawSelection) {
       event.preventDefault();
+      if (event.shiftKey) {
+        startMarquee(event);
+        return;
+      }
       if (state.selection) select(null);
       startPan(event);
       return;
     }
     event.preventDefault();
+    if (event.shiftKey) {
+      select(SELECTION.objectOnly(rawSelection), { additive:true });
+      return;
+    }
     if (rawSelection.kind === "linear" || rawSelection.kind === "patch") {
       const currentMatches = SELECTION.sameObject(state.selection, rawSelection);
       const groupSelection = { kind:rawSelection.kind, id:rawSelection.id };
@@ -1389,6 +1679,24 @@
     const width = table().width;
     const height = table().height;
     if (Math.hypot(dx, dy) > .08) drag.moved = true;
+
+    if (drag.group?.length > 1 && drag.groupBounds) {
+      if (drag.action === "move") {
+        drag.group.forEach(entry => applyGroupTranslation(entry, dx, dy));
+      } else if (drag.action === "resize") {
+        const targetWidth = Math.max(.5, drag.groupBounds.width + dx);
+        const targetHeight = Math.max(.5, drag.groupBounds.height + dy);
+        const scaleX = targetWidth / Math.max(.01, drag.groupBounds.width);
+        const scaleY = targetHeight / Math.max(.01, drag.groupBounds.height);
+        drag.group.forEach(entry => applyGroupScale(entry, { x:drag.groupBounds.x, y:drag.groupBounds.y }, scaleX, scaleY));
+      } else if (drag.action === "rotate") {
+        const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * 180 / Math.PI;
+        const delta = angle - drag.startAngle;
+        drag.group.forEach(entry => applyGroupRotation(entry, drag.center, delta));
+      }
+      renderAll();
+      return;
+    }
 
     if (drag.action === "move") {
       if (selection.kind === "terrain") {
@@ -1461,6 +1769,12 @@
       state.drawingCursor = { x:snap(clamp(point.x, 0, table().width)), y:snap(clamp(point.y, 0, table().height)) };
       renderLinearInteraction();
     }
+    if (state.marquee && state.marquee.pointerId === event.pointerId) {
+      event.preventDefault();
+      state.marquee.current = { x:clamp(point.x, 0, table().width), y:clamp(point.y, 0, table().height) };
+      renderSelectionBox();
+      return;
+    }
     if (state.pan && state.pan.pointerId === event.pointerId) {
       event.preventDefault();
       const dx = event.clientX - state.pan.startClientX;
@@ -1476,6 +1790,11 @@
   }
 
   function onBoardPointerUp(event) {
+    if (state.marquee && state.marquee.pointerId === event.pointerId) {
+      refs.viewport.releasePointerCapture?.(event.pointerId);
+      finishMarquee();
+      return;
+    }
     if (state.pan && state.pan.pointerId === event.pointerId) {
       const moved = state.pan.moved;
       state.pan = null;
@@ -1503,7 +1822,8 @@
     let cursor = target;
     for (let index = 0; index < parts.length - 1; index += 1) {
       const part = parts[index];
-      cursor[part] = cursor[part] && typeof cursor[part] === "object" ? cursor[part] : {};
+      const nextPart = parts[index + 1];
+      cursor[part] = cursor[part] && typeof cursor[part] === "object" ? cursor[part] : /^\d+$/.test(nextPart) ? [] : {};
       cursor = cursor[part];
     }
     cursor[parts[parts.length - 1]] = value;
@@ -1899,6 +2219,7 @@
         { id:`${item.id}-b`, label:"Point B", x, y, radius:3 },
         { id:`${item.id}-c`, label:"Point C", x:snap(x + 5), y, radius:3 }
       ];
+      item.roundScoring = [{ faction:"blue", rule:"per_controlled", points:1, maxPoints:0, startRound:1 }];
     } else if (type === "crossing") {
       item.label = "Crossing";
       item.pathId = "";
@@ -1912,12 +2233,21 @@
     } else if (type === "destroy_target") {
       item.label = "Destroy Target";
       item.targetId = "";
+      item.faction = "blue";
+      item.points = 3;
     } else if (type === "protect_target") {
       item.label = "Protect Target";
       item.targetId = "";
-    } else if (type === "unit_objective") {
-      item.label = "Unit Objective";
-      item.unitId = "";
+      item.faction = "blue";
+      item.points = 3;
+    } else if (type === "hold") {
+      item.label = "Hold Until Round";
+      item.faction = "blue";
+      item.checkpointRound = state.document.rounds;
+      item.points = 3;
+    } else if (type === "casualty") {
+      item.label = "Enemy Losses";
+      item.pointsPerUnit = 1;
     } else if (type === "custom") {
       item.label = "Custom Objective";
     }
@@ -1980,38 +2310,58 @@
     }
   }
 
-  function duplicateSelection() {
-    if (!state.selection || state.selection.kind === "zone" || state.selection.pointIndex !== undefined || state.selection.segmentIndex !== undefined) return;
+  function copySelection() {
+    const selections = selectedObjectSelections();
+    if (!selections.length) return;
+    const payload = DOCUMENT.copySelections(state.document, selections);
+    if (!payload.items.length) return;
+    state.clipboard = payload;
+    try { localStorage.setItem(EDITOR_CLIPBOARD_STORAGE_KEY, JSON.stringify(payload)); } catch (_error) { /* Clipboard persistence is optional. */ }
+    state.status = `Copied ${payload.items.length} object${payload.items.length === 1 ? "" : "s"}`;
+    renderSelectionAndInspector();
+    refs.saveReadout.textContent = state.status;
+  }
+
+  function pasteSelection() {
+    if (!state.clipboard?.items?.length) return;
     const before = beforeMutation();
-    const copy = DOCUMENT.duplicate(state.document, state.selection);
-    if (!copy) return;
-    setSelection({ ...state.selection, id:copy.id });
-    commit(before, `Duplicated ${copy.id}`);
+    const pasted = DOCUMENT.pasteSelections(state.document, state.clipboard, { x:1.5, y:1.5 });
+    if (!pasted.length) return;
+    state.selectionSet = MULTI.unique(pasted);
+    state.selection = state.selectionSet[state.selectionSet.length - 1] ?? null;
+    commit(before, `Pasted ${pasted.length} object${pasted.length === 1 ? "" : "s"}`);
+  }
+
+  function duplicateSelection() {
+    const selections = selectedObjectSelections();
+    if (!selections.length || (selections.length === 1 && (state.selection.kind === "zone" || state.selection.pointIndex !== undefined || state.selection.segmentIndex !== undefined))) return;
+    const before = beforeMutation();
+    const payload = DOCUMENT.copySelections(state.document, selections);
+    const copies = DOCUMENT.pasteSelections(state.document, payload, { x:1, y:1 });
+    if (!copies.length) return;
+    state.selectionSet = MULTI.unique(copies);
+    state.selection = state.selectionSet[state.selectionSet.length - 1] ?? null;
+    commit(before, `Duplicated ${copies.length} object${copies.length === 1 ? "" : "s"}`);
   }
 
   function deleteSelection() {
-    if (!state.selection || state.selection.kind === "zone") return;
-    if (state.selection.kind === "linear" && state.selection.pointIndex !== undefined) {
-      removeWaypoint();
-      return;
+    const selections = selectedObjectSelections();
+    if (!selections.length) return;
+    if (selections.length === 1) {
+      if (state.selection.kind === "zone") return;
+      if (state.selection.kind === "linear" && state.selection.pointIndex !== undefined) { removeWaypoint(); return; }
+      if (state.selection.kind === "linear" && state.selection.segmentIndex !== undefined) { deleteSegment(); return; }
+      if (state.selection.kind === "patch" && state.selection.pointIndex !== undefined) { removePatchPoint(); return; }
+      if (state.selection.kind === "patch" && state.selection.segmentIndex !== undefined) { insertPatchPoint(state.selection.segmentIndex); return; }
     }
-    if (state.selection.kind === "linear" && state.selection.segmentIndex !== undefined) {
-      deleteSegment();
-      return;
-    }
-    if (state.selection.kind === "patch" && state.selection.pointIndex !== undefined) {
-      removePatchPoint();
-      return;
-    }
-    if (state.selection.kind === "patch" && state.selection.segmentIndex !== undefined) {
-      insertPatchPoint(state.selection.segmentIndex);
-      return;
-    }
+    const deletable = selections.filter(selection => selection.kind !== "zone");
+    if (!deletable.length) return;
     const before = beforeMutation();
-    const label = state.selection.id;
-    if (!DOCUMENT.remove(state.document, state.selection)) return;
+    let deleted = 0;
+    for (const selection of deletable) if (DOCUMENT.remove(state.document, selection)) deleted += 1;
+    if (!deleted) return;
     setSelection(null);
-    commit(before, `Deleted ${label}`);
+    commit(before, `Deleted ${deleted} object${deleted === 1 ? "" : "s"}`);
   }
 
   function itemFromSelection(selection) {
@@ -2055,6 +2405,21 @@
     }
   }
 
+  function mutateSelected(mode) {
+    const selections = selectedObjectSelections();
+    if (!selections.length) return;
+    const before = beforeMutation();
+    const makeVisible = mode === "show-selected";
+    const makeLocked = mode === "lock-selected";
+    for (const selection of selections) {
+      const item = itemFromSelection(selection);
+      if (!item) continue;
+      if (mode === "show-selected" || mode === "hide-selected") VISIBILITY.setVisible(item, makeVisible);
+      else VISIBILITY.setLocked(item, makeLocked);
+    }
+    commit(before, mode.replace("-selected", " selected objects"));
+  }
+
   function rerollGenerator() {
     const item = itemForSelection();
     if (state.selection?.kind !== "patch" || !item || !WOODLAND.isWoodland(item.styleId)) return;
@@ -2064,14 +2429,52 @@
     commit(before, `Rerolled ${item.id} tree layout`);
   }
 
+  function assignObjectiveTarget(selection) {
+    const objective = state.document.objectives.find(item => String(item.id) === String(state.targetPickerObjectiveId));
+    if (!objective) { state.targetPickerObjectiveId = null; return; }
+    const before = beforeMutation();
+    objective.targetId = selection.id;
+    objective.targetKind = selection.kind;
+    state.targetPickerObjectiveId = null;
+    setSelection({ kind:"objective", id:objective.id });
+    commit(before, `Assigned ${selection.id} to ${objective.label}`);
+  }
+
+  function chooseObjectiveTarget() {
+    const objective = itemForSelection();
+    if (state.selection?.kind !== "objective" || !objective || !["destroy_target", "protect_target"].includes(objective.type)) return;
+    state.targetPickerObjectiveId = objective.id;
+    state.status = "Choose a unit or discrete terrain object on the table or in the object list.";
+    renderAll();
+  }
+
+  function clearObjectiveTarget() {
+    const objective = itemForSelection();
+    if (state.selection?.kind !== "objective" || !objective) return;
+    const before = beforeMutation();
+    objective.targetId = "";
+    delete objective.targetKind;
+    state.targetPickerObjectiveId = null;
+    commit(before, `Cleared target for ${objective.label}`);
+  }
+
   function updateScenarioType(type) {
     const before = beforeMutation();
-    state.document.victory = state.document.victory ?? {};
-    state.document.scoring = state.document.scoring ?? {};
-    state.document.victory.type = type;
-    state.document.scoring.type = type;
+    state.document.structure = state.document.structure ?? {};
+    state.document.structure.templateId = type;
+    state.document.victory = state.document.victory ?? { policy:"points", tiebreaker:"survivingUnits" };
     if (type === "elimination") state.document.victory.elimination = true;
-    commit(before, `Scenario type set to ${type}`);
+    commit(before, `Scenario template set to ${type}`);
+  }
+
+  function updateVictoryField(field, value) {
+    const before = beforeMutation();
+    state.document.victory = state.document.victory ?? { policy:"points", tiebreaker:"survivingUnits", elimination:false };
+    if (field === "blueThreshold" || field === "redThreshold") {
+      state.document.victory.thresholds = state.document.victory.thresholds ?? {};
+      state.document.victory.thresholds[field === "blueThreshold" ? "blue" : "red"] = Math.max(1, Number(value) || 1);
+    } else state.document.victory[field] = value;
+    commit(before, `Victory ${field} updated`);
   }
 
   function setZoom(value, clientX = null, clientY = null) {
@@ -2139,8 +2542,10 @@
   function defaultObjectiveForScenario(type, scenario) {
     const x = scenario.table.width / 2;
     const y = scenario.table.height / 2;
-    if (type === "breakthrough") return { id:"exit-edge", type:"exit_unit", label:"Breakthrough Edge", edge:"blue", faction:"red", depth:3, pointsPerUnit:2, x:0, y, radius:1 };
-    if (type === "control" || type === "delay") return { id:"center-objective", type:"control_zone", label:"Central Objective", x, y, radius:3 };
+    if (type === "breakthrough") return { id:"exit-edge", type:"exit_unit", label:"Breakthrough Edge", edge:"blue", faction:"red", depth:3, pointsPerUnit:2, containmentPointsPerUnit:1, x:0, y, radius:1 };
+    if (type === "control") return { id:"center-objective", type:"control_zone", label:"Central Objective", x, y, radius:3, roundPoints:1, finalPoints:0 };
+    if (type === "delay") return { id:"hold-line", type:"hold", label:"Hold the Line", x, y, radius:4, faction:"blue", checkpointRound:scenario.rounds, points:4 };
+    if (type === "raid") return { id:"raid-target", type:"destroy_target", label:"Destroy Target", x, y, radius:2, faction:"red", targetId:"", points:4 };
     return null;
   }
 
@@ -2160,9 +2565,8 @@
       scenario.table.width = width;
       scenario.table.height = height;
       scenario.rounds = rounds;
-      scenario.victory = { ...(scenario.victory ?? {}), type };
-      scenario.scoring = { ...(scenario.scoring ?? {}), type };
-      scenario.description = `${scenario.description || ""} Duplicated in Terrain Editor E1.2.`.trim();
+      scenario.structure = { ...(scenario.structure ?? {}), templateId:type };
+      scenario.description = `${scenario.description || ""} Duplicated in Terrain Editor S1.0.`.trim();
     } else {
       scenario = DOCUMENT.createBlankScenario({ id, title, width, height, rounds, type, startingFaction:refs.newScenarioStartingFaction.value });
       const objective = defaultObjectiveForScenario(type, scenario);
@@ -2263,6 +2667,11 @@
   function bindEvents() {
     refs.scenarioSelect.addEventListener("change", () => loadScenario(refs.scenarioSelect.value));
     refs.scenarioTypeSelect.addEventListener("change", () => updateScenarioType(refs.scenarioTypeSelect.value));
+    refs.victoryPolicySelect.addEventListener("change", () => updateVictoryField("policy", refs.victoryPolicySelect.value));
+    refs.victoryTiebreakerSelect.addEventListener("change", () => updateVictoryField("tiebreaker", refs.victoryTiebreakerSelect.value));
+    refs.victoryBlueThreshold.addEventListener("change", () => updateVictoryField("blueThreshold", refs.victoryBlueThreshold.value));
+    refs.victoryRedThreshold.addEventListener("change", () => updateVictoryField("redThreshold", refs.victoryRedThreshold.value));
+    refs.eliminationVictoryToggle.addEventListener("change", () => updateVictoryField("elimination", refs.eliminationVictoryToggle.checked));
     refs.newScenarioButton.addEventListener("click", openNewScenarioDialog);
     refs.renameScenarioButton.addEventListener("click", openRenameScenarioDialog);
     refs.deleteScenarioButton.addEventListener("click", deleteCustomScenario);
@@ -2329,7 +2738,11 @@
         return;
       }
       const button = event.target.closest("[data-selection]");
-      if (button) select(JSON.parse(button.dataset.selection));
+      if (button) {
+        const selection = JSON.parse(button.dataset.selection);
+        if (state.targetPickerObjectiveId && ["unit", "terrain"].includes(selection.kind)) assignObjectiveTarget(selection);
+        else select(selection, { additive:event.shiftKey });
+      }
     });
     refs.validationList.addEventListener("click", event => {
       const button = event.target.closest("[data-selection]");
@@ -2372,7 +2785,12 @@
       if (command === "add-objective-point") addObjectivePoint();
       if (command === "remove-last-objective-point") removeLastObjectivePoint();
       if (command === "reroll-generator") rerollGenerator();
+      if (command === "choose-objective-target") chooseObjectiveTarget();
+      if (command === "clear-objective-target") clearObjectiveTarget();
+      if (["show-selected", "hide-selected", "lock-selected", "unlock-selected"].includes(command)) mutateSelected(command);
     });
+    refs.copySelectionButton.addEventListener("click", copySelection);
+    refs.pasteSelectionButton.addEventListener("click", pasteSelection);
     refs.duplicateSelectionButton.addEventListener("click", duplicateSelection);
     refs.deleteSelectionButton.addEventListener("click", deleteSelection);
     refs.copyJsonButton.addEventListener("click", () => copyText(DOCUMENT.serialize(state.document, 2), "Copied scenario JSON"));
@@ -2412,6 +2830,12 @@
       } else if (state.drawingPatch && event.key === "Escape") {
         event.preventDefault();
         cancelPatchDraw();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        copySelection();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
+        event.preventDefault();
+        pasteSelection();
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo(); else undo();

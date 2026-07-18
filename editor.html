@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Terrain Editor E1.5</title>
-  <link rel="stylesheet" href="styles/main.css?v=e15">
-  <link rel="stylesheet" href="styles/terrain.css?v=e15">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=e15">
-  <link rel="stylesheet" href="styles/mokra.css?v=e15">
-  <link rel="stylesheet" href="styles/stabilization.css?v=e15">
-  <link rel="stylesheet" href="styles/editor.css?v=e15">
+  <title>Crossroads — Scenario Composer S1.0</title>
+  <link rel="stylesheet" href="styles/main.css?v=s10">
+  <link rel="stylesheet" href="styles/terrain.css?v=s10">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=s10">
+  <link rel="stylesheet" href="styles/mokra.css?v=s10">
+  <link rel="stylesheet" href="styles/stabilization.css?v=s10">
+  <link rel="stylesheet" href="styles/editor.css?v=s10">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Terrain Editor E1.5</h1>
-      <p>Compose scenario data directly with transformable paths, editable polygon patches, material variants, explicit layer control, and procedural width profiles.</p>
+      <h1>CROSSROADS — Scenario Composer S1.0</h1>
+      <p>Compose battlefields and playable objectives through one shared terrain and scenario runtime.</p>
     </div>
     <div class="editor-header-actions">
       <a id="returnToGameLink" class="editor-button editor-button-quiet" href="index.html">Return to Game</a>
@@ -44,8 +44,25 @@
           <option value="elimination">Elimination</option>
           <option value="survival">Survival</option>
           <option value="escort">Escort</option>
+          <option value="raid">Raid</option>
           <option value="custom">Custom</option>
         </select>
+        <label class="editor-field-label" for="victoryPolicySelect">Victory policy</label>
+        <select id="victoryPolicySelect" class="editor-control">
+          <option value="points">Points at battle end</option>
+          <option value="asymmetric_thresholds">Asymmetric thresholds</option>
+          <option value="immediate">Decisive objective</option>
+        </select>
+        <div class="editor-row editor-threshold-row">
+          <label>Blue threshold<input id="victoryBlueThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
+          <label>Red threshold<input id="victoryRedThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
+        </div>
+        <label class="editor-field-label" for="victoryTiebreakerSelect">Points tiebreaker</label>
+        <select id="victoryTiebreakerSelect" class="editor-control">
+          <option value="survivingUnits">Surviving units</option>
+          <option value="survivingSoldiers">Surviving soldiers</option>
+        </select>
+        <label class="editor-check-row"><input id="eliminationVictoryToggle" type="checkbox"> Elimination ends battle</label>
         <div class="editor-inline-actions">
           <button id="resetScenarioButton" class="editor-button editor-button-quiet" type="button">Reset Source</button>
           <button id="fitButton" class="editor-button editor-button-quiet" type="button">Fit Table</button>
@@ -96,7 +113,8 @@
             <option value="exit_unit">Exit edge</option>
             <option value="destroy_target">Destroy target</option>
             <option value="protect_target">Protect target</option>
-            <option value="unit_objective">Unit objective</option>
+            <option value="hold">Hold until round</option>
+            <option value="casualty">Casualty scoring</option>
             <option value="custom">Custom marker</option>
           </select>
           <button id="addObjectiveButton" class="editor-button" type="button">Add</button>
@@ -222,6 +240,7 @@
             <option value="elimination">Elimination</option>
             <option value="survival">Survival</option>
             <option value="escort">Escort</option>
+          <option value="raid">Raid</option>
             <option value="custom">Custom</option>
           </select>
         </label>
@@ -249,39 +268,53 @@
     </form>
   </dialog>
 
-  <script src="data/terrain.js?v=e15"></script>
-  <script src="data/linear-terrain.js?v=e15"></script>
-  <script src="data/unit-quality.js?v=e15"></script>
-  <script src="data/unit-types.js?v=e15"></script>
-  <script src="data/scenarios.js?v=e15"></script>
-  <script src="src/presentation/layer-policy.js?v=e15"></script>
-  <script src="src/scenario/scenario-visibility.js?v=e15"></script>
-  <script src="src/scenario/scenario-migrations.js?v=e15"></script>
-  <script src="src/scenario/scenario-schema.js?v=e15"></script>
-  <script src="src/generation/seeded-random.js?v=e15"></script>
-  <script src="src/generation/polygon-geometry.js?v=e15"></script>
-  <script src="src/generation/polygon-scatter.js?v=e15"></script>
-  <script src="src/generation/row-generator.js?v=e15"></script>
-  <script src="src/generation/woodland-generator.js?v=e15"></script>
-  <script src="src/presentation/buildings.js?v=e15"></script>
-  <script src="src/presentation/woodland-trees.js?v=e15"></script>
-  <script src="src/presentation/terrain.js?v=e15"></script>
-  <script src="src/presentation/terrain-patches.js?v=e15"></script>
-  <script src="src/rules/terrain-semantics.js?v=e15"></script>
-  <script src="src/rules/terrain-spatial.js?v=e15"></script>
-  <script src="src/rules/path-geometry.js?v=e15"></script>
-  <script src="src/rules/linear-terrain.js?v=e15"></script>
-  <script src="src/presentation/linear-terrain.js?v=e15"></script>
-  <script src="src/presentation/scene-compositor.js?v=e15"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e15"></script>
-  <script src="src/rules/terrain-geometry.js?v=e15"></script>
-  <script src="src/editor/editor-state.js?v=e15"></script>
-  <script src="src/editor/editor-selection.js?v=e15"></script>
-  <script src="src/editor/editor-multiselect.js?v=e15"></script>
-  <script src="src/editor/editor-tools.js?v=e15"></script>
-  <script src="src/editor/editor-document.js?v=e15"></script>
-  <script src="src/editor/editor-validation.js?v=e15"></script>
-  <script src="src/editor/editor-geometry.js?v=e15"></script>
-  <script src="src/editor/editor.js?v=e15"></script>
+  <script src="data/terrain.js?v=s10"></script>
+  <script src="data/linear-terrain.js?v=s10"></script>
+  <script src="data/unit-quality.js?v=s10"></script>
+  <script src="data/unit-types.js?v=s10"></script>
+  <script src="data/scenarios.js?v=s10"></script>
+  <script src="src/presentation/layer-policy.js?v=s10"></script>
+  <script src="src/scenario/scenario-visibility.js?v=s10"></script>
+  <script src="src/scenario/scenario-migrations.js?v=s10"></script>
+  <script src="src/scenario/scenario-schema.js?v=s10"></script>
+  <script src="src/rules/objectives/objective-registry.js?v=s10"></script>
+  <script src="src/rules/objectives/objective-helpers.js?v=s10"></script>
+  <script src="src/rules/objectives/control-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/exit-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/casualty-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/destroy-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/protect-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/hold-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/passive-objective.js?v=s10"></script>
+  <script src="src/rules/objectives/victory-policies.js?v=s10"></script>
+  <script src="src/scenario-runtime/scenario-compiler.js?v=s10"></script>
+  <script src="src/scenario-runtime/scenario-events.js?v=s10"></script>
+  <script src="src/scenario-runtime/scenario-runtime.js?v=s10"></script>
+  <script src="src/scenario-runtime/scenario-presentation.js?v=s10"></script>
+  <script src="src/generation/seeded-random.js?v=s10"></script>
+  <script src="src/generation/polygon-geometry.js?v=s10"></script>
+  <script src="src/generation/polygon-scatter.js?v=s10"></script>
+  <script src="src/generation/row-generator.js?v=s10"></script>
+  <script src="src/generation/woodland-generator.js?v=s10"></script>
+  <script src="src/presentation/buildings.js?v=s10"></script>
+  <script src="src/presentation/woodland-trees.js?v=s10"></script>
+  <script src="src/presentation/terrain.js?v=s10"></script>
+  <script src="src/presentation/terrain-patches.js?v=s10"></script>
+  <script src="src/rules/terrain-semantics.js?v=s10"></script>
+  <script src="src/rules/terrain-spatial.js?v=s10"></script>
+  <script src="src/rules/path-geometry.js?v=s10"></script>
+  <script src="src/rules/linear-terrain.js?v=s10"></script>
+  <script src="src/presentation/linear-terrain.js?v=s10"></script>
+  <script src="src/presentation/scene-compositor.js?v=s10"></script>
+  <script src="src/presentation/terrain-runtime.js?v=s10"></script>
+  <script src="src/rules/terrain-geometry.js?v=s10"></script>
+  <script src="src/editor/editor-state.js?v=s10"></script>
+  <script src="src/editor/editor-selection.js?v=s10"></script>
+  <script src="src/editor/editor-multiselect.js?v=s10"></script>
+  <script src="src/editor/editor-tools.js?v=s10"></script>
+  <script src="src/editor/editor-document.js?v=s10"></script>
+  <script src="src/editor/editor-validation.js?v=s10"></script>
+  <script src="src/editor/editor-geometry.js?v=s10"></script>
+  <script src="src/editor/editor.js?v=s10"></script>
 </body>
 </html>

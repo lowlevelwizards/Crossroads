@@ -1,7 +1,6 @@
 "use strict";
 
 (() => {
-  const SUPPORTED_RUNTIME_OBJECTIVES = new Set(["control_zone", "control_group", "exit_unit"]);
   const SCHEMA = window.CrossroadsScenarioSchema;
   const VISIBILITY = window.CrossroadsScenarioVisibility;
   if (!SCHEMA || !VISIBILITY) throw new Error("Scenario schema and visibility modules must load before editor-document.js.");
@@ -37,8 +36,8 @@
     document.factions.red = document.factions.red ?? { name:"Red Force", shortName:"Red" };
     document.deployment = document.deployment && typeof document.deployment === "object" ? document.deployment : { mode:"player", order:["blue", "red"], zones:{} };
     document.deployment.zones = document.deployment.zones && typeof document.deployment.zones === "object" ? document.deployment.zones : {};
-    document.scoring = document.scoring && typeof document.scoring === "object" ? document.scoring : { roundControl:1, finalControl:0 };
-    document.victory = document.victory && typeof document.victory === "object" ? document.victory : { elimination:true, tiebreaker:"survivingUnits", type:"control" };
+    document.structure = document.structure && typeof document.structure === "object" ? document.structure : { templateId:"custom", roles:{} };
+    document.victory = document.victory && typeof document.victory === "object" ? document.victory : { policy:"points", elimination:true, tiebreaker:"survivingUnits" };
     return document;
   }
 
@@ -51,7 +50,7 @@
       id:String(options.id || "untitled-scenario"),
       title:String(options.title || "Untitled Scenario"),
       schemaVersion:SCHEMA.CURRENT_VERSION,
-      description:"Created in Terrain Editor E1.4.",
+      description:"Created in Scenario Composer S1.0.",
       rounds:Math.max(1, Number(options.rounds) || 6),
       table:{ width, height, mat:"grass_temperate" },
       factions:{
@@ -68,8 +67,8 @@
         }
       },
       forces:{ blue:[], red:[] },
-      scoring:{ type, roundControl:type === "control" ? 1 : 0, finalControl:0 },
-      victory:{ type, elimination:type === "elimination" || type === "control", tiebreaker:"survivingUnits" }
+      structure:{ templateId:type, roles:type === "breakthrough" || type === "delay" ? { attacker:"red", defender:"blue" } : {} },
+      victory:{ policy:"points", elimination:type === "elimination" || type === "control", tiebreaker:"survivingUnits" }
     });
   }
 
@@ -130,6 +129,53 @@
     if (Array.isArray(copy.points)) copy.points = copy.points.map(point => ({ ...point, x:Number(point.x) + 1, y:Number(point.y) + 1 }));
     collection.push(copy);
     return copy;
+  }
+
+
+  function copySelections(document, selections = []) {
+    const seen = new Set();
+    const items = [];
+    for (const selection of selections) {
+      if (!selection || selection.kind === "zone") continue;
+      const key = `${selection.kind}:${selection.faction || ""}:${selection.id || ""}`;
+      if (seen.has(key)) continue;
+      const item = find(document, selection);
+      if (!item) continue;
+      seen.add(key);
+      items.push({ selection:{ kind:selection.kind, id:selection.id, faction:selection.faction }, item:clone(item) });
+    }
+    return Object.freeze({ schemaVersion:1, items:Object.freeze(items) });
+  }
+
+  function pasteSelections(document, payload, offset = { x:1, y:1 }) {
+    const sourceItems = Array.isArray(payload?.items) ? payload.items : [];
+    const idMap = new Map();
+    const prepared = [];
+    for (const entry of sourceItems) {
+      const selection = entry?.selection;
+      if (!selection?.kind || selection.kind === "zone" || !entry.item) continue;
+      const item = clone(entry.item);
+      const oldId = String(item.id || selection.id || selection.kind);
+      item.id = nextId(document, `${oldId}-copy`);
+      idMap.set(oldId, item.id);
+      prepared.push({ selection, item });
+    }
+    const result = [];
+    for (const entry of prepared) {
+      const selection = entry.selection;
+      const item = entry.item;
+      if (Number.isFinite(Number(item.x))) item.x = Number(item.x) + Number(offset.x || 0);
+      if (Number.isFinite(Number(item.y))) item.y = Number(item.y) + Number(offset.y || 0);
+      if (Number.isFinite(Number(item.xMin))) { item.xMin = Number(item.xMin) + Number(offset.x || 0); item.xMax = Number(item.xMax) + Number(offset.x || 0); }
+      if (Number.isFinite(Number(item.yMin))) { item.yMin = Number(item.yMin) + Number(offset.y || 0); item.yMax = Number(item.yMax) + Number(offset.y || 0); }
+      if (Array.isArray(item.points)) item.points = item.points.map(point => ({ ...point, x:Number(point.x)+Number(offset.x || 0), y:Number(point.y)+Number(offset.y || 0) }));
+      for (const field of ["targetId", "unitId", "pathId"]) if (item[field] && idMap.has(String(item[field]))) item[field] = idMap.get(String(item[field]));
+      const collection = collectionFor(document, selection.kind, selection.faction);
+      if (!collection) continue;
+      collection.push(item);
+      result.push({ kind:selection.kind, id:item.id, faction:selection.faction });
+    }
+    return result;
   }
 
   function insertLinearWaypoint(document, pathId, segmentIndex, point = null) {
@@ -207,17 +253,13 @@
     scenario.forces.red = scenario.forces.red.filter(visible);
     scenario.id = "editor_playtest";
     scenario.title = `${scenario.title || "Untitled Scenario"} — Editor Playtest`;
-    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.4.`.trim();
+    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor S1.0.`.trim();
     scenario.deployment = scenario.deployment ?? { zones:{} };
     scenario.deployment.mode = "fixed";
     scenario.deployment.order = [];
     if (!scenario.objectives.length) {
       scenario.objectives.push({ id:"editor-center", type:"control_zone", label:"Table Center", x:scenario.table.width / 2, y:scenario.table.height / 2, radius:3 });
     }
-    scenario.objectives = scenario.objectives.map(objective => {
-      if (SUPPORTED_RUNTIME_OBJECTIVES.has(objective.type ?? "control_zone")) return objective;
-      return { ...objective, editorObjectiveType:objective.type, type:"control_zone", x:Number(objective.x) || scenario.table.width / 2, y:Number(objective.y) || scenario.table.height / 2, radius:Number(objective.radius) || 3 };
-    });
     return clean(scenario);
   }
 
@@ -231,6 +273,8 @@
     find,
     remove,
     duplicate,
+    copySelections,
+    pasteSelections,
     insertLinearWaypoint,
     deleteLinearSegment,
     clean,

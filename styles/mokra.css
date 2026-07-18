@@ -125,3 +125,23 @@
 /* Terrain pieces and units share the battlefield stacking context. */
 .terrain-layer { display:contents; }
 .terrain-ground-plane { pointer-events:none; }
+
+/* Scenario Runtime S1.0 typed battlefield markers */
+.scenario-exit-lane {
+  position:absolute;
+  z-index:17;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  border:2px dashed rgba(196,89,68,.76);
+  background:repeating-linear-gradient(135deg,rgba(196,89,68,.12) 0 6px,rgba(196,89,68,.03) 6px 12px);
+}
+.scenario-exit-lane.edge-blue { left:0; top:0; bottom:0; border-left:0; }
+.scenario-exit-lane.edge-red { right:0; top:0; bottom:0; border-right:0; }
+.scenario-exit-lane.edge-top { left:0; right:0; top:0; border-top:0; }
+.scenario-exit-lane.edge-bottom { left:0; right:0; bottom:0; border-bottom:0; }
+.scenario-exit-lane b { padding:3px 5px; background:rgba(35,39,40,.78); color:#f8ead0; border-radius:4px; font:800 8px/1 sans-serif; text-transform:uppercase; letter-spacing:.06em; }
+.scenario-target-badge { position:absolute; z-index:18; transform:translate(-50%,-50%); display:grid; justify-items:center; pointer-events:none; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.scenario-target-badge span { display:grid; place-items:center; width:24px; height:24px; border-radius:50%; background:#292e30; border:2px solid #f0d3c7; color:#f0d3c7; font:900 15px/1 sans-serif; }
+.scenario-target-badge.protect span { border-color:#b9d8c5; color:#b9d8c5; }
+.scenario-target-badge b { margin-top:2px; padding:2px 5px; border-radius:4px; background:rgba(35,39,40,.82); color:#f7edcf; font:700 8px/1 sans-serif; white-space:nowrap; }

@@ -266,13 +266,9 @@ tests/combat-rules.html
 
 ## Mokra M1 scenario extension
 
-Mokra introduces two reusable scenario capabilities without adding scenario-id branches to combat:
+Mokra originally introduced grouped control points through a temporary runtime wrapper. Scenario Runtime S1.0 removes that wrapper and compiles Mokra through the same evaluator registry as every other scenario. Named deployment sub-zones remain normal scenario data, while railway crossing behavior still emerges from terrain composition rather than scenario-specific movement code.
 
-- `src/rules/objectives.js` calculates ownership and scoring for grouped control points.
-- `src/rules/scenario-runtime.js` adapts grouped objectives and named deployment sub-zones to the existing coordinator while preserving legacy single-objective scenarios.
-- `rail_embankment` uses the existing crossing/hard-cover contract. Mokra places separate embankment segments between open railway-crossing pieces, so crossing exceptions emerge from terrain composition rather than bespoke movement code.
-
-Scenario definitions remain pure data. New grouped-control scenarios should use `type: "control_group"`; new split deployments should put `subzones` on the normal faction zone and assign `deploymentZone` on force entries.
+Scenario definitions remain pure data. Grouped-control scenarios use `type: "control_group"`; split deployments put `subzones` on the normal faction zone and assign `deploymentZone` on force entries.
 
 ## Mokra M1.1 terrain contracts
 
@@ -391,4 +387,61 @@ This is an incremental split, not a framework migration. Classic ordered scripts
 plain JavaScript, and snapshot undo remain intentional. Future editor extraction
 should move one coherent responsibility at a time and delete the controller logic
 it replaces.
+
+## Terrain Editor E1.5 scene, semantics, and selection boundary
+
+E1.5 keeps terrain appearance, terrain meaning, and editor manipulation as three
+separate concerns:
+
+```text
+scenario geometry
+  ├─ pure spatial queries → movement / shooting / assault
+  ├─ semantic normalization → movement, cover, LOS, access
+  └─ shared presentation → body / foreground / canopy fragments
+```
+
+`src/rules/terrain-semantics.js` is the canonical rules vocabulary for terrain.
+It normalizes stable fields such as movement, cover, line of sight, defensive
+position, infantry access, and vehicle access. Local linear-terrain width may
+refine those semantics without changing the authored style definition.
+
+`src/rules/terrain-spatial.js` owns polygon point and segment queries. The
+terrain geometry registry now includes discrete rectangles, polygon patches,
+and compiled linear corridors. Combat rules receive one optional
+`segmentTerrainClip` dependency and preserve their previous rectangle fallback
+for isolated characterization tests.
+
+Complex scenery may emit multiple presentation fragments while remaining one
+scenario object. Woodland floor remains a ground patch; tree bodies share the
+unit table-depth band; tree canopies receive a small fragment offset. Buildings
+may emit a shallow foreground clone. `layer-policy.js` remains the only numeric
+layer authority, and manual layering remains an authored exception rather than
+the normal occlusion mechanism.
+
+Multi-selection is object-level. `editor-multiselect.js` owns selection-set
+identity, collective bounds, intersection tests, and point rotation. The editor
+document owns clipboard serialization and paste-time ID/reference remapping.
+Component editing remains single-selection so path waypoints and polygon
+vertices retain unambiguous behavior. Snapshot undo remains intentional.
+## Scenario Runtime S1.0 objective boundary
+
+Scenario loading now follows one canonical pipeline:
+
+```text
+raw scenario
+  → schema migration and normalization
+  → scenario compiler
+  → objective runtime session
+  → score requests and victory result
+```
+
+`src/scenario-runtime/scenario-runtime.js` owns per-battle objective state and a small scenario-specific event history. The engine emits normalized events only after committing authoritative battlefield changes. Objective evaluators never move units, apply casualties, or update the DOM.
+
+`src/rules/objectives/objective-registry.js` is the single runtime authority for supported objective types. Each evaluator may create private state, handle committed events, calculate a presentation snapshot, and validate its definition. Current evaluators cover control, grouped control, presence, exits, casualties, destroy, protect, hold, and passive custom objectives.
+
+`src/rules/objectives/victory-policies.js` interprets accumulated scores and decisive-objective results. Objectives report progress and score deltas; victory policy decides whether the battle ends and how ties are resolved.
+
+`src/scenario-runtime/scenario-presentation.js` renders objective cards and battlefield markers from evaluator snapshots. It does not calculate ownership or scoring. The editor, validator, and live game all load the same objective registry and Schema v2 definitions.
+
+The former `src/rules/scenario-runtime.js` Mokra wrapper is now an inert compatibility tombstone so changed-file overlays remove its old behavior. New scenario mechanics belong in evaluators or generic runtime events, never scenario-ID branches in `engine.js`.
 

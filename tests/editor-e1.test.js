@@ -18,9 +18,13 @@ load("src/scenario/scenario-migrations.js");
 load("src/scenario/scenario-schema.js");
 load("src/editor/editor-document.js");
 load("src/editor/editor-validation.js");
+load("src/editor/editor-selection.js");
+load("src/editor/editor-multiselect.js");
 
 const DOC = context.window.CrossroadsEditorDocument;
 const VALIDATE = context.window.CrossroadsEditorValidation;
+const SELECTION = context.window.CrossroadsEditorSelection;
+const MULTI = context.window.CrossroadsEditorMultiSelect;
 
 const terrainTypes = {
   cottage:{ id:"cottage", label:"cottage", rules:{ movement:"impassable" }, presentation:{ footprint:{ x:.1, y:.2, width:.8, height:.6 } } },
@@ -47,6 +51,26 @@ assert.notStrictEqual(document, source, "editor document must be a clone");
 document.terrain[0].x = 12;
 assert.strictEqual(source.terrain[0].x, 10, "editing the document must not mutate source data");
 assert.strictEqual(DOC.nextId(document, "field-1"), "field-1-2", "ID generation must avoid collisions");
+
+
+const multiA = { kind:"terrain", id:"field-1" };
+const multiB = { kind:"linear", id:"road-1" };
+assert.strictEqual(MULTI.unique([multiA, multiA, multiB]).length, 2, "multi-selection must deduplicate whole objects");
+assert.strictEqual(MULTI.toggle([multiA], multiA).length, 0, "shift-toggle must remove an existing object");
+assert.strictEqual(MULTI.toggle([multiA], multiB).length, 2, "shift-toggle must add a new object");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(MULTI.unionBounds([{x:1,y:2,width:3,height:4},{x:10,y:1,width:2,height:2}]))), {x:1,y:1,width:11,height:5,centerX:6.5,centerY:3.5}, "multi-selection must compute a collective transform box");
+assert.strictEqual(SELECTION.level(SELECTION.withComponent(multiB, "segment", 0)), "component", "formal selection must distinguish component selections");
+
+const clipboardDocument = DOC.create(source);
+clipboardDocument.objectives[0].targetId = "field-1";
+const copiedPayload = DOC.copySelections(clipboardDocument, [multiA, { kind:"objective", id:"objective-1" }]);
+assert.strictEqual(copiedPayload.items.length, 2, "copy must serialize each selected object once");
+const pastedSelections = DOC.pasteSelections(clipboardDocument, copiedPayload, {x:3,y:4});
+assert.strictEqual(pastedSelections.length, 2, "paste must recreate every copied object");
+const pastedTerrain = DOC.find(clipboardDocument, pastedSelections.find(item => item.kind === "terrain"));
+const pastedObjective = DOC.find(clipboardDocument, pastedSelections.find(item => item.kind === "objective"));
+assert.strictEqual(pastedTerrain.x, 13, "pasted objects must receive the requested table-space offset");
+assert.strictEqual(pastedObjective.targetId, pastedTerrain.id, "paste must remap references between copied objects");
 
 const copy = DOC.duplicate(document, { kind:"terrain", id:"field-1" });
 assert(copy && copy.id !== "field-1", "duplicate must create a new ID");
@@ -130,8 +154,16 @@ assert(editorHtml.includes("deleteScenarioButton"), "editor must expose custom-s
 assert(editorSource.includes("segmentHitWidth"), "linear terrain selection must use authored-width hit regions");
 assert(editorSource.includes("data-range-number"), "range controls must expose linked exact-value numeric inputs");
 
+
+assert(editorHtml.includes("copySelectionButton") && editorHtml.includes("pasteSelectionButton"), "editor must expose copy and paste controls");
+assert(editorHtml.includes("src/editor/editor-multiselect.js"), "editor must load the shared multi-selection helper");
+assert(editorSource.includes("startMarquee") && editorSource.includes("finishMarquee"), "editor must support drag-marquee selection");
+assert(editorSource.includes("selectionSet"), "editor state must preserve an explicit multi-selection set");
+assert(editorSource.includes("copySelection") && editorSource.includes("pasteSelection"), "editor must support clipboard authoring");
+assert(editorSource.includes("applyGroupTranslation") && editorSource.includes("applyGroupScale") && editorSource.includes("applyGroupRotation"), "collective transforms must use explicit group operations");
+
 const migrated = DOC.create({ ...source, schemaVersion:0, terrain:[{ ...source.terrain[0], hidden:true }] });
-assert.strictEqual(migrated.schemaVersion, 1, "scenario documents must migrate to schema version 1");
+assert.strictEqual(migrated.schemaVersion, 2, "scenario documents must migrate to schema version 2");
 assert.strictEqual(migrated.terrain[0].visible, false, "legacy hidden state must migrate to visible=false");
 assert.strictEqual(migrated.terrain[0].hidden, undefined, "legacy hidden state must not survive canonical serialization");
 assert.strictEqual(migrated.terrain[0].locked, false, "placeable objects must receive an explicit lock state");
@@ -162,4 +194,6 @@ assert(playtestContext.window.CROSSROADS_SCENARIOS.editor_playtest, "playtest br
 assert.strictEqual(playtestSelect.value, "editor_playtest", "playtest bridge must select the injected scenario before engine startup");
 assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge must mark the runtime document");
 
-console.log("PASS — Terrain Editor E1.4.1 schema, selection, exact-value controls, custom-scenario management, camera, visibility, path authoring, validation, and playtest checks passed.");
+assert(editorHtml.includes("src/scenario-runtime/scenario-runtime.js"), "editor must load the shared scenario runtime boundary");
+assert(editorSource.includes("choose-objective-target"), "editor must expose visual objective target picking");
+console.log("PASS — Terrain Editor S1.0 schema, objective authoring, formal and multi-selection, collective transforms, clipboard authoring, terrain controls, validation, and playtest checks passed.");

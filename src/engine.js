@@ -4,12 +4,12 @@
     =========================================================================
     CROSSROADS BATTLE ENGINE — ARCHITECTURE MAP
 
-      FOUNDATION CONTRACTS     outcomes, scenario objective registry
+      FOUNDATION CONTRACTS     outcomes, combat and scenario runtimes
       CONFIGURATION & DATA      rules, weapons, terrain, units
       RUNTIME STATE             battle and activation transaction state
       EXTERNAL MODULES          presentation, camera, input, movement rules
       CORE HELPERS              units, geometry, dice, formatting
-      BREAKTHROUGH SYSTEM       exit objective and containment scoring
+      SCENARIO OBJECTIVES       progress, scoring, exits, and victory
       RENDERING & FEEDBACK      overlays, previews, reports, effects
       TURN & ORDER FLOW         bag draw, order choice, cancellation
       MOVEMENT COMMIT           state mutation, Ambush, completion
@@ -35,7 +35,7 @@
       STATE      match state and formal unit outcomes
       GEOMETRY   table-space calculations
       RULES      deterministic game resolution
-      SCENARIOS  objective/scoring registries
+      SCENARIOS  compiled objective runtime and victory policies
       VIEW       rendering, camera, overlays, effects
       UI         desktop/touch interaction and reports
 
@@ -62,11 +62,10 @@
 
     // -------------------------------------------------------------------------
     // RUNTIME REGISTRIES
-    // Central extension points. Only the objective registry is active in this
-    // phase; terrain, actions, and hooks are intentionally reserved for later.
+    // Small engine-local extension points. Scenario objectives use the separate
+    // CrossroadsScenarioRuntime boundary and are not registered in this file.
     // -------------------------------------------------------------------------
     const REGISTRY = Object.freeze({
-      objectives: new Map(),
       terrain: new Map(),
       actions: new Map(),
       hooks: Object.freeze({
@@ -76,17 +75,6 @@
         afterRender: []
       })
     });
-
-    function registerScenarioObjective(type, handler) {
-      if (!type || !handler) throw new Error("Invalid scenario objective handler.");
-      REGISTRY.objectives.set(type, Object.freeze({ ...handler }));
-    }
-
-    function scenarioObjectiveHandler(type) {
-      const handler = REGISTRY.objectives.get(type);
-      if (!handler) throw new Error(`Unknown scenario objective type: ${type}`);
-      return handler;
-    }
 
     function registerHook(name, callback) {
       const hooks = REGISTRY.hooks[name];
@@ -212,6 +200,9 @@
 
     const UNIT_TYPES = window.CROSSROADS_UNIT_TYPES;
     const CORE_SCENARIO_12A = window.CROSSROADS_CORE_SCENARIO_12A;
+    const SCENARIO_RUNTIME = window.CrossroadsScenarioRuntime;
+    const SCENARIO_PRESENTATION = window.CrossroadsScenarioPresentation;
+    if (!SCENARIO_RUNTIME || !SCENARIO_PRESENTATION) throw new Error("Scenario Runtime S1.0 modules are unavailable.");
 
     function instantiateScenarioUnits(scenario) {
       const result = [];
@@ -1090,119 +1081,62 @@
     }
 
 
-    registerScenarioObjective("control_zone", {
-      state(objective) {
-        const blue = livingUnits().some(
-          unit => unit.faction === "blue" &&
-            distanceBetweenPoints(unit, objective) <= objective.radius + 0.001
-        );
-        const red = livingUnits().some(
-          unit => unit.faction === "red" &&
-            distanceBetweenPoints(unit, objective) <= objective.radius + 0.001
-        );
-
-        if (blue && red) return "contested";
-        if (blue) return "blue";
-        if (red) return "red";
-        return "none";
-      }
-    });
-
     // =========================================================================
-    // BREAKTHROUGH OBJECTIVE SYSTEM
-    // Owns exit-zone eligibility, exit outcomes, progress, and containment.
+    // SCENARIO OBJECTIVE ADAPTERS
+    // The engine commits battle state; Scenario Runtime evaluates objectives.
     // =========================================================================
-    function scenarioIsBreakthrough() {
-      return activeScenario.id === "breakthrough" || activeScenario.victory?.type === "breakthrough" || activeScenario.scoring?.type === "breakthrough";
+    function scenarioContext() {
+      return {
+        units: livingUnits(),
+        allUnits: units,
+        terrain: TERRAIN.instances ?? [],
+        round,
+        table: activeScenario.table,
+        factions: activeScenario.factions,
+        maxRounds: RULES.maxRounds
+      };
+    }
+
+    function objectiveSnapshots() {
+      return scenarioSession ? scenarioSession.snapshot(scenarioContext()) : [];
     }
 
     function exitObjective() {
-      return (activeScenario.objectives ?? []).find(
-        objective => objective.type === "exit_unit"
-      ) ?? null;
+      return scenarioSession?.compiled.objectives.find(objective => objective.type === "exit_unit") ?? null;
     }
 
-    function unitInsideExitZone(unit, objective = exitObjective()) {
-      if (!unit || !objective) return false;
-      const depth = objective.depth ?? 3;
-      if (objective.edge === "blue") return unit.x <= depth + 0.001;
-      if (objective.edge === "red") return unit.x >= RULES.tableWidth - depth - 0.001;
-      if (objective.edge === "top") return unit.y <= depth + 0.001;
-      if (objective.edge === "bottom") return unit.y >= RULES.tableHeight - depth - 0.001;
-      return false;
+    function scenarioIsBreakthrough() {
+      return Boolean(exitObjective());
     }
 
     function breakthroughProgress() {
-      const attackers = units.filter(unit => unit.faction === "red");
-      const exited = attackers.filter(unit => unit.outcome === UNIT_OUTCOME.EXITED);
-      return {
-        total: attackers.length,
-        exited: exited.length,
-        contained: attackers.length - exited.length,
-        exitedSoldiers: exited.reduce((sum, unit) => sum + unit.soldiers, 0)
-      };
+      const snapshot = objectiveSnapshots().find(item => item.objective.type === "exit_unit");
+      const attackers = units.filter(unit => unit.faction === snapshot?.objective?.faction);
+      const exited = Number(snapshot?.progress?.current ?? 0);
+      return { total:attackers.length, exited, contained:Math.max(0, attackers.length - exited) };
     }
 
     function exitUnit(unit) {
-      const objective = exitObjective();
-      if (
-        !scenarioIsBreakthrough() ||
-        !objective ||
-        !unitIsActive(unit) ||
-        unit.faction !== objective.faction ||
-        !unitInsideExitZone(unit, objective)
-      ) return false;
-
-      const points = objective.pointsPerUnit ?? 2;
-      setUnitOutcome(unit, UNIT_OUTCOME.EXITED, { reason: objective.id });
+      const objective = scenarioSession?.exitObjectiveFor(unit, scenarioContext());
+      if (!objective || !unitIsActive(unit)) return false;
+      setUnitOutcome(unit, UNIT_OUTCOME.EXITED, { reason:objective.id });
       unit.exitRound = round;
       unit.exitZoneId = objective.id;
-      unit.exitPoints = points;
+      unit.exitPoints = Number(objective.pointsPerUnit ?? 0);
       unit.order = "Exited";
       unit.activated = true;
-      scores.red += points;
-
+      const result = scenarioSession.dispatch("unit_exited", { unitId:unit.id, factionId:unit.faction, objectiveId:objective.id, round }, scenarioContext());
+      scores.blue += result.score.blue;
+      scores.red += result.score.red;
       if (battleStats) {
-        battleStats.red.unitsExited += 1;
-        battleStats.red.soldiersExited += unit.soldiers;
-        battleStats.red.breakthroughPoints += points;
+        battleStats[unit.faction].unitsExited += 1;
+        battleStats[unit.faction].soldiersExited += unit.soldiers;
+        battleStats[unit.faction].breakthroughPoints += Number(result.score[unit.faction] ?? 0);
       }
-
-      addLog(`${activeScenario.factions.red.name} ${unit.name} exits through ${objective.label}. Red gains ${points} points.`, "objective");
-      showBattleAnnouncement(`${unit.name.toUpperCase()} EXITED`, `RED +${points} · Unit survives`, "red", 1200);
+      const gained = Number(result.score[unit.faction] ?? 0);
+      addLog(`${activeScenario.factions[unit.faction].name} ${unit.name} exits through ${objective.label}. ${activeScenario.factions[unit.faction].name} gains ${gained} points.`, "objective");
+      showBattleAnnouncement(`${unit.name.toUpperCase()} EXITED`, `${activeScenario.factions[unit.faction].name.toUpperCase()} +${gained} · Unit survives`, unit.faction, 1200);
       return true;
-    }
-
-    function finalizeContainmentScore() {
-      const progress = breakthroughProgress();
-      scores.blue = progress.contained * (activeScenario.scoring.containmentPointsPerUnit ?? 1);
-    }
-
-    function breakthroughResult() {
-      const progress = breakthroughProgress();
-      if (scores.red > scores.blue) {
-        return {
-          winner: "red",
-          reason: "breakthrough",
-          message: progress.exited >= 3
-            ? `Decisive Breakthrough: ${progress.exited} Red units escaped.`
-            : `Red Breakthrough: ${progress.exited} Red unit${progress.exited === 1 ? "" : "s"} escaped.`
-        };
-      }
-      if (scores.blue > scores.red) {
-        return {
-          winner: "blue",
-          reason: "containment",
-          message: progress.exited === 0
-            ? "Decisive Containment: Blue prevented every Red exit."
-            : `Blue Holds: ${progress.contained} Red units were contained.`
-        };
-      }
-      return {
-        winner: null,
-        reason: "draw",
-        message: `Hard-Fought Draw: scores are tied ${scores.blue}–${scores.red}.`
-      };
     }
 
     // =========================================================================
@@ -1210,11 +1144,8 @@
     // Owns objective state, announcements, target readouts, and effect queues.
     // =========================================================================
     function objectiveState() {
-      if (scenarioIsBreakthrough()) return "none";
-      const objective = scenarioObjective();
-      return scenarioObjectiveHandler(
-        objective.type ?? "control_zone"
-      ).state(objective);
+      const first = objectiveSnapshots().find(snapshot => snapshot.state);
+      return first?.state ?? "none";
     }
 
     function nearestObjectiveDistance(faction) {
@@ -2202,6 +2133,7 @@
       pointInsideRect,
       expandRect,
       segmentRectClip,
+      segmentTerrainClip:(start, end, instance) => TERRAIN_GEOMETRY.segmentClip(start, end, instance, segmentRectClip),
       segmentPointDistance,
       capitalize
     });
@@ -3095,6 +3027,7 @@
     // =========================================================================
     let activeScenarioId = "take_the_crossroads";
     let activeScenario = SCENARIOS[activeScenarioId];
+    let scenarioSession = null;
     let deploymentFactionIndex = 0;
     let deploymentConfirmed = new Set();
     let finalScenarioScored = false;
@@ -3183,6 +3116,18 @@
         history.destroyedCause = cause;
         history.creditedFaction = creditedFaction;
       }
+      if (scenarioSession) {
+        const result = scenarioSession.dispatch("unit_destroyed", {
+          unitId:unit.id,
+          targetId:unit.id,
+          factionId:unit.faction,
+          causedByFactionId:creditedFaction,
+          cause,
+          round
+        }, scenarioContext());
+        scores.blue += result.score.blue;
+        scores.red += result.score.red;
+      }
     }
 
     function recordOrderTest(unit, passed) {
@@ -3201,22 +3146,10 @@
     }
 
     function scenarioScoringSummary() {
-      if (scenarioIsBreakthrough()) {
-        return [
-          "Red scores 2 points immediately for each unit that exits through the Blue edge.",
-          "At battle end, Blue scores 1 point for each Red unit that did not exit.",
-          "The higher score wins; tied scores use surviving soldiers as the tiebreaker."
-        ];
-      }
-
-      const pieces = [];
-      const roundPoints = activeScenario.scoring.roundControl ?? 0;
-      const finalPoints = activeScenario.scoring.finalControl ?? 0;
-      if (roundPoints > 0) pieces.push(`Control ${scenarioObjective().label} at round end: ${roundPoints} point${roundPoints === 1 ? "" : "s"}.`);
-      if (finalPoints > 0) pieces.push(`Control ${scenarioObjective().label} when the battle ends: ${finalPoints} point${finalPoints === 1 ? "" : "s"}.`);
-      if (activeScenario.victory.elimination) pieces.push("Eliminating the opposing force wins immediately.");
-      pieces.push(`Tied scores use ${activeScenario.victory.tiebreaker === "survivingSoldiers" ? "surviving soldiers" : "surviving units"}.`);
-      return pieces;
+      const summaries = (activeScenario.objectives ?? []).map(objective => SCENARIO_PRESENTATION.describeObjective(objective, activeScenario));
+      if (activeScenario.victory.elimination) summaries.push("Eliminating the opposing force wins immediately.");
+      summaries.push(`Tied scores use ${activeScenario.victory.tiebreaker === "survivingSoldiers" ? "surviving soldiers" : "surviving units"}.`);
+      return summaries;
     }
 
     // =========================================================================
@@ -3224,32 +3157,31 @@
     // Renders mission information and the completed battle record.
     // =========================================================================
     function renderBriefing() {
-      const objective = scenarioObjective();
+      const objectiveSummaries = scenarioScoringSummary();
+      const roleData = activeScenario.structure?.roles ?? {};
+      const attacker = roleData.attacker;
+      const defender = roleData.defender;
       briefingTitle.textContent = activeScenario.title;
       briefingDescription.textContent = activeScenario.description;
       briefingMeta.innerHTML = [
         `${activeScenario.rounds} rounds`,
         `${activeScenario.table.width}″ × ${activeScenario.table.height}″ table`,
         activeScenario.deployment.mode === "fixed" ? "Fixed deployment" : "Player deployment",
-        scenarioIsBreakthrough()
-          ? "Exit objective · Blue table edge"
-          : `${objective.label} · ${objective.radius}″ control radius`
+        `${activeScenario.objectives?.length ?? 0} objective${(activeScenario.objectives?.length ?? 0) === 1 ? "" : "s"}`
       ].map(item => `<span class="brief-chip">${item}</span>`).join("");
 
-      briefingIntelLine.textContent = scenarioIsBreakthrough()
-        ? "MISSION: Red must break through the Blue line. Every unit that exits survives and scores immediately; every unit contained strengthens Blue's final score."
-        : "MISSION: Seize the crossroads, deny it to the enemy, and keep enough combat power intact to hold it through the final round.";
-
-      briefingMissionStrip.innerHTML = scenarioIsBreakthrough()
-        ? `<div class="briefing-role blue"><strong>Blue mission</strong>Delay, pin, and contain Red before units enter the 3″ exit strip.</div><div class="briefing-role red"><strong>Red mission</strong>Move surviving units through the Blue table edge. Each exit scores 2 points.</div>`
-        : `<div class="briefing-role blue"><strong>Blue mission</strong>Control the central objective at round end and deny Red access.</div><div class="briefing-role red"><strong>Red mission</strong>Control the central objective at round end and deny Blue access.</div>`;
+      briefingIntelLine.textContent = `MISSION: ${objectiveSummaries[0] ?? "Complete the scenario objectives and preserve combat power."}`;
+      briefingMissionStrip.innerHTML = ["blue", "red"].map(faction => {
+        let role = "Complete the listed objectives and deny the opposing force.";
+        if (attacker === faction) role = "Attack, complete the active objectives, and force a decision before time expires.";
+        if (defender === faction) role = "Defend the battlefield, delay the attacker, and preserve the required positions or targets.";
+        return `<div class="briefing-role ${faction}"><strong>${activeScenario.factions[faction].name} mission</strong>${role}</div>`;
+      }).join("");
 
       briefingBlueForce.innerHTML = factionForceSummary("blue");
       briefingRedForce.innerHTML = factionForceSummary("red");
-      briefingObjectives.innerHTML = scenarioIsBreakthrough()
-        ? `<h3>Deployment & Objective</h3><p><strong>${activeScenario.factions.blue.name}:</strong> Deploy within the 18″ Blue zone and build a blocking position.</p><p><strong>${activeScenario.factions.red.name}:</strong> Deploy within the 12″ Red zone and reach the marked exit edge.</p>`
-        : `<h3>Deployment & Objective</h3><p>Both forces deploy within 12″ of their own table edge. The objective at the center is controlled by an uncontested active unit within 3″.</p>`;
-      briefingRules.innerHTML = `<h3>Scoring & Victory</h3><ul>${scenarioScoringSummary().map(rule => `<li>${rule}</li>`).join("")}</ul>`;
+      briefingObjectives.innerHTML = `<h3>Objectives</h3><ol>${(activeScenario.objectives ?? []).map(objective => `<li><strong>${objective.label || objective.id}</strong> — ${SCENARIO_PRESENTATION.describeObjective(objective, activeScenario)}</li>`).join("")}</ol>`;
+      briefingRules.innerHTML = `<h3>Scoring & Victory</h3><ul>${objectiveSummaries.map(rule => `<li>${rule}</li>`).join("")}</ul>`;
       briefingBeginButton.textContent = activeScenario.deployment.mode === "fixed" ? "BEGIN BATTLE" : "BEGIN DEPLOYMENT";
       briefingCloseButton.textContent = "CHANGE SCENARIO";
       configureResponsiveModalSections(briefingModal, true);
@@ -3359,7 +3291,7 @@
     // SCENARIO LOADING AND TERRAIN PRESENTATION
     // Applies the active definition and creates its runtime unit state.
     // =========================================================================
-    function scenarioObjective() { return activeScenario.objectives[0]; }
+    function scenarioObjective() { return activeScenario.objectives?.[0] ?? { id:"none", label:"No Objective", x:RULES.tableWidth / 2, y:RULES.tableHeight / 2, radius:0 }; }
 
     function buildUnitsForActiveScenario() {
       return instantiateScenarioUnits(activeScenario);
@@ -3377,8 +3309,9 @@
       RULES.tableWidth = activeScenario.table.width;
       RULES.tableHeight = activeScenario.table.height;
       RULES.maxRounds = activeScenario.rounds;
-      const objective = scenarioObjective();
-      RULES.objective = { x: objective.x, y: objective.y, radius: objective.radius };
+      scenarioSession = SCENARIO_RUNTIME.createSession(activeScenario);
+      const objective = (activeScenario.objectives ?? []).find(item => Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y))) ?? { x:activeScenario.table.width / 2, y:activeScenario.table.height / 2, radius:0 };
+      RULES.objective = { x:Number(objective.x), y:Number(objective.y), radius:Number(objective.radius ?? 0) };
 
       const terrainPresentation = window.CrossroadsTerrainPresentation;
       if (!terrainPresentation) {
@@ -3569,44 +3502,17 @@
       blueScore.textContent = scores.blue;
       redScore.textContent = scores.red;
       roundReadout.textContent = `${round} / ${RULES.maxRounds}`;
-
-      if (scenarioIsBreakthrough()) {
-        const progress = breakthroughProgress();
-        objectiveOwner.textContent = `${progress.exited} exited · ${progress.contained} contained`;
-        objectiveLabel.hidden = true;
-        objectiveRing.hidden = true;
-        objectiveMarker.hidden = true;
-        blueObjectiveDistance.textContent = `${scores.blue} containment`;
-        redObjectiveDistance.textContent = `${progress.exited} exited`;
-        document.body.classList.remove("objective-focus");
-      } else {
-        const state = objectiveState();
-        objectiveOwner.textContent = {
-          blue: `${activeScenario.factions.blue.name} controls`,
-          red: `${activeScenario.factions.red.name} controls`,
-          contested: "Contested",
-          none: "Uncontrolled"
-        }[state];
-
-        const objective = scenarioObjective();
-        objectiveLabel.hidden = false;
-        objectiveRing.hidden = false;
-        objectiveMarker.hidden = false;
-        objectiveLabel.textContent = state === "blue"
-          ? `${activeScenario.factions.blue.name.toUpperCase()} CONTROLS · ${objective.radius}″`
-          : state === "red"
-            ? `${activeScenario.factions.red.name.toUpperCase()} CONTROLS · ${objective.radius}″`
-            : state === "contested"
-              ? `CONTESTED · ${objective.radius}″`
-              : `${objective.label.toUpperCase()} · ${objective.radius}″`;
-
-        document.body.classList.toggle("objective-focus", phase === "round-complete" || phase === "plan-movement");
-        const bd = nearestObjectiveDistance("blue");
-        const rd = nearestObjectiveDistance("red");
-        blueObjectiveDistance.textContent = bd === null ? "No units" : bd <= objective.radius ? "In range" : `${bd.toFixed(1)}″`;
-        redObjectiveDistance.textContent = rd === null ? "No units" : rd <= objective.radius ? "In range" : `${rd.toFixed(1)}″`;
-      }
-
+      const snapshots = objectiveSnapshots();
+      const primary = snapshots.find(snapshot => snapshot.state) ?? snapshots[0];
+      objectiveOwner.textContent = primary?.summary ?? "No active objectives";
+      blueObjectiveDistance.textContent = `${scores.blue} points`;
+      redObjectiveDistance.textContent = `${scores.red} points`;
+      objectiveLabel.hidden = true;
+      objectiveRing.hidden = true;
+      objectiveMarker.hidden = true;
+      document.body.classList.remove("objective-focus");
+      SCENARIO_PRESENTATION.renderCards(snapshots, activeScenario.factions);
+      SCENARIO_PRESENTATION.renderMarkers(snapshots, activeScenario.table);
       updateDeploymentProgress();
       updateTransactionBadge();
     }
@@ -3614,81 +3520,32 @@
     function scoreRoundAndContinue() {
       if (phase !== "round-complete" || battleEnded) return;
       clearActionOverlays();
-
-      if (scenarioIsBreakthrough()) {
-        if (round >= RULES.maxRounds) {
-          finalizeContainmentScore();
-          const result = breakthroughResult();
-          finishBattle(result.message, {
-            winner: result.winner,
-            reason: result.reason,
-            blueScore: scores.blue,
-            redScore: scores.red
-          });
-          return;
-        }
-
-        round += 1;
-        showBattleAnnouncement(`ROUND ${round}`, `${breakthroughProgress().exited} Red units exited`, "neutral", 1000);
-
-        for (const unit of livingUnits()) {
-          unit.activated = false;
-          unit.order = null;
-          unit.down = false;
-          unit.ambush = false;
-        }
-
-        fillBag();
-        phase = "ready-to-draw";
-        nextRoundButton.disabled = true;
-        drawButton.disabled = false;
-        drawnDie.textContent = "No die drawn";
-        drawnDie.className = "drawn-die";
-        setStatus("Press “Draw Order Die.”", `${breakthroughProgress().exited} Red units have exited.`);
-        addLog(`Round ${round} begins. The attackers continue toward the exit edge.`);
-        renderUnits();
-        return;
-      }
-
-      const state = objectiveState();
-      const points = activeScenario.scoring.roundControl ?? 0;
-      if (points > 0 && (state === "blue" || state === "red")) {
-        scores[state] += points;
-        if (battleStats) battleStats[state].objectiveRoundsControlled += 1;
-        showBattleAnnouncement(
-          `${activeScenario.factions[state].name.toUpperCase()} +${points}`,
-          `Controls ${scenarioObjective().label}`,
-          state,
-          1100
-        );
-        addLog(`${activeScenario.factions[state].name} scores ${points} point${points === 1 ? "" : "s"} for controlling ${scenarioObjective().label}.`, "objective");
-      } else if (state === "contested") {
-        showBattleAnnouncement("NO SCORE", `${scenarioObjective().label} contested`, "neutral", 900);
-        addLog(`${scenarioObjective().label} is contested. Neither side scores.`, "objective");
-      } else if (points > 0) {
-        showBattleAnnouncement("NO SCORE", `${scenarioObjective().label} uncontrolled`, "neutral", 900);
-        addLog(`${scenarioObjective().label} is uncontrolled. Neither side scores.`, "objective");
+      const result = scenarioSession.dispatch("round_ended", { round }, scenarioContext());
+      scores.blue += result.score.blue;
+      scores.red += result.score.red;
+      if (result.score.blue || result.score.red) {
+        showBattleAnnouncement("OBJECTIVES SCORED", `${activeScenario.factions.blue.name} +${result.score.blue} · ${activeScenario.factions.red.name} +${result.score.red}`, result.score.blue > result.score.red ? "blue" : result.score.red > result.score.blue ? "red" : "neutral", 1100);
+        addLog(`Round ${round} objectives: ${activeScenario.factions.blue.name} +${result.score.blue}, ${activeScenario.factions.red.name} +${result.score.red}.`, "objective");
       } else {
-        addLog("This scenario has no round-by-round objective scoring.", "objective");
+        showBattleAnnouncement("NO OBJECTIVE SCORE", `Round ${round} checkpoint`, "neutral", 900);
       }
       updateScenarioUI();
+      const immediate = scenarioSession.resolveVictory(scores, scenarioContext());
+      if (immediate) {
+        finishBattle(immediate.message, { ...immediate, blueScore:scores.blue, redScore:scores.red });
+        return;
+      }
       if (round >= RULES.maxRounds) {
         endBattleByScore();
         return;
       }
       round += 1;
-      showBattleAnnouncement(
-        `ROUND ${round}`,
-        `${activeScenario.factions.blue.name} ${scores.blue} — ${scores.red} ${activeScenario.factions.red.name}`,
-        "neutral",
-        1000
-      );
+      scenarioSession.dispatch("round_started", { round }, scenarioContext());
+      showBattleAnnouncement(`ROUND ${round}`, `${activeScenario.factions.blue.name} ${scores.blue} — ${scores.red} ${activeScenario.factions.red.name}`, "neutral", 1000);
       for (const unit of livingUnits()) {
         unit.activated = false;
         unit.order = null;
         unit.down = false;
-
-        // Defensive fallback for saves or unusual state transitions.
         if (unit.ambush) {
           addLog(`${capitalize(unit.faction)} ${unit.name}'s unused Ambush expires.`, "ambush");
           unit.ambush = false;
@@ -3708,56 +3565,24 @@
     function applyFinalScenarioScoring() {
       if (finalScenarioScored) return;
       finalScenarioScored = true;
-      if (scenarioIsBreakthrough()) {
-        finalizeContainmentScore();
-        return;
-      }
-      const bonus = activeScenario.scoring.finalControl ?? 0;
-      const state = objectiveState();
-      if (bonus > 0 && (state === "blue" || state === "red")) {
-        scores[state] += bonus;
-        if (battleStats) battleStats[state].finalObjectiveControl += 1;
-        addLog(`${activeScenario.factions[state].name} receives ${bonus} final point${bonus === 1 ? "" : "s"} for controlling ${scenarioObjective().label}.`, "objective");
-      }
+      const result = scenarioSession.finalize(scenarioContext());
+      scores.blue += result.score.blue;
+      scores.red += result.score.red;
+      if (result.score.blue || result.score.red) addLog(`Final objectives: ${activeScenario.factions.blue.name} +${result.score.blue}, ${activeScenario.factions.red.name} +${result.score.red}.`, "objective");
     }
 
     function endBattleByScore() {
       applyFinalScenarioScoring();
-      if (scenarioIsBreakthrough()) {
-        const result = breakthroughResult();
-        finishBattle(result.message, { winner: result.winner, reason: result.reason, blueScore: scores.blue, redScore: scores.red });
-        return;
-      }
-      let message;
-      let winner = null;
-      let reason = "score";
-      if (scores.blue > scores.red) {
-        winner = "blue";
-        message = `${activeScenario.factions.blue.name} wins ${scores.blue}–${scores.red}.`;
-      } else if (scores.red > scores.blue) {
-        winner = "red";
-        message = `${activeScenario.factions.red.name} wins ${scores.red}–${scores.blue}.`;
-      } else {
-        const metric = activeScenario.victory.tiebreaker;
-        const blueMetric = metric === "survivingSoldiers" ? livingUnits().filter(u => u.faction === "blue").reduce((n,u)=>n+u.soldiers,0) : livingUnits().filter(u => u.faction === "blue").length;
-        const redMetric = metric === "survivingSoldiers" ? livingUnits().filter(u => u.faction === "red").reduce((n,u)=>n+u.soldiers,0) : livingUnits().filter(u => u.faction === "red").length;
-        if (blueMetric > redMetric) {
-          winner = "blue";
-          reason = "tiebreak";
-          message = `Score tied ${scores.blue}–${scores.red}; ${activeScenario.factions.blue.name} wins the ${metric === "survivingSoldiers" ? "surviving-soldiers" : "surviving-units"} tiebreak ${blueMetric}–${redMetric}.`;
-        } else if (redMetric > blueMetric) {
-          winner = "red";
-          reason = "tiebreak";
-          message = `Score tied ${scores.blue}–${scores.red}; ${activeScenario.factions.red.name} wins the ${metric === "survivingSoldiers" ? "surviving-soldiers" : "surviving-units"} tiebreak ${redMetric}–${blueMetric}.`;
-        } else {
-          reason = "draw";
-          message = `The battle is a draw: ${scores.blue}–${scores.red}, with the tiebreak also even.`;
-        }
-      }
-      finishBattle(message, { winner, reason, blueScore: scores.blue, redScore: scores.red });
+      const result = scenarioSession.resolveVictory(scores, scenarioContext(), { final:true });
+      finishBattle(result.message, { ...result, blueScore:scores.blue, redScore:scores.red });
     }
 
     function endBattleByElimination() {
+      const objectiveVictory = scenarioSession?.resolveVictory(scores, scenarioContext());
+      if (objectiveVictory) {
+        finishBattle(objectiveVictory.message, { ...objectiveVictory, blueScore:scores.blue, redScore:scores.red });
+        return;
+      }
       if (!activeScenario.victory.elimination) return;
       const blueAlive = livingUnits().some(unit => unit.faction === "blue");
       const redAlive = livingUnits().some(unit => unit.faction === "red");
