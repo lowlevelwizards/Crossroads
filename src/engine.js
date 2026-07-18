@@ -777,7 +777,7 @@
           ? `Assaults use a 12″ direct charge, reaction fire beyond 6″, and defender-first combat across rough ground or obstacles.`
           : `Close Assault is intentionally disabled in this isolated stage.`,
         FEATURES.movementIntegrity
-          ? `Choose deployment before Round 1. Units cannot overlap or pass through units. Woods double movement spent inside them; wall crossings cost +2″. Overlong legal paths stop at the furthest affordable point. Use Add Waypoint, then tap once to place it and once more for the destination. Shift-click remains an optional shortcut.`
+          ? `Choose deployment before Round 1. Units cannot overlap or pass through units. Dense woods double movement spent inside them; ordinary woods and mud cost ×1.5. Fences, hedges, ditches, and sandbags cost +1″ to cross; walls and rail embankments cost +2″. Overlong legal paths stop at the furthest affordable point. Use Add Waypoint, then tap once to place it and once more for the destination. Shift-click remains an optional shortcut.`
           : `Movement uses the earlier direct-path prototype rules so the stage isolates its featured system.`,
         `Officer teams project a <code>6″</code> command radius and add <code>+1 Morale</code> to nearby friendly Order Tests. Rifle squads carry rifles plus an LMG; assault squads mix rifles and SMGs; MMG teams cannot fire after an Advance.`
       ];

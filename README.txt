@@ -1,21 +1,24 @@
-Crossroads route overlay + false building obstruction hotfix
+CROSSROADS — UNIT SCALE + TERRAIN DOCTRINE PASS
 
-Replace:
-- src/engine.js
-- src/rules/movement.js
-- styles/stabilization.css
+Replace the included files at their matching project paths.
 
-Optional regression test:
-- tests/movement-overlay-clearance-regression.test.js
+UNIT SCALE
+- Medium and close tactical views now use the same miniature scale.
+- Camera zoom scales the whole battlefield naturally.
+- Only the far-zoom representation changes to strategic unit counters.
 
-Changes:
-1. The movement route now owns a positioned overlay layer at z-index 7600,
-   above roads, field patches, promoted terrain, buildings, and units.
-2. Route segments rotate from their actual starting point and cannot intercept input.
-3. Buildings no longer inflate their collision area by the full 1.6-inch unit radius.
-   They use a small 0.55-inch body clearance, reducing false blockage around roofs,
-   sheds, cottages, and narrow village gaps while buildings themselves remain impassable.
-4. Deployment and movement use the same building-overlap helper.
+MOVEMENT / TERRAIN
+- Wheat and orchards no longer slow movement.
+- Ordinary woods: x1.5 movement cost.
+- Dense woods: x2 movement cost.
+- Mud and streams: x1.5 movement cost.
+- Fence, hedge, ditch, sandbags: +1 inch crossing cost.
+- Wall and raised railway embankment: +2 inch crossing cost.
+- Per-terrain movementMultiplier and crossingCost are now supported.
 
-Validated with movement animation, terrain footprint, scene compositor, Mokra scenario,
-and viewport interaction regression tests.
+COVER
+- Wheat, cabbage rows, orchards, hedges, fences, ditches, haystacks,
+  crates and woodpiles provide soft cover as appropriate.
+- Walls, rail embankments, foxholes and sandbags provide hard cover.
+- Roads, bare fields, concrete, cobblestone, wells and ordinary rail
+  remain open/no-cover terrain.

@@ -2,9 +2,11 @@
 
 /* CROSSROADS modular terrain registry. */
 const openRules = Object.freeze({ movement: "open", cover: null, los: "clear" });
-const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "restricted" });
-const cropSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "restricted" });
-const crossingHard = Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 });
+const roughSoft = Object.freeze({ movement: "rough", movementMultiplier: 1.5, cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "restricted" });
+const cropSoft = Object.freeze({ movement: "open", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "open" });
+const crossingHard = Object.freeze({ movement: "crossing", crossingCost: 2, cover: "hard", los: "clear", save: 4 });
+const crossingSoft = Object.freeze({ movement: "crossing", crossingCost: 1, cover: "soft", los: "clear", save: 5 });
+const orchardSoft = Object.freeze({ movement: "open", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "open" });
 const buildingRules = Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 });
 
 function terrainType(id, family, renderer, label, rules, editor = {}, presentation = {}) {
@@ -49,19 +51,19 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   rail_crossing: terrainType("rail_crossing", "transport", "rail_crossing", "rail crossing", openRules, { rotatable: true }),
 
   woods: terrainType("woods", "natural", "woods", "woods", roughSoft, { rotatable: true, resizable: true }),
-  woods_dense: terrainType("woods_dense", "natural", "woods", "dense woods", roughSoft, { rotatable: true, resizable: true }),
-  orchard: terrainType("orchard", "natural", "orchard", "orchard", roughSoft, { rotatable: true, resizable: true }),
-  hedge: terrainType("hedge", "linear", "hedge", "hedge", crossingHard, { rotatable: true, resizable: true }),
-  fence_wood: terrainType("fence_wood", "linear", "fence", "wood fence", crossingHard, { rotatable: true, resizable: true }),
+  woods_dense: terrainType("woods_dense", "natural", "woods", "dense woods", Object.freeze({ movement:"rough", movementMultiplier:2, cover:"soft", los:"obscuring", save:5, defensivePosition:true, vehicleAccess:"restricted" }), { rotatable: true, resizable: true }),
+  orchard: terrainType("orchard", "natural", "orchard", "orchard", orchardSoft, { rotatable: true, resizable: true }),
+  hedge: terrainType("hedge", "linear", "hedge", "hedge", crossingSoft, { rotatable: true, resizable: true }),
+  fence_wood: terrainType("fence_wood", "linear", "fence", "wood fence", crossingSoft, { rotatable: true, resizable: true }),
   wall: terrainType("wall", "linear", "wall", "low wall", crossingHard, { rotatable: true, resizable: true }),
-  ditch: terrainType("ditch", "linear", "ditch", "ditch", Object.freeze({ movement: "rough", cover: "soft", los: "clear", save: 5 }), { rotatable: true, resizable: true }),
-  stream: terrainType("stream", "water", "stream", "stream", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
-  stream_curve: terrainType("stream_curve", "water", "stream", "stream bend", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true }),
-  stream_end: terrainType("stream_end", "water", "stream", "stream end", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
+  ditch: terrainType("ditch", "linear", "ditch", "ditch", Object.freeze({ movement: "crossing", crossingCost: 1, cover: "soft", los: "clear", save: 5 }), { rotatable: true, resizable: true }),
+  stream: terrainType("stream", "water", "stream", "stream", Object.freeze({ movement: "rough", movementMultiplier: 1.5, cover: null, los: "clear" }), { rotatable: true, resizable: true }),
+  stream_curve: terrainType("stream_curve", "water", "stream", "stream bend", Object.freeze({ movement: "rough", movementMultiplier: 1.5, cover: null, los: "clear" }), { rotatable: true }),
+  stream_end: terrainType("stream_end", "water", "stream", "stream end", Object.freeze({ movement: "rough", movementMultiplier: 1.5, cover: null, los: "clear" }), { rotatable: true, resizable: true }),
 
   field_tilled: terrainType("field_tilled", "ground", "field", "tilled field", openRules, { rotatable: true, resizable: true }),
   field_wheat: terrainType("field_wheat", "ground", "field", "wheat field", cropSoft, { rotatable: true, resizable: true }),
-  field_cabbage: terrainType("field_cabbage", "ground", "field", "cabbage rows", openRules, { rotatable: true, resizable: true }),
+  field_cabbage: terrainType("field_cabbage", "ground", "field", "cabbage rows", Object.freeze({ movement:"open", cover:"soft", los:"clear", save:5 }), { rotatable: true, resizable: true }),
 
   small_cottage: terrainType("small_cottage", "building", "building", "small cottage", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("small-cottage", "whitewash_red", 0.50, { x:0.16, y:0.33, width:0.68, height:0.48, entryY:0.78 })),
   medium_cottage: terrainType("medium_cottage", "building", "building", "medium cottage", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("medium-cottage", "peach_plaster_red", 0.50, { x:0.13, y:0.31, width:0.74, height:0.51, entryY:0.80 })),
@@ -71,7 +73,7 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   church: terrainType("church", "building", "building", "church", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("church", "plaster_charcoal", 0.21, { x:0.12, y:0.31, width:0.76, height:0.53, entryY:0.80, depthAnchor:0.86 })),
 
   foxholes: terrainType("foxholes", "defensive", "foxholes", "foxholes", Object.freeze({ movement: "open", cover: "hard", los: "clear", save: 4 })),
-  sandbags: terrainType("sandbags", "defensive", "sandbags", "sandbags", crossingHard),
+  sandbags: terrainType("sandbags", "defensive", "sandbags", "sandbags", Object.freeze({ movement:"crossing", crossingCost:1, cover:"hard", los:"clear", save:4 })),
   haystack: terrainType("haystack", "scatter", "haystack", "haystack", Object.freeze({ movement: "open", cover: "soft", los: "obscuring", save: 5 })),
   well: terrainType("well", "scatter", "well", "well", openRules),
   crates: terrainType("crates", "scatter", "crates", "crates", Object.freeze({ movement: "open", cover: "soft", los: "clear", save: 5 })),
@@ -81,15 +83,15 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
 
 window.CROSSROADS_TERRAIN_PATCH_STYLES = Object.freeze({
   woods: Object.freeze({ id:"woods", label:"Woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:roughSoft }),
-  woods_dense: Object.freeze({ id:"woods_dense", label:"Dense woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:roughSoft }),
-  orchard: Object.freeze({ id:"orchard", label:"Orchard patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", autumn:"Autumn orchard" }), rules:roughSoft }),
+  woods_dense: Object.freeze({ id:"woods_dense", label:"Dense woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:Object.freeze({ movement:"rough", movementMultiplier:2, cover:"soft", los:"obscuring", save:5, defensivePosition:true, vehicleAccess:"restricted" }) }),
+  orchard: Object.freeze({ id:"orchard", label:"Orchard patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", autumn:"Autumn orchard" }), rules:orchardSoft }),
   field_tilled: Object.freeze({ id:"field_tilled", label:"Tilled field patch", family:"ground", material:"brown", materials:Object.freeze({ brown:"Brown earth", dark:"Dark earth", dry:"Dry earth" }), rules:openRules }),
   field_wheat: Object.freeze({ id:"field_wheat", label:"Wheat field patch", family:"ground", material:"gold", materials:Object.freeze({ gold:"Ripe gold", green:"Green crop", cut:"Cut stubble" }), rules:cropSoft }),
   field_cabbage: Object.freeze({ id:"field_cabbage", label:"Cabbage field patch", family:"ground", material:"green", materials:Object.freeze({ green:"Green rows", dark:"Dark rows" }), rules:openRules }),
   concrete: Object.freeze({ id:"concrete", label:"Concrete patch", family:"ground", material:"weathered", materials:Object.freeze({ weathered:"Weathered concrete", pale:"Pale concrete", dark:"Dark concrete" }), rules:openRules }),
   cobblestone: Object.freeze({ id:"cobblestone", label:"Cobblestone patch", family:"ground", material:"grey", materials:Object.freeze({ grey:"Grey cobble", warm:"Warm cobble", dark:"Dark cobble" }), rules:openRules }),
-  mud: Object.freeze({ id:"mud", label:"Mud patch", family:"ground", material:"wet", materials:Object.freeze({ wet:"Wet mud", churned:"Churned mud", dry:"Dry mud" }), rules:Object.freeze({ movement:"rough", cover:null, los:"clear" }) }),
-  pond: Object.freeze({ id:"pond", label:"Pond / lake patch", family:"water", material:"blue", materials:Object.freeze({ blue:"Clear blue", dark:"Deep water", marsh:"Marsh water" }), rules:Object.freeze({ movement:"rough", cover:null, los:"clear" }) })
+  mud: Object.freeze({ id:"mud", label:"Mud patch", family:"ground", material:"wet", materials:Object.freeze({ wet:"Wet mud", churned:"Churned mud", dry:"Dry mud" }), rules:Object.freeze({ movement:"rough", movementMultiplier:1.5, cover:null, los:"clear" }) }),
+  pond: Object.freeze({ id:"pond", label:"Pond / lake patch", family:"water", material:"blue", materials:Object.freeze({ blue:"Clear blue", dark:"Deep water", marsh:"Marsh water" }), rules:Object.freeze({ movement:"rough", movementMultiplier:2, cover:null, los:"clear", vehicleAccess:"restricted" }) })
 });
 
 window.CROSSROADS_TERRAIN = { instances: [] };

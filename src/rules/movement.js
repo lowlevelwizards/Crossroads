@@ -304,18 +304,20 @@
       const details = [];
 
       if (movementIntegrityEnabled()) {
-        for (const woods of terrainInstances.filter(instance => instance.rules?.movement === "rough")) {
-          const woodsClip = segmentTerrainClip(start, end, woods);
-          if (!woodsClip) continue;
-          const insideLength = distance * Math.max(0, Number(woodsClip.insideFraction) || woodsClip.tExit - woodsClip.tEnter);
-          cost += insideLength * (rules.roughGroundMultiplier - 1);
-          details.push(`${insideLength.toFixed(1)}″ through ${woods.definition?.label ?? "rough ground"} costs double`);
+        for (const roughTerrain of terrainInstances.filter(instance => instance.rules?.movement === "rough")) {
+          const terrainClip = segmentTerrainClip(start, end, roughTerrain);
+          if (!terrainClip) continue;
+          const insideLength = distance * Math.max(0, Number(terrainClip.insideFraction) || terrainClip.tExit - terrainClip.tEnter);
+          const multiplier = Math.max(1, Number(roughTerrain.rules?.movementMultiplier) || rules.roughGroundMultiplier);
+          cost += insideLength * (multiplier - 1);
+          details.push(`${insideLength.toFixed(1)}″ through ${roughTerrain.definition?.label ?? "rough ground"} costs ×${multiplier.toFixed(multiplier % 1 ? 1 : 0)}`);
         }
 
-        for (const wall of terrainInstances.filter(instance => instance.rules?.movement === "crossing")) {
-          if (!segmentTerrainClip(start, end, wall)) continue;
-          cost += rules.wallCrossingCost;
-          details.push(`${wall.definition?.label ?? "obstacle"} crossing +${rules.wallCrossingCost}″`);
+        for (const crossing of terrainInstances.filter(instance => instance.rules?.movement === "crossing")) {
+          if (!segmentTerrainClip(start, end, crossing)) continue;
+          const crossingCost = Math.max(0, Number(crossing.rules?.crossingCost) || rules.wallCrossingCost);
+          cost += crossingCost;
+          details.push(`${crossing.definition?.label ?? "obstacle"} crossing +${crossingCost}″`);
         }
       }
 

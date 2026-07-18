@@ -135,3 +135,30 @@
 .linear-rail-sleeper { fill:#684733; stroke:#493226; stroke-width:.04; }
 .linear-rail-sleeper-highlight { fill:#8a6245; opacity:.48; }
 .linear-rail-line { stroke:#68757c; }
+
+/* Infantry Core: miniature geometry follows the board at every tactical zoom.
+   Medium and close LOD may change labels/details, but never enlarge the unit. */
+:root,
+body.camera-medium,
+body.camera-close,
+body.camera-inspection,
+body.camera-rotated,
+body.camera-rotated.camera-medium,
+body.camera-rotated.camera-close,
+body.camera-rotated.camera-inspection {
+  --unit-visual-scale:.86!important;
+}
+
+.battlefield .unit-representation-medium,
+.battlefield .unit-representation-close,
+.battlefield .unit-representation-inspection {
+  --unit-visual-scale:.86!important;
+}
+
+@media (max-width:899px), (min-width:900px) {
+  .battlefield .unit-representation-medium,
+  .battlefield .unit-representation-close,
+  .battlefield .unit-representation-inspection {
+    --unit-visual-scale:.86!important;
+  }
+}
