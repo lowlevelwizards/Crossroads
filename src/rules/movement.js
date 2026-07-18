@@ -239,7 +239,7 @@
       const buildings = terrainInstances.filter(instance => instance.rules?.occupiable);
 
       for (const building of buildings) {
-        const expandedBuilding = expandRect(building, rules.unitCollisionRadius);
+        const expandedBuilding = expandRect(building, Math.max(0, Number(rules.buildingCollisionClearance) || 0));
         const label = building.definition?.label ?? "building";
         if (pointInsideRect(end, expandedBuilding)) {
           return {

@@ -57,6 +57,21 @@
 .scene-depth-object { isolation:isolate; }
 .objective-ring, .objective-marker, .objective-point, .objective-layer { z-index:7200!important; }
 .range-ring, .trace-line, .trace-label, #routeLayer, .waypoint-marker, .ghost-token, .preview-dot { z-index:7600!important; }
+#routeLayer {
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  pointer-events:none!important;
+  overflow:visible!important;
+  isolation:isolate;
+}
+#routeLayer .route-line {
+  position:absolute!important;
+  z-index:1!important;
+  transform-origin:0 50%!important;
+  pointer-events:none!important;
+}
 
 /* Linear family recovery. */
 .linear-road-shoulder { stroke:#73805d; opacity:.64; }

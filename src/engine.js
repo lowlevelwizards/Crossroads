@@ -169,6 +169,7 @@
       baseHitTarget: 4,
       regularDamageTarget: 4,
       unitCollisionRadius: 1.6,
+      buildingCollisionClearance: 0.55,
       unitSeparation: 3.4,
       wallProtectionDepth: 4,
       wallCrossingCost: 2,
@@ -2515,7 +2516,7 @@
       })));
       for (const candidate of candidates) {
         const point = clampPoint(candidate);
-        if (!(TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(point, expandRect(instance, RULES.unitCollisionRadius))) && !analyzeDestinationCollision(attacker, point, null).blocked) return point;
+        if (!destinationOverlapsBuilding(point) && !analyzeDestinationCollision(attacker, point, null).blocked) return point;
       }
       return clampPoint(attackerStart);
     }
@@ -2758,6 +2759,14 @@
 
     function expandRect(rect, amount) { return { x: rect.x - amount, y: rect.y - amount, width: rect.width + amount * 2, height: rect.height + amount * 2 }; }
     function clampPoint(point) { return { x: clamp(point.x, RULES.unitCollisionRadius, RULES.tableWidth - RULES.unitCollisionRadius), y: clamp(point.y, RULES.unitCollisionRadius, RULES.tableHeight - RULES.unitCollisionRadius) }; }
+
+    function destinationOverlapsBuilding(point) {
+      const clearance = Math.max(0, Number(RULES.buildingCollisionClearance) || 0);
+      return (TERRAIN.instances ?? []).some(instance =>
+        instance.rules?.occupiable &&
+        pointInsideRect(point, expandRect(instance, clearance))
+      );
+    }
     function rollDice(count) { return Array.from({ length: count }, () => 1 + Math.floor(Math.random() * 6)); }
     function capitalize(value) { return value.charAt(0).toUpperCase() + value.slice(1); }
     function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
@@ -3132,7 +3141,7 @@
       const factionUnits = livingUnits().filter(unit => unit.faction === faction);
       return factionUnits.every(unit => {
         if (!pointInDeploymentZone(unit, faction)) return false;
-        if ((TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(unit, expandRect(instance, RULES.unitCollisionRadius)))) return false;
+        if (destinationOverlapsBuilding(unit)) return false;
         return !analyzeDestinationCollision(unit, unit, null).blocked;
       });
     }
@@ -3182,7 +3191,7 @@
         return;
       }
       const destination = clampPoint(point);
-      if ((TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) {
+      if (destinationOverlapsBuilding(destination)) {
         setStatus("Cannot deploy inside the impassable building.");
         return;
       }
@@ -3621,7 +3630,7 @@
       const destination = clampPoint(point);
       let legal = pointInDeploymentZone(destination, unit.faction);
       let reason = legal ? "Inside deployment zone." : "Outside deployment zone.";
-      if (legal && (TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) {
+      if (legal && destinationOverlapsBuilding(destination)) {
         legal = false; reason = "Impassable building overlaps this position.";
       }
       if (legal) {
@@ -4015,7 +4024,7 @@
       const destination = clampPoint(point);
       let legal = pointInDeploymentZone(destination, unit.faction);
       let reason = legal ? "Inside deployment zone." : "Outside deployment zone.";
-      if (legal && (TERRAIN.instances ?? []).some(instance => instance.rules?.occupiable && pointInsideRect(destination, expandRect(instance, RULES.unitCollisionRadius)))) { legal = false; reason = "Impassable building overlaps this position."; }
+      if (legal && destinationOverlapsBuilding(destination)) { legal = false; reason = "Impassable building overlaps this position."; }
       if (legal) {
         const collision = analyzeDestinationCollision(unit, destination, null);
         if (collision.blocked) { legal = false; reason = collision.reason; }
