@@ -125,6 +125,10 @@ assert(editorHtml.includes("src/generation/woodland-generator.js"), "editor must
 assert(editorHtml.includes("src/editor/editor-selection.js"), "editor must load the formal selection boundary");
 assert(editorSource.includes("Lock object on battlefield"), "inspector must expose object locking");
 assert(editorSource.includes("reroll-generator"), "woodland inspector must expose deterministic rerolling");
+assert(editorHtml.includes("renameScenarioButton"), "editor must expose custom-scenario rename controls");
+assert(editorHtml.includes("deleteScenarioButton"), "editor must expose custom-scenario deletion controls");
+assert(editorSource.includes("segmentHitWidth"), "linear terrain selection must use authored-width hit regions");
+assert(editorSource.includes("data-range-number"), "range controls must expose linked exact-value numeric inputs");
 
 const migrated = DOC.create({ ...source, schemaVersion:0, terrain:[{ ...source.terrain[0], hidden:true }] });
 assert.strictEqual(migrated.schemaVersion, 1, "scenario documents must migrate to schema version 1");
@@ -158,4 +162,4 @@ assert(playtestContext.window.CROSSROADS_SCENARIOS.editor_playtest, "playtest br
 assert.strictEqual(playtestSelect.value, "editor_playtest", "playtest bridge must select the injected scenario before engine startup");
 assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge must mark the runtime document");
 
-console.log("PASS — Terrain Editor E1.4 schema, selection-ready document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");
+console.log("PASS — Terrain Editor E1.4.1 schema, selection, exact-value controls, custom-scenario management, camera, visibility, path authoring, validation, and playtest checks passed.");

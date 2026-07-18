@@ -35,6 +35,8 @@
     scenarioSelect: document.getElementById("editorScenarioSelect"),
     scenarioTypeSelect: document.getElementById("scenarioTypeSelect"),
     newScenarioButton: document.getElementById("newScenarioButton"),
+    renameScenarioButton: document.getElementById("renameScenarioButton"),
+    deleteScenarioButton: document.getElementById("deleteScenarioButton"),
     returnToGameLink: document.getElementById("returnToGameLink"),
     terrainTypeSelect: document.getElementById("terrainTypeSelect"),
     linearStyleSelect: document.getElementById("linearStyleSelect"),
@@ -113,7 +115,11 @@
     newScenarioHeight: document.getElementById("newScenarioHeight"),
     newScenarioRounds: document.getElementById("newScenarioRounds"),
     newScenarioType: document.getElementById("newScenarioType"),
-    newScenarioStartingFaction: document.getElementById("newScenarioStartingFaction")
+    newScenarioStartingFaction: document.getElementById("newScenarioStartingFaction"),
+    renameScenarioDialog: document.getElementById("renameScenarioDialog"),
+    renameScenarioForm: document.getElementById("renameScenarioForm"),
+    renameScenarioTitle: document.getElementById("renameScenarioTitle"),
+    renameScenarioIdReadout: document.getElementById("renameScenarioIdReadout")
   });
 
   const state = EDITOR_STATE.create();
@@ -139,15 +145,27 @@
     } catch (_error) { /* Storage is optional. */ }
   }
 
-  function persistCustomScenario(source) {
+  function customScenarioSources() {
+    const builtInIds = new Set(Object.keys(SCENARIOS));
+    return [...scenarioSources.values()]
+      .filter(item => !builtInIds.has(item.id))
+      .map(item => DOCUMENT.create(item));
+  }
+
+  function writeCustomScenarioSources() {
     try {
-      const builtInIds = new Set(Object.keys(SCENARIOS));
-      const custom = [...scenarioSources.values()].filter(item => !builtInIds.has(item.id));
-      const index = custom.findIndex(item => item.id === source.id);
-      if (index >= 0) custom[index] = DOCUMENT.create(source);
-      else custom.push(DOCUMENT.create(source));
-      localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(custom));
+      localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(customScenarioSources()));
     } catch (_error) { /* Storage is optional. */ }
+  }
+
+  function persistCustomScenario(source) {
+    const draft = DOCUMENT.create(source);
+    scenarioSources.set(draft.id, draft);
+    writeCustomScenarioSources();
+  }
+
+  function isBuiltInScenario(id = state.sourceScenarioId) {
+    return Boolean(id && SCENARIOS[id]);
   }
 
   function refreshScenarioSelect(selectedId = refs.scenarioSelect.value) {
@@ -612,8 +630,10 @@
           if (segmentSelected) refs.interactionSvg.appendChild(svgNode("line", {
             x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-highlight"
           }));
+          const segmentHitWidth = Math.max(1.15, (number(a.width, number(path.width, 2)) + number(b.width, number(path.width, 2))) / 2);
           refs.interactionSvg.appendChild(svgNode("line", {
             x1:number(a.x), y1:number(a.y), x2:number(b.x), y2:number(b.y), class:"editor-linear-segment-hit",
+            "stroke-width":segmentHitWidth,
             "data-editor-kind":"segment", "data-linear-id":path.id, "data-segment-index":index
           }));
         }
@@ -956,7 +976,10 @@
   }
 
   function rangeField(label, path, value, min, max, step = .1) {
-    return `<label class="editor-range-field"><span>${escapeHtml(label)}</span><input type="range" data-field="${escapeHtml(path)}" value="${escapeHtml(value)}" min="${min}" max="${max}" step="${step}"><output class="editor-range-output">${escapeHtml(value)}</output></label>`;
+    const safeLabel = escapeHtml(label);
+    const safePath = escapeHtml(path);
+    const safeValue = escapeHtml(value);
+    return `<label class="editor-range-field"><span>${safeLabel}</span><div class="editor-range-controls"><input type="range" data-field="${safePath}" value="${safeValue}" min="${min}" max="${max}" step="${step}"><input class="editor-range-number" type="number" data-field="${safePath}" data-range-number value="${safeValue}" min="${min}" max="${max}" step="${step}" aria-label="${safeLabel} exact value"></div></label>`;
   }
 
   function boundsFields(item, selection) {
@@ -1182,6 +1205,9 @@
     refs.scenarioTitleReadout.textContent = state.document.title || state.document.id;
     refs.scenarioSizeReadout.textContent = `${table().width}″ × ${table().height}″`;
     refs.scenarioTypeSelect.value = scenarioType(state.document);
+    const customScenario = !isBuiltInScenario();
+    refs.renameScenarioButton.disabled = !customScenario;
+    refs.deleteScenarioButton.disabled = !customScenario;
     refs.saveReadout.textContent = state.status;
     refs.linearDrawActions.hidden = !state.drawingPath;
     refs.finishLinearButton.disabled = (state.drawingPath?.points.length ?? 0) < 2;
@@ -1331,6 +1357,7 @@
     }
     if (!rawSelection) {
       event.preventDefault();
+      if (state.selection) select(null);
       startPan(event);
       return;
     }
@@ -1484,7 +1511,12 @@
 
   function parseControlValue(control) {
     if (control.type === "checkbox") return control.checked;
-    if (control.type === "number" || control.type === "range") return number(control.value);
+    if (control.type === "number" || control.type === "range") {
+      const value = number(control.value);
+      const min = control.min === "" ? -Infinity : number(control.min, -Infinity);
+      const max = control.max === "" ? Infinity : number(control.max, Infinity);
+      return clamp(value, min, max);
+    }
     return control.value;
   }
 
@@ -2143,6 +2175,45 @@
     loadScenario(id);
   }
 
+  function openRenameScenarioDialog() {
+    if (isBuiltInScenario()) return;
+    refs.renameScenarioTitle.value = state.document.title || state.document.id;
+    refs.renameScenarioIdReadout.value = state.document.id;
+    refs.renameScenarioDialog.showModal();
+    refs.renameScenarioTitle.focus();
+    refs.renameScenarioTitle.select();
+  }
+
+  function renameCustomScenario(event) {
+    event.preventDefault();
+    if (isBuiltInScenario()) return;
+    const title = refs.renameScenarioTitle.value.trim();
+    if (!title) return;
+    state.document.title = title;
+    if (state.sourceDocument) state.sourceDocument.title = title;
+    scenarioSources.set(state.sourceScenarioId, DOCUMENT.create(state.document));
+    persistCustomScenario(state.document);
+    refreshScenarioSelect(state.sourceScenarioId);
+    refs.renameScenarioDialog.close();
+    state.status = `Renamed scenario to ${title}`;
+    renderAll();
+  }
+
+  function deleteCustomScenario() {
+    const id = state.sourceScenarioId;
+    if (isBuiltInScenario(id)) return;
+    const title = state.document.title || id;
+    if (!window.confirm(`Delete custom scenario “${title}”? This removes its locally saved editor copy.`)) return;
+    scenarioSources.delete(id);
+    writeCustomScenarioSources();
+    const fallback = scenarioSources.has("mokra") ? "mokra" : scenarioSources.keys().next().value;
+    try {
+      if (localStorage.getItem(LAST_SCENARIO_STORAGE_KEY) === id) localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, fallback || "");
+    } catch (_error) { /* Storage is optional. */ }
+    refreshScenarioSelect(fallback);
+    if (fallback) loadScenario(fallback);
+  }
+
   async function copyText(text, message) {
     try {
       await navigator.clipboard.writeText(text);
@@ -2193,9 +2264,15 @@
     refs.scenarioSelect.addEventListener("change", () => loadScenario(refs.scenarioSelect.value));
     refs.scenarioTypeSelect.addEventListener("change", () => updateScenarioType(refs.scenarioTypeSelect.value));
     refs.newScenarioButton.addEventListener("click", openNewScenarioDialog);
+    refs.renameScenarioButton.addEventListener("click", openRenameScenarioDialog);
+    refs.deleteScenarioButton.addEventListener("click", deleteCustomScenario);
     refs.newScenarioForm.addEventListener("submit", createScenarioFromDialog);
+    refs.renameScenarioForm.addEventListener("submit", renameCustomScenario);
     refs.newScenarioDialog.addEventListener("click", event => {
       if (event.target === refs.newScenarioDialog || event.target.closest("[data-dialog-close]")) refs.newScenarioDialog.close();
+    });
+    refs.renameScenarioDialog.addEventListener("click", event => {
+      if (event.target === refs.renameScenarioDialog || event.target.closest("[data-dialog-close]")) refs.renameScenarioDialog.close();
     });
     refs.newScenarioTitle.addEventListener("input", () => {
       if (!refs.newScenarioId.dataset.edited) refs.newScenarioId.value = slugify(refs.newScenarioTitle.value);
@@ -2264,7 +2341,16 @@
     refs.viewport.addEventListener("pointercancel", onBoardPointerUp);
     refs.inspectorForm.addEventListener("input", event => {
       const range = event.target.closest("input[type='range'][data-field]");
-      if (range) range.parentElement?.querySelector("output")?.replaceChildren(document.createTextNode(range.value));
+      if (range) {
+        const exact = range.closest(".editor-range-controls")?.querySelector("[data-range-number]");
+        if (exact) exact.value = range.value;
+        return;
+      }
+      const exact = event.target.closest("input[data-range-number][data-field]");
+      if (exact) {
+        const slider = exact.closest(".editor-range-controls")?.querySelector("input[type='range']");
+        if (slider && exact.value !== "") slider.value = exact.value;
+      }
     });
     refs.inspectorForm.addEventListener("change", onInspectorChange);
     refs.inspectorForm.addEventListener("click", event => {
@@ -2332,10 +2418,9 @@
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redo();
-      } else if (event.key === "Escape" && state.selection) {
+      } else if ((event.key === "Escape" || event.key === "Enter") && state.selection) {
         event.preventDefault();
-        if (SELECTION.level(state.selection) === "component") select(SELECTION.objectOnly(state.selection));
-        else select(null);
+        select(null);
       } else if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         deleteSelection();

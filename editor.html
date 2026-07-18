@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Terrain Editor E1.4</title>
-  <link rel="stylesheet" href="styles/main.css?v=e14">
-  <link rel="stylesheet" href="styles/terrain.css?v=e14">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=e14">
-  <link rel="stylesheet" href="styles/mokra.css?v=e14">
-  <link rel="stylesheet" href="styles/stabilization.css?v=e14">
-  <link rel="stylesheet" href="styles/editor.css?v=e14">
+  <title>Crossroads — Terrain Editor E1.4.1</title>
+  <link rel="stylesheet" href="styles/main.css?v=e141">
+  <link rel="stylesheet" href="styles/terrain.css?v=e141">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=e141">
+  <link rel="stylesheet" href="styles/mokra.css?v=e141">
+  <link rel="stylesheet" href="styles/stabilization.css?v=e141">
+  <link rel="stylesheet" href="styles/editor.css?v=e141">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Terrain Editor E1.4</h1>
+      <h1>CROSSROADS — Terrain Editor E1.4.1</h1>
       <p>Compose scenario data directly with transformable paths, editable polygon patches, material variants, explicit layer control, and procedural width profiles.</p>
     </div>
     <div class="editor-header-actions">
@@ -32,6 +32,10 @@
         <button id="newScenarioButton" class="editor-button editor-button-primary editor-button-wide editor-button-top" type="button">+ New Scenario</button>
         <label class="editor-field-label" for="editorScenarioSelect">Scenario</label>
         <select id="editorScenarioSelect" class="editor-control"></select>
+        <div class="editor-inline-actions editor-scenario-actions">
+          <button id="renameScenarioButton" class="editor-button editor-button-quiet" type="button">Rename Custom</button>
+          <button id="deleteScenarioButton" class="editor-button editor-button-danger" type="button">Delete Custom</button>
+        </div>
         <label class="editor-field-label" for="scenarioTypeSelect">Scenario type</label>
         <select id="scenarioTypeSelect" class="editor-control">
           <option value="control">Control</option>
@@ -133,7 +137,7 @@
           <strong id="scenarioTitleReadout">Scenario</strong>
           <span id="scenarioSizeReadout">72″ × 48″</span>
         </div>
-        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Enter finishes drawing.</div>
+        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Click empty space, Esc, or Enter to deselect.</div>
       </div>
       <div id="editorViewport" class="editor-viewport">
         <div id="editorStage" class="editor-stage">
@@ -230,36 +234,49 @@
     </form>
   </dialog>
 
-  <script src="data/terrain.js?v=e14"></script>
-  <script src="data/linear-terrain.js?v=e14"></script>
-  <script src="data/unit-quality.js?v=e14"></script>
-  <script src="data/unit-types.js?v=e14"></script>
-  <script src="data/scenarios.js?v=e14"></script>
-  <script src="src/presentation/layer-policy.js?v=e14"></script>
-  <script src="src/scenario/scenario-visibility.js?v=e14"></script>
-  <script src="src/scenario/scenario-migrations.js?v=e14"></script>
-  <script src="src/scenario/scenario-schema.js?v=e14"></script>
-  <script src="src/generation/seeded-random.js?v=e14"></script>
-  <script src="src/generation/polygon-geometry.js?v=e14"></script>
-  <script src="src/generation/polygon-scatter.js?v=e14"></script>
-  <script src="src/generation/row-generator.js?v=e14"></script>
-  <script src="src/generation/woodland-generator.js?v=e14"></script>
-  <script src="src/presentation/buildings.js?v=e14"></script>
-  <script src="src/presentation/woodland-trees.js?v=e14"></script>
-  <script src="src/presentation/terrain.js?v=e14"></script>
-  <script src="src/presentation/terrain-patches.js?v=e14"></script>
-  <script src="src/rules/path-geometry.js?v=e14"></script>
-  <script src="src/rules/linear-terrain.js?v=e14"></script>
-  <script src="src/presentation/linear-terrain.js?v=e14"></script>
-  <script src="src/presentation/scene-compositor.js?v=e14"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e14"></script>
-  <script src="src/rules/terrain-geometry.js?v=e14"></script>
-  <script src="src/editor/editor-state.js?v=e14"></script>
-  <script src="src/editor/editor-selection.js?v=e14"></script>
-  <script src="src/editor/editor-tools.js?v=e14"></script>
-  <script src="src/editor/editor-document.js?v=e14"></script>
-  <script src="src/editor/editor-validation.js?v=e14"></script>
-  <script src="src/editor/editor-geometry.js?v=e14"></script>
-  <script src="src/editor/editor.js?v=e14"></script>
+  <dialog id="renameScenarioDialog" class="editor-dialog">
+    <form id="renameScenarioForm" method="dialog" class="editor-dialog-form">
+      <div class="editor-section-heading"><h2>Rename Custom Scenario</h2><button class="editor-dialog-close" type="button" data-dialog-close aria-label="Close">×</button></div>
+      <label>Scenario name<input id="renameScenarioTitle" class="editor-control" type="text" required></label>
+      <label>Internal ID<input id="renameScenarioIdReadout" class="editor-control" type="text" readonly></label>
+      <p class="editor-dialog-note">Renaming changes the title shown in the editor while preserving the scenario’s stable internal ID.</p>
+      <div class="editor-dialog-actions">
+        <button class="editor-button editor-button-quiet" type="button" data-dialog-close>Cancel</button>
+        <button class="editor-button editor-button-primary" type="submit">Rename Scenario</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="data/terrain.js?v=e141"></script>
+  <script src="data/linear-terrain.js?v=e141"></script>
+  <script src="data/unit-quality.js?v=e141"></script>
+  <script src="data/unit-types.js?v=e141"></script>
+  <script src="data/scenarios.js?v=e141"></script>
+  <script src="src/presentation/layer-policy.js?v=e141"></script>
+  <script src="src/scenario/scenario-visibility.js?v=e141"></script>
+  <script src="src/scenario/scenario-migrations.js?v=e141"></script>
+  <script src="src/scenario/scenario-schema.js?v=e141"></script>
+  <script src="src/generation/seeded-random.js?v=e141"></script>
+  <script src="src/generation/polygon-geometry.js?v=e141"></script>
+  <script src="src/generation/polygon-scatter.js?v=e141"></script>
+  <script src="src/generation/row-generator.js?v=e141"></script>
+  <script src="src/generation/woodland-generator.js?v=e141"></script>
+  <script src="src/presentation/buildings.js?v=e141"></script>
+  <script src="src/presentation/woodland-trees.js?v=e141"></script>
+  <script src="src/presentation/terrain.js?v=e141"></script>
+  <script src="src/presentation/terrain-patches.js?v=e141"></script>
+  <script src="src/rules/path-geometry.js?v=e141"></script>
+  <script src="src/rules/linear-terrain.js?v=e141"></script>
+  <script src="src/presentation/linear-terrain.js?v=e141"></script>
+  <script src="src/presentation/scene-compositor.js?v=e141"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e141"></script>
+  <script src="src/rules/terrain-geometry.js?v=e141"></script>
+  <script src="src/editor/editor-state.js?v=e141"></script>
+  <script src="src/editor/editor-selection.js?v=e141"></script>
+  <script src="src/editor/editor-tools.js?v=e141"></script>
+  <script src="src/editor/editor-document.js?v=e141"></script>
+  <script src="src/editor/editor-validation.js?v=e141"></script>
+  <script src="src/editor/editor-geometry.js?v=e141"></script>
+  <script src="src/editor/editor.js?v=e141"></script>
 </body>
 </html>

@@ -1,3 +1,12 @@
+# Terrain Editor E1.4.1 — Selection and Scenario Polish
+
+- Expanded linear-terrain hit regions to match their authored width, with a safe minimum for thin paths and walls.
+- Empty-space clicks, Esc, and Enter now reliably clear editor selection outside drawing mode.
+- Replaced passive slider readouts with linked numeric inputs for precise typed values.
+- Added rename and delete controls for locally saved custom scenarios while protecting built-in scenario definitions.
+- Preserved E1.4 procedural woodland, schema, locking, combat, and scenario behavior.
+- Reserved seasonal terrain changes for a future shared material/palette system.
+
 # Terrain Editor E1.4 — Procedural Terrain Containers
 
 - Added Scenario Schema v1 with explicit migrations, canonical visibility/locking fields, and legacy `hidden` cleanup.

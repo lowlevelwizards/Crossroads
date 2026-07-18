@@ -302,7 +302,7 @@
 .editor-board.can-pan { cursor:grab; }
 .editor-viewport { overscroll-behavior:contain; }
 .editor-unit-label.is-hidden { display:none; }
-.editor-linear-segment-hit { fill:none; stroke:rgba(0,0,0,.001); stroke-width:2.8; vector-effect:non-scaling-stroke; pointer-events:stroke; cursor:pointer; }
+.editor-linear-segment-hit { fill:none; stroke:rgba(0,0,0,.001); stroke-linecap:round; pointer-events:stroke; cursor:pointer; }
 .editor-linear-segment-highlight { fill:none; stroke:#f0a44f; stroke-width:.28; stroke-dasharray:.55 .22; vector-effect:non-scaling-stroke; pointer-events:none; }
 .editor-drawing-path { fill:none; stroke:rgba(255,231,141,.96); stroke-width:.24; stroke-dasharray:.55 .28; vector-effect:non-scaling-stroke; pointer-events:none; }
 .editor-drawing-waypoint { fill:#fff3c2; stroke:#6b4128; stroke-width:.15; vector-effect:non-scaling-stroke; pointer-events:none; }
@@ -376,10 +376,11 @@
 .editor-selection-box.is-linear .editor-resize-handle,.editor-selection-box.is-patch .editor-resize-handle { background:#f2bf67; }
 .editor-inspector-form .editor-checkbox-field { display:flex; flex-direction:row; align-items:center; gap:7px; min-height:34px; padding:6px 8px; border:1px solid #b3a690; border-radius:5px; background:#eee4d2; }
 .editor-inspector-form .editor-checkbox-field input { width:auto; min-height:0; }
-.editor-range-field { grid-column:1/-1; display:grid!important; grid-template-columns:1fr 58px; align-items:center; gap:6px!important; }
-.editor-range-field > span { grid-column:1/-1; }
+.editor-range-field { grid-column:1/-1; display:grid!important; gap:5px!important; }
+.editor-range-field > span { display:block; }
+.editor-range-controls { display:grid; grid-template-columns:minmax(0,1fr) 76px; align-items:center; gap:7px; }
 .editor-range-field input[type="range"] { min-height:24px; padding:0; }
-.editor-range-output { min-height:28px; display:grid; place-items:center; border:1px solid #8a7e6d; border-radius:5px; background:#fffaf0; font-size:11px; }
+.editor-range-number { min-height:30px!important; padding:4px 6px!important; text-align:right; font-variant-numeric:tabular-nums; }
 .editor-layer-actions { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .editor-layer-actions .editor-button { min-height:30px; font-size:10px; padding:5px; }
 .editor-transform-actions { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
@@ -458,3 +459,7 @@
 .editor-generator-actions { grid-column:1/-1; display:flex; align-items:center; gap:8px; }
 .editor-generator-actions > span { color:#71685d; font-size:10px; font-weight:850; }
 .editor-selection-box.is-patch { outline:1px solid rgba(255,247,196,.45); outline-offset:2px; }
+
+/* Terrain Editor E1.4.1 — selection and scenario-management polish */
+.editor-scenario-actions .editor-button { font-size:10px; padding-inline:6px; }
+.editor-dialog-note { margin:0; padding:8px; border-radius:5px; background:#e9dfcd; color:#62594d; font-size:11px; line-height:1.35; }

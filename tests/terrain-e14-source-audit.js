@@ -37,8 +37,8 @@ assert(editorSource.includes("Lock object on battlefield"), "locking must be exp
 assert(editorSource.includes("mutateGroup"), "object-browser groups must support locking");
 assert(patchSource.includes("WOODLAND.generate(patch)"), "patch runtime must use deterministic woodland generation");
 assert(!patchSource.includes("woods-tree-dot"), "legacy dot-fill woodland output must not remain");
-assert(buildInfo.includes('version: "E1.4"'), "build metadata must identify E1.4");
+assert(buildInfo.includes('version: "E1.4.1"'), "build metadata must identify E1.4.1");
 assert(buildInfo.includes('codename: "Procedural Terrain Containers"'), "build codename must match the release");
 assert(fs.existsSync(path.join(root, "tests/woodland-visual-fixture.html")), "woodland visual fixture must be packaged");
 
-console.log("PASS — Terrain Editor E1.4 schema, modular editor boundary, shared woodland runtime, locking, and fixture source audit passed.");
+console.log("PASS — Terrain Editor E1.4.1 schema, modular editor boundary, shared woodland runtime, locking, and fixture source audit passed.");
