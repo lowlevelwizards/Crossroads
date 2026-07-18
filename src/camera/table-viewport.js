@@ -63,6 +63,30 @@
     });
   }
 
+
+  function containedSurfaceGeometry(options = {}) {
+    const viewportWidth = Math.max(1, number(options.viewportWidth, 1));
+    const viewportHeight = Math.max(1, number(options.viewportHeight, 1));
+    const boardWidth = Math.max(1, number(options.boardWidth, 1));
+    const boardHeight = Math.max(1, number(options.boardHeight, 1));
+    const zoom = Math.max(.01, number(options.zoom, 1));
+    const padding = Math.max(0, number(options.padding, 28));
+    const visualWidth = boardWidth * zoom;
+    const visualHeight = boardHeight * zoom;
+    const surfaceWidth = Math.max(viewportWidth, visualWidth + padding * 2);
+    const surfaceHeight = Math.max(viewportHeight, visualHeight + padding * 2);
+    return Object.freeze({
+      visualWidth,
+      visualHeight,
+      marginX:(surfaceWidth - visualWidth) / 2,
+      marginY:(surfaceHeight - visualHeight) / 2,
+      boardLeft:(surfaceWidth - visualWidth) / 2,
+      boardTop:(surfaceHeight - visualHeight) / 2,
+      surfaceWidth,
+      surfaceHeight
+    });
+  }
+
   function centeredScroll(options = {}) {
     const contentWidth = Math.max(1, number(options.contentWidth, 1));
     const contentHeight = Math.max(1, number(options.contentHeight, 1));
@@ -80,6 +104,7 @@
     boardPixels,
     fitZoom,
     surfaceGeometry,
+    containedSurfaceGeometry,
     centeredScroll
   });
 })();

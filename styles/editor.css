@@ -521,7 +521,7 @@
 .editor-app { height:100dvh; min-height:100dvh; }
 .editor-library-panel,.editor-object-browser { min-height:0; overflow:hidden; }
 .editor-viewport { padding:0; }
-.editor-stage { position:relative; width:100%; height:100%; min-width:1px; min-height:1px; }
+.editor-stage { position:relative; min-width:1px; min-height:1px; flex:0 0 auto; }
 .editor-board.is-placing-object { cursor:crosshair; }
 .editor-placement-layer { position:absolute; inset:0; z-index:7750; pointer-events:none; }
 .editor-placement-ghost {

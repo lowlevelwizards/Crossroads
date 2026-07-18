@@ -153,7 +153,13 @@
       }
       if (state.document) renderAll();
     },
-    onLayoutChange:() => { if (state.document) setupBoardGeometry(); }
+    onLayoutChange:() => {
+      if (!state.document) return;
+      requestAnimationFrame(() => {
+        setupBoardGeometry();
+        ensureBoardInView();
+      });
+    }
   });
 
   function option(value, label) {
@@ -698,14 +704,13 @@
   function setupBoardGeometry() {
     const size = TABLE_VIEWPORT.normalizeTable(table());
     const board = TABLE_VIEWPORT.boardPixels(size, EDITOR_PIXELS_PER_INCH);
-    const geometry = TABLE_VIEWPORT.surfaceGeometry({
+    const geometry = TABLE_VIEWPORT.containedSurfaceGeometry({
       viewportWidth:Math.max(1, refs.viewport.clientWidth),
       viewportHeight:Math.max(1, refs.viewport.clientHeight),
       boardWidth:board.width,
       boardHeight:board.height,
       zoom:state.zoom,
-      minimumMargin:96,
-      marginRatio:.42
+      padding:28
     });
     state.viewportGeometry = { ...geometry, boardWidth:board.width, boardHeight:board.height };
 
@@ -3097,17 +3102,41 @@
     setZoom(state.zoom * factor, event.clientX, event.clientY);
   }
 
-  function fitTable() {
-    state.zoom = editorFitZoom();
-    setupBoardGeometry();
+  function centerEditorSurface() {
+    const geometry = state.viewportGeometry;
+    if (!geometry) return;
     const centered = TABLE_VIEWPORT.centeredScroll({
-      contentWidth:refs.stage.offsetWidth,
-      contentHeight:refs.stage.offsetHeight,
-      viewportWidth:refs.viewport.clientWidth,
-      viewportHeight:refs.viewport.clientHeight
+      contentWidth:geometry.surfaceWidth,
+      contentHeight:geometry.surfaceHeight,
+      viewportWidth:Math.max(1, refs.viewport.clientWidth),
+      viewportHeight:Math.max(1, refs.viewport.clientHeight)
     });
     refs.viewport.scrollLeft = centered.left;
     refs.viewport.scrollTop = centered.top;
+  }
+
+  function boardIntersectsViewport() {
+    const viewportRect = refs.viewport.getBoundingClientRect();
+    const boardRect = refs.board.getBoundingClientRect();
+    if (viewportRect.width < 2 || viewportRect.height < 2 || boardRect.width < 2 || boardRect.height < 2) return false;
+    return boardRect.right > viewportRect.left + 8
+      && boardRect.left < viewportRect.right - 8
+      && boardRect.bottom > viewportRect.top + 8
+      && boardRect.top < viewportRect.bottom - 8;
+  }
+
+  function ensureBoardInView() {
+    if (boardIntersectsViewport()) return;
+    state.zoom = editorFitZoom();
+    setupBoardGeometry();
+    centerEditorSurface();
+  }
+
+  function fitTable() {
+    state.zoom = editorFitZoom();
+    setupBoardGeometry();
+    centerEditorSurface();
+    requestAnimationFrame(centerEditorSurface);
   }
 
   function slugify(value) {

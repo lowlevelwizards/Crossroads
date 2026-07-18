@@ -60,6 +60,27 @@ const geometry = VIEWPORT.surfaceGeometry({
 assert(geometry.surfaceHeight > portrait.height, "camera surface must retain vertical pan margins around portrait maps");
 assert(geometry.surfaceWidth > portrait.width, "camera surface must retain horizontal pan margins around any map");
 
+const editorFit = VIEWPORT.fitZoom({
+  viewportWidth:900,
+  viewportHeight:650,
+  boardWidth:portrait.width,
+  boardHeight:portrait.height,
+  margin:28
+});
+const editorGeometry = VIEWPORT.containedSurfaceGeometry({
+  viewportWidth:900,
+  viewportHeight:650,
+  boardWidth:portrait.width,
+  boardHeight:portrait.height,
+  zoom:editorFit,
+  padding:28
+});
+assert.strictEqual(editorGeometry.surfaceWidth, 900, "a fitted editor board must stay inside the visible viewport width");
+assert.strictEqual(editorGeometry.surfaceHeight, 650, "a fitted editor board must stay inside the visible viewport height");
+assert(editorGeometry.boardLeft >= 0 && editorGeometry.boardTop >= 0, "a fitted editor board must have a visible non-negative origin");
+assert(editorGeometry.boardLeft + editorGeometry.visualWidth <= editorGeometry.surfaceWidth + 1e-8, "the editor board must remain inside its horizontal scroll surface");
+assert(editorGeometry.boardTop + editorGeometry.visualHeight <= editorGeometry.surfaceHeight + 1e-8, "the editor board must remain inside its vertical scroll surface");
+
 function coordinateFactory(rotated) {
   const battlefield = {
     offsetWidth:1080,
@@ -112,6 +133,8 @@ assert.strictEqual(TOOLS.nudgeDistance({ alt:true }), .05, "Alt+Arrow must retai
 const editorSource = fs.readFileSync(path.join(root, "src/editor/editor.js"), "utf8");
 const editorCss = fs.readFileSync(path.join(root, "styles/editor.css"), "utf8");
 const mainCss = fs.readFileSync(path.join(root, "styles/main.css"), "utf8");
+assert(editorSource.includes("TABLE_VIEWPORT.containedSurfaceGeometry"), "editor geometry must use the contained surface that cannot strand the board outside the viewport");
+assert(editorSource.includes("ensureBoardInView"), "workspace layout changes must repair an off-screen editor board");
 assert(editorSource.includes("document.elementsFromPoint"), "dense-scene selection must inspect the complete hit stack");
 assert(editorSource.includes("isItemLocked(item)"), "locked objects must be excluded by canvas hit testing");
 assert(editorSource.includes("preferSelected:!event.shiftKey"), "the already-selected object must win ordinary dense-scene clicks");

@@ -1,0 +1,39 @@
+{
+  "name": "Crossroads 1939–1945",
+  "version": "S1.1.1",
+  "baseVersion": "S1.1.0",
+  "codename": "Viewport & Interaction Reliability",
+  "releaseType": "standalone",
+  "cacheVersion": "s111h1",
+  "entryPoints": [
+    "index.html",
+    "editor.html",
+    "tests/startup-smoke.html"
+  ],
+  "requiredFiles": [
+    "data/build-info.js",
+    "data/scenarios.js",
+    "src/camera/table-viewport.js",
+    "src/camera/camera.js",
+    "src/camera/coordinates.js",
+    "src/editor/editor-multiselect.js",
+    "src/rules/terrain-semantics.js",
+    "src/rules/terrain-spatial.js",
+    "src/scenario/scenario-schema.js",
+    "src/rules/objectives/objective-registry.js",
+    "src/scenario-runtime/scenario-compiler.js",
+    "src/scenario-runtime/scenario-runtime.js",
+    "src/scenario-runtime/scenario-presentation.js",
+    "src/runtime/building-occupancy.js",
+    "src/rules/combat-runtime.js",
+    "src/infrastructure/startup-validation.js",
+    "src/engine.js",
+    "src/editor/editor-persistence.js",
+    "src/editor/editor-shell.js",
+    "src/editor/editor.js",
+    "tests/release-integrity.test.js",
+    "tests/startup-smoke.html",
+    "tests/editor-shell.test.js",
+    "tests/viewport-interactions-s111.test.js"
+  ]
+}
