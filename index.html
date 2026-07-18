@@ -24,8 +24,8 @@ DOCUMENT LAYOUT
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Crossroads 1939–1945 — Infantry Core 1.7C</title>
     <link rel="stylesheet" href="styles/main.css?v=e11">
-    <link rel="stylesheet" href="styles/terrain.css?v=3t35">
-    <link rel="stylesheet" href="styles/linear-terrain.css?v=e14">
+    <link rel="stylesheet" href="styles/terrain.css?v=e15">
+    <link rel="stylesheet" href="styles/linear-terrain.css?v=e15">
     <link rel="stylesheet" href="styles/miniatures.css?v=3ni6">
     <link rel="stylesheet" href="styles/faction-kits.css?v=3ni6">
     <link rel="stylesheet" href="styles/unit-transforms.css?v=3t35">
@@ -495,7 +495,7 @@ DOCUMENT LAYOUT
   </script>
 
   <!-- Ordered classic scripts keep GitHub Pages and phone uploads simple. -->
-  <script src="data/build-info.js?v=e141"></script>
+  <script src="data/build-info.js?v=e15"></script>
   <script>
     // Apply the version before the battle engine starts. This keeps the visible
     // badge trustworthy even if a later startup error prevents full bootstrap.
@@ -513,31 +513,33 @@ DOCUMENT LAYOUT
   </script>
   <script src="data/stage.js"></script>
   <script src="data/weapons.js"></script>
-  <script src="data/terrain.js?v=e14"></script>
-  <script src="data/linear-terrain.js?v=e14"></script>
+  <script src="data/terrain.js?v=e15"></script>
+  <script src="data/linear-terrain.js?v=e15"></script>
   <script src="data/unit-quality.js"></script>
   <script src="data/unit-types.js?v=3ni3"></script>
   <script src="data/faction-kits.js?v=3ni3"></script>
-  <script src="data/scenarios.js?v=e14"></script>
-  <script src="src/presentation/layer-policy.js?v=e14"></script>
-  <script src="src/scenario/scenario-visibility.js?v=e14"></script>
-  <script src="src/scenario/scenario-migrations.js?v=e14"></script>
-  <script src="src/scenario/scenario-schema.js?v=e14"></script>
-  <script src="data/editor-playtest.js?v=e14"></script>
-  <script src="src/generation/seeded-random.js?v=e14"></script>
-  <script src="src/generation/polygon-geometry.js?v=e14"></script>
-  <script src="src/generation/polygon-scatter.js?v=e14"></script>
-  <script src="src/generation/row-generator.js?v=e14"></script>
-  <script src="src/generation/woodland-generator.js?v=e14"></script>
-  <script src="src/presentation/buildings.js?v=e14"></script>
-  <script src="src/presentation/woodland-trees.js?v=e14"></script>
-  <script src="src/presentation/terrain.js?v=e14"></script>
-  <script src="src/presentation/terrain-patches.js?v=e14"></script>
-  <script src="src/rules/path-geometry.js?v=e14"></script>
-  <script src="src/rules/linear-terrain.js?v=e14"></script>
-  <script src="src/presentation/linear-terrain.js?v=e14"></script>
-  <script src="src/presentation/scene-compositor.js?v=e14"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e14"></script>
+  <script src="data/scenarios.js?v=e15"></script>
+  <script src="src/presentation/layer-policy.js?v=e15"></script>
+  <script src="src/scenario/scenario-visibility.js?v=e15"></script>
+  <script src="src/scenario/scenario-migrations.js?v=e15"></script>
+  <script src="src/scenario/scenario-schema.js?v=e15"></script>
+  <script src="data/editor-playtest.js?v=e15"></script>
+  <script src="src/generation/seeded-random.js?v=e15"></script>
+  <script src="src/generation/polygon-geometry.js?v=e15"></script>
+  <script src="src/generation/polygon-scatter.js?v=e15"></script>
+  <script src="src/generation/row-generator.js?v=e15"></script>
+  <script src="src/generation/woodland-generator.js?v=e15"></script>
+  <script src="src/presentation/buildings.js?v=e15"></script>
+  <script src="src/presentation/woodland-trees.js?v=e15"></script>
+  <script src="src/presentation/terrain.js?v=e15"></script>
+  <script src="src/presentation/terrain-patches.js?v=e15"></script>
+  <script src="src/rules/terrain-semantics.js?v=e15"></script>
+  <script src="src/rules/terrain-spatial.js?v=e15"></script>
+  <script src="src/rules/path-geometry.js?v=e15"></script>
+  <script src="src/rules/linear-terrain.js?v=e15"></script>
+  <script src="src/presentation/linear-terrain.js?v=e15"></script>
+  <script src="src/presentation/scene-compositor.js?v=e15"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e15"></script>
   <script src="src/infrastructure/commands.js"></script>
   <script src="src/infrastructure/dom.js"></script>
   <script src="src/infrastructure/refresh.js"></script>
@@ -554,16 +556,16 @@ DOCUMENT LAYOUT
   <script src="src/camera/coordinates.js"></script>
   <script src="src/input/camera-input.js"></script>
   <script src="src/input/battlefield-input.js"></script>
-  <script src="src/rules/terrain-geometry.js?v=l1"></script>
-  <script src="src/rules/movement.js?v=3t2"></script>
+  <script src="src/rules/terrain-geometry.js?v=e15"></script>
+  <script src="src/rules/movement.js?v=e15"></script>
   <script src="src/rules/objectives.js?v=m1"></script>
   <script src="src/rules/scenario-runtime.js?v=m1"></script>
   <script src="src/rules/morale.js?v=4c"></script>
-  <script src="src/rules/shooting.js?v=4c"></script>
-  <script src="src/rules/assault.js?v=4c"></script>
-  <script src="src/rules/combat-runtime.js?v=4c"></script>
+  <script src="src/rules/shooting.js?v=e15"></script>
+  <script src="src/rules/assault.js?v=e15"></script>
+  <script src="src/rules/combat-runtime.js?v=e15"></script>
   <script src="src/infrastructure/startup-validation.js?v=m1"></script>
-  <script src="src/engine.js?v=l1"></script>
+  <script src="src/engine.js?v=e15"></script>
   <script src="src/presentation/nameplate-policy.js?v=l13"></script>
 </body>
 </html>

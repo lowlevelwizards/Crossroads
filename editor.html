@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Terrain Editor E1.4.1</title>
-  <link rel="stylesheet" href="styles/main.css?v=e141">
-  <link rel="stylesheet" href="styles/terrain.css?v=e141">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=e141">
-  <link rel="stylesheet" href="styles/mokra.css?v=e141">
-  <link rel="stylesheet" href="styles/stabilization.css?v=e141">
-  <link rel="stylesheet" href="styles/editor.css?v=e141">
+  <title>Crossroads — Terrain Editor E1.5</title>
+  <link rel="stylesheet" href="styles/main.css?v=e15">
+  <link rel="stylesheet" href="styles/terrain.css?v=e15">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=e15">
+  <link rel="stylesheet" href="styles/mokra.css?v=e15">
+  <link rel="stylesheet" href="styles/stabilization.css?v=e15">
+  <link rel="stylesheet" href="styles/editor.css?v=e15">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Terrain Editor E1.4.1</h1>
+      <h1>CROSSROADS — Terrain Editor E1.5</h1>
       <p>Compose scenario data directly with transformable paths, editable polygon patches, material variants, explicit layer control, and procedural width profiles.</p>
     </div>
     <div class="editor-header-actions">
@@ -137,7 +137,7 @@
           <strong id="scenarioTitleReadout">Scenario</strong>
           <span id="scenarioSizeReadout">72″ × 48″</span>
         </div>
-        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Click empty space, Esc, or Enter to deselect.</div>
+        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Shift-click adds objects; Shift-drag empty ground draws a selection box. Click empty space, Esc, or Enter to deselect.</div>
       </div>
       <div id="editorViewport" class="editor-viewport">
         <div id="editorStage" class="editor-stage">
@@ -168,7 +168,9 @@
         </div>
         <div id="inspectorEmpty" class="editor-empty-state">Select terrain, a path, waypoint, unit, objective, or deployment zone.</div>
         <form id="inspectorForm" class="editor-inspector-form" hidden></form>
-        <div id="selectionActions" class="editor-inline-actions" hidden>
+        <div id="selectionActions" class="editor-selection-actions" hidden>
+          <button id="copySelectionButton" class="editor-button editor-button-quiet" type="button">Copy</button>
+          <button id="pasteSelectionButton" class="editor-button editor-button-quiet" type="button">Paste</button>
           <button id="duplicateSelectionButton" class="editor-button editor-button-quiet" type="button">Duplicate</button>
           <button id="deleteSelectionButton" class="editor-button editor-button-danger" type="button">Delete</button>
         </div>
@@ -247,36 +249,39 @@
     </form>
   </dialog>
 
-  <script src="data/terrain.js?v=e141"></script>
-  <script src="data/linear-terrain.js?v=e141"></script>
-  <script src="data/unit-quality.js?v=e141"></script>
-  <script src="data/unit-types.js?v=e141"></script>
-  <script src="data/scenarios.js?v=e141"></script>
-  <script src="src/presentation/layer-policy.js?v=e141"></script>
-  <script src="src/scenario/scenario-visibility.js?v=e141"></script>
-  <script src="src/scenario/scenario-migrations.js?v=e141"></script>
-  <script src="src/scenario/scenario-schema.js?v=e141"></script>
-  <script src="src/generation/seeded-random.js?v=e141"></script>
-  <script src="src/generation/polygon-geometry.js?v=e141"></script>
-  <script src="src/generation/polygon-scatter.js?v=e141"></script>
-  <script src="src/generation/row-generator.js?v=e141"></script>
-  <script src="src/generation/woodland-generator.js?v=e141"></script>
-  <script src="src/presentation/buildings.js?v=e141"></script>
-  <script src="src/presentation/woodland-trees.js?v=e141"></script>
-  <script src="src/presentation/terrain.js?v=e141"></script>
-  <script src="src/presentation/terrain-patches.js?v=e141"></script>
-  <script src="src/rules/path-geometry.js?v=e141"></script>
-  <script src="src/rules/linear-terrain.js?v=e141"></script>
-  <script src="src/presentation/linear-terrain.js?v=e141"></script>
-  <script src="src/presentation/scene-compositor.js?v=e141"></script>
-  <script src="src/presentation/terrain-runtime.js?v=e141"></script>
-  <script src="src/rules/terrain-geometry.js?v=e141"></script>
-  <script src="src/editor/editor-state.js?v=e141"></script>
-  <script src="src/editor/editor-selection.js?v=e141"></script>
-  <script src="src/editor/editor-tools.js?v=e141"></script>
-  <script src="src/editor/editor-document.js?v=e141"></script>
-  <script src="src/editor/editor-validation.js?v=e141"></script>
-  <script src="src/editor/editor-geometry.js?v=e141"></script>
-  <script src="src/editor/editor.js?v=e141"></script>
+  <script src="data/terrain.js?v=e15"></script>
+  <script src="data/linear-terrain.js?v=e15"></script>
+  <script src="data/unit-quality.js?v=e15"></script>
+  <script src="data/unit-types.js?v=e15"></script>
+  <script src="data/scenarios.js?v=e15"></script>
+  <script src="src/presentation/layer-policy.js?v=e15"></script>
+  <script src="src/scenario/scenario-visibility.js?v=e15"></script>
+  <script src="src/scenario/scenario-migrations.js?v=e15"></script>
+  <script src="src/scenario/scenario-schema.js?v=e15"></script>
+  <script src="src/generation/seeded-random.js?v=e15"></script>
+  <script src="src/generation/polygon-geometry.js?v=e15"></script>
+  <script src="src/generation/polygon-scatter.js?v=e15"></script>
+  <script src="src/generation/row-generator.js?v=e15"></script>
+  <script src="src/generation/woodland-generator.js?v=e15"></script>
+  <script src="src/presentation/buildings.js?v=e15"></script>
+  <script src="src/presentation/woodland-trees.js?v=e15"></script>
+  <script src="src/presentation/terrain.js?v=e15"></script>
+  <script src="src/presentation/terrain-patches.js?v=e15"></script>
+  <script src="src/rules/terrain-semantics.js?v=e15"></script>
+  <script src="src/rules/terrain-spatial.js?v=e15"></script>
+  <script src="src/rules/path-geometry.js?v=e15"></script>
+  <script src="src/rules/linear-terrain.js?v=e15"></script>
+  <script src="src/presentation/linear-terrain.js?v=e15"></script>
+  <script src="src/presentation/scene-compositor.js?v=e15"></script>
+  <script src="src/presentation/terrain-runtime.js?v=e15"></script>
+  <script src="src/rules/terrain-geometry.js?v=e15"></script>
+  <script src="src/editor/editor-state.js?v=e15"></script>
+  <script src="src/editor/editor-selection.js?v=e15"></script>
+  <script src="src/editor/editor-multiselect.js?v=e15"></script>
+  <script src="src/editor/editor-tools.js?v=e15"></script>
+  <script src="src/editor/editor-document.js?v=e15"></script>
+  <script src="src/editor/editor-validation.js?v=e15"></script>
+  <script src="src/editor/editor-geometry.js?v=e15"></script>
+  <script src="src/editor/editor.js?v=e15"></script>
 </body>
 </html>
