@@ -13,7 +13,7 @@
   }
 
   function clearPromoted(battlefield) {
-    battlefield.querySelectorAll(":scope > .scene-promoted-terrain, :scope > .scene-promoted-object").forEach(node => node.remove());
+    battlefield.querySelectorAll(":scope > .scene-promoted-terrain, :scope > .scene-promoted-object, :scope > .scene-building-foreground").forEach(node => node.remove());
   }
 
   function promoteManualObjects(battlefield, terrainLayer, scenario) {
@@ -40,6 +40,19 @@
     }
   }
 
+  function createBuildingForeground(piece, instance, definition, scenario) {
+    if (definition?.renderer !== "building") return null;
+    const fragment = piece.cloneNode(true);
+    fragment.classList.remove("scene-promoted-terrain", "terrain-label-visible");
+    fragment.classList.add("scene-building-foreground", "scene-depth-object");
+    fragment.removeAttribute("title");
+    fragment.setAttribute("aria-hidden", "true");
+    fragment.querySelectorAll(".terrain-label, .building-occupancy-nameplate").forEach(node => node.remove());
+    fragment.style.zIndex = String(LAYERS?.buildingForegroundLayer(instance, definition, scenario?.table?.height) ?? 5540);
+    fragment.style.pointerEvents = "none";
+    return fragment;
+  }
+
   function composeTerrain({ battlefield, terrainLayer, scenario }) {
     if (!battlefield || !terrainLayer) return;
     clearPromoted(battlefield);
@@ -52,6 +65,8 @@
       if (shouldPromote(instance, definition)) {
         piece.classList.add("scene-promoted-terrain", "scene-depth-object");
         battlefield.appendChild(piece);
+        const foreground = createBuildingForeground(piece, instance, definition, scenario);
+        if (foreground) battlefield.appendChild(foreground);
       }
     }
     promoteManualObjects(battlefield, terrainLayer, scenario);
@@ -79,7 +94,7 @@
         syncUnits(battlefield, units, scenario?.table?.height);
       }
     });
-    observer.observe(battlefield, { childList:true });
+    observer.observe(battlefield, { childList:true, subtree:true });
 
     return Object.freeze({
       composeTerrain(nextScenario = scenario) {
@@ -93,5 +108,5 @@
     });
   }
 
-  window.CrossroadsSceneCompositor = Object.freeze({ create, composeTerrain, syncUnits, unitDepth, promoteManualObjects });
+  window.CrossroadsSceneCompositor = Object.freeze({ create, composeTerrain, syncUnits, unitDepth, promoteManualObjects, createBuildingForeground });
 })();

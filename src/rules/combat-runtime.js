@@ -1,100 +1,119 @@
 "use strict";
 
 (() => {
-  // Foundation 4C permanent combat runtime boundary.
-  //
-  // The pure rules modules own calculation. This runtime installs their active
-  // engine bindings once, immediately before the battlefield renderer captures
-  // combat callbacks. Engine-owned adapters retain all state mutation, logs,
-  // effects, statistics, building occupancy, movement, and activation flow.
-
-  const presentation = window.CrossroadsBattlefieldPresentation;
   const moraleModule = window.CrossroadsMoraleRules;
   const shootingModule = window.CrossroadsShootingRules;
   const assaultModule = window.CrossroadsAssaultRules;
 
-  if (
-    !presentation?.createUnitLayerRenderer ||
-    !moraleModule?.create ||
-    !shootingModule?.create ||
-    !assaultModule?.create
-  ) {
-    throw new Error("Combat runtime loaded before its dependencies.");
+  if (!moraleModule?.create || !shootingModule?.create || !assaultModule?.create) {
+    throw new Error("Combat runtime loaded before its pure rules modules.");
   }
 
-  let installed = false;
-  let moraleRules = null;
-  let shootingRules = null;
-  let assaultRules = null;
-
-  function installCombatRules() {
-    if (installed) {
-      return { moraleRules, shootingRules, assaultRules };
+  function requireFunction(dependencies, name) {
+    const value = dependencies[name];
+    if (typeof value !== "function") {
+      throw new Error(`Combat runtime requires ${name}().`);
     }
+    return value;
+  }
 
-    moraleRules = moraleModule.create({
-      rules: RULES,
+  function create(dependencies) {
+    if (!dependencies?.rules) throw new Error("Combat runtime requires rules.");
+    if (!dependencies?.weaponProfiles) throw new Error("Combat runtime requires weaponProfiles.");
+    if (!dependencies?.unitQuality) throw new Error("Combat runtime requires unitQuality.");
+    if (!dependencies?.terrain) throw new Error("Combat runtime requires terrain.");
+    if (!dependencies?.mmgRules) throw new Error("Combat runtime requires mmgRules.");
+
+    const rules = dependencies.rules;
+    const features = dependencies.features ?? {};
+    const weaponProfiles = dependencies.weaponProfiles;
+    const unitQuality = dependencies.unitQuality;
+    const terrain = dependencies.terrain;
+    const mmgRules = dependencies.mmgRules;
+
+    const distanceBetweenPoints = requireFunction(dependencies, "distanceBetweenPoints");
+    const distanceBetweenUnits = requireFunction(dependencies, "distanceBetweenUnits");
+    const segmentRectClip = requireFunction(dependencies, "segmentRectClip");
+    const segmentTerrainClip = requireFunction(dependencies, "segmentTerrainClip");
+    const analyzeMovementPath = requireFunction(dependencies, "analyzeMovementPath");
+    const getTerrainInstance = requireFunction(dependencies, "getTerrainInstance");
+    const getLivingUnits = requireFunction(dependencies, "getLivingUnits");
+    const getBattleStats = requireFunction(dependencies, "getBattleStats");
+    const resolveShooterPoint = requireFunction(dependencies, "resolveShooterPoint");
+    const resolveTargetPoint = requireFunction(dependencies, "resolveTargetPoint");
+    const buildingDoorPoint = requireFunction(dependencies, "buildingDoorPoint");
+    const buildingLabel = requireFunction(dependencies, "buildingLabel");
+    const occupyBuilding = requireFunction(dependencies, "occupyBuilding");
+
+    const lockActivationTransaction = requireFunction(dependencies, "lockActivationTransaction");
+    const recordOrderTest = requireFunction(dependencies, "recordOrderTest");
+    const addLog = requireFunction(dependencies, "addLog");
+    const capitalize = requireFunction(dependencies, "capitalize");
+    const finishActivationState = requireFunction(dependencies, "finishActivationState");
+    const recordCasualties = requireFunction(dependencies, "recordCasualties");
+    const recordUnitDestroyed = requireFunction(dependencies, "recordUnitDestroyed");
+    const destroyUnit = requireFunction(dependencies, "destroyUnit");
+    const applyCasualties = requireFunction(dependencies, "applyCasualties");
+    const fullLoadout = requireFunction(dependencies, "fullLoadout");
+    const renderUnits = requireFunction(dependencies, "renderUnits");
+    const qualityLabel = requireFunction(dependencies, "qualityLabel");
+    const qualityProfile = requireFunction(dependencies, "qualityProfile");
+    const findSafeAssaultPosition = requireFunction(dependencies, "findSafeAssaultPosition");
+    const showBattleAnnouncement = requireFunction(dependencies, "showBattleAnnouncement");
+    const completeActivation = requireFunction(dependencies, "completeActivation");
+    const checkElimination = requireFunction(dependencies, "checkElimination");
+    const clearActivationSelection = requireFunction(dependencies, "clearActivationSelection");
+    const rollDice = requireFunction(dependencies, "rollDice");
+
+    const moraleRules = moraleModule.create({
+      rules,
       distanceBetweenUnits
     });
 
-    shootingRules = shootingModule.create({
-      rules: RULES,
-      weaponProfiles: WEAPON_PROFILES,
-      unitQuality: UNIT_QUALITY,
-      terrain: TERRAIN,
-      mmgRules: MMG_RULES,
+    const shootingRules = shootingModule.create({
+      rules,
+      weaponProfiles,
+      unitQuality,
+      terrain,
+      mmgRules,
       distanceBetweenPoints,
       segmentRectClip,
-      resolveShooterPoint: (shooter, targetPoint) =>
-        shooter?.inBuilding
-          ? buildingWindowPointToward(shooter.inBuilding, targetPoint)
-          : shooter,
-      resolveTargetPoint: targetPoint => {
-        const unit = targetPoint?.id ? targetPoint : null;
-        const buildingId = unit?.inBuilding ?? null;
-        return {
-          unit,
-          buildingId,
-          point: buildingId ? buildingCenterPoint(buildingId) : targetPoint
-        };
-      },
-      getTerrainInstance: id => TERRAIN_GEOMETRY.get(id),
+      segmentTerrainClip,
+      resolveShooterPoint,
+      resolveTargetPoint,
+      getTerrainInstance,
       analyzeIncomingPins: moraleRules.analyzeIncomingPins
     });
 
-    assaultRules = assaultModule.create({
-      rules: RULES,
-      features: FEATURES,
-      terrain: TERRAIN,
-      unitQuality: UNIT_QUALITY,
+    const assaultRules = assaultModule.create({
+      rules,
+      features,
+      terrain,
+      unitQuality,
       distanceBetweenPoints,
       distanceBetweenUnits,
-      analyzeMovementPath: (...args) => analyzeMovementPath(...args),
-      analyzeShot: (...args) => shootingRules.analyzeShot(...args),
+      analyzeMovementPath,
+      analyzeShot: shootingRules.analyzeShot,
       segmentRectClip,
+      segmentTerrainClip,
       buildingDoorPoint
     });
 
-    commandSupport = function commandSupportWithMoraleRules(unit) {
-      return moraleRules.findCommandSupport(unit, livingUnits());
-    };
+    function commandSupport(unit) {
+      return moraleRules.findCommandSupport(unit, getLivingUnits());
+    }
 
-    commandBonus = function commandBonusWithMoraleRules(unit) {
-      return moraleRules.commandBonus(unit, livingUnits());
-    };
+    function commandBonus(unit) {
+      return moraleRules.commandBonus(unit, getLivingUnits());
+    }
 
-    attemptOrder = function attemptOrderWithMoraleRules(unit, order) {
+    function attemptOrder(unit, order) {
       const support = commandSupport(unit);
-      const analysis = moraleRules.analyzeOrderTest({
-        unit,
-        order,
-        support
-      });
+      const analysis = moraleRules.analyzeOrderTest({ unit, order, support });
 
       if (!analysis.required) {
         addLog(
-          `${capitalize(unit.faction)} ${unit.name}: ${order} ` +
-          "requires no Order Test."
+          `${capitalize(unit.faction)} ${unit.name}: ${order} requires no Order Test.`
         );
         return true;
       }
@@ -130,8 +149,6 @@
         return false;
       }
 
-      // A successful Rally clears all Pins after its presentation effect in the
-      // existing chooseOrder flow. Ordinary passed tests remove one Pin here.
       if (!analysis.ignoresPins && result.pinsRemovedOnPass > 0) {
         unit.pins = result.pinsAfterPass;
         addLog(
@@ -141,30 +158,17 @@
       }
 
       return true;
-    };
+    }
 
-    isMMGTeam = shootingRules.isMMGTeam;
-    analyzeMMGFireArc = shootingRules.analyzeMMGFireArc;
-    targetInsideMMGArc = shootingRules.targetInsideMMGArc;
-    availableFireGroups = shootingRules.availableFireGroups;
-    weaponRange = shootingRules.weaponRange;
-    determineLineCover = shootingRules.determineLineCover;
-    analyzeShot = shootingRules.analyzeShot;
-    analyzeShotAtPoint = shootingRules.analyzeShotAtPoint;
-
-    resolveShootingCore = function resolveShootingWithPureRules(
-      shooter,
-      target,
-      trace,
-      options
-    ) {
-      lockActivationTransaction(`${options?.label ?? "Shooting"} dice rolled`);
+    function resolveShootingCore(shooter, target, trace, options = {}) {
+      const label = options.label ?? "Shooting";
+      lockActivationTransaction(`${label} dice rolled`);
 
       const result = shootingRules.resolveAttack({
         shooter,
         target,
         trace,
-        movingPenalty: Boolean(options?.movingPenalty),
+        movingPenalty: Boolean(options.movingPenalty),
         rollDice
       });
 
@@ -172,17 +176,18 @@
         addLog(
           `${capitalize(shooter.faction)} ${shooter.name} has no weapon able ` +
           `to fire at ${trace.distance.toFixed(1)}″` +
-          `${options?.movingPenalty ? " after moving" : ""}.`,
+          `${options.movingPenalty ? " after moving" : ""}.`,
           "fail"
         );
-        return { destroyed: false, hits: 0, casualties: 0 };
+        return { destroyed: false, hits: 0, casualties: 0, shots: 0 };
       }
 
+      const battleStats = getBattleStats();
       const shooterStats = battleStats?.[shooter.faction];
       addLog(
-        `${capitalize(shooter.faction)} ${shooter.name} uses ${options.label} ` +
+        `${capitalize(shooter.faction)} ${shooter.name} uses ${label} ` +
         `at ${target.name} from ${trace.distance.toFixed(1)}″.`,
-        options.label.includes("Ambush") ? "ambush" : "hit"
+        label.includes("Ambush") ? "ambush" : "hit"
       );
 
       for (const group of result.groups) {
@@ -244,10 +249,7 @@
         );
       }
 
-      if (
-        result.potentialCasualties > 0 &&
-        result.coverSaveTarget !== null
-      ) {
+      if (result.potentialCasualties > 0 && result.coverSaveTarget !== null) {
         addLog(
           `${trace.cover.label} ${result.coverSaveTarget}+: ` +
           `${result.saveRolls.join(", ")} → ${result.saved} saved.`,
@@ -270,11 +272,7 @@
       }
 
       if (target.soldiers === 0) {
-        recordUnitDestroyed(
-          target,
-          shooter.faction,
-          `${options.label} casualties`
-        );
+        recordUnitDestroyed(target, shooter.faction, `${label} casualties`);
         addLog(
           `${capitalize(target.faction)} ${target.name} is destroyed.`,
           "kill"
@@ -288,15 +286,9 @@
         casualties,
         shots: result.totalShots
       };
-    };
+    }
 
-    analyzeAssault = assaultRules.analyzeAssault;
-
-    resolveCloseCombat = function resolveCloseCombatWithPureRules(
-      attacker,
-      defender,
-      analysis
-    ) {
+    function resolveCloseCombat(attacker, defender, analysis) {
       lockActivationTransaction("close-combat dice rolled");
 
       const result = assaultRules.resolveCloseCombat({
@@ -359,15 +351,14 @@
         }
       }
 
+      const battleStats = getBattleStats();
       if (result.winner === "attacker") {
         const removed = defender.soldiers;
         recordCasualties(attacker.faction, defender.faction, removed);
-        recordUnitDestroyed(
-          defender,
-          attacker.faction,
-          "Defeated in close combat"
-        );
-        if (battleStats) battleStats[attacker.faction].assaultsWon += 1;
+        recordUnitDestroyed(defender, attacker.faction, "Defeated in close combat");
+        if (battleStats?.[attacker.faction]) {
+          battleStats[attacker.faction].assaultsWon += 1;
+        }
         destroyUnit(defender);
 
         const defenderPosition = { x: defender.x, y: defender.y };
@@ -407,35 +398,23 @@
       } else if (result.winner === "defender") {
         const removed = attacker.soldiers;
         recordCasualties(defender.faction, attacker.faction, removed);
-        recordUnitDestroyed(
-          attacker,
-          defender.faction,
-          "Defeated in close combat"
-        );
-        if (battleStats) battleStats[defender.faction].assaultsWon += 1;
+        recordUnitDestroyed(attacker, defender.faction, "Defeated in close combat");
+        if (battleStats?.[defender.faction]) {
+          battleStats[defender.faction].assaultsWon += 1;
+        }
         destroyUnit(attacker);
         addLog(
           `${capitalize(defender.faction)} ${defender.name} wins; ` +
           "the assaulting unit is destroyed.",
           "assault"
         );
-        selectedUnitId = null;
-        chosenOrder = null;
-        activationSnapshot = null;
+        clearActivationSelection();
         if (!checkElimination()) finishActivationState();
       } else {
         const attackerRemoved = attacker.soldiers;
         const defenderRemoved = defender.soldiers;
-        recordCasualties(
-          defender.faction,
-          attacker.faction,
-          attackerRemoved
-        );
-        recordCasualties(
-          attacker.faction,
-          defender.faction,
-          defenderRemoved
-        );
+        recordCasualties(defender.faction, attacker.faction, attackerRemoved);
+        recordCasualties(attacker.faction, defender.faction, defenderRemoved);
         recordUnitDestroyed(
           attacker,
           defender.faction,
@@ -449,64 +428,39 @@
         destroyUnit(attacker);
         destroyUnit(defender);
         addLog("Both units are destroyed in the close combat.", "assault");
-        selectedUnitId = null;
-        chosenOrder = null;
-        activationSnapshot = null;
+        clearActivationSelection();
         if (!checkElimination()) finishActivationState();
       }
 
       renderUnits();
       return result;
-    };
-
-    installed = true;
-
-    const state = Object.freeze({
-      active: true,
-      stage: "Foundation 4C",
-      mode: "permanent-pure-combat-runtime-with-engine-commit"
-    });
-    window.CROSSROADS_COMBAT_EXTRACTION = state;
-    window.CROSSROADS_SHOOTING_EXTRACTION = state;
-    window.CROSSROADS_MORALE_EXTRACTION = state;
-    window.CROSSROADS_ASSAULT_EXTRACTION = state;
-
-    return { moraleRules, shootingRules, assaultRules };
-  }
-
-  window.CrossroadsBattlefieldPresentation = Object.freeze({
-    ...presentation,
-    createUnitLayerRenderer(dependencies) {
-      const rules = installCombatRules();
-      return presentation.createUnitLayerRenderer({
-        ...dependencies,
-        isMMGTeam: rules.shootingRules.isMMGTeam,
-        analyzeShot: rules.shootingRules.analyzeShot,
-        availableFireGroups: rules.shootingRules.availableFireGroups,
-        commandSupport,
-        analyzeAssault: rules.assaultRules.analyzeAssault
-      });
     }
-  });
 
-  const runtimeApi = Object.freeze({
-    isInstalled: () => installed,
-    install: installCombatRules,
-    getMoraleRules: () => moraleRules,
-    getShootingRules: () => shootingRules,
-    getAssaultRules: () => assaultRules,
-    getRules: () => Object.freeze({
+    return Object.freeze({
+      diagnostic: Object.freeze({
+        active: true,
+        stage: "S1.0.1",
+        mode: "explicit-pure-rules-with-engine-commit-adapters"
+      }),
       moraleRules,
       shootingRules,
-      assaultRules
-    })
-  });
+      assaultRules,
+      commandSupport,
+      commandBonus,
+      attemptOrder,
+      isMMGTeam: shootingRules.isMMGTeam,
+      analyzeMMGFireArc: shootingRules.analyzeMMGFireArc,
+      targetInsideMMGArc: shootingRules.targetInsideMMGArc,
+      availableFireGroups: shootingRules.availableFireGroups,
+      weaponRange: shootingRules.weaponRange,
+      determineLineCover: shootingRules.determineLineCover,
+      analyzeShot: shootingRules.analyzeShot,
+      analyzeShotAtPoint: shootingRules.analyzeShotAtPoint,
+      resolveShootingCore,
+      analyzeAssault: assaultRules.analyzeAssault,
+      resolveCloseCombat
+    });
+  }
 
-  window.CrossroadsCombatRuntime = runtimeApi;
-
-  // Stable diagnostic aliases prevent old test bookmarks or console checks from
-  // failing, while the two temporary integration source files are retired.
-  window.CrossroadsCombatIntegration = runtimeApi;
-  window.CrossroadsShootingIntegration = runtimeApi;
-  window.CrossroadsAssaultIntegration = runtimeApi;
+  window.CrossroadsCombatRuntime = Object.freeze({ create });
 })();

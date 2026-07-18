@@ -3,19 +3,108 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Scenario Composer S1.0</title>
-  <link rel="stylesheet" href="styles/main.css?v=s10">
-  <link rel="stylesheet" href="styles/terrain.css?v=s10">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=s10">
-  <link rel="stylesheet" href="styles/mokra.css?v=s10">
-  <link rel="stylesheet" href="styles/stabilization.css?v=s10">
-  <link rel="stylesheet" href="styles/editor.css?v=s10">
+  <title>Crossroads — Scenario Composer S1.0.1</title>
+  <script>
+    (() => {
+      const failures = [];
+      let completed = false;
+      let timeoutId = null;
+
+      function messageForResource(target) {
+        const source = target?.src || target?.href || "unknown resource";
+        return `Could not load ${source.split("/").pop()}.`;
+      }
+
+      function ensurePanel() {
+        if (!document.body) return null;
+        let panel = document.getElementById("editorStartupFailure");
+        if (panel) return panel;
+        panel = document.createElement("section");
+        panel.id = "editorStartupFailure";
+        panel.setAttribute("role", "alert");
+        panel.innerHTML = `
+          <strong>SCENARIO COMPOSER COULD NOT START</strong>
+          <p id="editorStartupFailureMessage"></p>
+          <p>Use the complete standalone project folder, then refresh this page.</p>
+        `;
+        document.body.appendChild(panel);
+        return panel;
+      }
+
+      function renderFailure(message) {
+        if (!message || failures.includes(message)) return;
+        failures.push(message);
+        const panel = ensurePanel();
+        const output = panel?.querySelector("#editorStartupFailureMessage");
+        if (panel) panel.hidden = false;
+        if (output) output.textContent = failures.join(" ");
+      }
+
+      window.CrossroadsStartupDiagnostics = Object.freeze({
+        complete() {
+          completed = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          const panel = document.getElementById("editorStartupFailure");
+          if (panel) panel.hidden = true;
+        },
+        fail: renderFailure,
+        failures: () => [...failures]
+      });
+
+      window.addEventListener("error", event => {
+        if (event.target && event.target !== window) {
+          renderFailure(messageForResource(event.target));
+          return;
+        }
+        const source = event.filename ? event.filename.split("/").pop() : "startup";
+        renderFailure(`${source}: ${event.message || "Unknown startup error."}`);
+      }, true);
+
+      window.addEventListener("unhandledrejection", event => {
+        const reason = event.reason?.message ?? String(event.reason ?? "Promise rejected");
+        renderFailure(reason);
+      });
+
+      window.addEventListener("DOMContentLoaded", () => {
+        for (const message of failures) renderFailure(message);
+        timeoutId = setTimeout(() => {
+          if (!completed) {
+            renderFailure("The editor did not finish initialization.");
+          }
+        }, 8000);
+      }, { once: true });
+    })();
+  </script>
+  <style>
+    #editorStartupFailure {
+      position: fixed;
+      inset: 18px;
+      z-index: 100000;
+      max-width: 760px;
+      margin: auto;
+      padding: 22px;
+      border: 3px solid currentColor;
+      border-radius: 12px;
+      background: #fff7e7;
+      color: #321e18;
+      box-shadow: 0 18px 70px rgba(0, 0, 0, .35);
+      font: 600 16px/1.45 system-ui, sans-serif;
+    }
+    #editorStartupFailure strong { display: block; margin-bottom: 10px; font-size: 20px; }
+    #editorStartupFailure p { margin: 8px 0 0; }
+  </style>
+  <link rel="stylesheet" href="styles/main.css?v=s101">
+  <link rel="stylesheet" href="styles/terrain.css?v=s101">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=s101">
+  <link rel="stylesheet" href="styles/mokra.css?v=s101">
+  <link rel="stylesheet" href="styles/stabilization.css?v=s101">
+  <link rel="stylesheet" href="styles/editor.css?v=s101">
 </head>
 <body class="editor-app">
   <header class="editor-header">
     <div>
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Scenario Composer S1.0</h1>
+      <h1>CROSSROADS — Scenario Composer S1.0.1</h1>
       <p>Compose battlefields and playable objectives through one shared terrain and scenario runtime.</p>
     </div>
     <div class="editor-header-actions">
@@ -268,53 +357,55 @@
     </form>
   </dialog>
 
-  <script src="data/terrain.js?v=s10"></script>
-  <script src="data/linear-terrain.js?v=s10"></script>
-  <script src="data/unit-quality.js?v=s10"></script>
-  <script src="data/unit-types.js?v=s10"></script>
-  <script src="data/scenarios.js?v=s10"></script>
-  <script src="src/presentation/layer-policy.js?v=s10"></script>
-  <script src="src/scenario/scenario-visibility.js?v=s10"></script>
-  <script src="src/scenario/scenario-migrations.js?v=s10"></script>
-  <script src="src/scenario/scenario-schema.js?v=s10"></script>
-  <script src="src/rules/objectives/objective-registry.js?v=s10"></script>
-  <script src="src/rules/objectives/objective-helpers.js?v=s10"></script>
-  <script src="src/rules/objectives/control-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/exit-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/casualty-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/destroy-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/protect-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/hold-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/passive-objective.js?v=s10"></script>
-  <script src="src/rules/objectives/victory-policies.js?v=s10"></script>
-  <script src="src/scenario-runtime/scenario-compiler.js?v=s10"></script>
-  <script src="src/scenario-runtime/scenario-events.js?v=s10"></script>
-  <script src="src/scenario-runtime/scenario-runtime.js?v=s10"></script>
-  <script src="src/scenario-runtime/scenario-presentation.js?v=s10"></script>
-  <script src="src/generation/seeded-random.js?v=s10"></script>
-  <script src="src/generation/polygon-geometry.js?v=s10"></script>
-  <script src="src/generation/polygon-scatter.js?v=s10"></script>
-  <script src="src/generation/row-generator.js?v=s10"></script>
-  <script src="src/generation/woodland-generator.js?v=s10"></script>
-  <script src="src/presentation/buildings.js?v=s10"></script>
-  <script src="src/presentation/woodland-trees.js?v=s10"></script>
-  <script src="src/presentation/terrain.js?v=s10"></script>
-  <script src="src/presentation/terrain-patches.js?v=s10"></script>
-  <script src="src/rules/terrain-semantics.js?v=s10"></script>
-  <script src="src/rules/terrain-spatial.js?v=s10"></script>
-  <script src="src/rules/path-geometry.js?v=s10"></script>
-  <script src="src/rules/linear-terrain.js?v=s10"></script>
-  <script src="src/presentation/linear-terrain.js?v=s10"></script>
-  <script src="src/presentation/scene-compositor.js?v=s10"></script>
-  <script src="src/presentation/terrain-runtime.js?v=s10"></script>
-  <script src="src/rules/terrain-geometry.js?v=s10"></script>
-  <script src="src/editor/editor-state.js?v=s10"></script>
-  <script src="src/editor/editor-selection.js?v=s10"></script>
-  <script src="src/editor/editor-multiselect.js?v=s10"></script>
-  <script src="src/editor/editor-tools.js?v=s10"></script>
-  <script src="src/editor/editor-document.js?v=s10"></script>
-  <script src="src/editor/editor-validation.js?v=s10"></script>
-  <script src="src/editor/editor-geometry.js?v=s10"></script>
-  <script src="src/editor/editor.js?v=s10"></script>
+  <script src="data/build-info.js?v=s101"></script>
+  <script src="data/terrain.js?v=s101"></script>
+  <script src="data/linear-terrain.js?v=s101"></script>
+  <script src="data/unit-quality.js?v=s101"></script>
+  <script src="data/unit-types.js?v=s101"></script>
+  <script src="data/scenarios.js?v=s101"></script>
+  <script src="src/presentation/layer-policy.js?v=s101"></script>
+  <script src="src/scenario/scenario-visibility.js?v=s101"></script>
+  <script src="src/scenario/scenario-migrations.js?v=s101"></script>
+  <script src="src/scenario/scenario-schema.js?v=s101"></script>
+  <script src="src/rules/objectives/objective-registry.js?v=s101"></script>
+  <script src="src/rules/objectives/objective-helpers.js?v=s101"></script>
+  <script src="src/rules/objectives/control-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/exit-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/casualty-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/destroy-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/protect-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/hold-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/passive-objective.js?v=s101"></script>
+  <script src="src/rules/objectives/victory-policies.js?v=s101"></script>
+  <script src="src/scenario-runtime/scenario-compiler.js?v=s101"></script>
+  <script src="src/scenario-runtime/scenario-events.js?v=s101"></script>
+  <script src="src/scenario-runtime/scenario-runtime.js?v=s101"></script>
+  <script src="src/scenario-runtime/scenario-presentation.js?v=s101"></script>
+  <script src="src/generation/seeded-random.js?v=s101"></script>
+  <script src="src/generation/polygon-geometry.js?v=s101"></script>
+  <script src="src/generation/polygon-scatter.js?v=s101"></script>
+  <script src="src/generation/row-generator.js?v=s101"></script>
+  <script src="src/generation/woodland-generator.js?v=s101"></script>
+  <script src="src/presentation/buildings.js?v=s101"></script>
+  <script src="src/presentation/woodland-trees.js?v=s101"></script>
+  <script src="src/presentation/terrain.js?v=s101"></script>
+  <script src="src/presentation/terrain-patches.js?v=s101"></script>
+  <script src="src/rules/terrain-semantics.js?v=s101"></script>
+  <script src="src/rules/terrain-spatial.js?v=s101"></script>
+  <script src="src/rules/path-geometry.js?v=s101"></script>
+  <script src="src/rules/linear-terrain.js?v=s101"></script>
+  <script src="src/presentation/linear-terrain.js?v=s101"></script>
+  <script src="src/presentation/scene-compositor.js?v=s101"></script>
+  <script src="src/presentation/terrain-runtime.js?v=s101"></script>
+  <script src="src/rules/terrain-geometry.js?v=s101"></script>
+  <script src="src/editor/editor-state.js?v=s101"></script>
+  <script src="src/editor/editor-selection.js?v=s101"></script>
+  <script src="src/editor/editor-multiselect.js?v=s101"></script>
+  <script src="src/editor/editor-tools.js?v=s101"></script>
+  <script src="src/editor/editor-document.js?v=s101"></script>
+  <script src="src/editor/editor-validation.js?v=s101"></script>
+  <script src="src/editor/editor-geometry.js?v=s101"></script>
+  <script src="src/editor/editor-persistence.js?v=s101"></script>
+  <script src="src/editor/editor.js?v=s101"></script>
 </body>
 </html>

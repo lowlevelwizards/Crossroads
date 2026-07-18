@@ -54,9 +54,22 @@ src/rules/assault.js
   not mutate units, move winners, occupy buildings, render, log, or update stats.
 
 src/rules/combat-runtime.js
-  Permanent Foundation 4C installation boundary. It binds morale, shooting, and
-  assault calculations to thin engine-owned commit adapters exactly once before
-  battlefield callbacks are captured.
+  Explicit combat composition factory. It receives engine-owned query and commit
+  adapters, creates the pure morale/shooting/assault rule instances, and returns
+  the callbacks used by the engine and battlefield renderer. It does not replace
+  globals or reach into engine lexical state.
+
+src/runtime/building-occupancy.js
+  Focused building controller for occupancy queries, doorway entry/exit commands,
+  occupancy rendering, building target selection, and custody cleanup.
+
+src/editor/editor.js
+  Authoring coordinator for rendering, inspector composition, pointer interaction,
+  transforms, validation, and event binding.
+
+src/editor/editor-persistence.js
+  Safe local draft storage, built-in overwrite protection, last-scenario restoration,
+  clipboard persistence, and editor-playtest handoff.
 
 src/rules/terrain-geometry.js
   Normalized terrain instances, authored building doorway anchors, rotation-aware
@@ -74,8 +87,17 @@ tests/run-combat-rules-node.js
   Runs shooting, morale, assault, integration, and architecture checks from Node.
 
 tests/startup-smoke.html
-  Loads the modular shell without starting the battle engine and reports missing
-  globals or broken script references.
+  Loads the real production module chain without starting the battle engine and
+  reports missing globals or invalid registries.
+
+tests/release-integrity.test.js
+  Parses every production entry point and verifies local resources, dependency
+  order, cache tokens, release metadata, mandatory milestone files, and removal
+  of retired production files.
+
+release-manifest.json
+  Authoritative standalone-release contract: version, E1.5 base, cache token,
+  entry points, and mandatory files.
 ```
 
 ## Architectural rules
@@ -147,91 +169,55 @@ The engine still owns:
 
 
 
-## Foundation 4C combat foundation lock
+## S1.0.1 explicit combat and building boundaries
 
-Foundation 4C makes the tested combat extraction the permanent active runtime
-boundary.
-
-The ordered combat bootstrap is now:
+The combat load order remains simple and classic-script friendly:
 
 1. `src/rules/morale.js`
 2. `src/rules/shooting.js`
 3. `src/rules/assault.js`
-4. `src/rules/combat-runtime.js`
-5. startup validation
-6. `src/engine.js`
+4. `src/runtime/building-occupancy.js`
+5. `src/rules/combat-runtime.js`
+6. startup validation
+7. `src/engine.js`
 
-`combat-runtime.js` installs the three rule factories once, immediately before
-the battlefield renderer captures combat callbacks. This replaces the former
-two-wrapper staging chain and removes wrapper-order dependence.
+The engine now constructs both runtime controllers explicitly:
 
-### Pure rule ownership
+```text
+engine-owned dependencies
+  ├─→ CrossroadsBuildingOccupancy.create(...)
+  └─→ CrossroadsCombatRuntime.create(...)
+          ├─ morale rules
+          ├─ shooting rules
+          └─ assault rules
+```
 
-`morale.js` owns:
+`combat-runtime.js` no longer replaces `CrossroadsBattlefieldPresentation`,
+assigns engine function bindings, or relies on late global lexical lookup. The
+engine passes all state queries and commit callbacks through one visible
+composition block, then passes returned rule callbacks to presentation.
 
-- officer support and command bonus analysis
-- whether an Order Test is required
-- Order Test target and dice result
-- ordinary passed-test Pin removal
-- Rally outcome description
-- incoming-Pin routing analysis
+The previous shooting, morale, and assault implementations have been removed
+from `engine.js`. There is now one physical implementation of each calculation:
+the pure rules modules, with one commit adapter factory.
 
-`shooting.js` owns:
+`building-occupancy.js` owns:
 
-- legal fire groups and weapon range
-- moving and fixed-weapon restrictions
-- MMG crew output and firing arcs
-- LOS and cover analysis
-- per-weapon hit targets
-- hit, damage, save, and casualty-count calculation
-- requesting incoming-Pin interpretation from morale
+- building lookup, labels, center/door/approach points
+- vacant-building and movement-based entry analysis
+- occupancy custody and one-unit capacity
+- Enter/Exit command creation and execution
+- building combat context labels
+- occupied-building selection and presentation
+- invalid or destroyed occupant cleanup
 
-`assault.js` owns:
+The engine still owns authoritative unit state, turn/activation flow, movement
+analysis, logs, announcements, selection state, and final mutation. The building
+controller receives those capabilities through explicit callbacks.
 
-- legal charge distance and path analysis
-- doorway-based building assaults
-- normal and Ambush reaction-fire eligibility
-- woods, walls, Down, and building Defensive Position analysis
-- defender-first and simultaneous combat sequencing
-- quality-based damage targets and dice counts
-- tied rounds, mutual destruction, and winner calculation
-
-### Engine commitment ownership
-
-The permanent runtime adapters keep these responsibilities engine-owned:
-
-- transaction locking and dice presentation
-- combat and morale logs
-- battle statistics
-- Pin, casualty, weapon-count, and outcome mutation
-- reaction-fire coordination and Ambush consumption
-- safe post-assault movement
-- building clearing and occupancy
-- announcements, effects, rendering, and activation completion
-
-### Retired staging files
-
-The runtime no longer loads:
-
-- `src/rules/shooting-integration.js`
-- `src/rules/assault-integration.js`
-
-They may be deleted from the repository after applying this overlay. Their old
-global diagnostic names remain compatibility aliases to
-`CrossroadsCombatRuntime`, so existing console checks and saved test bookmarks
-do not fail.
-
-### Source-cleanup boundary
-
-The tested T3.5 coordinator still physically contains the pre-extraction combat
-function declarations. They are replaced before any renderer callback or player
-action can use them, so there is one active combat authority. A future full-tree
-engine cleanup may mechanically remove those unreachable declarations, but it
-must not be mixed into Mokra scenario work or any rules change.
-
-This distinction is intentional: Foundation 4C locks runtime ownership now,
-without risking unrelated behavior in the 5,000-line coordinator during a
-changed-files overlay release.
+Retired integration files and compatibility aliases are deleted. Future combat
+or building work must extend the explicit factories rather than add wrapper
+scripts or replacement globals.
 
 ## Permanent combat regression suite
 
@@ -423,6 +409,30 @@ identity, collective bounds, intersection tests, and point rotation. The editor
 document owns clipboard serialization and paste-time ID/reference remapping.
 Component editing remains single-selection so path waypoints and polygon
 vertices retain unambiguous behavior. Snapshot undo remains intentional.
+## Editor persistence boundary
+
+`src/editor/editor-persistence.js` is constructed explicitly by `editor.js` with the
+canonical document model, built-in scenario registry, shared source map, and optional
+browser storage. It owns local drafts, remembered scenario selection, clipboard
+persistence, and playtest transfer. Storage failures return explicit status rather than
+breaking editor initialization. Built-in scenario IDs cannot be overwritten by local
+storage.
+
+## Standalone release integrity
+
+S1.0.1 is distributed as a complete project folder. Incremental overlays are no
+longer the primary release format.
+
+`release-manifest.json` and `tests/release-integrity.test.js` make assembly part
+of the tested product. The integrity test resolves every local `<script>` and
+`<link>` from `index.html`, `editor.html`, and `tests/startup-smoke.html`; an
+absent E1.5 dependency now fails immediately in Node.
+
+The Scenario Composer installs a tiny inline error boundary before external
+resources. Missing files, uncaught startup exceptions, and unhandled promise
+rejections produce a visible fatal panel instead of a populated-looking but
+inert editor shell.
+
 ## Scenario Runtime S1.0 objective boundary
 
 Scenario loading now follows one canonical pipeline:
@@ -443,5 +453,5 @@ raw scenario
 
 `src/scenario-runtime/scenario-presentation.js` renders objective cards and battlefield markers from evaluator snapshots. It does not calculate ownership or scoring. The editor, validator, and live game all load the same objective registry and Schema v2 definitions.
 
-The former `src/rules/scenario-runtime.js` Mokra wrapper is now an inert compatibility tombstone so changed-file overlays remove its old behavior. New scenario mechanics belong in evaluators or generic runtime events, never scenario-ID branches in `engine.js`.
+The former Mokra-specific rules wrapper has been deleted. New scenario mechanics belong in evaluators or generic runtime events, never scenario-ID branches in `engine.js`.
 

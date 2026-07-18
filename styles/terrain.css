@@ -387,3 +387,19 @@ body.camera-inspection .building-svg { overflow:visible; }
 .log-support-1{left:18%}.log-support-2{right:18%}
 
 /* LABEL DISCIPLINE */
+
+/* Terrain Editor E1.5 — multi-fragment depth. Complex scenery may place a
+   grounded body and a shallow foreground/canopy fragment into shared table
+   depth without turning the entire object into one indivisible z-index slab. */
+.woodland-tree-body .woods-tree-layer-mid,
+.woodland-tree-body .woods-tree-layer-light { display:none; }
+.woodland-tree-canopy .woods-tree-shadow,
+.woodland-tree-canopy .woods-tree-trunk,
+.woodland-tree-canopy .woods-tree-layer-dark { display:none; }
+.woodland-tree-canopy { pointer-events:none; }
+.scene-building-foreground {
+  clip-path:inset(58% -18% -18% -18%);
+  pointer-events:none!important;
+  user-select:none;
+}
+.scene-building-foreground * { pointer-events:none!important; }

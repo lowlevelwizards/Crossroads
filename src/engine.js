@@ -202,7 +202,14 @@
     const CORE_SCENARIO_12A = window.CROSSROADS_CORE_SCENARIO_12A;
     const SCENARIO_RUNTIME = window.CrossroadsScenarioRuntime;
     const SCENARIO_PRESENTATION = window.CrossroadsScenarioPresentation;
-    if (!SCENARIO_RUNTIME || !SCENARIO_PRESENTATION) throw new Error("Scenario Runtime S1.0 modules are unavailable.");
+    const COMBAT_RUNTIME = window.CrossroadsCombatRuntime;
+    const BUILDING_OCCUPANCY = window.CrossroadsBuildingOccupancy;
+    if (!SCENARIO_RUNTIME || !SCENARIO_PRESENTATION) {
+      throw new Error("Scenario Runtime S1.0 modules are unavailable.");
+    }
+    if (!COMBAT_RUNTIME?.create || !BUILDING_OCCUPANCY?.create) {
+      throw new Error("Combat or building runtime modules are unavailable.");
+    }
 
     function instantiateScenarioUnits(scenario) {
       const result = [];
@@ -832,10 +839,6 @@
       return unit.soldiers > 0 && distanceToObjective(unit) <= RULES.objective.radius + 0.001;
     }
 
-    function weaponRange(unit, moving = false) {
-      const groups = availableFireGroups(unit, Infinity, moving, false);
-      return groups.length ? Math.max(...groups.map(group => group.profile.range)) : 0;
-    }
 
     const MMG_RULES = Object.freeze({
       arcDegrees: 90,
@@ -844,9 +847,6 @@
       reducedCrew: 2
     });
 
-    function isMMGTeam(unit) {
-      return Boolean(unit?.weapons?.mmg);
-    }
 
     function normalizeDegrees(value) {
       let angle = value % 360;
@@ -854,36 +854,9 @@
       return angle;
     }
 
-    function facingToward(from, to) {
-      return normalizeDegrees(Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI);
-    }
 
-    function smallestAngleDifference(a, b) {
-      const diff = Math.abs(normalizeDegrees(a) - normalizeDegrees(b));
-      return Math.min(diff, 360 - diff);
-    }
 
-    function analyzeMMGFireArc(unit, target) {
-      if (!isMMGTeam(unit) || !unit.mmgDeployed) {
-        return {
-          bearing: null,
-          relativeAngle: 0,
-          insideArc: true
-        };
-      }
 
-      const bearing = facingToward(unit, target);
-      const relativeAngle = smallestAngleDifference(unit.mmgFacing, bearing);
-      return {
-        bearing,
-        relativeAngle,
-        insideArc: relativeAngle <= MMG_RULES.arcDegrees / 2 + 0.001
-      };
-    }
-
-    function targetInsideMMGArc(unit, target) {
-      return analyzeMMGFireArc(unit, target).insideArc;
-    }
 
     function deployMMG(unit) {
       const cardinalAngle = {
@@ -916,32 +889,6 @@
       renderUnits();
     }
 
-    function availableFireGroups(unit, distance, moving = false, enforceRange = true) {
-      const groups = [];
-
-      for (const [key, rawCount] of Object.entries(unit.weapons ?? {})) {
-        const profile = WEAPON_PROFILES[key];
-        if (!profile || rawCount <= 0) continue;
-        if (moving && profile.fixed) continue;
-        if (enforceRange && distance > profile.range + 0.001) continue;
-
-        let shots = rawCount * profile.shots;
-        let models = rawCount;
-
-        if (profile.crewWeapon) {
-          models = 1;
-          if (profile.fixed && !unit.mmgDeployed) shots = 0;
-          else if (unit.soldiers >= MMG_RULES.fullCrew) shots = profile.shots;
-          else if (unit.soldiers >= MMG_RULES.reducedCrew) shots = profile.reducedShots;
-          else shots = 0;
-        }
-
-        if (shots <= 0) continue;
-        groups.push({ key, profile, models, shots });
-      }
-
-      return groups;
-    }
 
     function shortLoadout(unit) {
       const parts = [];
@@ -975,19 +922,7 @@
       return parts.join(" · ") || "Unarmed";
     }
 
-    function commandSupport(unit) {
-      if (unit.role === "officer") return null;
-      return livingUnits().find(other =>
-        other.faction === unit.faction &&
-        other.role === "officer" &&
-        other.id !== unit.id &&
-        distanceBetweenUnits(unit, other) <= RULES.commandRadius + 0.001
-      ) ?? null;
-    }
 
-    function commandBonus(unit) {
-      return commandSupport(unit) ? RULES.commandMoraleBonus : 0;
-    }
 
     function applyCasualties(unit, requested) {
       const casualties = Math.min(requested, unit.soldiers);
@@ -1214,6 +1149,145 @@
       unitNameplateHtml,
       unitFormationHtml
     } = window.CrossroadsUnitPresentation;
+
+    // =========================================================================
+    // EXPLICIT RUNTIME COMPOSITION
+    // The engine supplies state and commit adapters. Runtime modules do not
+    // reach into engine globals, replace presentation objects, or own bootstrap.
+    // =========================================================================
+    const buildingOccupancy = BUILDING_OCCUPANCY.create({
+      terrainGeometry: TERRAIN_GEOMETRY,
+      commands: window.CrossroadsCommands,
+      terrainPresentation: window.CrossroadsTerrainPresentation,
+      terrainLayer: document.getElementById("terrainLayer"),
+      actionButton: buildingActionButton,
+      unitOutcomeActive: UNIT_OUTCOME.ACTIVE,
+      livingUnits,
+      getUnit,
+      getSelectedUnitId: () => selectedUnitId,
+      clearSelectedUnit: unitId => {
+        if (selectedUnitId === unitId) selectedUnitId = null;
+      },
+      getPhase: () => phase,
+      setChosenOrder: order => {
+        chosenOrder = order;
+      },
+      analyzeMovementPath,
+      attemptOrder: (...args) => attemptOrder(...args),
+      completeActivation,
+      addLog,
+      capitalize,
+      showAnnouncement: showBattleAnnouncement,
+      getActiveScenario: () => activeScenario,
+      unitIsEligibleForCurrentDie,
+      unitNameplateHtml,
+      gestureSuppressed,
+      chooseTarget,
+      chooseAssaultTarget,
+      selectDeploymentUnit,
+      selectUnit
+    });
+
+    const {
+      instance: buildingInstance,
+      instances: buildingInstances,
+      label: buildingLabel,
+      centerPoint: buildingCenterPoint,
+      doorPoint: buildingDoorPoint,
+      approachPoint: buildingApproachPoint,
+      occupant: buildingOccupant,
+      entryAnalysis: buildingEntryAnalysis,
+      windowPointToward: buildingWindowPointToward,
+      canEnter: unitCanEnterBuilding,
+      occupy: occupyBuilding,
+      command: buildingCommand,
+      enterAction: enterBuildingAction,
+      exitAction: exitBuildingAction,
+      combatContext: buildingCombatContext,
+      defenseLabel: buildingDefenseLabel,
+      orderLabel: buildingOrderLabel,
+      selectOccupant: selectBuildingOccupant,
+      render: renderBuildingState,
+      updateActionButton: updateBuildingActionButton,
+      clearInvalidOccupancy: clearInvalidBuildingOccupancy,
+      reconcileAfterUnitChange: reconcileBuildingAfterUnitChange
+    } = buildingOccupancy;
+
+    const combatRuntime = COMBAT_RUNTIME.create({
+      rules: RULES,
+      features: FEATURES,
+      weaponProfiles: WEAPON_PROFILES,
+      unitQuality: UNIT_QUALITY,
+      terrain: TERRAIN,
+      mmgRules: MMG_RULES,
+      distanceBetweenPoints,
+      distanceBetweenUnits,
+      segmentRectClip,
+      segmentTerrainClip: (start, end, instance) =>
+        TERRAIN_GEOMETRY.segmentClip(start, end, instance, segmentRectClip),
+      analyzeMovementPath,
+      getTerrainInstance: id => TERRAIN_GEOMETRY.get(id),
+      getLivingUnits: livingUnits,
+      getBattleStats: () => battleStats,
+      resolveShooterPoint: (shooter, targetPoint) =>
+        shooter?.inBuilding
+          ? buildingWindowPointToward(shooter.inBuilding, targetPoint)
+          : shooter,
+      resolveTargetPoint: targetPoint => {
+        const unit = targetPoint?.id ? targetPoint : null;
+        const buildingId = unit?.inBuilding ?? null;
+        return {
+          unit,
+          buildingId,
+          point: buildingId ? buildingCenterPoint(buildingId) : targetPoint
+        };
+      },
+      buildingDoorPoint,
+      buildingLabel,
+      occupyBuilding,
+      lockActivationTransaction,
+      recordOrderTest,
+      addLog,
+      capitalize,
+      finishActivationState,
+      recordCasualties,
+      recordUnitDestroyed,
+      destroyUnit,
+      applyCasualties,
+      fullLoadout,
+      renderUnits,
+      qualityLabel,
+      qualityProfile,
+      findSafeAssaultPosition,
+      showBattleAnnouncement,
+      completeActivation,
+      checkElimination,
+      clearActivationSelection: () => {
+        selectedUnitId = null;
+        chosenOrder = null;
+        activationSnapshot = null;
+      },
+      rollDice
+    });
+
+    const {
+      commandSupport,
+      commandBonus,
+      attemptOrder,
+      isMMGTeam,
+      analyzeMMGFireArc,
+      targetInsideMMGArc,
+      availableFireGroups,
+      weaponRange,
+      determineLineCover,
+      analyzeShot,
+      analyzeShotAtPoint,
+      resolveShootingCore,
+      analyzeAssault,
+      resolveCloseCombat
+    } = combatRuntime;
+
+    window.CROSSROADS_COMBAT_RUNTIME_STATE = combatRuntime.diagnostic;
 
     // =========================================================================
     // MINIATURE PRESENTATION BUILDERS
@@ -1578,99 +1652,8 @@
     // SHOOTING ANALYSIS AND COVER
     // Determines legal fire, range, line of sight, and intervening protection.
     // =========================================================================
-    function analyzeShot(shooter, target) { return analyzeShotAtPoint(shooter, target); }
 
-    function analyzeShotAtPoint(shooter, targetPoint) {
-      const shooterPoint = shooter?.inBuilding ? buildingWindowPointToward(shooter.inBuilding, targetPoint) : shooter;
-      const targetUnit = targetPoint?.id ? targetPoint : null;
-      const targetAimPoint = targetUnit?.inBuilding ? buildingCenterPoint(targetUnit.inBuilding) : targetPoint;
-      const distance = distanceBetweenPoints(shooterPoint, targetAimPoint);
-      const range = weaponRange(shooter, false);
-      const inRange = distance <= range + 0.001;
 
-      const mmgArc = analyzeMMGFireArc(shooter, targetAimPoint);
-      const shooterBuildingId = shooter?.inBuilding ?? null;
-      const targetBuildingId = targetUnit?.inBuilding ?? null;
-      const blockingBuilding = (TERRAIN.instances ?? [])
-        .filter(instance => instance.rules?.los === "blocking")
-        .find(instance => {
-          if (instance.id === shooterBuildingId || instance.id === targetBuildingId) return false;
-          return segmentRectClip(shooterPoint, targetAimPoint, instance) !== null;
-        }) ?? null;
-
-      const blockedByBuilding = Boolean(blockingBuilding);
-      const blockedByArc = !mmgArc.insideArc;
-      const blocked = blockedByBuilding || blockedByArc;
-      const blockReason = blockedByArc
-        ? "Outside the deployed MMG firing arc."
-        : blockedByBuilding
-          ? `The ${blockingBuilding.definition?.label ?? "building"} completely blocks line of sight.`
-          : "";
-
-      let cover = blocked
-        ? { label: "No shot", saveTarget: null, sources: [] }
-        : determineLineCover(shooterPoint, targetAimPoint);
-      if (!blocked && targetUnit?.inBuilding) {
-        const occupiedBuilding = TERRAIN_GEOMETRY.get(targetUnit.inBuilding);
-        const label = occupiedBuilding?.definition?.label ?? "building";
-        cover = { label: `Hard cover inside ${label}`, saveTarget: occupiedBuilding?.rules?.save ?? 3, sources: [`target occupies the ${label}`] };
-      }
-      return {
-        distance,
-        range,
-        inRange,
-        blocked,
-        blockReason,
-        cover,
-        shooterPoint,
-        targetPoint: targetAimPoint,
-        insideArc: mmgArc.insideArc
-      };
-    }
-
-    function determineLineCover(shooter, target) {
-      const sources = [];
-      let saveTarget = null;
-      let label = "No cover";
-
-      for (const woods of (TERRAIN.instances ?? []).filter(instance => instance.rules?.cover === "soft")) {
-        if (segmentRectClip(shooter, target, woods) === null) continue;
-        const terrainSave = woods.rules?.save ?? 5;
-        sources.push(`line passes through ${woods.definition?.label ?? "soft terrain"}`);
-        if (saveTarget === null || terrainSave < saveTarget) {
-          saveTarget = terrainSave;
-          label = `Soft cover from ${woods.definition?.label ?? "terrain"}`;
-        }
-      }
-
-      for (const wall of (TERRAIN.instances ?? []).filter(instance => instance.rules?.movement === "crossing")) {
-        const wallClip = segmentRectClip(shooter, target, wall);
-        if (wallClip === null) continue;
-        const nearest = distanceBetweenPoints(target, wallClip.exit);
-        if (nearest <= RULES.wallProtectionDepth + 0.001) {
-          const terrainSave = wall.rules?.save ?? 4;
-          sources.push(`${wall.definition?.label ?? "wall"} crossed ${nearest.toFixed(1)}″ from target`);
-          if (saveTarget === null || terrainSave < saveTarget) {
-            saveTarget = terrainSave;
-            label = `Hard cover from ${wall.definition?.label ?? "wall"}`;
-          }
-        }
-      }
-
-      if (target.down) {
-        if (saveTarget === null) {
-          saveTarget = 5;
-          label = "Down in the open";
-          sources.push("target is Down");
-        } else {
-          saveTarget = Math.max(2, saveTarget - 2);
-          label += " + Down";
-          sources.push("Down improves cover");
-        }
-      }
-
-      return { label, saveTarget, sources };
-    }
 
 
 
@@ -1956,40 +1939,6 @@
 
     }
 
-    function attemptOrder(unit, order) {
-      if (unit.pins === 0 && order !== "Rally") {
-        addLog(`${capitalize(unit.faction)} ${unit.name}: ${order} requires no Order Test.`);
-        return true;
-      }
-
-      const ignoresPins = order === "Rally";
-      const officer = commandSupport(unit);
-      const officerBonus = officer ? RULES.commandMoraleBonus : 0;
-      const target = clamp(unit.morale + officerBonus - (ignoresPins ? 0 : unit.pins), 2, 11);
-      const dice = rollDice(2);
-      lockActivationTransaction("dice rolled for the Order Test");
-      const total = dice[0] + dice[1];
-      const passed = total <= target;
-      recordOrderTest(unit, passed);
-
-      addLog(`${capitalize(unit.faction)} ${unit.name} (${qualityLabel(unit)}) Order Test for ${order}: ${dice[0]} + ${dice[1]} = ${total}, needs ${target} or less${officer ? ` (Officer +${officerBonus})` : ""}${ignoresPins ? " (Rally ignores Pins)" : ""}.`, passed ? "morale" : "fail");
-
-      if (!passed) {
-        unit.down = true;
-        unit.order = "Down · Failed";
-        unit.activated = true;
-        addLog(`${capitalize(unit.faction)} ${unit.name} fails and goes Down.`, "fail");
-        finishActivationState();
-        return false;
-      }
-
-      if (!ignoresPins && unit.pins > 0) {
-        unit.pins -= 1;
-        addLog(`${unit.name} passes and removes 1 Pin; ${unit.pins} remain.`, "morale");
-      }
-
-      return true;
-    }
 
     // =========================================================================
     // BATTLEFIELD COMMAND ROUTING
@@ -2499,117 +2448,11 @@
       else renderUnits();
     }
 
-    function resolveShootingCore(shooter, target, trace, options) {
-      lockActivationTransaction(`${options?.label ?? "Shooting"} dice rolled`);
-      const groups = availableFireGroups(shooter, trace.distance, options.movingPenalty, true);
-      if (groups.length === 0) {
-        addLog(`${capitalize(shooter.faction)} ${shooter.name} has no weapon able to fire at ${trace.distance.toFixed(1)}″${options.movingPenalty ? " after moving" : ""}.`, "fail");
-        return { destroyed: false, hits: 0, casualties: 0 };
-      }
-
-      let totalHits = 0;
-      let totalShots = 0;
-      const shooterStats = battleStats?.[shooter.faction];
-
-      addLog(`${capitalize(shooter.faction)} ${shooter.name} uses ${options.label} at ${target.name} from ${trace.distance.toFixed(1)}″.`, options.label.includes("Ambush") ? "ambush" : "hit");
-
-      for (const group of groups) {
-        let hitTarget = RULES.baseHitTarget;
-        const modifiers = [];
-        const qualityShotModifier = qualityProfile(shooter).shootingTargetModifier;
-        if (qualityShotModifier !== 0) {
-          hitTarget += qualityShotModifier;
-          modifiers.push(qualityShotModifier > 0 ? "Inexperienced" : "Veteran");
-        }
-        if (options.movingPenalty && !group.profile.assault) { hitTarget += 1; modifiers.push("fired on the move"); }
-        if (shooter.pins > 0) { hitTarget += 1; modifiers.push("firer still pinned"); }
-        hitTarget = clamp(hitTarget, 2, 7);
-
-        const rolls = rollDice(group.shots);
-        const hits = hitTarget > 6 ? 0 : rolls.filter(value => value >= hitTarget).length;
-        totalShots += group.shots;
-        totalHits += hits;
-
-        addLog(`${group.profile.label}: ${group.shots} shot${group.shots === 1 ? "" : "s"}, hits on ${hitTarget > 6 ? "—" : hitTarget + "+"}${modifiers.length ? ` (${modifiers.join(", ")})` : ""}. Rolls: ${rolls.join(", ")} → ${hits} hit${hits === 1 ? "" : "s"}.`, hits > 0 ? "hit" : "");
-      }
-
-      if (shooterStats) { shooterStats.shotsFired += totalShots; shooterStats.hitsScored += totalHits; }
-
-      if (totalHits > 0) {
-        if (shooterStats) shooterStats.pinsInflicted += 1;
-        target.pins += 1;
-        addLog(`${target.name} gains 1 Pin and now has ${target.pins}.`, "pin");
-        if (target.pins >= target.morale) {
-          const removed = target.soldiers;
-          recordCasualties(shooter.faction, target.faction, removed);
-          recordUnitDestroyed(target, shooter.faction, "Routed after reaching its Morale in Pins");
-          destroyUnit(target);
-          addLog(`${capitalize(target.faction)} ${target.name} reaches its Morale in Pins and routes.`, "kill");
-          return { destroyed: true, hits: totalHits, casualties: removed, shots: totalShots };
-        }
-      }
-
-      const damageRolls = rollDice(totalHits);
-      const potentialCasualties = damageRolls.filter(value => value >= RULES.regularDamageTarget).length;
-      if (totalHits > 0) addLog(`Combined damage on 4+: ${damageRolls.join(", ")} → ${potentialCasualties} potential casualt${potentialCasualties === 1 ? "y" : "ies"}.`, potentialCasualties > 0 ? "kill" : "");
-
-      let saved = 0;
-      if (potentialCasualties > 0 && trace.cover.saveTarget !== null) {
-        const saveRolls = rollDice(potentialCasualties);
-        saved = saveRolls.filter(value => value >= trace.cover.saveTarget).length;
-        addLog(`${trace.cover.label} ${trace.cover.saveTarget}+: ${saveRolls.join(", ")} → ${saved} saved.`, saved > 0 ? "morale" : "");
-      } else if (potentialCasualties > 0) addLog("No cover save is available.");
-
-      const requestedCasualties = Math.max(0, potentialCasualties - saved);
-      const casualties = applyCasualties(target, requestedCasualties);
-      if (casualties > 0 && target.soldiers > 0) {
-      }
-      recordCasualties(shooter.faction, target.faction, casualties);
-      if (casualties > 0) addLog(`${capitalize(target.faction)} ${target.name} suffers ${casualties} casualt${casualties === 1 ? "y" : "ies"}; remaining loadout: ${fullLoadout(target)}.`, "kill");
-      if (target.soldiers === 0) {
-        recordUnitDestroyed(target, shooter.faction, `${options.label} casualties`);
-        addLog(`${capitalize(target.faction)} ${target.name} is destroyed.`, "kill");
-      }
-      renderUnits();
-      return { destroyed: target.soldiers === 0, hits: totalHits, casualties, shots: totalShots };
-    }
 
     // =========================================================================
     // ASSAULT ANALYSIS AND CLOSE COMBAT
     // Owns charge legality, reaction fire, combat dice, and post-combat position.
     // =========================================================================
-    function analyzeAssault(attacker, defender) {
-      if (defender?.inBuilding) {
-        const assaultedBuildingId = defender.inBuilding;
-        const door = buildingDoorPoint(assaultedBuildingId);
-        const distance = distanceBetweenPoints(attacker, door);
-        if (attacker?.inBuilding) return { legal:false, reason:"Exit the building before assaulting.", distance };
-        if (distance > RULES.assaultDistance + 0.001) return { legal:false, reason:`Doorway is ${distance.toFixed(1)}″ away; assault range is 12″.`, distance };
-        const pathAnalysis = analyzeMovementPath(attacker, [attacker, door], "Run", defender.id);
-        if (!pathAnalysis.legal) return { legal:false, reason:pathAnalysis.reason, distance };
-        const shotTrace = analyzeShot(defender, attacker);
-        const reactionFire = !defender.down && shotTrace.inRange && !shotTrace.blocked;
-        return { legal:true, reason:"", distance, pathAnalysis, reactionFire, ambushReaction:defender.ambush, defensivePosition:true, buildingAssault:true, buildingId: assaultedBuildingId, shotTrace };
-      }
-      const distance = distanceBetweenUnits(attacker, defender);
-      if (distance > RULES.assaultDistance + 0.001) return { legal: false, reason: `Out of assault range: ${distance.toFixed(1)}″ exceeds 12″.`, distance };
-
-      const pathAnalysis = analyzeMovementPath(attacker, [attacker, defender], "Run", defender.id);
-      if (!pathAnalysis.legal) return { legal: false, reason: pathAnalysis.reason, distance };
-
-      const shotTrace = analyzeShot(defender, attacker);
-      const ambushReaction = FEATURES.ambush && defender.ambush && shotTrace.inRange && !shotTrace.blocked;
-      const reactionFire = !defender.down && shotTrace.inRange && !shotTrace.blocked && (ambushReaction || distance > RULES.reactionFireThreshold);
-      const crossesWoods = (TERRAIN.instances ?? []).some(instance =>
-        instance.rules?.movement === "rough" && segmentRectClip(attacker, defender, instance) !== null
-      );
-      const crossesWall = (TERRAIN.instances ?? []).some(instance =>
-        instance.rules?.movement === "crossing" && segmentRectClip(attacker, defender, instance) !== null
-      );
-      const defensivePosition = !defender.down && (crossesWoods || crossesWall);
-
-      return { legal: true, reason: "", distance, pathAnalysis, reactionFire, ambushReaction, defensivePosition, crossesWoods, crossesWall, shotTrace };
-    }
 
     function chooseAssaultTarget(targetId) {
       if (phase !== "choose-assault-target" || !selectedUnitId || battleEnded) return;
@@ -2653,106 +2496,6 @@
       resolveCloseCombat(attacker, defender, analysis);
     }
 
-    function resolveCloseCombat(attacker, defender, analysis) {
-      lockActivationTransaction("close-combat dice rolled");
-      let combatRound = 1;
-      const defenderPosition = { x: defender.x, y: defender.y };
-      const attackerStart = { x: attacker.x, y: attacker.y };
-      let winner = null;
-
-      while (!winner && combatRound <= 30 && attacker.soldiers > 0 && defender.soldiers > 0) {
-        addLog(`Close combat round ${combatRound}${analysis.defensivePosition && combatRound === 1 ? " — defender has a Defensive Position" : ""}.`, "assault");
-        let attackerKills = 0;
-        let defenderKills = 0;
-
-        if (analysis.defensivePosition && combatRound === 1) {
-          const defenderRolls = rollDice(defender.soldiers);
-          const defenderAssaultTarget = qualityProfile(defender).assaultDamageTarget;
-          defenderKills = defenderRolls.filter(value => value >= defenderAssaultTarget).length;
-          defenderKills = applyCasualties(attacker, defenderKills);
-          recordCasualties(defender.faction, attacker.faction, defenderKills);
-          addLog(`Defender strikes first (${qualityLabel(defender)}, ${qualityProfile(defender).assaultDamageTarget}+): ${defenderRolls.join(", ")} → ${defenderKills} attacker casualt${defenderKills === 1 ? "y" : "ies"}.`, "assault");
-
-          if (attacker.soldiers > 0) {
-            const attackerRolls = rollDice(attacker.soldiers);
-            const attackerAssaultTarget = qualityProfile(attacker).assaultDamageTarget;
-            attackerKills = attackerRolls.filter(value => value >= attackerAssaultTarget).length;
-            attackerKills = applyCasualties(defender, attackerKills);
-            recordCasualties(attacker.faction, defender.faction, attackerKills);
-            addLog(`Surviving attackers strike (${qualityLabel(attacker)}, ${qualityProfile(attacker).assaultDamageTarget}+): ${attackerRolls.join(", ")} → ${attackerKills} defender casualt${attackerKills === 1 ? "y" : "ies"}.`, "assault");
-          }
-        } else {
-          const attackerDice = attacker.soldiers;
-          const defenderDice = defender.soldiers;
-          const attackerRolls = rollDice(attackerDice);
-          const defenderRolls = rollDice(defenderDice);
-          const attackerAssaultTarget = qualityProfile(attacker).assaultDamageTarget;
-          attackerKills = attackerRolls.filter(value => value >= attackerAssaultTarget).length;
-          const defenderAssaultTarget = qualityProfile(defender).assaultDamageTarget;
-          defenderKills = defenderRolls.filter(value => value >= defenderAssaultTarget).length;
-          defenderKills = applyCasualties(attacker, defenderKills);
-          attackerKills = applyCasualties(defender, attackerKills);
-          recordCasualties(defender.faction, attacker.faction, defenderKills);
-          recordCasualties(attacker.faction, defender.faction, attackerKills);
-          addLog(`Simultaneous attacks — attacker ${qualityLabel(attacker)} ${qualityProfile(attacker).assaultDamageTarget}+: ${attackerRolls.join(", ")} → ${attackerKills}; defender ${qualityLabel(defender)} ${qualityProfile(defender).assaultDamageTarget}+: ${defenderRolls.join(", ")} → ${defenderKills}.`, "assault");
-        }
-
-        if (attacker.soldiers === 0 && defender.soldiers === 0) winner = "mutual";
-        else if (attackerKills > defenderKills || defender.soldiers === 0) winner = "attacker";
-        else if (defenderKills > attackerKills || attacker.soldiers === 0) winner = "defender";
-        else {
-          addLog(`The round is tied; another close-combat round begins.`, "assault");
-          combatRound += 1;
-        }
-      }
-
-      if (!winner) winner = attacker.soldiers >= defender.soldiers ? "attacker" : "defender";
-
-      if (winner === "attacker") {
-        const removed = defender.soldiers;
-        recordCasualties(attacker.faction, defender.faction, removed);
-        recordUnitDestroyed(defender, attacker.faction, "Defeated in close combat");
-        if (battleStats) battleStats[attacker.faction].assaultsWon += 1;
-        destroyUnit(defender);
-        const safe = findSafeAssaultPosition(attacker, defenderPosition, attackerStart);
-        attacker.x = safe.x;
-        attacker.y = safe.y;
-        if (analysis.buildingAssault) {
-          occupyBuilding(attacker, { fromAssault: true, buildingId: analysis.buildingId });
-      showBattleAnnouncement(`${buildingLabel(analysis.buildingId).toUpperCase()} CLEARED`, `${attacker.name} takes the position`, attacker.faction, 1200);
-          addLog(`${capitalize(attacker.faction)} ${attacker.name} clears and occupies the ${buildingLabel(analysis.buildingId)}.`, "assault");
-        } else {
-          addLog(`${capitalize(attacker.faction)} ${attacker.name} wins; ${defender.name} is destroyed and the attacker occupies the position.`, "assault");
-        }
-        completeActivation("Assault");
-      } else if (winner === "defender") {
-        const removed = attacker.soldiers;
-        recordCasualties(defender.faction, attacker.faction, removed);
-        recordUnitDestroyed(attacker, defender.faction, "Defeated in close combat");
-        if (battleStats) battleStats[defender.faction].assaultsWon += 1;
-        destroyUnit(attacker);
-        addLog(`${capitalize(defender.faction)} ${defender.name} wins; the assaulting unit is destroyed.`, "assault");
-        selectedUnitId = null;
-        chosenOrder = null;
-        activationSnapshot = null;
-        if (!checkElimination()) finishActivationState();
-      } else {
-        const attackerRemoved = attacker.soldiers;
-        const defenderRemoved = defender.soldiers;
-        recordCasualties(defender.faction, attacker.faction, attackerRemoved);
-        recordCasualties(attacker.faction, defender.faction, defenderRemoved);
-        recordUnitDestroyed(attacker, defender.faction, "Mutual destruction in close combat");
-        recordUnitDestroyed(defender, attacker.faction, "Mutual destruction in close combat");
-        destroyUnit(attacker);
-        destroyUnit(defender);
-        addLog(`Both units are destroyed in the close combat.`, "assault");
-        selectedUnitId = null;
-        chosenOrder = null;
-        activationSnapshot = null;
-        if (!checkElimination()) finishActivationState();
-      }
-      renderUnits();
-    }
 
     function findSafeAssaultPosition(attacker, targetPosition, attackerStart) {
       if (!FEATURES.movementIntegrity) return targetPosition;
@@ -4578,298 +4321,8 @@
 
 
 
-    // ===== CROSSROADS 2.0A-D staged building module =====
-    // =========================================================================
-    // BUILDING OCCUPANCY PROTOTYPE
-    // Owns generic building occupancy, Enter/Exit commands, and occupancy rendering.
-    // Integrated through explicit engine seams; no function replacement wrappers.
-    // =========================================================================
-    const BUILDING_RULES = Object.freeze({
-      capacity: 1,
-      entryDistance: 3.5,
-      hardCoverSave: 3
-    });
-
-    function buildingInstance(id) {
-      return id ? TERRAIN_GEOMETRY.get(id) : null;
-    }
-
-    function buildingInstances() {
-      return TERRAIN_GEOMETRY.buildings();
-    }
-
-    function buildingLabel(buildingOrId) {
-      const building = typeof buildingOrId === "string" ? buildingInstance(buildingOrId) : buildingOrId;
-      return building?.definition?.label ?? "building";
-    }
-
-    function buildingCenterPoint(id) {
-      const building = buildingInstance(id) ?? buildingInstances()[0];
-      return building ? TERRAIN_GEOMETRY.center(building) : { x: 0, y: 0 };
-    }
-
-    function buildingDoorPoint(id) {
-      const building = buildingInstance(id) ?? buildingInstances()[0];
-      return building ? TERRAIN_GEOMETRY.entryPoint(building) : { x: 0, y: 0 };
-    }
-
-    function buildingApproachPoint(id) {
-      const building = buildingInstance(id) ?? buildingInstances()[0];
-      return building ? TERRAIN_GEOMETRY.approachPoint(building, 1.8) : { x: 0, y: 0 };
-    }
-
-    function buildingOccupant(buildingId = null) {
-      return livingUnits().find(unit =>
-        buildingId ? unit.inBuilding === buildingId : Boolean(unit.inBuilding)
-      ) ?? null;
-    }
-
-    function buildingEntryAnalysis(unit, requestedBuildingId = null) {
-      if (!unit || unit.inBuilding) {
-        return { legal: false, reason: "The selected unit cannot enter a building." };
-      }
-
-      const candidates = requestedBuildingId
-        ? [buildingInstance(requestedBuildingId)].filter(Boolean)
-        : buildingInstances();
-      const analyses = [];
-
-      for (const building of candidates) {
-        if (buildingOccupant(building.id)) continue;
-        const approach = buildingApproachPoint(building.id);
-        const analysis = analyzeMovementPath(unit, [unit, approach], "Advance", unit.id);
-        analyses.push({ ...analysis, building, approach });
-      }
-
-      const legal = analyses.filter(analysis => analysis.legal).sort((a, b) => a.cost - b.cost)[0];
-      if (legal) return legal;
-      if (candidates.length && candidates.every(building => buildingOccupant(building.id))) {
-        return { legal: false, reason: "Every nearby building is occupied." };
-      }
-      return { legal: false, reason: "No empty building can be reached with an Advance." };
-    }
-
-    function buildingWindowPointToward(buildingId, target) {
-      const b = buildingInstance(buildingId);
-      if (!b) return target;
-      const c = buildingCenterPoint(buildingId);
-      const dx = (target?.x ?? c.x) - c.x;
-      const dy = (target?.y ?? c.y) - c.y;
-      if (Math.abs(dx) >= Math.abs(dy)) {
-        return { x: dx < 0 ? b.x - .15 : b.x + b.width + .15, y: clamp(target?.y ?? c.y, b.y + 2, b.y + b.height - 2) };
-      }
-      return { x: clamp(target?.x ?? c.x, b.x + 2, b.x + b.width - 2), y: dy < 0 ? b.y - .15 : b.y + b.height + .15 };
-    }
-
-    function unitCanEnterBuilding(unit) {
-      return Boolean(buildingEntryAnalysis(unit).legal);
-    }
-
-    function occupyBuilding(unit, options = {}) {
-      const analysis = options.buildingId
-        ? { legal: true, building: buildingInstance(options.buildingId) }
-        : buildingEntryAnalysis(unit);
-      const building = analysis.building;
-      if (!unit || !building || (!options.fromAssault && !analysis.legal)) return false;
-      if (buildingOccupant(building.id) && buildingOccupant(building.id)?.id !== unit.id) return false;
-      const center = buildingCenterPoint(building.id);
-      if (!options.fromAssault && !options.preserveEntry) {
-        unit.buildingEntryX = unit.x;
-        unit.buildingEntryY = unit.y;
-      }
-      unit.inBuilding = building.id;
-      unit.x = center.x;
-      unit.y = center.y;
-      unit.down = false;
-      return true;
-    }
-
-    function buildingCommand(unit, presentation = "desktop") {
-      const exiting = Boolean(unit?.inBuilding);
-      const entryAnalysis = exiting ? null : buildingEntryAnalysis(unit);
-      const entering = Boolean(entryAnalysis?.legal);
-      const enabled = phase === "choose-order" && Boolean(unit) && (exiting || entering);
-      const building = exiting ? buildingInstance(unit.inBuilding) : entryAnalysis?.building;
-      const name = buildingLabel(building);
-      const label = `${exiting ? "Exit" : "Enter"} ${capitalize(name)}`;
-
-      return window.CrossroadsCommands.makeCommand({
-        id: exiting ? `exit-${unit.inBuilding}` : `enter-${building?.id ?? "building"}`,
-        label,
-        enabled,
-        execute: exiting ? exitBuildingAction : enterBuildingAction,
-        reason: enabled
-          ? exiting
-            ? `Leave the ${name} through its doorway.`
-            : `Advance ${entryAnalysis.cost.toFixed(1)}″ to the doorway and occupy the ${name}.`
-          : entryAnalysis?.reason ?? "The selected unit cannot interact with a building.",
-        meta: { presentation, className: "tray-confirm tray-wide building-action" }
-      });
-    }
-
-    function enterBuildingAction() {
-      const unit = getUnit(selectedUnitId);
-      const analysis = buildingEntryAnalysis(unit);
-      if (phase !== "choose-order" || !analysis.legal) return;
-      chosenOrder = "Enter Building";
-      if (!attemptOrder(unit, "Advance")) return;
-      unit.buildingEntryX = analysis.approach.x;
-      unit.buildingEntryY = analysis.approach.y;
-      occupyBuilding(unit, { preserveEntry: true, buildingId: analysis.building.id });
-      const name = buildingLabel(analysis.building);
-      addLog(`${capitalize(unit.faction)} ${unit.name} advances through the doorway and occupies the ${name}.`, "terrain");
-      showBattleAnnouncement(`${name.toUpperCase()} OCCUPIED`, `${activeScenario.factions[unit.faction].name} takes defensive positions`, unit.faction, 1250);
-      completeActivation("Enter Building");
-    }
-
-    function exitBuildingAction() {
-      const unit = getUnit(selectedUnitId);
-      if (phase !== "choose-order" || !unit?.inBuilding) return;
-      const buildingId = unit.inBuilding;
-      const name = buildingLabel(buildingId);
-      chosenOrder = "Exit Building";
-      if (!attemptOrder(unit, "Advance")) return;
-      const exitPoint = {
-        x: unit.buildingEntryX ?? buildingApproachPoint(buildingId).x,
-        y: unit.buildingEntryY ?? buildingApproachPoint(buildingId).y
-      };
-      unit.inBuilding = null;
-      unit.x = exitPoint.x;
-      unit.y = exitPoint.y;
-      unit.buildingEntryX = null;
-      unit.buildingEntryY = null;
-      addLog(`${capitalize(unit.faction)} ${unit.name} exits the ${name} through the doorway.`, "terrain");
-      showBattleAnnouncement(`${name.toUpperCase()} CLEARED`, `${unit.name} returns to the doorway`, unit.faction, 1000);
-      completeActivation("Exit Building");
-    }
-
-    function buildingCombatContext(attacker, target) {
-      const parts = [];
-      if (attacker?.inBuilding) parts.push(`Firing from ${buildingLabel(attacker.inBuilding)} window`);
-      if (target?.inBuilding) parts.push(`Target inside ${buildingLabel(target.inBuilding)} · hard cover`);
-      if (target?.inBuilding && target?.down) parts.push("Target is Down");
-      if (attacker?.inBuilding && attacker?.ambush) parts.push("Ambush fire");
-      return parts;
-    }
-
-    function buildingDefenseLabel(target) {
-      if (!target?.inBuilding) return "";
-      const name = capitalize(buildingLabel(target.inBuilding));
-      return target.down ? `${name} hard cover + Down` : `${name} hard cover`;
-    }
-
-    function buildingOrderLabel(unit) {
-      if (!unit) return "";
-      if (unit.ambush) return "AMBUSH";
-      if (unit.down) return "DOWN";
-      return unit.order ? String(unit.order).toUpperCase() : "READY";
-    }
-
-    function selectBuildingOccupant(buildingId = null) {
-      const occupant = buildingOccupant(buildingId);
-      if (!occupant) return;
-      if (phase === "choose-target") chooseTarget(occupant.id);
-      else if (phase === "choose-assault-target") chooseAssaultTarget(occupant.id);
-      else if (phase === "deployment") selectDeploymentUnit(occupant.id);
-      else selectUnit(occupant.id);
-    }
-
-    function renderBuildingState() {
-      const layer = document.getElementById("terrainLayer");
-      const selected = getUnit(selectedUnitId);
-      const entryAnalysis = selected?.inBuilding ? null : buildingEntryAnalysis(selected);
-
-      for (const building of buildingInstances()) {
-        const element = window.CrossroadsTerrainPresentation.elementForInstance(layer, building.id);
-        if (!element) continue;
-        const occupant = buildingOccupant(building.id);
-        const canEnter = Boolean(phase === "choose-order" && entryAnalysis?.legal && entryAnalysis.building.id === building.id);
-        const badge = element.querySelector(".building-occupancy-nameplate");
-        const marker = element.querySelector(".building-approach-marker");
-
-        element.classList.toggle("occupied-blue", occupant?.faction === "blue");
-        element.classList.toggle("occupied-red", occupant?.faction === "red");
-        element.classList.toggle("occupant-selected", occupant?.id === selectedUnitId);
-        element.classList.toggle("entry-available", canEnter);
-        element.classList.toggle("eligible-current", Boolean(occupant && unitIsEligibleForCurrentDie(occupant)));
-        element.setAttribute("aria-label", occupant
-          ? `${capitalize(buildingLabel(building))} occupied by ${occupant.name}, ${occupant.soldiers} soldiers, ${occupant.pins} pins`
-          : `Empty ${buildingLabel(building)}`);
-
-        if (badge) {
-          badge.hidden = !occupant;
-          badge.className = `building-occupancy-nameplate ${occupant?.faction ?? ""}` +
-            `${occupant?.id === selectedUnitId ? " selected" : ""}` +
-            `${occupant && unitIsEligibleForCurrentDie(occupant) ? " ready" : ""}`;
-          badge.innerHTML = occupant ? unitNameplateHtml(occupant, { detail: "building", showMen: true, showPins: true }) : "";
-          badge.onclick = occupant ? event => {
-            event.stopPropagation();
-            if (!gestureSuppressed()) selectBuildingOccupant(building.id);
-          } : null;
-        }
-
-        if (marker) {
-          marker.hidden = !canEnter;
-          if (canEnter) {
-            const markerPoint = TERRAIN_GEOMETRY.entryMarker(building, 1.8);
-            marker.style.left = `${markerPoint.x * 100}%`;
-            marker.style.top = `${markerPoint.y * 100}%`;
-          }
-        }
-
-        if (!element.dataset.selectionBound) {
-          element.dataset.selectionBound = "true";
-          element.addEventListener("click", event => {
-            if (!buildingOccupant(building.id) || gestureSuppressed()) return;
-            event.stopPropagation();
-            selectBuildingOccupant(building.id);
-          });
-        }
-      }
-      updateBuildingActionButton();
-    }
-
-    function updateBuildingActionButton() {
-      if (!buildingActionButton) return;
-      const command = buildingCommand(getUnit(selectedUnitId), "desktop");
-      buildingActionButton.hidden = !command.enabled;
-      buildingActionButton.disabled = !command.enabled;
-      buildingActionButton.textContent = command.label;
-      buildingActionButton.title = command.reason;
-      buildingActionButton.onclick = command.enabled ? command.execute : null;
-    }
-
-    function clearInvalidBuildingOccupancy() {
-      const validIds = new Set(buildingInstances().map(building => building.id));
-      const firstOccupantByBuilding = new Set();
-      for (const unit of livingUnits()) {
-        if (!unit.inBuilding) continue;
-        if (!validIds.has(unit.inBuilding) || firstOccupantByBuilding.has(unit.inBuilding)) {
-          unit.inBuilding = null;
-          unit.buildingEntryX = null;
-          unit.buildingEntryY = null;
-          continue;
-        }
-        firstOccupantByBuilding.add(unit.inBuilding);
-      }
-    }
-
-    function reconcileBuildingAfterUnitChange(unit) {
-      if (unit) {
-        const noLongerActive = unit.outcome && unit.outcome !== UNIT_OUTCOME.ACTIVE;
-        const noSoldiers = Number(unit.soldiers) <= 0;
-        if (unit.inBuilding && (noLongerActive || noSoldiers)) {
-          unit.inBuilding = null;
-          unit.buildingEntryX = null;
-          unit.buildingEntryY = null;
-        }
-        if (selectedUnitId === unit.id && (noLongerActive || noSoldiers)) selectedUnitId = null;
-      }
-      clearInvalidBuildingOccupancy();
-    }
-
-    // Building behavior is integrated explicitly into restartBattle(),
-    // orderAvailability(), the shared command model, and the render coordinator.
+    // Building occupancy is owned by src/runtime/building-occupancy.js.
+    // The engine creates one explicit controller during dependency composition.
 
     // ===== CROSSROADS 1.7D + 1.8 V1 presentation controller =====
     // =========================================================================

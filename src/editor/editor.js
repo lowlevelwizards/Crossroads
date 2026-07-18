@@ -21,17 +21,14 @@
   const WOODLAND = window.CrossroadsWoodlandGenerator;
   const SCHEMA = window.CrossroadsScenarioSchema;
   const SEMANTICS = window.CrossroadsTerrainSemantics;
+  const PERSISTENCE = window.CrossroadsEditorPersistence;
 
-  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !MULTI || !TOOLS || !WOODLAND || !SCHEMA || !SEMANTICS) {
+  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !MULTI || !TOOLS || !WOODLAND || !SCHEMA || !SEMANTICS || !PERSISTENCE) {
     throw new Error("Scenario Composer S1.0 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
   const HISTORY_LIMIT = 40;
-  const PLAYTEST_STORAGE_KEY = "crossroads.editor.playtest";
-  const LAST_SCENARIO_STORAGE_KEY = "crossroads.editor.lastScenario";
-  const CUSTOM_SCENARIOS_STORAGE_KEY = "crossroads.editor.customScenarios";
-  const EDITOR_CLIPBOARD_STORAGE_KEY = "crossroads.editor.clipboard";
   const scenarioSources = new Map(Object.entries(SCENARIOS));
 
   const refs = Object.freeze({
@@ -133,49 +130,21 @@
   });
 
   const state = EDITOR_STATE.create();
-  try {
-    state.clipboard = JSON.parse(localStorage.getItem(EDITOR_CLIPBOARD_STORAGE_KEY) || "null");
-  } catch (_error) {
-    state.clipboard = null;
-  }
+  let editorStorage = null;
+  try { editorStorage = window.localStorage; } catch (_error) { /* Storage is optional. */ }
+  const persistence = PERSISTENCE.create({
+    documentModel:DOCUMENT,
+    builtInScenarios:SCENARIOS,
+    scenarioSources,
+    storage:editorStorage
+  });
+  state.clipboard = persistence.loadClipboard();
 
   function option(value, label) {
     const node = document.createElement("option");
     node.value = value;
     node.textContent = label;
     return node;
-  }
-
-  function loadCustomScenarioSources() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(CUSTOM_SCENARIOS_STORAGE_KEY) || "[]");
-      if (!Array.isArray(saved)) return;
-      for (const source of saved) {
-        try {
-          const scenario = DOCUMENT.create(source);
-          scenarioSources.set(scenario.id, scenario);
-        } catch (_error) { /* Ignore invalid saved drafts. */ }
-      }
-    } catch (_error) { /* Storage is optional. */ }
-  }
-
-  function customScenarioSources() {
-    const builtInIds = new Set(Object.keys(SCENARIOS));
-    return [...scenarioSources.values()]
-      .filter(item => !builtInIds.has(item.id))
-      .map(item => DOCUMENT.create(item));
-  }
-
-  function writeCustomScenarioSources() {
-    try {
-      localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(customScenarioSources()));
-    } catch (_error) { /* Storage is optional. */ }
-  }
-
-  function persistCustomScenario(source) {
-    const draft = DOCUMENT.create(source);
-    scenarioSources.set(draft.id, draft);
-    writeCustomScenarioSources();
   }
 
   function isBuiltInScenario(id = state.sourceScenarioId) {
@@ -194,20 +163,9 @@
     refs.scenarioSelect.value = scenarioSources.has(selectedId) ? selectedId : scenarios[0]?.id || "";
   }
 
-  function requestedScenarioId() {
-    const fallback = scenarioSources.has("mokra") ? "mokra" : scenarioSources.keys().next().value;
-    const fromUrl = new URLSearchParams(window.location.search).get("scenario");
-    if (fromUrl && scenarioSources.has(fromUrl)) return fromUrl;
-    try {
-      const remembered = localStorage.getItem(LAST_SCENARIO_STORAGE_KEY);
-      if (remembered && scenarioSources.has(remembered)) return remembered;
-    } catch (_error) { /* Storage is optional. */ }
-    return fallback;
-  }
-
   function initializeSelects() {
-    loadCustomScenarioSources();
-    refreshScenarioSelect(requestedScenarioId());
+    persistence.loadCustomScenarios();
+    refreshScenarioSelect(persistence.requestedScenarioId(window.location.search));
     const terrainEntries = Object.values(TERRAIN_TYPES).sort((a, b) => `${a.family} ${a.label}`.localeCompare(`${b.family} ${b.label}`));
     for (const definition of terrainEntries) refs.terrainTypeSelect.appendChild(option(definition.id, `${definition.family} · ${definition.label}`));
     for (const style of Object.values(LINEAR_STYLES)) refs.linearStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
@@ -253,9 +211,7 @@
 
   function saveCustomDraft() {
     if (!state.document || SCENARIOS[state.sourceScenarioId]) return;
-    const draft = DOCUMENT.create(state.document);
-    scenarioSources.set(draft.id, draft);
-    persistCustomScenario(draft);
+    const draft = persistence.persistScenario(state.document);
     state.sourceScenarioId = draft.id;
     refreshScenarioSelect(draft.id);
   }
@@ -317,7 +273,7 @@
     refs.victoryRedThreshold.disabled = refs.victoryPolicySelect.value !== "asymmetric_thresholds";
     refs.eliminationVictoryToggle.checked = state.document.victory?.elimination === true;
     if (refs.returnToGameLink) refs.returnToGameLink.href = `index.html?fromEditor=1&scenario=${encodeURIComponent(id)}`;
-    try { localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, id); } catch (error) { /* Storage is optional. */ }
+    persistence.rememberScenario(id);
     renderAll();
     requestAnimationFrame(fitTable);
   }
@@ -2316,7 +2272,7 @@
     const payload = DOCUMENT.copySelections(state.document, selections);
     if (!payload.items.length) return;
     state.clipboard = payload;
-    try { localStorage.setItem(EDITOR_CLIPBOARD_STORAGE_KEY, JSON.stringify(payload)); } catch (_error) { /* Clipboard persistence is optional. */ }
+    persistence.saveClipboard(payload);
     state.status = `Copied ${payload.items.length} object${payload.items.length === 1 ? "" : "s"}`;
     renderSelectionAndInspector();
     refs.saveReadout.textContent = state.status;
@@ -2572,8 +2528,7 @@
       const objective = defaultObjectiveForScenario(type, scenario);
       if (objective) scenario.objectives.push(objective);
     }
-    scenarioSources.set(id, scenario);
-    persistCustomScenario(scenario);
+    persistence.persistScenario(scenario);
     refreshScenarioSelect(id);
     refs.newScenarioDialog.close();
     loadScenario(id);
@@ -2595,8 +2550,7 @@
     if (!title) return;
     state.document.title = title;
     if (state.sourceDocument) state.sourceDocument.title = title;
-    scenarioSources.set(state.sourceScenarioId, DOCUMENT.create(state.document));
-    persistCustomScenario(state.document);
+    persistence.persistScenario(state.document);
     refreshScenarioSelect(state.sourceScenarioId);
     refs.renameScenarioDialog.close();
     state.status = `Renamed scenario to ${title}`;
@@ -2608,12 +2562,9 @@
     if (isBuiltInScenario(id)) return;
     const title = state.document.title || id;
     if (!window.confirm(`Delete custom scenario “${title}”? This removes its locally saved editor copy.`)) return;
-    scenarioSources.delete(id);
-    writeCustomScenarioSources();
+    persistence.deleteScenario(id);
     const fallback = scenarioSources.has("mokra") ? "mokra" : scenarioSources.keys().next().value;
-    try {
-      if (localStorage.getItem(LAST_SCENARIO_STORAGE_KEY) === id) localStorage.setItem(LAST_SCENARIO_STORAGE_KEY, fallback || "");
-    } catch (_error) { /* Storage is optional. */ }
+    persistence.rememberScenario(fallback || "");
     refreshScenarioSelect(fallback);
     if (fallback) loadScenario(fallback);
   }
@@ -2658,7 +2609,11 @@
 
   function launchPlaytest() {
     const scenario = DOCUMENT.playtestScenario(state.document);
-    localStorage.setItem(PLAYTEST_STORAGE_KEY, JSON.stringify(scenario));
+    if (!persistence.savePlaytest(scenario)) {
+      state.status = "Playtest could not be saved in this browser";
+      refs.saveReadout.textContent = state.status;
+      return;
+    }
     state.status = "Playtest scenario saved";
     refs.saveReadout.textContent = state.status;
     window.open("index.html?editorPlaytest=1", "_blank", "noopener");
@@ -2858,4 +2813,5 @@
   initializeSelects();
   bindEvents();
   loadScenario(refs.scenarioSelect.value);
+  window.CrossroadsStartupDiagnostics?.complete();
 })();

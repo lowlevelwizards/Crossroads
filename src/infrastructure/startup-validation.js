@@ -14,12 +14,25 @@
     ["CROSSROADS_FORMATIONS", "data/formations.js"],
     ["CROSSROADS_SCENARIOS", "data/scenarios.js"],
     ["CROSSROADS_CORE_SCENARIO_12A", "data/scenarios.js"],
+    ["CrossroadsLayerPolicy", "src/presentation/layer-policy.js"],
+    ["CrossroadsScenarioVisibility", "src/scenario/scenario-visibility.js"],
+    ["CrossroadsScenarioMigrations", "src/scenario/scenario-migrations.js"],
+    ["CrossroadsScenarioSchema", "src/scenario/scenario-schema.js"],
+    ["CrossroadsTerrainSemantics", "src/rules/terrain-semantics.js"],
+    ["CrossroadsTerrainSpatial", "src/rules/terrain-spatial.js"],
+    ["CrossroadsSeededRandom", "src/generation/seeded-random.js"],
+    ["CrossroadsPolygonGeometry", "src/generation/polygon-geometry.js"],
+    ["CrossroadsPolygonScatter", "src/generation/polygon-scatter.js"],
+    ["CrossroadsRowGenerator", "src/generation/row-generator.js"],
+    ["CrossroadsWoodlandGenerator", "src/generation/woodland-generator.js"],
     ["CrossroadsBuildingPresentation", "src/presentation/buildings.js"],
     ["CrossroadsTerrainPresentation", "src/presentation/terrain.js"],
     ["CrossroadsPathGeometry", "src/rules/path-geometry.js"],
     ["CrossroadsLinearTerrain", "src/rules/linear-terrain.js"],
     ["CrossroadsLinearTerrainPresentation", "src/presentation/linear-terrain.js"],
+    ["CrossroadsSceneCompositor", "src/presentation/scene-compositor.js"],
     ["CrossroadsTerrainGeometry", "src/rules/terrain-geometry.js"],
+    ["CrossroadsBuildingOccupancy", "src/runtime/building-occupancy.js"],
     ["CrossroadsCommands", "src/infrastructure/commands.js"],
     ["CrossroadsFormationGeometry", "src/presentation/formation-geometry.js"],
     ["CrossroadsTargetingPresentation", "src/presentation/targeting.js"],
@@ -260,17 +273,11 @@
     if (typeof window.CrossroadsAssaultRules?.create !== "function") {
       issues.push("Assault rules module is missing its create() factory.");
     }
-    if (typeof window.CrossroadsCombatRuntime?.isInstalled !== "function") {
-      issues.push("Combat runtime is missing its installation diagnostic.");
+    if (typeof window.CrossroadsCombatRuntime?.create !== "function") {
+      issues.push("Combat runtime is missing its explicit create() factory.");
     }
-    if (typeof window.CrossroadsCombatRuntime?.getMoraleRules !== "function") {
-      issues.push("Combat runtime cannot expose the active morale rules.");
-    }
-    if (typeof window.CrossroadsCombatRuntime?.getShootingRules !== "function") {
-      issues.push("Combat runtime cannot expose the active shooting rules.");
-    }
-    if (typeof window.CrossroadsCombatRuntime?.getAssaultRules !== "function") {
-      issues.push("Combat runtime cannot expose the active assault rules.");
+    if (typeof window.CrossroadsBuildingOccupancy?.create !== "function") {
+      issues.push("Building occupancy is missing its explicit create() factory.");
     }
     return issues;
   }

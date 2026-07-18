@@ -463,3 +463,35 @@
 /* Terrain Editor E1.4.1 — selection and scenario-management polish */
 .editor-scenario-actions .editor-button { font-size:10px; padding-inline:6px; }
 .editor-dialog-note { margin:0; padding:8px; border-radius:5px; background:#e9dfcd; color:#62594d; font-size:11px; line-height:1.35; }
+
+/* Terrain Editor E1.5 — multi-selection and clipboard workflow */
+.editor-selection-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.editor-selection-actions[hidden] { display:none; }
+.editor-multi-selection-member {
+  position:absolute;
+  border:1px dashed rgba(255,238,178,.9);
+  background:rgba(244,207,101,.055);
+  pointer-events:none;
+}
+.editor-selection-box.is-multi::before {
+  content:attr(data-selection-count) " selected";
+  position:absolute;
+  left:0;
+  top:-24px;
+  padding:3px 6px;
+  border:1px solid #5c4b2f;
+  border-radius:4px;
+  background:#f4d276;
+  color:#403522;
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.editor-selection-marquee {
+  position:absolute;
+  border:1px dashed #fff0ae;
+  background:rgba(239,200,88,.16);
+  box-shadow:0 0 0 1px rgba(64,54,37,.45);
+  pointer-events:none;
+}
+.editor-object-row.is-selected { box-shadow:inset 3px 0 #d9a94a; }

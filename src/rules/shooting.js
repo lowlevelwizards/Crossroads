@@ -13,6 +13,7 @@
     mmgRules,
     distanceBetweenPoints,
     segmentRectClip,
+    segmentTerrainClip = segmentRectClip,
     resolveShooterPoint,
     resolveTargetPoint,
     getTerrainInstance,
@@ -135,7 +136,7 @@
       for (const woods of instances.filter(
         instance => instance.rules?.cover === "soft"
       )) {
-        if (segmentRectClip(shooter, target, woods) === null) continue;
+        if (segmentTerrainClip(shooter, target, woods) === null) continue;
         const terrainSave = woods.rules?.save ?? 5;
         sources.push(
           `line passes through ${woods.definition?.label ?? "soft terrain"}`
@@ -149,7 +150,7 @@
       for (const wall of instances.filter(
         instance => instance.rules?.movement === "crossing"
       )) {
-        const wallClip = segmentRectClip(shooter, target, wall);
+        const wallClip = segmentTerrainClip(shooter, target, wall);
         if (wallClip === null) continue;
         const nearest = distanceBetweenPoints(target, wallClip.exit);
         if (nearest <= rules.wallProtectionDepth + 0.001) {

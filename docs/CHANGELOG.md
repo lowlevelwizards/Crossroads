@@ -1,3 +1,29 @@
+# Scenario Runtime S1.0.1 — Release Integrity & Coordinator Cleanup
+
+## Release integrity
+
+- Added a standalone release manifest and automated local-resource verification.
+- Added load-order, version, cache-token, required-file, and retired-file checks.
+- Updated the startup smoke page to mirror the production module chain.
+- Added a visible Scenario Composer fatal-startup panel for missing resources and uncaught initialization errors.
+- Standardized production cache tokens to `v=s101`.
+
+## Coordinator cleanup
+
+- Replaced implicit combat installation and presentation replacement with explicit dependency construction in `engine.js`.
+- Removed the old combat implementations from `engine.js`; the pure rules modules and one commit runtime are now the only physical implementations.
+- Extracted building occupancy and its player-facing command/render controller into `src/runtime/building-occupancy.js`.
+- Extracted editor draft storage, last-scenario restoration, clipboard persistence, and playtest handoff into `src/editor/editor-persistence.js`.
+- Removed retired combat integration files, the obsolete Mokra runtime tombstone, stale root CSS, placeholder files, and overlay-only manifests.
+- Updated startup validation to require the E1.5 terrain foundation, scenario schema/runtime, building occupancy, and explicit combat runtime factories.
+
+## Behavior
+
+- No intended changes to shooting, morale, assault, movement, objectives, scenario scoring, or building rules.
+- Added direct integration tests for explicit combat adapters and the building occupancy controller.
+
+---
+
 # Scenario Runtime S1.0 — Objective Foundation
 
 - Added a canonical scenario compiler, runtime session, scenario-event stream, and victory-policy boundary outside `engine.js`.

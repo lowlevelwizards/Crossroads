@@ -25,13 +25,15 @@
 
   function buildTree(parent, options = {}) {
     const styleId = options.styleId || "woods";
-    const material = options.material || (styleId === "orchard" ? "temperate" : "temperate");
+    const material = options.material || "temperate";
     const palette = PALETTES[material] ?? PALETTES.temperate;
+    const fragment = options.fragment || "complete";
     const tree = createGroup(parent, `woods-tree procedural-woodland-tree tree-preset-${options.preset || "balanced"}`);
-    tree.classList.add(`procedural-${styleId}`);
+    tree.classList.add(`procedural-${styleId}`, `tree-fragment-${fragment}`);
     if (options.className) tree.classList.add(...String(options.className).split(/\s+/).filter(Boolean));
     tree.dataset.generatedId = String(options.id || "tree");
     if (options.patchId) tree.dataset.patchId = String(options.patchId);
+    tree.dataset.treeFragment = fragment;
     tree.style.setProperty("--tree-x", options.xCss || "0%");
     tree.style.setProperty("--tree-y", options.yCss || "0%");
     tree.style.setProperty("--tree-size", options.sizeCss || "4%");
@@ -43,11 +45,15 @@
     tree.style.setProperty("--tree-trunk", palette.trunk);
     if (options.zIndex !== undefined) tree.style.zIndex = String(options.zIndex);
 
-    createGroup(tree, "woods-tree-shadow");
-    createGroup(tree, "woods-tree-trunk");
-    addCircles(tree, "woods-tree-layer-dark", 5);
-    addCircles(tree, "woods-tree-layer-mid", 5);
-    addCircles(tree, "woods-tree-layer-light", 4);
+    if (fragment === "complete" || fragment === "body") {
+      createGroup(tree, "woods-tree-shadow");
+      createGroup(tree, "woods-tree-trunk");
+      addCircles(tree, "woods-tree-layer-dark", 5);
+    }
+    if (fragment === "complete" || fragment === "canopy") {
+      addCircles(tree, "woods-tree-layer-mid", 5);
+      addCircles(tree, "woods-tree-layer-light", 4);
+    }
     return tree;
   }
 
@@ -64,35 +70,41 @@
     });
   }
 
-  function createTableTree(parent, placement, table, patch) {
+  function tableTreeOptions(placement, table, patch) {
     const styleId = patch.styleId || "woods";
     const baseSize = styleId === "woods_dense" ? 3.55 : styleId === "orchard" ? 3.0 : 4.0;
     const size = baseSize * (Number(placement.scale) || 1);
-    const xPercent = (Number(placement.x) - size / 2) / Number(table.width) * 100;
-    const yPercent = (Number(placement.y) - size / 2) / Number(table.height) * 100;
-    const sizePercent = size / Number(table.width) * 100;
-    const zIndex = patch.inheritLayer === false
-      ? Math.max(0, Math.min(6999, Number(patch.layerOrder) || 0)) + 1
-      : (LAYERS?.depthFromTableY(placement.y, table.height) ?? 5000);
-    return buildTree(parent, {
+    return {
       id:placement.id,
       patchId:patch.id,
       styleId,
       material:patch.material,
       preset:placement.preset,
-      xCss:`${xPercent}%`,
-      yCss:`${yPercent}%`,
-      sizeCss:`${sizePercent}%`,
+      xCss:`${(Number(placement.x) - size / 2) / Number(table.width) * 100}%`,
+      yCss:`${(Number(placement.y) - size / 2) / Number(table.height) * 100}%`,
+      sizeCss:`${size / Number(table.width) * 100}%`,
       scale:1,
       rotation:placement.rotation,
-      zIndex,
       className:"terrain-patch-generated-tree scene-depth-object"
-    });
+    };
+  }
+
+  function createTableTreeFragments(parent, placement, table, patch) {
+    const base = tableTreeOptions(placement, table, patch);
+    const bodyLayer = LAYERS?.woodlandBodyLayer(patch, placement.y, table.height) ?? 5000;
+    const canopyLayer = LAYERS?.woodlandCanopyLayer(patch, placement.y, table.height) ?? bodyLayer + 56;
+    const body = buildTree(parent, { ...base, fragment:"body", zIndex:bodyLayer, className:`${base.className} woodland-tree-body` });
+    const canopy = buildTree(parent, { ...base, fragment:"canopy", zIndex:canopyLayer, className:`${base.className} woodland-tree-canopy` });
+    return Object.freeze({ body, canopy });
+  }
+
+  function createTableTree(parent, placement, table, patch) {
+    return createTableTreeFragments(parent, placement, table, patch).body;
   }
 
   function paletteFor(material) {
     return PALETTES[material] ?? PALETTES.temperate;
   }
 
-  window.CrossroadsWoodlandTreePresentation = Object.freeze({ PALETTES, paletteFor, buildTree, createPercentTree, createTableTree });
+  window.CrossroadsWoodlandTreePresentation = Object.freeze({ PALETTES, paletteFor, buildTree, createPercentTree, createTableTree, createTableTreeFragments });
 })();

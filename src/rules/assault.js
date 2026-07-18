@@ -17,6 +17,7 @@
     analyzeMovementPath,
     analyzeShot,
     segmentRectClip,
+    segmentTerrainClip = segmentRectClip,
     buildingDoorPoint
   }) {
     const requiredFunctions = {
@@ -163,14 +164,18 @@
         : [];
       const crossesWoods = terrainInstances.some(instance =>
         instance.rules?.movement === "rough" &&
-        segmentRectClip(attacker, defender, instance) !== null
+        segmentTerrainClip(attacker, defender, instance) !== null
       );
       const crossesWall = terrainInstances.some(instance =>
         instance.rules?.movement === "crossing" &&
-        segmentRectClip(attacker, defender, instance) !== null
+        segmentTerrainClip(attacker, defender, instance) !== null
+      );
+      const crossesDefensiveTerrain = terrainInstances.some(instance =>
+        (instance.rules?.defensivePosition ?? ["rough", "crossing"].includes(instance.rules?.movement)) &&
+        segmentTerrainClip(attacker, defender, instance) !== null
       );
       const defensivePosition = Boolean(
-        !defender.down && (crossesWoods || crossesWall)
+        !defender.down && crossesDefensiveTerrain
       );
 
       return Object.freeze({

@@ -3,6 +3,7 @@
 (() => {
   const open = Object.freeze({ movement:"open", cover:null, los:"clear" });
   const rough = Object.freeze({ movement:"rough", cover:null, los:"clear" });
+  const waterCrossing = Object.freeze({ movement:"rough", cover:null, los:"clear", maxInfantryCrossingWidth:5.0, vehicleAccess:"none" });
   const roughSoft = Object.freeze({ movement:"rough", cover:"soft", los:"clear", save:5 });
   const crossingHard = Object.freeze({ movement:"crossing", cover:"hard", los:"clear", save:4 });
 
@@ -14,7 +15,7 @@
     dirt_road: style("dirt_road", "road", "transport", "dirt road", 3.4, open, {
       shoulderWidth:3.78, color:"#ad9361", shoulder:"#748354", detail:"#d0bb87"
     }),
-    stream: style("stream", "stream", "water", "stream", 2.35, rough, {
+    stream: style("stream", "stream", "water", "stream", 2.35, waterCrossing, {
       bankWidth:3.35, bank:"#6f8259", water:"#75b4c6", detail:"#b9d9df"
     }),
     ditch: style("ditch", "ditch", "linear", "ditch", 2.0, roughSoft, {

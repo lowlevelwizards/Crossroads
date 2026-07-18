@@ -3,6 +3,8 @@
 (() => {
   const STYLES = window.CROSSROADS_LINEAR_TERRAIN_STYLES;
   const PATHS = window.CrossroadsPathGeometry;
+  const SEMANTICS = window.CrossroadsTerrainSemantics;
+  const VISIBILITY = window.CrossroadsScenarioVisibility;
 
   function validateDefinition(definition) {
     const style = STYLES?.[definition?.styleId];
@@ -10,8 +12,8 @@
     return style;
   }
 
-  function runtimeDefinition(style) {
-    return Object.freeze({ id:style.id, family:style.family, renderer:style.renderer, label:style.label, rules:style.rules, presentation:style.presentation });
+  function runtimeDefinition(style, rules = style.rules) {
+    return Object.freeze({ id:style.id, family:style.family, renderer:style.renderer, label:style.label, rules, presentation:style.presentation });
   }
 
   function sourceDistances(definition) {
@@ -52,6 +54,8 @@
       const widthA = widthAt(definition, style, path, a.distance);
       const widthB = widthAt(definition, style, path, b.distance);
       const pad = Math.max(widthA, widthB) / 2;
+      const localWidth = Math.max(widthA, widthB);
+      const rules = SEMANTICS?.normalize(style.rules, { width:localWidth, family:style.family, renderer:style.renderer }) ?? style.rules;
       result.push(Object.freeze({
         id:`${definition.id}::${index-1}`,
         linearPathId:definition.id,
@@ -61,8 +65,11 @@
         width:Math.abs(b.x-a.x)+pad*2,
         height:Math.abs(b.y-a.y)+pad*2,
         rotation:0,
-        definition:runtimeDefinition(style),
-        rules:style.rules
+        definition:runtimeDefinition(style, rules),
+        rules,
+        sourceKind:"linear",
+        shape:"rect",
+        localWidth
       }));
     }
     return result;
@@ -83,7 +90,8 @@
   }
 
   function compileScenario(scenario) {
-    const paths = Object.freeze((scenario?.linearTerrain ?? []).map(compilePath));
+    const visible = VISIBILITY?.isVisible ? item => VISIBILITY.isVisible(item) : item => item?.visible !== false && item?.hidden !== true;
+    const paths = Object.freeze((scenario?.linearTerrain ?? []).filter(visible).map(compilePath));
     return Object.freeze({ paths, instances:Object.freeze(paths.flatMap(item => item.instances)) });
   }
 

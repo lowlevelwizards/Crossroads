@@ -41,9 +41,9 @@ check(!/unit\.down\s*=/.test(morale), "morale module mutates Down state");
 
 check(shooting.includes("analyzeIncomingPins"), "shooting does not depend on morale Pin analysis");
 check(shooting.includes("const pinImpact = analyzeIncomingPins"), "shooting still calculates routing internally");
-check(runtime.includes("attemptOrder = function attemptOrderWithMoraleRules"), "runtime Order Tests are not delegated");
-check(runtime.includes("resolveShootingCore = function resolveShootingWithPureRules"), "runtime shooting is not delegated");
-check(runtime.includes("commandSupport = function commandSupportWithMoraleRules"), "runtime command support is not delegated");
+check(runtime.includes("function attemptOrder"), "runtime Order Tests are not delegated");
+check(runtime.includes("function resolveShootingCore"), "runtime shooting is not delegated");
+check(runtime.includes("function commandSupport"), "runtime command support is not delegated");
 
 check(assault.includes("function analyzeAssault"), "assault module lacks charge analysis");
 check(assault.includes("function resolveCloseCombat"), "assault module lacks close-combat resolution");
@@ -55,12 +55,12 @@ check(!/\.x\s*=/.test(assault), "assault module mutates unit position");
 check(!/occupyBuilding\s*\(/.test(assault), "assault module commits building occupancy");
 check(!/addLog\s*\(/.test(assault), "assault module writes combat logs");
 
-check(runtime.includes("analyzeAssault = assaultRules.analyzeAssault"), "runtime assault analysis is not delegated");
-check(runtime.includes("resolveCloseCombat = function resolveCloseCombatWithPureRules"), "runtime close combat is not delegated");
+check(runtime.includes("analyzeAssault: assaultRules.analyzeAssault"), "runtime assault analysis is not delegated");
+check(runtime.includes("function resolveCloseCombat"), "runtime close combat is not delegated");
 check(runtime.includes("applyCasualties"), "combat runtime does not retain engine casualty commitment");
 check(runtime.includes("occupyBuilding"), "combat runtime does not retain engine building commitment");
 check(runtime.includes("completeActivation"), "combat runtime does not retain activation commitment");
-check(runtime.includes("window.CrossroadsCombatRuntime"), "permanent combat runtime diagnostic is missing");
+check(runtime.includes("window.CrossroadsCombatRuntime"), "explicit combat runtime API is missing");
 
 check(validation.includes("CrossroadsMoraleRules"), "startup validation does not require morale rules");
 check(validation.includes("CrossroadsShootingRules"), "startup validation does not require shooting rules");

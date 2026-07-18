@@ -2,7 +2,8 @@
 
 /* CROSSROADS modular terrain registry. */
 const openRules = Object.freeze({ movement: "open", cover: null, los: "clear" });
-const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5 });
+const roughSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "restricted" });
+const cropSoft = Object.freeze({ movement: "rough", cover: "soft", los: "obscuring", save: 5, defensivePosition: true, vehicleAccess: "restricted" });
 const crossingHard = Object.freeze({ movement: "crossing", cover: "hard", los: "clear", save: 4 });
 const buildingRules = Object.freeze({ movement: "impassable", cover: "hard", los: "blocking", occupiable: true, save: 3 });
 
@@ -59,7 +60,7 @@ window.CROSSROADS_TERRAIN_TYPES = Object.freeze({
   stream_end: terrainType("stream_end", "water", "stream", "stream end", Object.freeze({ movement: "rough", cover: null, los: "clear" }), { rotatable: true, resizable: true }),
 
   field_tilled: terrainType("field_tilled", "ground", "field", "tilled field", openRules, { rotatable: true, resizable: true }),
-  field_wheat: terrainType("field_wheat", "ground", "field", "wheat field", openRules, { rotatable: true, resizable: true }),
+  field_wheat: terrainType("field_wheat", "ground", "field", "wheat field", cropSoft, { rotatable: true, resizable: true }),
   field_cabbage: terrainType("field_cabbage", "ground", "field", "cabbage rows", openRules, { rotatable: true, resizable: true }),
 
   small_cottage: terrainType("small_cottage", "building", "building", "small cottage", buildingRules, { rotatable: true, resizable: true }, buildingPresentation("small-cottage", "whitewash_red", 0.50, { x:0.16, y:0.33, width:0.68, height:0.48, entryY:0.78 })),
@@ -83,7 +84,7 @@ window.CROSSROADS_TERRAIN_PATCH_STYLES = Object.freeze({
   woods_dense: Object.freeze({ id:"woods_dense", label:"Dense woods patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", dry:"Dry summer", dark:"Dark forest" }), rules:roughSoft }),
   orchard: Object.freeze({ id:"orchard", label:"Orchard patch", family:"natural", material:"temperate", materials:Object.freeze({ temperate:"Temperate green", autumn:"Autumn orchard" }), rules:roughSoft }),
   field_tilled: Object.freeze({ id:"field_tilled", label:"Tilled field patch", family:"ground", material:"brown", materials:Object.freeze({ brown:"Brown earth", dark:"Dark earth", dry:"Dry earth" }), rules:openRules }),
-  field_wheat: Object.freeze({ id:"field_wheat", label:"Wheat field patch", family:"ground", material:"gold", materials:Object.freeze({ gold:"Ripe gold", green:"Green crop", cut:"Cut stubble" }), rules:openRules }),
+  field_wheat: Object.freeze({ id:"field_wheat", label:"Wheat field patch", family:"ground", material:"gold", materials:Object.freeze({ gold:"Ripe gold", green:"Green crop", cut:"Cut stubble" }), rules:cropSoft }),
   field_cabbage: Object.freeze({ id:"field_cabbage", label:"Cabbage field patch", family:"ground", material:"green", materials:Object.freeze({ green:"Green rows", dark:"Dark rows" }), rules:openRules }),
   concrete: Object.freeze({ id:"concrete", label:"Concrete patch", family:"ground", material:"weathered", materials:Object.freeze({ weathered:"Weathered concrete", pale:"Pale concrete", dark:"Dark concrete" }), rules:openRules }),
   cobblestone: Object.freeze({ id:"cobblestone", label:"Cobblestone patch", family:"ground", material:"grey", materials:Object.freeze({ grey:"Grey cobble", warm:"Warm cobble", dark:"Dark cobble" }), rules:openRules }),

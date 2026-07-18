@@ -11,7 +11,6 @@ const editor = read("editor.html");
 const engine = read("src/engine.js");
 const scenarios = read("data/scenarios.js");
 const migrations = read("src/scenario/scenario-migrations.js");
-const oldRuntime = read("src/rules/scenario-runtime.js");
 
 const ordered = [
   "src/scenario/scenario-schema.js",
@@ -46,10 +45,9 @@ assert(engine.includes('scenarioSession.dispatch("round_ended"'), "round scoring
 assert(engine.includes('scenarioSession.dispatch("unit_destroyed"'), "destruction must dispatch through the scenario runtime");
 assert(!engine.includes('activeScenario.id === "mokra"'), "engine must not branch on the Mokra scenario ID");
 assert(!engine.includes("activeScenario.scoring"), "engine must not read the superseded scoring object");
-assert(!oldRuntime.includes("function install"), "old Mokra wrapper behavior must be removed");
-assert(oldRuntime.includes("Compatibility tombstone"), "overlay must replace the legacy wrapper with an inert tombstone");
+assert(!fs.existsSync(path.join(root, "src/rules/scenario-runtime.js")), "obsolete Mokra wrapper file must be deleted");
 assert(editor.includes("victoryPolicySelect"), "Scenario Composer must expose victory policy controls");
 assert(read("src/editor/editor.js").includes("choose-objective-target"), "Scenario Composer must expose visual target picking");
-assert(read("data/build-info.js").includes('version: "S1.0"'), "build metadata must identify S1.0");
+assert(read("data/build-info.js").includes('version: "S1.0.1"'), "build metadata must identify S1.0");
 
-console.log("PASS — Scenario Runtime S1.0 load order, schema, evaluator ownership, engine delegation, editor integration, and legacy cleanup audit passed.");
+console.log("PASS — Scenario Runtime S1.0.1 load order, schema, evaluator ownership, engine delegation, editor integration, and legacy cleanup audit passed.");

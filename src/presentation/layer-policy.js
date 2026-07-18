@@ -13,6 +13,12 @@
     overlay:7600
   });
 
+  const FRAGMENT_OFFSETS = Object.freeze({
+    body:0,
+    foreground:42,
+    canopy:56
+  });
+
   function number(value, fallback = 0) {
     const result = Number(value);
     return Number.isFinite(result) ? result : fallback;
@@ -76,8 +82,27 @@
     return manual(unit, depthFromTableY(unit?.y, tableHeight));
   }
 
+  function fragmentLayer(baseLayer, fragment = "body") {
+    const offset = typeof fragment === "number" ? fragment : number(FRAGMENT_OFFSETS[fragment]);
+    return Math.max(0, Math.min(7199, Math.round(number(baseLayer) + offset)));
+  }
+
+  function woodlandBodyLayer(patch, y, tableHeight = 48) {
+    const inherited = depthFromTableY(y, tableHeight);
+    return patch?.inheritLayer === false ? fragmentLayer(manual(patch, inherited), 1) : inherited;
+  }
+
+  function woodlandCanopyLayer(patch, y, tableHeight = 48) {
+    return fragmentLayer(woodlandBodyLayer(patch, y, tableHeight), "canopy");
+  }
+
+  function buildingForegroundLayer(item, definition, tableHeight = 48) {
+    return fragmentLayer(terrainLayer(item, definition, tableHeight), "foreground");
+  }
+
   window.CrossroadsLayerPolicy = Object.freeze({
     BANDS,
+    FRAGMENT_OFFSETS,
     manual,
     terrainRole,
     terrainBase,
@@ -87,6 +112,10 @@
     terrainLayer,
     linearLayer,
     patchLayer,
-    unitLayer
+    unitLayer,
+    fragmentLayer,
+    woodlandBodyLayer,
+    woodlandCanopyLayer,
+    buildingForegroundLayer
   });
 })();

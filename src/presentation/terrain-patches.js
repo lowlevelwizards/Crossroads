@@ -108,8 +108,8 @@
   }
 
   function renderWoodlandTrees(battlefield, scenario, patch) {
-    if (!battlefield || !WOODLAND?.isWoodland(patch.styleId) || !TREES?.createTableTree) return;
-    for (const placement of WOODLAND.generate(patch)) TREES.createTableTree(battlefield, placement, scenario.table, patch);
+    if (!battlefield || !WOODLAND?.isWoodland(patch.styleId) || !TREES?.createTableTreeFragments) return;
+    for (const placement of WOODLAND.generate(patch)) TREES.createTableTreeFragments(battlefield, placement, scenario.table, patch);
   }
 
   function renderScenarioTerrainPatches({ layer, scenario, battlefield = null }) {

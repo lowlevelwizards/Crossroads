@@ -58,8 +58,12 @@
     window.CrossroadsLinearTerrainPresentation?.renderScenarioLinearTerrain(args);
 
     const editorMode = document.body?.classList?.contains("editor-app");
-    if (!editorMode && !compositor && battlefield && window.CrossroadsSceneCompositor) compositor = window.CrossroadsSceneCompositor.create({ battlefield, terrainLayer:args.layer });
-    if (!editorMode) compositor?.composeTerrain(args.scenario);
+    if (editorMode) {
+      window.CrossroadsSceneCompositor?.composeTerrain?.({ battlefield, terrainLayer:args.layer, scenario:args.scenario });
+    } else {
+      if (!compositor && battlefield && window.CrossroadsSceneCompositor) compositor = window.CrossroadsSceneCompositor.create({ battlefield, terrainLayer:args.layer });
+      compositor?.composeTerrain(args.scenario);
+    }
   }
 
   window.CrossroadsTerrainPresentation = Object.freeze({ ...base, renderScenarioTerrain });

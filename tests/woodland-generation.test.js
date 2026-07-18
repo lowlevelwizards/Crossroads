@@ -58,22 +58,26 @@ assert(orchard.every(tree => tree.rotation === 0), "orchard trees should remain 
 
 
 const fixtureParent = fakeElement();
-const treeNode = context.window.CrossroadsWoodlandTreePresentation.createTableTree(
+const treeFragments = context.window.CrossroadsWoodlandTreePresentation.createTableTreeFragments(
   fixtureParent,
   { id:"layer-tree", x:12, y:24, scale:1, rotation:0, preset:"balanced" },
   { width:72, height:48 },
   { id:"layer-patch", styleId:"woods", material:"temperate", inheritLayer:true }
 );
 const sharedDepth = context.window.CrossroadsLayerPolicy.depthFromTableY(24, 48);
-assert.strictEqual(Number(treeNode.style.zIndex), sharedDepth, "generated tree bodies must use the same table-Y depth contract as units");
+assert.strictEqual(Number(treeFragments.body.style.zIndex), sharedDepth, "generated tree bodies must use the same table-Y depth contract as units");
+assert(Number(treeFragments.canopy.style.zIndex) > Number(treeFragments.body.style.zIndex), "generated tree canopies must render above their body fragments");
+assert(treeFragments.body.classList.contains("woodland-tree-body"), "body fragment must be explicitly identifiable");
+assert(treeFragments.canopy.classList.contains("woodland-tree-canopy"), "canopy fragment must be explicitly identifiable");
 assert.strictEqual(context.window.CrossroadsLayerPolicy.unitLayer({ y:24 }, 48), sharedDepth, "units and generated tree bodies must share the depth band");
-const manualTree = context.window.CrossroadsWoodlandTreePresentation.createTableTree(
+const manualTree = context.window.CrossroadsWoodlandTreePresentation.createTableTreeFragments(
   fakeElement(),
   { id:"manual-tree", x:12, y:24, scale:1, rotation:0, preset:"balanced" },
   { width:72, height:48 },
   { id:"manual-patch", styleId:"woods", inheritLayer:false, layerOrder:640 }
 );
-assert.strictEqual(Number(manualTree.style.zIndex), 641, "manual patch layering must move its generated tree group with the patch");
+assert.strictEqual(Number(manualTree.body.style.zIndex), 641, "manual patch layering must move its generated tree body with the patch");
+assert(Number(manualTree.canopy.style.zIndex) > Number(manualTree.body.style.zIndex), "manual patch canopy must preserve its fragment offset");
 
 const source = fs.readFileSync(path.join(root, "src/presentation/terrain-patches.js"), "utf8");
 assert(source.includes("WOODLAND.generate(patch)"), "runtime patch presentation must use the shared woodland generator");
@@ -82,4 +86,4 @@ assert(!source.includes("style.id === \"woods\" || style.id === \"woods_dense\""
 const fixtureHtml = fs.readFileSync(path.join(root, "tests/woodland-visual-fixture.html"), "utf8");
 assert(fixtureHtml.includes("fixture-woods") && fixtureHtml.includes("fixture-dense") && fixtureHtml.includes("fixture-orchard"), "visual fixture must cover all three woodland generators");
 assert(fixtureHtml.includes("CrossroadsLayerPolicy.unitLayer"), "visual fixture must exercise unit/tree depth ordering");
-console.log("PASS — deterministic woodland, dense woods, orchard rows, edge padding, shared runtime generation, and layering fixture checks passed.");
+console.log("PASS — deterministic woodland, dense woods, orchard rows, edge padding, shared body/canopy runtime generation, and layering fixture checks passed.");
