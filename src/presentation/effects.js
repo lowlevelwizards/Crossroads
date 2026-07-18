@@ -11,8 +11,25 @@
     "feedback-rally"
   ]);
 
-  function create({ battlefield, tableWidth, tableHeight }) {
+  function create({ battlefield, tableWidth, tableHeight, getTableSize = null }) {
     let busyCount = 0;
+
+    function currentTableSize() {
+      const dynamic =
+        typeof getTableSize === "function" ? getTableSize() : null;
+      return {
+        width: Math.max(1, Number(dynamic?.width ?? tableWidth ?? 72)),
+        height: Math.max(1, Number(dynamic?.height ?? tableHeight ?? 48))
+      };
+    }
+
+    function localMovementInverse(from, to) {
+      const table = currentTableSize();
+      return {
+        x: ((from.x - to.x) / table.width) * battlefield.offsetWidth,
+        y: ((from.y - to.y) / table.height) * battlefield.offsetHeight
+      };
+    }
 
     function setBusy(delta) {
       busyCount = Math.max(0, busyCount + delta);
@@ -337,8 +354,6 @@
       document.body.classList.add("movement-resolving");
       root.classList.add("presentation-moving");
 
-      let resolvedFacing = null;
-
       try {
         await visuallyPackMMGBeforeMovement(root, unitId);
 
@@ -362,27 +377,18 @@
 
         for (let index = 1; index < path.length; index += 1) {
           const to = path[index];
-          const fallbackFacing = options.facings?.[index - 1] ?? resolvedFacing;
-          const startRect = root.getBoundingClientRect();
-          root.style.left = `${(to.x / tableWidth) * 100}%`;
-          root.style.top = `${(to.y / tableHeight) * 100}%`;
-          void root.offsetWidth;
-
-          const endRect = root.getBoundingClientRect();
-          const inverse =
-            window.CrossroadsFormationGeometry.screenDeltaBetweenRects(
-              startRect,
-              endRect
-            );
-          const facing = window.CrossroadsFormationGeometry.facingFromScreenDelta(
-            -inverse.x,
-            -inverse.y,
-            fallbackFacing ?? "right"
-          );
-          resolvedFacing = facing;
+          const facing = options.facings?.[index - 1] ?? null;
           applyFacing(root, facing);
 
-          if (index > 1) await sleep(55);
+          if (index > 1 && facing) await sleep(55);
+
+          const from = path[index - 1];
+          const table = currentTableSize();
+          const inverse = localMovementInverse(from, to);
+
+          root.style.left = `${(to.x / table.width) * 100}%`;
+          root.style.top = `${(to.y / table.height) * 100}%`;
+          void root.offsetWidth;
 
           parts.visual.style.transform =
             `translate3d(${inverse.x.toFixed(2)}px, ${inverse.y.toFixed(2)}px, 0)`;
@@ -431,8 +437,6 @@
         clearCommittedMovementOverlay();
         setBusy(-1);
       }
-
-      return resolvedFacing;
     }
 
     function pulseDuration(key) {
