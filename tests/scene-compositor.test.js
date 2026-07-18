@@ -18,7 +18,7 @@ const canopyDepth = LAYERS.woodlandCanopyLayer({ inheritLayer:true }, 24, 48);
 const buildingDepth = LAYERS.terrainLayer({ y:20, height:8 }, { renderer:"building", presentation:{ depthAnchor:.82 } }, 48);
 const foregroundDepth = LAYERS.buildingForegroundLayer({ y:20, height:8 }, { renderer:"building", presentation:{ depthAnchor:.82 } }, 48);
 
-assert.strictEqual(unitDepth, bodyDepth, "unit and woodland body fragments must share table-Y depth ordering");
+assert(unitDepth > canopyDepth, "units must render above woodland bodies and canopies");
 assert(canopyDepth > bodyDepth, "woodland canopies must render above their corresponding bodies");
 assert(foregroundDepth > buildingDepth, "building foreground fragments must render above their body depth");
 assert(foregroundDepth < LAYERS.BANDS.objective, "terrain fragments must remain below objective overlays");

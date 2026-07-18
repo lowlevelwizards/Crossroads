@@ -9,6 +9,9 @@
     lowTerrain:360,
     tallDepthBase:5000,
     tallDepthRange:1000,
+    terrainFragmentCeiling:7099,
+    unitDepthBase:7100,
+    unitDepthRange:90,
     objective:7200,
     overlay:7600
   });
@@ -79,12 +82,19 @@
   }
 
   function unitLayer(unit, tableHeight = 48) {
-    return manual(unit, depthFromTableY(unit?.y, tableHeight));
+    const ratio = Math.max(0, Math.min(1, number(unit?.y) / Math.max(1, number(tableHeight, 48))));
+    const fallback = BANDS.unitDepthBase + Math.round(ratio * BANDS.unitDepthRange);
+    // Units occupy a dedicated band above every terrain fragment. Manual unit
+    // layers remain supported, but cannot fall back into the terrain stack.
+    if (unit?.inheritLayer === false) {
+      return Math.max(BANDS.unitDepthBase, Math.min(BANDS.objective - 1, Math.round(number(unit.layerOrder, fallback))));
+    }
+    return fallback;
   }
 
   function fragmentLayer(baseLayer, fragment = "body") {
     const offset = typeof fragment === "number" ? fragment : number(FRAGMENT_OFFSETS[fragment]);
-    return Math.max(0, Math.min(7199, Math.round(number(baseLayer) + offset)));
+    return Math.max(0, Math.min(BANDS.terrainFragmentCeiling, Math.round(number(baseLayer) + offset)));
   }
 
   function woodlandBodyLayer(patch, y, tableHeight = 48) {

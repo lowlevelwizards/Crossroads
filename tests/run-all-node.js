@@ -26,6 +26,7 @@ const tests = [
   "terrain-l11-source-audit.js",
   "terrain-l13-source-audit.js",
   "scene-compositor.test.js",
+  "unit-presentation-integrity.test.js",
   "woodland-generation.test.js",
   "editor-persistence.test.js",
   "editor-shell.test.js",

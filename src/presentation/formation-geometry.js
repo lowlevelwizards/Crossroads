@@ -15,6 +15,12 @@
     };
   }
 
+  function facingFromScreenDelta(dx, dy, fallback = "right") {
+    if (Math.hypot(dx, dy) < 0.35) return fallback;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left";
+    return dy >= 0 ? "down" : "up";
+  }
+
   function applyFacing(root, facing) {
     if (!root || !FACING_CLASSES.includes(`facing-${facing}`)) return;
 
@@ -26,6 +32,7 @@
 
   window.CrossroadsFormationGeometry = Object.freeze({
     screenDeltaBetweenRects,
+    facingFromScreenDelta,
     applyFacing
   });
 })();

@@ -2260,16 +2260,9 @@
         );
       }
 
-      unit.facing = facings[0] ?? unit.facing;
-      window.CrossroadsBattlefieldPresentation.applyUnitFacing(
-        battlefield,
-        unit.id,
-        unit.facing
-      );
       await new Promise(requestAnimationFrame);
-      await new Promise(resolve => setTimeout(resolve, 65));
 
-      await presentationEffects.playMovementPath(
+      const resolvedFacing = await presentationEffects.playMovementPath(
         unit.id,
         movementPath,
         pendingMovement.analysis.cost,
@@ -2281,7 +2274,12 @@
 
       unit.x = destination.x;
       unit.y = destination.y;
-      unit.facing = facings[facings.length - 1] ?? unit.facing;
+      unit.facing = resolvedFacing ?? facings[facings.length - 1] ?? unit.facing;
+      window.CrossroadsBattlefieldPresentation.applyUnitFacing(
+        battlefield,
+        unit.id,
+        unit.facing
+      );
 
       if (unit.role === "officer") {
         const newlySupported = livingUnits()

@@ -65,11 +65,11 @@ const treeFragments = context.window.CrossroadsWoodlandTreePresentation.createTa
   { id:"layer-patch", styleId:"woods", material:"temperate", inheritLayer:true }
 );
 const sharedDepth = context.window.CrossroadsLayerPolicy.depthFromTableY(24, 48);
-assert.strictEqual(Number(treeFragments.body.style.zIndex), sharedDepth, "generated tree bodies must use the same table-Y depth contract as units");
+assert.strictEqual(Number(treeFragments.body.style.zIndex), sharedDepth, "generated tree bodies must use the shared terrain table-Y depth contract");
 assert(Number(treeFragments.canopy.style.zIndex) > Number(treeFragments.body.style.zIndex), "generated tree canopies must render above their body fragments");
 assert(treeFragments.body.classList.contains("woodland-tree-body"), "body fragment must be explicitly identifiable");
 assert(treeFragments.canopy.classList.contains("woodland-tree-canopy"), "canopy fragment must be explicitly identifiable");
-assert.strictEqual(context.window.CrossroadsLayerPolicy.unitLayer({ y:24 }, 48), sharedDepth, "units and generated tree bodies must share the depth band");
+assert(context.window.CrossroadsLayerPolicy.unitLayer({ y:24 }, 48) > Number(treeFragments.canopy.style.zIndex), "units must render above generated tree bodies and canopies");
 const manualTree = context.window.CrossroadsWoodlandTreePresentation.createTableTreeFragments(
   fakeElement(),
   { id:"manual-tree", x:12, y:24, scale:1, rotation:0, preset:"balanced" },
