@@ -5,6 +5,7 @@ const { execFileSync } = require("child_process");
 
 const tests = [
   "release-integrity.test.js",
+  "engine-startup-order.test.js",
   "run-combat-rules-node.js",
   "building-occupancy.test.js",
   "foundation-4b1-source-audit.js",

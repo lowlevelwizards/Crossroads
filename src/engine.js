@@ -1150,6 +1150,32 @@
       unitFormationHtml
     } = window.CrossroadsUnitPresentation;
 
+    // Movement analysis must be composed before building and combat runtimes.
+    // Both runtimes receive analyzeMovementPath as a dependency, so declaring it
+    // later would trigger JavaScript's temporal dead zone during startup.
+    const movementRules = window.CrossroadsMovementRules.create({
+      rules: RULES,
+      terrain: TERRAIN,
+      movementIntegrityEnabled: () => FEATURES.movementIntegrity,
+      livingUnits,
+      distanceBetweenPoints,
+      pointAtSegment,
+      pointInsideRect,
+      expandRect,
+      segmentRectClip,
+      segmentTerrainClip: (start, end, instance) =>
+        TERRAIN_GEOMETRY.segmentClip(start, end, instance, segmentRectClip),
+      segmentPointDistance,
+      capitalize
+    });
+
+    const {
+      analyzeMovementPath,
+      fitMovementPathToAllowance,
+      analyzeMovementSegment,
+      analyzeDestinationCollision
+    } = movementRules;
+
     // =========================================================================
     // EXPLICIT RUNTIME COMPOSITION
     // The engine supplies state and commit adapters. Runtime modules do not
@@ -2072,27 +2098,6 @@
 
 
 
-    const movementRules = window.CrossroadsMovementRules.create({
-      rules: RULES,
-      terrain: TERRAIN,
-      movementIntegrityEnabled: () => FEATURES.movementIntegrity,
-      livingUnits,
-      distanceBetweenPoints,
-      pointAtSegment,
-      pointInsideRect,
-      expandRect,
-      segmentRectClip,
-      segmentTerrainClip:(start, end, instance) => TERRAIN_GEOMETRY.segmentClip(start, end, instance, segmentRectClip),
-      segmentPointDistance,
-      capitalize
-    });
-
-    const {
-      analyzeMovementPath,
-      fitMovementPathToAllowance,
-      analyzeMovementSegment,
-      analyzeDestinationCollision
-    } = movementRules;
 
     function beginMovement(unit, path, analysis) {
       clearGhostPreview();
