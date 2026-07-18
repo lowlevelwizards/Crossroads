@@ -41,6 +41,7 @@
     ["CrossroadsUnitPresentation", "src/presentation/units.js"],
     ["CrossroadsPresentationEffects", "src/presentation/effects.js"],
     ["CrossroadsBattlefieldPresentation", "src/presentation/battlefield.js"],
+    ["CrossroadsTableViewport", "src/camera/table-viewport.js"],
     ["CrossroadsCamera", "src/camera/camera.js"],
     ["CrossroadsCoordinates", "src/camera/coordinates.js"],
     ["CrossroadsCameraInput", "src/input/camera-input.js"],

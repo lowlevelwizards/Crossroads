@@ -49,6 +49,6 @@ assert(!engine.includes("activeScenario.scoring"), "engine must not read the sup
 assert(!fs.existsSync(path.join(root, "src/rules/scenario-runtime.js")), "obsolete Mokra wrapper file must be deleted");
 assert(editor.includes("victoryPolicySelect"), "Scenario Composer must expose victory policy controls");
 assert(read("src/editor/editor.js").includes("choose-objective-target"), "Scenario Composer must expose visual target picking");
-assert(read("data/build-info.js").includes('version: "S1.1.0"'), "build metadata must identify S1.0");
+assert(read("data/build-info.js").includes('version: "S1.1.1"'), "build metadata must identify S1.0");
 
-console.log("PASS — Scenario Runtime S1.1.0 load order, schema, evaluator ownership, engine delegation, editor integration, and legacy cleanup audit passed.");
+console.log("PASS — Scenario Runtime S1.1.1 load order, schema, evaluator ownership, engine delegation, editor integration, and legacy cleanup audit passed.");

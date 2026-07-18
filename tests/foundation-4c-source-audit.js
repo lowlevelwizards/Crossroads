@@ -83,7 +83,7 @@ check(validation.includes("CrossroadsCombatRuntime"), "startup validation does n
 check(validation.includes("CrossroadsBuildingOccupancy"), "startup validation does not require building occupancy");
 
 check(buildInfo.includes('engine: "Infantry Core"'), "build metadata no longer identifies the Infantry Core runtime");
-check(buildInfo.includes('version: "S1.1.0"'), "build metadata lacks the canvas-first editor version");
+check(buildInfo.includes('version: "S1.1.1"'), "build metadata lacks the viewport-reliability editor version");
 
 if (failures.length) {
   console.error("FAIL — explicit combat ownership source audit", failures);

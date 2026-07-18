@@ -328,6 +328,7 @@
       battlefieldSurface,
       zoomReadout,
       clamp,
+      getTableSize:() => ({ width:RULES.tableWidth, height:RULES.tableHeight }),
       onViewChanged: () => {
         renderUnits();
         renderRangeRing();
@@ -818,8 +819,7 @@
 
     const coordinates = window.CrossroadsCoordinates.create({
       battlefield,
-      tableWidth: RULES.tableWidth,
-      tableHeight: RULES.tableHeight,
+      getTableSize:() => ({ width:RULES.tableWidth, height:RULES.tableHeight }),
       clamp,
       cameraIsRotated
     });
@@ -3107,6 +3107,8 @@
       document.getElementById("redFactionName").textContent = activeScenario.factions.red.name;
       document.getElementById("scenarioBrief").innerHTML = `<strong>${activeScenario.title}</strong><br>${activeScenario.description}`;
       createRulerLabels();
+      applyCameraSurfaceSize();
+      requestAnimationFrame(() => centerTable({ instant:true }));
     }
 
     // =========================================================================

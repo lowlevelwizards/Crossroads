@@ -28,6 +28,7 @@
     const root = options.root ?? document.body;
     const storage = options.storage ?? null;
     const onLayoutChange = typeof options.onLayoutChange === "function" ? options.onLayoutChange : () => {};
+    const onWorkspaceChange = typeof options.onWorkspaceChange === "function" ? options.onWorkspaceChange : () => {};
     const workspaceButtons = [...root.querySelectorAll("[data-editor-workspace-button]")];
     const workspacePanels = [...root.querySelectorAll("[data-editor-workspace-panel]")];
     const panelButtons = [...root.querySelectorAll("[data-editor-panel-button]")];
@@ -57,6 +58,7 @@
         section.hidden = section.dataset.editorWorkspacePanel !== workspace;
       }
       if (settings.remember !== false) safeWrite(storage, WORKSPACE_KEY, workspace);
+      onWorkspaceChange(workspace);
       root.classList.remove("is-left-drawer-open");
       notifyLayout();
     }

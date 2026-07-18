@@ -3,7 +3,7 @@ const fs=require("fs"),path=require("path"),root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 let passed=0;function check(name,value){if(!value)throw new Error(name);passed++;console.log(`PASS ${name}`);}
 const camera=read("src/camera/camera.js"),linear=read("src/presentation/linear-terrain.js"),css=read("styles/stabilization.css"),names=read("src/presentation/nameplate-policy.js"),scenarios=read("data/scenarios.js");
-check("camera fixes miniature scale",camera.includes('setProperty("--miniature-scale","1")')&&!camera.includes('Math.max(0,r-.82)*.48'));
+check("camera fixes miniature scale",/setProperty\("--miniature-scale",\s*"1"\)/.test(camera)&&!camera.includes('Math.max(0,r-.82)*.48'));
 check("labels use explicit modes",names.includes('unit.dataset.labelMode = mode')&&css.includes('[data-label-mode="hidden"]'));
 check("layer policy supersedes fixed field and path z-indexes",linear.includes('LAYERS?.linearLayer')&&!css.includes('.terrain-layer .linear-terrain-svg { z-index:10!important; }'));
 check("roads use irregular ruts and pebbles",linear.includes('linear-road-track-a')&&linear.includes('linear-road-pebble'));

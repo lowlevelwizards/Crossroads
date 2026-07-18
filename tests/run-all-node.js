@@ -6,6 +6,7 @@ const { execFileSync } = require("child_process");
 const tests = [
   "release-integrity.test.js",
   "engine-startup-order.test.js",
+  "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
   "building-occupancy.test.js",
   "foundation-4b1-source-audit.js",
@@ -38,4 +39,4 @@ for (const test of tests) {
   });
 }
 
-console.log("\nPASS — complete Crossroads S1.1.0 Node regression suite passed.");
+console.log("\nPASS — complete Crossroads S1.1.1 Node regression suite passed.");

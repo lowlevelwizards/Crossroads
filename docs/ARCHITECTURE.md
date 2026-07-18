@@ -1,8 +1,26 @@
+# Editor viewport and interaction boundaries (S1.1.1)
+
+`src/camera/table-viewport.js` is the shared pure geometry authority for table normalization, natural board pixels, fit zoom, pan-surface margins, and centered scrolling. Both `src/camera/camera.js` and `src/editor/editor.js` consume it, so neither application owns a private 6×4 camera formula.
+
+`src/editor/editor-tools.js` owns the small interaction-mode vocabulary and transient-mode transitions:
+
+- Select
+- Pan
+- Place
+- Draw linear terrain
+- Draw terrain patch
+- Edit points
+- Scale
+
+The editor coordinator still commits document mutations, but active tool modes receive pointer input before canvas selection. Locked and canvas-hidden objects are excluded from hit testing rather than selected and rejected afterward.
+
+`src/camera/coordinates.js` converts browser pointer positions to table-space from the board's visual bounding rectangle. Gameplay coordinates therefore remain correct across zoom, arbitrary table aspect ratios, and rotated mobile presentation.
+
 # Editor shell boundary (S1.1.0)
 
 `src/editor/editor-shell.js` owns only transient interface state: active workspace, active right-panel tab, popovers, and responsive drawers. It does not own the scenario document, selection, history, tools, or persistence. `src/editor/editor.js` remains the authoring coordinator and renders the visual asset library and scene hierarchy from the authoritative registries and document.
 
-The editor now has three focused workspaces:
+The editor has three focused workspaces:
 
 - **Build** — searchable visual asset library and placement/drawing entry points.
 - **Organize** — grouped scene hierarchy, multi-selection, visibility, locking, and layer order.

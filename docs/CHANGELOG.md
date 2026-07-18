@@ -1,3 +1,20 @@
+# Viewport & Interaction Reliability S1.1.1
+
+- Added one shared table-viewport geometry module for arbitrary battlefield dimensions in the editor and game.
+- Reworked game camera sizing, fit, centering, pan margins, rotated framing, and table-point conversion around active scenario dimensions.
+- Added zoom-safe pointer conversion for landscape and rotated game boards.
+- Added explicit editor interaction modes for placement, drawing, point editing, panning, selection, and scaling.
+- Added dense-scene selected-object priority and complete locked-object exclusion from canvas hit testing.
+- Added ghost asset placement with Shift stamping and placement rotation/scale shortcuts.
+- Added Arrow, Shift+Arrow, Alt+Arrow, `R`, and `S` keyboard transforms with grouped undo behavior.
+- Made path and patch control points appear only in explicit point-edit mode, preventing stale waypoint overlays after deselection.
+- Added independent scrolling for the Object Library, Scene Objects hierarchy, and contextual panels.
+- Split canvas visibility into Ground patches, Linear terrain, and Buildings & objects; fixed promoted paths, rails, patches, buildings, and generated trees to honor those settings.
+- Made the game board grid derive from the active table width and height.
+- Standardized release cache tokens to `v=s111` and added S1.1.1 viewport/interaction regression coverage.
+
+---
+
 # Canvas-First Editor S1.1.0
 
 - Reorganized authoring around focused Build, Organize, and Scenario workspaces while preserving one continuous canvas.

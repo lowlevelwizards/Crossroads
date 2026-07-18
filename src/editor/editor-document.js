@@ -50,7 +50,7 @@
       id:String(options.id || "untitled-scenario"),
       title:String(options.title || "Untitled Scenario"),
       schemaVersion:SCHEMA.CURRENT_VERSION,
-      description:"Created in Scenario Composer S1.1.0.",
+      description:"Created in Scenario Composer S1.1.1.",
       rounds:Math.max(1, Number(options.rounds) || 6),
       table:{ width, height, mat:"grass_temperate" },
       factions:{

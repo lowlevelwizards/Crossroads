@@ -104,6 +104,8 @@ for (const retiredFile of retiredFiles) {
 }
 
 assertOrdered("index.html", "data/build-info.js", "src/engine.js");
+assertOrdered("index.html", "src/camera/table-viewport.js", "src/camera/camera.js");
+assertOrdered("index.html", "src/camera/camera.js", "src/camera/coordinates.js");
 assertOrdered("index.html", "src/scenario/scenario-schema.js", "src/scenario-runtime/scenario-compiler.js");
 assertOrdered("index.html", "src/rules/morale.js", "src/rules/combat-runtime.js");
 assertOrdered("index.html", "src/rules/shooting.js", "src/rules/combat-runtime.js");
@@ -112,10 +114,12 @@ assertOrdered("index.html", "src/runtime/building-occupancy.js", "src/rules/comb
 assertOrdered("index.html", "src/rules/combat-runtime.js", "src/infrastructure/startup-validation.js");
 assertOrdered("index.html", "src/infrastructure/startup-validation.js", "src/engine.js");
 assertOrdered("editor.html", "data/build-info.js", "src/editor/editor.js");
+assertOrdered("editor.html", "src/camera/table-viewport.js", "src/editor/editor.js");
 assertOrdered("editor.html", "src/scenario/scenario-schema.js", "src/editor/editor-validation.js");
 assertOrdered("editor.html", "src/editor/editor-multiselect.js", "src/editor/editor.js");
 assertOrdered("editor.html", "src/editor/editor-persistence.js", "src/editor/editor-shell.js");
 assertOrdered("editor.html", "src/editor/editor-shell.js", "src/editor/editor.js");
+assertOrdered("tests/startup-smoke.html", "src/camera/table-viewport.js", "src/camera/camera.js");
 assertOrdered("tests/startup-smoke.html", "src/runtime/building-occupancy.js", "src/infrastructure/startup-validation.js");
 
 const buildContext = vm.createContext({ window: {} });
