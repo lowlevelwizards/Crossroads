@@ -67,19 +67,65 @@ const editorFit = VIEWPORT.fitZoom({
   boardHeight:portrait.height,
   margin:28
 });
-const editorGeometry = VIEWPORT.containedSurfaceGeometry({
+const editorGeometry = VIEWPORT.surfaceGeometry({
   viewportWidth:900,
   viewportHeight:650,
   boardWidth:portrait.width,
   boardHeight:portrait.height,
   zoom:editorFit,
-  padding:28
+  minimumMargin:96,
+  marginRatio:.5
 });
-assert.strictEqual(editorGeometry.surfaceWidth, 900, "a fitted editor board must stay inside the visible viewport width");
-assert.strictEqual(editorGeometry.surfaceHeight, 650, "a fitted editor board must stay inside the visible viewport height");
-assert(editorGeometry.boardLeft >= 0 && editorGeometry.boardTop >= 0, "a fitted editor board must have a visible non-negative origin");
-assert(editorGeometry.boardLeft + editorGeometry.visualWidth <= editorGeometry.surfaceWidth + 1e-8, "the editor board must remain inside its horizontal scroll surface");
-assert(editorGeometry.boardTop + editorGeometry.visualHeight <= editorGeometry.surfaceHeight + 1e-8, "the editor board must remain inside its vertical scroll surface");
+const fittedCenter = VIEWPORT.boardCenteredScroll({
+  contentWidth:editorGeometry.surfaceWidth,
+  contentHeight:editorGeometry.surfaceHeight,
+  boardLeft:editorGeometry.boardLeft,
+  boardTop:editorGeometry.boardTop,
+  visualWidth:editorGeometry.visualWidth,
+  visualHeight:editorGeometry.visualHeight,
+  viewportWidth:900,
+  viewportHeight:650
+});
+assert(editorGeometry.surfaceHeight - 650 > 0, "the editor surface must retain vertical travel even when the board is fitted");
+assert(editorGeometry.surfaceWidth - 900 > 0, "the editor surface must retain horizontal travel even when the board is fitted");
+assert(Math.abs((editorGeometry.boardLeft + editorGeometry.visualWidth / 2) - (fittedCenter.left + 450)) < 1e-8, "Fit must align the board center with the viewport center horizontally");
+assert(Math.abs((editorGeometry.boardTop + editorGeometry.visualHeight / 2) - (fittedCenter.top + 325)) < 1e-8, "Fit must align the board center with the viewport center vertically");
+assert(fittedCenter.top > 0, "a portrait board must have scroll room above and below its fitted center");
+
+const zoomedGeometry = VIEWPORT.surfaceGeometry({
+  viewportWidth:900,
+  viewportHeight:650,
+  boardWidth:portrait.width,
+  boardHeight:portrait.height,
+  zoom:editorFit * 1.8,
+  minimumMargin:96,
+  marginRatio:.5
+});
+const centeredAnchor = VIEWPORT.anchoredScroll({
+  previous:editorGeometry,
+  next:zoomedGeometry,
+  scrollLeft:fittedCenter.left,
+  scrollTop:fittedCenter.top,
+  anchorX:450,
+  anchorY:325,
+  viewportWidth:900,
+  viewportHeight:650
+});
+assert(Math.abs((zoomedGeometry.boardLeft + zoomedGeometry.visualWidth / 2) - (centeredAnchor.left + 450)) < 1e-8, "center zoom must preserve the battlefield center horizontally");
+assert(Math.abs((zoomedGeometry.boardTop + zoomedGeometry.visualHeight / 2) - (centeredAnchor.top + 325)) < 1e-8, "center zoom must preserve the battlefield center vertically");
+
+const graySpaceAnchor = VIEWPORT.anchoredScroll({
+  previous:editorGeometry,
+  next:zoomedGeometry,
+  scrollLeft:fittedCenter.left,
+  scrollTop:fittedCenter.top,
+  anchorX:450,
+  anchorY:10,
+  viewportWidth:900,
+  viewportHeight:650
+});
+assert.strictEqual(graySpaceAnchor.insideBoard, false, "zooming over gray workspace must not treat it as a battlefield point");
+assert(Math.abs((zoomedGeometry.boardLeft + zoomedGeometry.visualWidth / 2) - (graySpaceAnchor.left + 450)) < 1e-8, "zooming over gray workspace must fall back to the battlefield center");
 
 function coordinateFactory(rotated) {
   const battlefield = {
@@ -133,7 +179,9 @@ assert.strictEqual(TOOLS.nudgeDistance({ alt:true }), .05, "Alt+Arrow must retai
 const editorSource = fs.readFileSync(path.join(root, "src/editor/editor.js"), "utf8");
 const editorCss = fs.readFileSync(path.join(root, "styles/editor.css"), "utf8");
 const mainCss = fs.readFileSync(path.join(root, "styles/main.css"), "utf8");
-assert(editorSource.includes("TABLE_VIEWPORT.containedSurfaceGeometry"), "editor geometry must use the contained surface that cannot strand the board outside the viewport");
+assert(editorSource.includes("TABLE_VIEWPORT.surfaceGeometry"), "editor geometry must retain deliberate pan margins around every table size");
+assert(editorSource.includes("TABLE_VIEWPORT.boardCenteredScroll"), "Fit must center from authored board geometry rather than stale DOM dimensions");
+assert(editorSource.includes("TABLE_VIEWPORT.anchoredScroll"), "zoom anchoring must derive from camera geometry rather than transformed DOM rectangles");
 assert(editorSource.includes("ensureBoardInView"), "workspace layout changes must repair an off-screen editor board");
 assert(editorSource.includes("document.elementsFromPoint"), "dense-scene selection must inspect the complete hit stack");
 assert(editorSource.includes("isItemLocked(item)"), "locked objects must be excluded by canvas hit testing");
@@ -143,6 +191,7 @@ assert(editorSource.includes("TOOLS.isPointEditing"), "path handles must derive 
 assert(editorSource.includes("state.showPatches") && editorSource.includes("state.showObjects") && editorSource.includes("state.showLinear"), "canvas visibility must separate patches, objects, and linear terrain");
 assert(editorCss.includes(".editor-asset-library { flex:1 1 auto; min-height:0; overflow:auto"), "object library must own an independent scroll region");
 assert(editorCss.includes(".editor-object-list { flex:1 1 auto; min-height:0; overflow:auto"), "scene hierarchy must own an independent scroll region");
+assert(editorCss.includes(".editor-stage { overflow:hidden; }"), "the unscaled board box must not corrupt the stage scroll extent");
 assert(mainCss.includes("var(--table-grid-x") && mainCss.includes("var(--table-grid-y"), "game grid spacing must derive from active table dimensions");
 
 console.log("PASS — S1.1.1 arbitrary-size viewport, zoom-safe coordinates, explicit interaction modes, keyboard nudges, scrolling, placement, and visibility contracts passed.");

@@ -567,3 +567,7 @@
   .editor-table-portrait .editor-asset-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
 .editor-asset-card.is-active { border-color:var(--editor-accent-dark); background:#ead7c7; box-shadow:inset 0 0 0 2px rgba(150,89,62,.24); }
+
+/* S1.1.1 camera-anchor hotfix: the stage owns the scroll extent; the scaled board must not leak its unscaled box into it. */
+.editor-viewport { scrollbar-gutter:stable; }
+.editor-stage { overflow:hidden; }

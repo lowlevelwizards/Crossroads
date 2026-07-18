@@ -87,6 +87,59 @@
     });
   }
 
+
+  function clampScroll(value, contentSize, viewportSize) {
+    const maximum = Math.max(0, number(contentSize, 1) - number(viewportSize, 1));
+    return Math.min(maximum, Math.max(0, number(value, 0)));
+  }
+
+  function boardCenteredScroll(options = {}) {
+    const viewportWidth = Math.max(1, number(options.viewportWidth, 1));
+    const viewportHeight = Math.max(1, number(options.viewportHeight, 1));
+    const contentWidth = Math.max(viewportWidth, number(options.contentWidth, viewportWidth));
+    const contentHeight = Math.max(viewportHeight, number(options.contentHeight, viewportHeight));
+    const boardLeft = number(options.boardLeft, 0);
+    const boardTop = number(options.boardTop, 0);
+    const visualWidth = Math.max(1, number(options.visualWidth, 1));
+    const visualHeight = Math.max(1, number(options.visualHeight, 1));
+    return Object.freeze({
+      left:clampScroll(boardLeft + visualWidth / 2 - viewportWidth / 2, contentWidth, viewportWidth),
+      top:clampScroll(boardTop + visualHeight / 2 - viewportHeight / 2, contentHeight, viewportHeight)
+    });
+  }
+
+  function anchoredScroll(options = {}) {
+    const previous = options.previous ?? {};
+    const next = options.next ?? {};
+    const viewportWidth = Math.max(1, number(options.viewportWidth, 1));
+    const viewportHeight = Math.max(1, number(options.viewportHeight, 1));
+    const requestedAnchorX = number(options.anchorX, viewportWidth / 2);
+    const requestedAnchorY = number(options.anchorY, viewportHeight / 2);
+    const surfaceX = number(options.scrollLeft, 0) + requestedAnchorX;
+    const surfaceY = number(options.scrollTop, 0) + requestedAnchorY;
+    const previousWidth = Math.max(1, number(previous.visualWidth, 1));
+    const previousHeight = Math.max(1, number(previous.visualHeight, 1));
+    const insideBoard = surfaceX >= number(previous.boardLeft, 0)
+      && surfaceX <= number(previous.boardLeft, 0) + previousWidth
+      && surfaceY >= number(previous.boardTop, 0)
+      && surfaceY <= number(previous.boardTop, 0) + previousHeight;
+    const anchorX = insideBoard ? requestedAnchorX : viewportWidth / 2;
+    const anchorY = insideBoard ? requestedAnchorY : viewportHeight / 2;
+    const normalizedX = insideBoard
+      ? (surfaceX - number(previous.boardLeft, 0)) / previousWidth
+      : .5;
+    const normalizedY = insideBoard
+      ? (surfaceY - number(previous.boardTop, 0)) / previousHeight
+      : .5;
+    const targetLeft = number(next.boardLeft, 0) + normalizedX * Math.max(1, number(next.visualWidth, 1)) - anchorX;
+    const targetTop = number(next.boardTop, 0) + normalizedY * Math.max(1, number(next.visualHeight, 1)) - anchorY;
+    return Object.freeze({
+      left:clampScroll(targetLeft, next.surfaceWidth, viewportWidth),
+      top:clampScroll(targetTop, next.surfaceHeight, viewportHeight),
+      insideBoard
+    });
+  }
+
   function centeredScroll(options = {}) {
     const contentWidth = Math.max(1, number(options.contentWidth, 1));
     const contentHeight = Math.max(1, number(options.contentHeight, 1));
@@ -105,6 +158,9 @@
     fitZoom,
     surfaceGeometry,
     containedSurfaceGeometry,
+    clampScroll,
+    boardCenteredScroll,
+    anchoredScroll,
     centeredScroll
   });
 })();

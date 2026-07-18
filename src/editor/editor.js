@@ -704,13 +704,14 @@
   function setupBoardGeometry() {
     const size = TABLE_VIEWPORT.normalizeTable(table());
     const board = TABLE_VIEWPORT.boardPixels(size, EDITOR_PIXELS_PER_INCH);
-    const geometry = TABLE_VIEWPORT.containedSurfaceGeometry({
+    const geometry = TABLE_VIEWPORT.surfaceGeometry({
       viewportWidth:Math.max(1, refs.viewport.clientWidth),
       viewportHeight:Math.max(1, refs.viewport.clientHeight),
       boardWidth:board.width,
       boardHeight:board.height,
       zoom:state.zoom,
-      padding:28
+      minimumMargin:96,
+      marginRatio:.5
     });
     state.viewportGeometry = { ...geometry, boardWidth:board.width, boardHeight:board.height };
 
@@ -2338,7 +2339,6 @@
       const moved = state.pan.moved;
       state.pan = null;
       refs.viewport.releasePointerCapture?.(event.pointerId);
-      setupBoardGeometry();
       if (!moved) select(null);
       return;
     }
@@ -3074,26 +3074,35 @@
   }
 
   function setZoom(value, clientX = null, clientY = null) {
-    const previous = state.zoom;
+    const previousZoom = state.zoom;
     const fit = editorFitZoom();
-    const next = clamp(value, Math.max(.1, fit * .35), Math.min(5, fit * 8));
-    if (Math.abs(next - previous) < .001) return;
+    const nextZoom = clamp(value, Math.max(.1, fit * .35), Math.min(5, fit * 8));
+    if (Math.abs(nextZoom - previousZoom) < .001) return;
 
+    if (!state.viewportGeometry) setupBoardGeometry();
+    const previousGeometry = state.viewportGeometry;
     const viewportRect = refs.viewport.getBoundingClientRect();
-    const anchorX = clientX == null ? viewportRect.width / 2 : clientX - viewportRect.left;
-    const anchorY = clientY == null ? viewportRect.height / 2 : clientY - viewportRect.top;
-    const boardRect = refs.board.getBoundingClientRect();
-    const clientAnchorX = clientX == null ? viewportRect.left + anchorX : clientX;
-    const clientAnchorY = clientY == null ? viewportRect.top + anchorY : clientY;
-    const normalizedX = clamp((clientAnchorX - boardRect.left) / Math.max(1, boardRect.width), 0, 1);
-    const normalizedY = clamp((clientAnchorY - boardRect.top) / Math.max(1, boardRect.height), 0, 1);
+    const viewportWidth = Math.max(1, refs.viewport.clientWidth);
+    const viewportHeight = Math.max(1, refs.viewport.clientHeight);
+    const anchorX = clientX == null ? viewportWidth / 2 : clientX - viewportRect.left;
+    const anchorY = clientY == null ? viewportHeight / 2 : clientY - viewportRect.top;
+    const previousScrollLeft = refs.viewport.scrollLeft;
+    const previousScrollTop = refs.viewport.scrollTop;
 
-    state.zoom = next;
+    state.zoom = nextZoom;
     setupBoardGeometry();
-    const board = editorBoardPixels();
-    const geometry = state.viewportGeometry;
-    refs.viewport.scrollLeft = geometry.boardLeft + normalizedX * board.width * next - anchorX;
-    refs.viewport.scrollTop = geometry.boardTop + normalizedY * board.height * next - anchorY;
+    const target = TABLE_VIEWPORT.anchoredScroll({
+      previous:previousGeometry,
+      next:state.viewportGeometry,
+      scrollLeft:previousScrollLeft,
+      scrollTop:previousScrollTop,
+      anchorX,
+      anchorY,
+      viewportWidth,
+      viewportHeight
+    });
+    refs.viewport.scrollLeft = target.left;
+    refs.viewport.scrollTop = target.top;
   }
 
   function onViewportWheel(event) {
@@ -3102,12 +3111,16 @@
     setZoom(state.zoom * factor, event.clientX, event.clientY);
   }
 
-  function centerEditorSurface() {
+  function centerEditorBoard() {
     const geometry = state.viewportGeometry;
     if (!geometry) return;
-    const centered = TABLE_VIEWPORT.centeredScroll({
+    const centered = TABLE_VIEWPORT.boardCenteredScroll({
       contentWidth:geometry.surfaceWidth,
       contentHeight:geometry.surfaceHeight,
+      boardLeft:geometry.boardLeft,
+      boardTop:geometry.boardTop,
+      visualWidth:geometry.visualWidth,
+      visualHeight:geometry.visualHeight,
       viewportWidth:Math.max(1, refs.viewport.clientWidth),
       viewportHeight:Math.max(1, refs.viewport.clientHeight)
     });
@@ -3116,27 +3129,28 @@
   }
 
   function boardIntersectsViewport() {
-    const viewportRect = refs.viewport.getBoundingClientRect();
-    const boardRect = refs.board.getBoundingClientRect();
-    if (viewportRect.width < 2 || viewportRect.height < 2 || boardRect.width < 2 || boardRect.height < 2) return false;
-    return boardRect.right > viewportRect.left + 8
-      && boardRect.left < viewportRect.right - 8
-      && boardRect.bottom > viewportRect.top + 8
-      && boardRect.top < viewportRect.bottom - 8;
+    const geometry = state.viewportGeometry;
+    if (!geometry) return false;
+    const left = refs.viewport.scrollLeft;
+    const top = refs.viewport.scrollTop;
+    const right = left + Math.max(1, refs.viewport.clientWidth);
+    const bottom = top + Math.max(1, refs.viewport.clientHeight);
+    return geometry.boardLeft + geometry.visualWidth > left + 8
+      && geometry.boardLeft < right - 8
+      && geometry.boardTop + geometry.visualHeight > top + 8
+      && geometry.boardTop < bottom - 8;
   }
 
   function ensureBoardInView() {
     if (boardIntersectsViewport()) return;
-    state.zoom = editorFitZoom();
-    setupBoardGeometry();
-    centerEditorSurface();
+    centerEditorBoard();
   }
 
   function fitTable() {
     state.zoom = editorFitZoom();
     setupBoardGeometry();
-    centerEditorSurface();
-    requestAnimationFrame(centerEditorSurface);
+    centerEditorBoard();
+    requestAnimationFrame(centerEditorBoard);
   }
 
   function slugify(value) {
