@@ -192,6 +192,7 @@ assert(editorSource.includes("state.showPatches") && editorSource.includes("stat
 assert(editorCss.includes(".editor-asset-library { flex:1 1 auto; min-height:0; overflow:auto"), "object library must own an independent scroll region");
 assert(editorCss.includes(".editor-object-list { flex:1 1 auto; min-height:0; overflow:auto"), "scene hierarchy must own an independent scroll region");
 assert(editorCss.includes(".editor-stage { overflow:hidden; }"), "the unscaled board box must not corrupt the stage scroll extent");
+assert(editorCss.includes(".editor-shell > .editor-panel") && editorCss.includes("max-height:100%"), "editor panels must be constrained to the shell instead of growing from scroll content");
 assert(mainCss.includes("var(--table-grid-x") && mainCss.includes("var(--table-grid-y"), "game grid spacing must derive from active table dimensions");
 
 console.log("PASS — S1.1.1 arbitrary-size viewport, zoom-safe coordinates, explicit interaction modes, keyboard nudges, scrolling, placement, and visibility contracts passed.");

@@ -571,3 +571,18 @@
 /* S1.1.1 camera-anchor hotfix: the stage owns the scroll extent; the scaled board must not leak its unscaled box into it. */
 .editor-viewport { scrollbar-gutter:stable; }
 .editor-stage { overflow:hidden; }
+
+/* S1.1.1 layout-constraint hotfix: scroll surfaces must never size the shell that contains them. */
+.editor-shell > .editor-panel,
+.editor-shell > .editor-workspace {
+  height:100%;
+  max-height:100%;
+  min-height:0;
+  align-self:stretch;
+}
+.editor-left-panel,
+.editor-right-panel,
+.editor-workspace {
+  min-width:0;
+  min-height:0;
+}

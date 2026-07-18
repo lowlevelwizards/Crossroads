@@ -4,7 +4,7 @@
   "baseVersion": "S1.1.0",
   "codename": "Viewport & Interaction Reliability",
   "releaseType": "standalone",
-  "cacheVersion": "s111h1",
+  "cacheVersion": "s111h3",
   "entryPoints": [
     "index.html",
     "editor.html",
