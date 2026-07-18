@@ -135,6 +135,10 @@
   isolation:isolate;
 }
 .woods-tree > span,.woods-tree-layer > span { position:absolute; display:block; }
+.procedural-woodland-tree { pointer-events:none; }
+.terrain-patch-generated-tree { position:absolute; transform-origin:50% 58%; }
+.terrain-patch-generated-tree.procedural-woods_dense { filter:saturate(.96); }
+.terrain-patch-generated-tree.procedural-orchard { filter:saturate(.92); }
 
 .woods-tree-shadow {
   left:14%; top:24%; width:72%; height:62%;
@@ -147,7 +151,7 @@
 .woods-tree-trunk {
   left:45%; top:65%; width:11%; height:24%;
   border-radius:22% 22% 34% 34%;
-  background:#73583c;
+  background:var(--tree-trunk,#73583c);
   box-shadow:0 .08em 0 rgba(45,48,35,.24);
   z-index:1;
 }
@@ -156,9 +160,9 @@
 .woods-tree-layer-mid { z-index:3; transform:translate(2%,-4%) rotate(10deg) scale(.84); }
 .woods-tree-layer-light { z-index:4; transform:translate(8%,-12%) rotate(-8deg) scale(.63); }
 .woods-tree-circle { border-radius:50%; border:0; }
-.woods-tree-layer-dark .woods-tree-circle { background:#35513d; }
-.woods-tree-layer-mid .woods-tree-circle { background:#58784f; }
-.woods-tree-layer-light .woods-tree-circle { background:#a9bd87; }
+.woods-tree-layer-dark .woods-tree-circle { background:var(--tree-dark,#35513d); }
+.woods-tree-layer-mid .woods-tree-circle { background:var(--tree-mid,#58784f); }
+.woods-tree-layer-light .woods-tree-circle { background:var(--tree-light,#98ad78); }
 
 /* Five-circle cloud arrangement shared by each color layer. */
 .woods-tree-circle-1 { left:7%;  top:31%; width:46%; height:44%; }

@@ -4,6 +4,7 @@
   const TYPE_DEFINITIONS = window.CROSSROADS_TERRAIN_TYPES;
   const MATS = window.CROSSROADS_TERRAIN_MATS ?? {};
   const BUILDINGS = window.CrossroadsBuildingPresentation;
+  const WOODLAND_TREES = window.CrossroadsWoodlandTreePresentation;
 
   function percent(value, total) {
     return `${(Number(value) / Number(total)) * 100}%`;
@@ -79,29 +80,17 @@
     ])
   });
 
-  function addCircleLayer(tree, className, count) {
-    const layer = createGroup(tree, `woods-tree-layer ${className}`);
-    addPrimitive(layer, "woods-tree-circle", count);
-  }
-
-  function createWoodsTree(art, placement, index) {
-    const tree = createGroup(art, `woods-tree woods-tree-${index + 1} tree-preset-${placement.preset}`);
-    tree.style.setProperty("--tree-x", `${placement.x}%`);
-    tree.style.setProperty("--tree-y", `${placement.y}%`);
-    tree.style.setProperty("--tree-size", `${placement.size}%`);
-    tree.style.setProperty("--tree-scale", String(placement.scale));
-    tree.style.setProperty("--tree-rotation", `${placement.rotation}deg`);
-
-    createGroup(tree, "woods-tree-shadow");
-    createGroup(tree, "woods-tree-trunk");
-    addCircleLayer(tree, "woods-tree-layer-dark", 5);
-    addCircleLayer(tree, "woods-tree-layer-mid", 5);
-    addCircleLayer(tree, "woods-tree-layer-light", 4);
+  function createWoodsTree(art, placement, index, instance) {
+    if (!WOODLAND_TREES?.createPercentTree) throw new Error("Woodland tree presentation is unavailable.");
+    WOODLAND_TREES.createPercentTree(art, placement, index, {
+      styleId:instance.terrainId,
+      material:instance.material || (instance.terrainId === "orchard" ? "temperate" : "temperate")
+    });
   }
 
   function createWoodsPatch(art, instance) {
     const layout = WOODS_LAYOUTS[instance.terrainId] ?? WOODS_LAYOUTS.woods;
-    layout.forEach((placement, index) => createWoodsTree(art, placement, index));
+    layout.forEach((placement, index) => createWoodsTree(art, placement, index, instance));
   }
 
   function createBuildingChildren(element, definition, instance) {
@@ -134,9 +123,7 @@
     if (renderer === "woods") {
       createWoodsPatch(art, instance);
     } else if (renderer === "orchard") {
-      addPrimitive(art, "orchard-shadow", 9);
-      addPrimitive(art, "orchard-tree", 9);
-      addPrimitive(art, "orchard-highlight", 9);
+      createWoodsPatch(art, instance);
     } else if (renderer === "wall") addPrimitive(art, "wall-stone", 7);
     else if (renderer === "hedge") addPrimitive(art, "hedge-clump", 7);
     else if (renderer === "fence") {

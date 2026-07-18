@@ -352,3 +352,43 @@ node tests/editor-e1.test.js
 The next editor stage should rebuild Mokra from a clean duplicate using direct
 manipulation, then add explicit junction and crossing editing before any broad
 linear-terrain visual rewrite.
+## Terrain Editor E1.4 authoring boundary
+
+E1.4 introduces a canonical scenario-loading pipeline:
+
+```text
+raw scenario → schema migration → normalization → editor/runtime document
+```
+
+`src/scenario/` owns schema versioning, migrations, visibility, and locking.
+New exports write `schemaVersion: 1`, use `visible`, and do not preserve the
+legacy `hidden` field.
+
+Procedural terrain follows a separate pure-data pipeline:
+
+```text
+polygon + generator settings + seed
+  → pure deterministic generation
+  → shared presentation renderer
+```
+
+`src/generation/` owns seeded candidate generation, polygon tests, row layouts,
+and woodland placement. It has no DOM or CSS knowledge. Generated tree children
+are never authoritative scenario objects and are not serialized.
+
+`src/presentation/woodland-trees.js` is the shared tree-shape renderer used by
+both authored discrete woods and generated polygon woods. The polygon remains
+the authoritative gameplay footprint. Generated tree bodies use the same table-Y
+depth contract as units.
+
+The editor controller has begun separating into:
+
+- `editor-state.js` for application state and snapshot history containers.
+- `editor-selection.js` for whole-object/component selection normalization.
+- `editor-tools.js` for drawing-tool lifecycle.
+
+This is an incremental split, not a framework migration. Classic ordered scripts,
+plain JavaScript, and snapshot undo remain intentional. Future editor extraction
+should move one coherent responsibility at a time and delete the controller logic
+it replaces.
+

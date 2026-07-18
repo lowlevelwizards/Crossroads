@@ -13,6 +13,9 @@ function load(relativePath) {
   vm.runInContext(source, context, { filename:relativePath });
 }
 
+load("src/scenario/scenario-visibility.js");
+load("src/scenario/scenario-migrations.js");
+load("src/scenario/scenario-schema.js");
 load("src/editor/editor-document.js");
 load("src/editor/editor-validation.js");
 
@@ -117,6 +120,17 @@ assert(editorSource.includes("layer-back"), "editor must expose manual relayerin
 assert(editorSource.includes("makeObjectThumbnail"), "editor must render visual object-list previews");
 assert(editorSource.includes("toggleObjectVisibility"), "editor must expose per-object hide/show controls");
 assert(editorSource.includes("Visible in editor and playtest"), "selected-item inspector must expose visibility");
+assert(editorHtml.includes("src/scenario/scenario-schema.js"), "editor must load the canonical scenario schema");
+assert(editorHtml.includes("src/generation/woodland-generator.js"), "editor must load shared woodland generation");
+assert(editorHtml.includes("src/editor/editor-selection.js"), "editor must load the formal selection boundary");
+assert(editorSource.includes("Lock object on battlefield"), "inspector must expose object locking");
+assert(editorSource.includes("reroll-generator"), "woodland inspector must expose deterministic rerolling");
+
+const migrated = DOC.create({ ...source, schemaVersion:0, terrain:[{ ...source.terrain[0], hidden:true }] });
+assert.strictEqual(migrated.schemaVersion, 1, "scenario documents must migrate to schema version 1");
+assert.strictEqual(migrated.terrain[0].visible, false, "legacy hidden state must migrate to visible=false");
+assert.strictEqual(migrated.terrain[0].hidden, undefined, "legacy hidden state must not survive canonical serialization");
+assert.strictEqual(migrated.terrain[0].locked, false, "placeable objects must receive an explicit lock state");
 
 
 const playtestSelect = { value:"", appendChild(node) { this.option = node; } };
@@ -144,4 +158,4 @@ assert(playtestContext.window.CROSSROADS_SCENARIOS.editor_playtest, "playtest br
 assert.strictEqual(playtestSelect.value, "editor_playtest", "playtest bridge must select the injected scenario before engine startup");
 assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge must mark the runtime document");
 
-console.log("PASS — Terrain Editor E1.3 document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");
+console.log("PASS — Terrain Editor E1.4 schema, selection-ready document, camera, visibility, path authoring, scenario creation, validation, and playtest checks passed.");

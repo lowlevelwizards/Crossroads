@@ -62,7 +62,7 @@
   }
 
   function syncUnits(battlefield, units = [], tableHeight = 48) {
-    const byId = new Map((units ?? []).filter(unit => unit?.visible !== false && unit?.hidden !== true).map(unit => [String(unit.id), unit]));
+    const byId = new Map((units ?? []).filter(unit => window.CrossroadsScenarioVisibility ? window.CrossroadsScenarioVisibility.isVisible(unit) : unit?.visible !== false && unit?.hidden !== true).map(unit => [String(unit.id), unit]));
     for (const element of battlefield.querySelectorAll(".unit")) {
       const unit = byId.get(String(element.dataset.unitId)) ?? { y:parseFloat(element.style.top) / 100 * tableHeight };
       element.classList.add("scene-depth-object");

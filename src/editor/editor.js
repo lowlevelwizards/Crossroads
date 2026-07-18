@@ -13,9 +13,15 @@
   const BUILDINGS = window.CrossroadsBuildingPresentation;
   const GEOMETRY = window.CrossroadsEditorGeometry;
   const LAYERS = window.CrossroadsLayerPolicy;
+  const VISIBILITY = window.CrossroadsScenarioVisibility;
+  const EDITOR_STATE = window.CrossroadsEditorState;
+  const SELECTION = window.CrossroadsEditorSelection;
+  const TOOLS = window.CrossroadsEditorTools;
+  const WOODLAND = window.CrossroadsWoodlandGenerator;
+  const SCHEMA = window.CrossroadsScenarioSchema;
 
-  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS) {
-    throw new Error("Terrain Editor E1.3 dependencies did not load.");
+  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !TOOLS || !WOODLAND || !SCHEMA) {
+    throw new Error("Terrain Editor E1.4 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
@@ -110,33 +116,8 @@
     newScenarioStartingFaction: document.getElementById("newScenarioStartingFaction")
   });
 
-  const state = {
-    sourceScenarioId: "mokra",
-    sourceDocument: null,
-    document: null,
-    selection: null,
-    zoom: 1,
-    history: [],
-    future: [],
-    drag: null,
-    pan: null,
-    drawingPath: null,
-    drawingPatch: null,
-    drawingCursor: null,
-    issues: [],
-    showGrid: true,
-    showTerrain: true,
-    showLinear: true,
-    showUnits: true,
-    showUnitLabels: true,
-    showObjectives: true,
-    showFootprints: false,
-    showZones: true,
-    snap: true,
-    objectFilter: "",
-    spacePressed: false,
-    status: "Source loaded"
-  };
+  const state = EDITOR_STATE.create();
+
 
   function option(value, label) {
     const node = document.createElement("option");
@@ -225,7 +206,11 @@
   }
 
   function isItemVisible(item) {
-    return item?.visible !== false && item?.hidden !== true;
+    return VISIBILITY.isVisible(item);
+  }
+
+  function isItemLocked(item) {
+    return VISIBILITY.isLocked(item);
   }
 
   function scenarioType(scenario = state.document) {
@@ -262,7 +247,7 @@
 
   function restoreSerialized(serialized, message) {
     state.document = DOCUMENT.create(JSON.parse(serialized));
-    state.selection = null;
+    setSelection(null);
     state.status = message;
     renderAll();
   }
@@ -285,7 +270,7 @@
     state.sourceScenarioId = id;
     state.sourceDocument = DOCUMENT.create(source);
     state.document = DOCUMENT.create(source);
-    state.selection = null;
+    setSelection(null);
     state.drawingPath = null;
     state.drawingPatch = null;
     state.drawingCursor = null;
@@ -304,17 +289,21 @@
     if (!state.sourceDocument) return;
     const before = beforeMutation();
     state.document = DOCUMENT.create(state.sourceDocument);
-    state.selection = null;
+    setSelection(null);
     commit(before, "Reset to source scenario");
   }
 
   function selectionKey(selection) {
-    if (!selection) return "";
-    return [selection.kind, selection.faction, selection.id, selection.zoneId, selection.pointIndex, selection.segmentIndex].filter(value => value !== undefined && value !== null).join(":");
+    return SELECTION.key(selection);
+  }
+
+  function setSelection(selection) {
+    state.selection = SELECTION.normalize(selection);
+    return state.selection;
   }
 
   function select(selection) {
-    state.selection = selection ? { ...selection } : null;
+    setSelection(selection);
     renderSelectionAndInspector();
     renderObjectList();
     renderValidation();
@@ -442,7 +431,7 @@
   }
 
   function renderTerrain() {
-    TERRAIN_PRESENTATION.renderScenarioTerrain({ layer:refs.terrainLayer, scenario:state.document });
+    TERRAIN_PRESENTATION.renderScenarioTerrain({ layer:refs.terrainLayer, battlefield:refs.board, scenario:state.document });
     const terrainById = new Map((state.document.terrain ?? []).map(item => [String(item.id), item]));
     for (const element of refs.terrainLayer.querySelectorAll(".terrain-piece")) {
       const item = terrainById.get(String(element.dataset.terrainInstanceId));
@@ -451,10 +440,19 @@
       element.dataset.editorKind = "terrain";
       element.style.zIndex = String(LAYERS.terrainLayer(item, definition, table().height));
       element.classList.toggle("is-editor-selected", state.selection?.kind === "terrain" && String(state.selection.id) === String(element.dataset.terrainInstanceId));
+      element.classList.toggle("is-editor-locked", isItemLocked(item));
+      element.dataset.editorLocked = String(isItemLocked(item));
     }
     const patchesById = new Map((state.document.terrainPatches ?? []).map(item => [String(item.id), item]));
     for (const patchSvg of refs.terrainLayer.querySelectorAll(".terrain-patch-svg")) {
-      patchSvg.hidden = !state.showTerrain || !isItemVisible(patchesById.get(String(patchSvg.dataset.patchId)));
+      const patch = patchesById.get(String(patchSvg.dataset.patchId));
+      patchSvg.hidden = !state.showTerrain || !isItemVisible(patch);
+      patchSvg.dataset.editorLocked = String(isItemLocked(patch));
+    }
+    for (const tree of refs.board.querySelectorAll(":scope > .terrain-patch-generated-tree")) {
+      const patch = patchesById.get(String(tree.dataset.patchId));
+      tree.hidden = !state.showTerrain || !isItemVisible(patch);
+      tree.classList.toggle("is-editor-locked", isItemLocked(patch));
     }
     const pathsById = new Map((state.document.linearTerrain ?? []).map(item => [String(item.id), item]));
     for (const linearSvg of refs.terrainLayer.querySelectorAll(".linear-terrain-svg")) {
@@ -479,6 +477,7 @@
     node.dataset.editorKind = "zone";
     node.dataset.faction = faction;
     node.dataset.zoneId = zoneId;
+    node.classList.toggle("is-editor-locked", isItemLocked(zone));
     node.style.left = percent(zone.xMin, table().width);
     node.style.top = percent(zone.yMin, table().height);
     node.style.width = percent(number(zone.xMax) - number(zone.xMin), table().width);
@@ -504,6 +503,7 @@
         node.dataset.editorKind = "unit";
         node.dataset.unitId = unit.id;
         node.dataset.faction = faction;
+        node.classList.toggle("is-editor-locked", isItemLocked(unit));
         node.style.left = percent(unit.x, table().width);
         node.style.top = percent(unit.y, table().height);
         node.style.zIndex = String(LAYERS.unitLayer(unit, table().height));
@@ -530,6 +530,7 @@
         node.dataset.editorKind = "objective";
         node.dataset.objectiveId = objective.id;
         node.dataset.objectiveType = objective.type || "control_zone";
+        node.classList.toggle("is-editor-locked", isItemLocked(objective));
         if (objective.type === "control_group") node.dataset.pointIndex = String(pointIndex);
         node.style.left = percent(point.x, table().width);
         node.style.top = percent(point.y, table().height);
@@ -688,6 +689,7 @@
     let rotation = 0;
     let resizable = false;
     let rotatable = false;
+    const locked = isItemLocked(item);
 
     if (selection.kind === "terrain") {
       rect = { x:number(item.x), y:number(item.y), width:number(item.width), height:number(item.height) };
@@ -715,19 +717,19 @@
 
     if (!rect) return;
     const node = document.createElement("div");
-    node.className = `editor-selection-box${pointLike ? " is-point" : ""}${selection.kind === "linear" ? " is-linear" : ""}${selection.kind === "patch" ? " is-patch" : ""}`;
+    node.className = `editor-selection-box${pointLike ? " is-point" : ""}${selection.kind === "linear" ? " is-linear" : ""}${selection.kind === "patch" ? " is-patch" : ""}${locked ? " is-locked" : ""}`;
     node.style.left = percent(rect.x, table().width);
     node.style.top = percent(rect.y, table().height);
     node.style.width = percent(rect.width, table().width);
     node.style.height = percent(rect.height, table().height);
     if (rotation) node.style.transform = `rotate(${rotation}deg)`;
-    if (resizable) {
+    if (resizable && !locked) {
       const handle = document.createElement("span");
       handle.className = "editor-selection-handle editor-resize-handle";
       handle.dataset.editorAction = selection.kind === "objective" ? "resize-objective" : "resize";
       node.appendChild(handle);
     }
-    if (rotatable) {
+    if (rotatable && !locked) {
       const stem = document.createElement("span");
       stem.className = "editor-rotate-stem";
       const handle = document.createElement("span");
@@ -772,38 +774,107 @@
     return thumb;
   }
 
-  function renderObjectList() {
-    refs.objectList.replaceChildren();
-    const zones = [];
+  function objectGroups() {
+    const groups = new Map([
+      ["ground", { id:"ground", title:"Ground patches", items:[] }],
+      ["water", { id:"water", title:"Water", items:[] }],
+      ["roads", { id:"roads", title:"Roads and paths", items:[] }],
+      ["rail", { id:"rail", title:"Railways", items:[] }],
+      ["low", { id:"low", title:"Low cover and scatter", items:[] }],
+      ["buildings", { id:"buildings", title:"Buildings", items:[] }],
+      ["woods", { id:"woods", title:"Woods and orchards", items:[] }],
+      ["objectives", { id:"objectives", title:"Objectives", items:[] }],
+      ["zones", { id:"zones", title:"Deployment zones", items:[] }],
+      ["blue", { id:"blue", title:"Polish / Blue units", items:[] }],
+      ["red", { id:"red", title:"German / Red units", items:[] }]
+    ]);
+
+    function add(groupId, entry) {
+      groups.get(groupId)?.items.push(entry);
+    }
+
+    for (const item of state.document.terrain ?? []) {
+      const definition = TERRAIN_TYPES[item.terrainId];
+      const renderer = definition?.renderer;
+      let groupId = "low";
+      if (definition?.family === "building") groupId = "buildings";
+      else if (renderer === "woods" || renderer === "orchard") groupId = "woods";
+      else if (definition?.family === "ground") groupId = "ground";
+      else if (definition?.family === "water" || renderer === "stream" || renderer === "ditch") groupId = "water";
+      else if (renderer === "rail" || renderer === "rail_crossing") groupId = "rail";
+      else if (definition?.family === "transport") groupId = "roads";
+      add(groupId, { selection:{kind:"terrain", id:item.id}, item, label:item.id, detail:definition?.label || item.terrainId });
+    }
+
+    for (const item of state.document.terrainPatches ?? []) {
+      const style = PATCH_STYLES[item.styleId];
+      const groupId = WOODLAND.isWoodland(item.styleId) ? "woods" : style?.family === "water" ? "water" : "ground";
+      add(groupId, { selection:{kind:"patch", id:item.id}, item, label:item.id, detail:style?.label || item.styleId });
+    }
+
+    for (const item of state.document.linearTerrain ?? []) {
+      const style = LINEAR_STYLES[item.styleId];
+      const groupId = style?.renderer === "rail" ? "rail" : ["stream", "ditch"].includes(style?.renderer) ? "water" : ["road", "path"].includes(style?.renderer) ? "roads" : "low";
+      add(groupId, { selection:{kind:"linear", id:item.id}, item, label:item.id, detail:`${style?.label || item.styleId} · ${item.material || defaultLinearMaterial(item.styleId)}` });
+    }
+
+    for (const item of state.document.objectives ?? []) add("objectives", { selection:{kind:"objective", id:item.id}, item, label:item.label || item.id, detail:(item.type || "control_zone").replaceAll("_", " ") });
+
     for (const faction of ["blue", "red"]) {
       const root = state.document.deployment?.zones?.[faction];
-      if (!root) continue;
-      zones.push({ selection:{kind:"zone", faction, zoneId:"__main"}, item:root, label:root.label || `${faction} deployment`, detail:"zone" });
-      for (const zone of root.subzones ?? []) zones.push({ selection:{kind:"zone", faction, zoneId:zone.id}, item:zone, label:zone.label || zone.id, detail:`${faction} subzone` });
+      if (root) {
+        add("zones", { selection:{kind:"zone", faction, zoneId:"__main"}, item:root, label:root.label || `${faction} deployment`, detail:"zone" });
+        for (const zone of root.subzones ?? []) add("zones", { selection:{kind:"zone", faction, zoneId:zone.id}, item:zone, label:zone.label || zone.id, detail:`${faction} subzone` });
+      }
+      for (const item of state.document.forces?.[faction] ?? []) add(faction, { selection:{kind:"unit", id:item.id, faction}, item, label:item.name || item.id, detail:unitAbbreviation(item) });
     }
-    const groups = [
-      ["Discrete terrain", (state.document.terrain ?? []).map(item => ({ selection:{kind:"terrain", id:item.id}, item, label:item.id, detail:TERRAIN_TYPES[item.terrainId]?.label || item.terrainId }))],
-      ["Terrain patches", (state.document.terrainPatches ?? []).map(item => ({ selection:{kind:"patch", id:item.id}, item, label:item.id, detail:PATCH_STYLES[item.styleId]?.label || item.styleId }))],
-      ["Linear terrain", (state.document.linearTerrain ?? []).map(item => ({ selection:{kind:"linear", id:item.id}, item, label:item.id, detail:`${LINEAR_STYLES[item.styleId]?.label || item.styleId} · ${item.material || defaultLinearMaterial(item.styleId)}` }))],
-      ["Objectives", (state.document.objectives ?? []).map(item => ({ selection:{kind:"objective", id:item.id}, item, label:item.label || item.id, detail:(item.type || "control_zone").replaceAll("_", " ") }))],
-      ["Deployment zones", zones],
-      ["Polish / Blue units", (state.document.forces?.blue ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"blue"}, item, label:item.name || item.id, detail:unitAbbreviation(item) }))],
-      ["German / Red units", (state.document.forces?.red ?? []).map(item => ({ selection:{kind:"unit", id:item.id, faction:"red"}, item, label:item.name || item.id, detail:unitAbbreviation(item) }))]
-    ];
+    return [...groups.values()];
+  }
+
+  function renderObjectList() {
+    refs.objectList.replaceChildren();
     const filter = state.objectFilter.trim().toLowerCase();
     let count = 0;
-    for (const [title, sourceItems] of groups) {
-      const items = filter ? sourceItems.filter(entry => `${entry.label} ${entry.detail} ${title}`.toLowerCase().includes(filter)) : sourceItems;
+    for (const group of objectGroups()) {
+      const items = filter ? group.items.filter(entry => `${entry.label} ${entry.detail} ${group.title}`.toLowerCase().includes(filter)) : group.items;
       if (!items.length) continue;
+      const collapsed = Boolean(state.collapsedGroups[group.id]) && !filter;
       const heading = document.createElement("div");
-      heading.className = "editor-object-group-title";
-      heading.textContent = title;
+      heading.className = "editor-object-group-heading";
+      heading.dataset.groupId = group.id;
+      const collapse = document.createElement("button");
+      collapse.type = "button";
+      collapse.className = "editor-object-group-toggle";
+      collapse.dataset.groupToggle = group.id;
+      collapse.textContent = collapsed ? "▸" : "▾";
+      collapse.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${group.title}`);
+      const title = document.createElement("span");
+      title.className = "editor-object-group-title";
+      title.textContent = group.title;
+      const tally = document.createElement("small");
+      tally.textContent = String(items.length);
+      const showAll = document.createElement("button");
+      showAll.type = "button";
+      showAll.className = "editor-object-group-action";
+      showAll.dataset.groupVisibility = group.id;
+      showAll.title = "Show or hide this group";
+      showAll.textContent = items.every(entry => isItemVisible(entry.item)) ? "◉" : "○";
+      const lockAll = document.createElement("button");
+      lockAll.type = "button";
+      lockAll.className = "editor-object-group-action";
+      lockAll.dataset.groupLock = group.id;
+      lockAll.title = "Lock or unlock this group";
+      lockAll.textContent = items.every(entry => isItemLocked(entry.item)) ? "▣" : "▢";
+      heading.append(collapse, title, tally, showAll, lockAll);
       refs.objectList.appendChild(heading);
+      count += items.length;
+      if (collapsed) continue;
+
       for (const entry of items) {
-        count += 1;
         const row = document.createElement("div");
         const visible = isItemVisible(entry.item);
-        row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${selectionKey(entry.selection) === selectionKey(state.selection) || (entry.selection.kind === state.selection?.kind && String(entry.selection.id) === String(state.selection?.id)) ? " is-selected" : ""}`;
+        const locked = isItemLocked(entry.item);
+        row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${locked ? " is-locked-object" : ""}${SELECTION.sameObject(entry.selection, state.selection) ? " is-selected" : ""}`;
         const button = document.createElement("button");
         button.type = "button";
         button.className = "editor-object-item";
@@ -819,6 +890,15 @@
         layer.className = "editor-object-layer-readout";
         if (entry.item?.inheritLayer === false) layer.textContent = `L${number(entry.item.layerOrder)}`;
         button.append(makeObjectThumbnail(entry), copy, layer);
+
+        const lock = document.createElement("button");
+        lock.type = "button";
+        lock.className = `editor-object-lock${locked ? " is-locked" : ""}`;
+        lock.dataset.lockSelection = JSON.stringify(entry.selection);
+        lock.setAttribute("aria-label", `${locked ? "Unlock" : "Lock"} ${entry.label}`);
+        lock.title = `${locked ? "Unlock" : "Lock"} ${entry.label}`;
+        lock.textContent = locked ? "▣" : "▢";
+
         const visibility = document.createElement("button");
         visibility.type = "button";
         visibility.className = `editor-object-visibility${visible ? " is-visible" : " is-hidden"}`;
@@ -826,7 +906,7 @@
         visibility.setAttribute("aria-label", `${visible ? "Hide" : "Show"} ${entry.label}`);
         visibility.title = `${visible ? "Hide" : "Show"} ${entry.label}`;
         visibility.textContent = visible ? "◉" : "○";
-        row.append(button, visibility);
+        row.append(button, lock, visibility);
         refs.objectList.appendChild(row);
       }
     }
@@ -926,7 +1006,7 @@
   function renderInspector() {
     const selection = state.selection;
     const item = itemForSelection();
-    refs.selectionKindBadge.textContent = selection?.kind?.toUpperCase() || "NONE";
+    refs.selectionKindBadge.textContent = selection ? (SELECTION.componentLabel(selection)?.toUpperCase() || `WHOLE ${selection.kind}`.toUpperCase()) : "NONE";
     refs.inspectorEmpty.hidden = Boolean(item);
     refs.inspectorForm.hidden = !item;
     refs.selectionActions.hidden = !item;
@@ -938,7 +1018,9 @@
     }
 
     let html = checkboxField("Visible in editor and playtest", "@visible", isItemVisible(item), { full:true });
+    html += checkboxField("Lock object on battlefield", "@locked", isItemLocked(item), { full:true });
     if (!isItemVisible(item)) html += `<p class="editor-inspector-note editor-hidden-note">This object is hidden on the table but remains available here and in the object list.</p>`;
+    if (isItemLocked(item)) html += `<p class="editor-inspector-note editor-locked-note">Locked objects remain visible and selectable from this inspector, but battlefield clicks pass through them.</p>`;
     if (selection.kind === "terrain") {
       const definition = TERRAIN_TYPES[item.terrainId];
       html += field("ID", "id", item.id, { type:"text", full:true });
@@ -989,7 +1071,21 @@
       html += field("ID", "id", item.id, { type:"text", full:true });
       html += field("Patch type", "styleId", item.styleId, { choices:choiceEntries(PATCH_STYLES), full:true });
       if (materials.length) html += field("Material", "material", item.material ?? style?.material, { choices:materials, full:true });
-      html += field("Pattern rotation", "patternRotation", item.patternRotation ?? 0, { step:"1" });
+      if (WOODLAND.isWoodland(item.styleId)) {
+        const generator = item.generator ?? {};
+        html += `<h3 class="editor-inspector-subheading">Generated trees</h3>`;
+        html += rangeField("Density", "generator.density", generator.density ?? .7, .1, 1, .05);
+        html += rangeField("Tree spacing", "generator.spacing", generator.spacing ?? 2.3, .6, 6, .1);
+        html += rangeField("Edge padding", "generator.edgePadding", generator.edgePadding ?? .8, 0, 4, .1);
+        html += rangeField("Scale variation", "generator.scaleVariation", generator.scaleVariation ?? .12, 0, .4, .01);
+        if (item.styleId !== "orchard") html += rangeField("Rotation variation", "generator.rotationVariation", generator.rotationVariation ?? 10, 0, 90, 1);
+        if (item.styleId === "orchard") {
+          html += rangeField("Row spacing", "generator.rowSpacing", generator.rowSpacing ?? 3.1, .8, 8, .1);
+          html += rangeField("Row angle", "generator.rowAngle", generator.rowAngle ?? 0, -90, 90, 1);
+        }
+        html += field("Seed", "generator.seed", generator.seed ?? 1842, { step:"1", min:0 });
+        html += `<div class="editor-generator-actions"><button class="editor-button" type="button" data-editor-command="reroll-generator">Reroll trees</button><span>${WOODLAND.generate(item).length} generated tree${WOODLAND.generate(item).length === 1 ? "" : "s"}</span></div>`;
+      } else html += field("Pattern rotation", "patternRotation", item.patternRotation ?? 0, { step:"1" });
       if (item.styleId === "pond") html += rangeField("Bank width", "bankWidth", item.bankWidth ?? .78, .1, 2.5, .05);
       html += boundsFields(item, selection);
       html += transformActions("patch");
@@ -1074,7 +1170,7 @@
   function renderSelectionAndInspector() {
     renderSelectionBox();
     renderInspector();
-    refs.selectionReadout.textContent = state.selection ? `Selected: ${selectionKey(state.selection)}` : "Nothing selected";
+    refs.selectionReadout.textContent = SELECTION.describe(state.selection, itemForSelection());
   }
 
   function renderDataPreview() {
@@ -1114,9 +1210,9 @@
   }
 
   function startDrag(event, action, selection, options = {}) {
-    if (selection) state.selection = { ...selection };
+    if (selection) setSelection(selection);
     const item = itemForSelection();
-    if (!item) return;
+    if (!item || isItemLocked(item)) return;
     const start = boardPoint(event);
     const point = pointForSelection();
     const originalPoints = Array.isArray(item.points) ? GEOMETRY.clonePoints(item.points) : null;
@@ -1205,10 +1301,6 @@
     renderLinearInteraction();
   }
 
-  function sameGroup(a, b) {
-    return a && b && a.kind === b.kind && String(a.id) === String(b.id);
-  }
-
   function onBoardPointerDown(event) {
     const isMiddle = event.button === 1;
     const isLeft = event.button === 0 || event.button === undefined;
@@ -1231,6 +1323,12 @@
       return;
     }
     const rawSelection = selectionFromTarget(event.target);
+    const rawItem = rawSelection ? (rawSelection.kind === "zone" ? zoneForSelection(rawSelection) : DOCUMENT.find(state.document, rawSelection)) : null;
+    if (rawSelection && isItemLocked(rawItem)) {
+      event.preventDefault();
+      startPan(event);
+      return;
+    }
     if (!rawSelection) {
       event.preventDefault();
       startPan(event);
@@ -1238,7 +1336,7 @@
     }
     event.preventDefault();
     if (rawSelection.kind === "linear" || rawSelection.kind === "patch") {
-      const currentMatches = sameGroup(state.selection, rawSelection);
+      const currentMatches = SELECTION.sameObject(state.selection, rawSelection);
       const groupSelection = { kind:rawSelection.kind, id:rawSelection.id };
       if (!currentMatches) {
         startDrag(event, "move", groupSelection);
@@ -1402,8 +1500,9 @@
     const value = parseControlValue(control);
 
     if (fieldPath === "@visible") {
-      item.visible = Boolean(value);
-      delete item.hidden;
+      VISIBILITY.setVisible(item, value);
+    } else if (fieldPath === "@locked") {
+      VISIBILITY.setLocked(item, value);
     } else if (fieldPath.startsWith("@bounds.")) {
       const key = fieldPath.slice(8);
       const original = GEOMETRY.bounds(item.points ?? []);
@@ -1447,9 +1546,11 @@
       const style = PATCH_STYLES[item.styleId];
       const choices = materialChoicesForPatch(item.styleId);
       if (!choices.some(choice => String(choice.value) === String(item.material))) item.material = style?.material;
+      if (WOODLAND.isWoodland(item.styleId)) SCHEMA.normalizeWoodlandGenerator(item);
+      else delete item.generator;
     }
     if (fieldPath === "layerOrder") item.inheritLayer = false;
-    if (fieldPath === "id" && state.selection.id === oldId) state.selection.id = value;
+    if (fieldPath === "id" && state.selection.id === oldId) setSelection({ ...state.selection, id:value });
     commit(before, `Updated ${fieldPath}`);
   }
 
@@ -1465,7 +1566,7 @@
       ? { x:(number(current.x) + number(next.x)) / 2, y:(number(current.y) + number(next.y)) / 2, ...(current.width !== undefined || next.width !== undefined ? { width:(number(current.width, path.width) + number(next.width, path.width)) / 2 } : {}) }
       : { x:number(current.x) + (number(current.x) - number(previous.x) || 4), y:number(current.y) + (number(current.y) - number(previous.y)) };
     path.points.splice(index + 1, 0, point);
-    state.selection.pointIndex = index + 1;
+    setSelection({ ...state.selection, pointIndex:index + 1 });
     commit(before, "Inserted waypoint");
   }
 
@@ -1475,7 +1576,7 @@
     if (!path || state.selection.kind !== "linear" || index === undefined || path.points.length <= 2) return;
     const before = beforeMutation();
     path.points.splice(index, 1);
-    state.selection.pointIndex = Math.max(0, Math.min(index, path.points.length - 1));
+    setSelection({ ...state.selection, pointIndex:Math.max(0, Math.min(index, path.points.length - 1)) });
     commit(before, "Removed waypoint");
   }
 
@@ -1489,7 +1590,7 @@
     if (!a || !b) return;
     const before = beforeMutation();
     patch.points.splice(index + 1, 0, { x:(number(a.x) + number(b.x)) / 2, y:(number(a.y) + number(b.y)) / 2 });
-    state.selection = { kind:"patch", id:patch.id, pointIndex:index + 1 };
+    setSelection({ kind:"patch", id:patch.id, pointIndex:index + 1 });
     commit(before, "Inserted patch vertex");
   }
 
@@ -1499,7 +1600,7 @@
     if (!patch || state.selection?.kind !== "patch" || index === undefined || patch.points.length <= 3) return;
     const before = beforeMutation();
     patch.points.splice(index, 1);
-    state.selection.pointIndex = Math.max(0, Math.min(index, patch.points.length - 1));
+    setSelection({ ...state.selection, pointIndex:Math.max(0, Math.min(index, patch.points.length - 1)) });
     commit(before, "Removed patch vertex");
   }
 
@@ -1507,7 +1608,7 @@
     const path = itemForSelection();
     const point = pointForSelection();
     if (!path || !point || state.selection?.kind !== "linear") return;
-    state.drawingPath = {
+    TOOLS.beginPath(state, {
       styleId:path.styleId,
       material:path.material ?? defaultLinearMaterial(path.styleId),
       width:number(point.width, number(path.width, LINEAR_STYLES[path.styleId]?.width ?? 2)),
@@ -1516,10 +1617,9 @@
       end:{ cap:"taper" },
       before:beforeMutation(),
       branchOf:path.id
-    };
-    state.drawingPatch = null;
+    });
     state.drawingCursor = { x:number(point.x), y:number(point.y) };
-    state.selection = null;
+    setSelection(null);
     state.status = `Branching from ${path.id} · click to place more waypoints`;
     renderAll();
   }
@@ -1578,7 +1678,7 @@
     const whole = { kind:state.selection.kind, id:state.selection.id, faction:state.selection.faction };
     const before = beforeMutation();
     if (!DOCUMENT.remove(state.document, whole)) return;
-    state.selection = null;
+    setSelection(null);
     commit(before, `Deleted ${whole.id}`);
   }
 
@@ -1588,7 +1688,7 @@
     const before = beforeMutation();
     const copy = DOCUMENT.duplicate(state.document, whole);
     if (!copy) return;
-    state.selection = { ...whole, id:copy.id };
+    setSelection({ ...whole, id:copy.id });
     commit(before, `Duplicated ${copy.id}`);
   }
 
@@ -1613,11 +1713,14 @@
       x:snap(table().width / 2 - size.width / 2),
       y:snap(table().height / 2 - size.height / 2),
       width:size.width,
-      height:size.height
+      height:size.height,
+      visible:true,
+      locked:false,
+      inheritLayer:true
     };
     if (definition.presentation?.defaultAppearance) item.appearance = definition.presentation.defaultAppearance;
     state.document.terrain.push(item);
-    state.selection = { kind:"terrain", id:item.id };
+    setSelection({ kind:"terrain", id:item.id });
     commit(before, `Added ${definition.label}`);
   }
 
@@ -1626,8 +1729,8 @@
     const styleId = refs.linearStyleSelect.value;
     const style = LINEAR_STYLES[styleId];
     if (!style) return;
-    state.selection = null;
-    state.drawingPath = {
+    setSelection(null);
+    TOOLS.beginPath(state, {
       styleId,
       material:defaultLinearMaterial(styleId),
       width:style.width,
@@ -1635,8 +1738,7 @@
       start:{ cap:"taper" },
       end:{ cap:"taper" },
       before:beforeMutation()
-    };
-    state.drawingCursor = null;
+    });
     state.status = `Drawing ${style.label} · click to place waypoints`;
     renderAll();
   }
@@ -1652,20 +1754,21 @@
       width:drawing.width,
       points:drawing.points.map(point => ({ ...point, x:point.x, y:point.y })),
       start:{ ...(drawing.start ?? { cap:"taper" }) },
-      end:{ ...(drawing.end ?? { cap:"taper" }) }
+      end:{ ...(drawing.end ?? { cap:"taper" }) },
+      visible:true,
+      locked:false,
+      inheritLayer:true
     };
     if (drawing.branchOf) item.branchOf = drawing.branchOf;
     state.document.linearTerrain.push(item);
-    state.selection = { kind:"linear", id:item.id };
-    state.drawingPath = null;
-    state.drawingCursor = null;
+    setSelection({ kind:"linear", id:item.id });
+    TOOLS.cancelDrawing(state);
     commit(drawing.before, `Drew ${style?.label || drawing.styleId}`);
   }
 
   function cancelLinearDraw() {
     if (!state.drawingPath) return;
-    state.drawingPath = null;
-    state.drawingCursor = null;
+    TOOLS.cancelDrawing(state);
     state.status = "Path drawing cancelled";
     renderAll();
   }
@@ -1675,9 +1778,8 @@
     const styleId = refs.patchStyleSelect.value;
     const style = PATCH_STYLES[styleId];
     if (!style) return;
-    state.selection = null;
-    state.drawingPatch = { styleId, material:style.material, points:[], before:beforeMutation() };
-    state.drawingCursor = null;
+    setSelection(null);
+    TOOLS.beginPatch(state, { styleId, material:style.material, points:[], before:beforeMutation() });
     state.status = `Drawing ${style.label} · click around its boundary`;
     renderAll();
   }
@@ -1691,19 +1793,20 @@
       styleId:drawing.styleId,
       material:drawing.material ?? style?.material,
       points:drawing.points.map(point => ({ x:point.x, y:point.y })),
-      inheritLayer:true
+      inheritLayer:true,
+      visible:true,
+      locked:false
     };
+    if (WOODLAND.isWoodland(item.styleId)) SCHEMA.normalizeWoodlandGenerator(item);
     state.document.terrainPatches.push(item);
-    state.selection = { kind:"patch", id:item.id };
-    state.drawingPatch = null;
-    state.drawingCursor = null;
+    setSelection({ kind:"patch", id:item.id });
+    TOOLS.cancelDrawing(state);
     commit(drawing.before, `Drew ${style?.label || drawing.styleId}`);
   }
 
   function cancelPatchDraw() {
     if (!state.drawingPatch) return;
-    state.drawingPatch = null;
-    state.drawingCursor = null;
+    TOOLS.cancelDrawing(state);
     state.status = "Patch drawing cancelled";
     renderAll();
   }
@@ -1714,7 +1817,7 @@
     const before = beforeMutation();
     const inserted = DOCUMENT.insertLinearWaypoint(state.document, selection.id, selection.segmentIndex);
     if (!inserted) return;
-    state.selection = { kind:"linear", id:selection.id, pointIndex:selection.segmentIndex + 1 };
+    setSelection({ kind:"linear", id:selection.id, pointIndex:selection.segmentIndex + 1 });
     commit(before, "Added waypoint to section");
   }
 
@@ -1724,7 +1827,7 @@
     const before = beforeMutation();
     const result = DOCUMENT.deleteLinearSegment(state.document, selection.id, selection.segmentIndex);
     if (!result) return;
-    state.selection = result.selection;
+    setSelection(result.selection);
     commit(before, result.split ? "Deleted section and split path" : result.deleted ? "Deleted path section" : "Deleted path section");
   }
 
@@ -1743,10 +1846,13 @@
       unitType,
       quality:definition.quality || "regular",
       x:snap(x),
-      y:snap(y)
+      y:snap(y),
+      visible:true,
+      locked:false,
+      inheritLayer:true
     };
     state.document.forces[faction].push(item);
-    state.selection = { kind:"unit", id:item.id, faction };
+    setSelection({ kind:"unit", id:item.id, faction });
     commit(before, `Added ${definition.name}`);
   }
 
@@ -1790,7 +1896,7 @@
     const before = beforeMutation();
     const item = objectiveForType(refs.objectiveTypeSelect.value || "control_zone");
     state.document.objectives.push(item);
-    state.selection = { kind:"objective", id:item.id };
+    setSelection({ kind:"objective", id:item.id });
     commit(before, `Added ${item.label}`);
   }
 
@@ -1807,7 +1913,7 @@
       y:snap(clamp(number(previous.y), 0, table().height)),
       radius:number(previous.radius, number(item.radius, 3))
     });
-    state.selection.pointIndex = item.points.length - 1;
+    setSelection({ ...state.selection, pointIndex:item.points.length - 1 });
     commit(before, "Added control point");
   }
 
@@ -1816,7 +1922,7 @@
     if (!item || item.type !== "control_group" || (item.points?.length ?? 0) <= 1) return;
     const before = beforeMutation();
     item.points.pop();
-    if (state.selection.pointIndex !== undefined) state.selection.pointIndex = Math.min(state.selection.pointIndex, item.points.length - 1);
+    if (state.selection.pointIndex !== undefined) setSelection({ ...state.selection, pointIndex:Math.min(state.selection.pointIndex, item.points.length - 1) });
     commit(before, "Removed control point");
   }
 
@@ -1832,7 +1938,7 @@
       }
     } else {
       delete item.points;
-      delete state.selection.pointIndex;
+      setSelection(SELECTION.objectOnly(state.selection));
     }
     if (type === "exit_unit") {
       item.edge = item.edge || "blue";
@@ -1847,7 +1953,7 @@
     const before = beforeMutation();
     const copy = DOCUMENT.duplicate(state.document, state.selection);
     if (!copy) return;
-    state.selection = { ...state.selection, id:copy.id };
+    setSelection({ ...state.selection, id:copy.id });
     commit(before, `Duplicated ${copy.id}`);
   }
 
@@ -1872,20 +1978,58 @@
     const before = beforeMutation();
     const label = state.selection.id;
     if (!DOCUMENT.remove(state.document, state.selection)) return;
-    state.selection = null;
+    setSelection(null);
     commit(before, `Deleted ${label}`);
+  }
+
+  function itemFromSelection(selection) {
+    return selection?.kind === "zone" ? zoneForSelection(selection) : DOCUMENT.find(state.document, selection);
   }
 
   function toggleObjectVisibility(selection) {
     if (!selection) return;
-    const item = selection.kind === "zone" ? zoneForSelection(selection) : DOCUMENT.find(state.document, selection);
+    const item = itemFromSelection(selection);
     if (!item) return;
     const before = beforeMutation();
     const nextVisible = !isItemVisible(item);
-    item.visible = nextVisible;
-    delete item.hidden;
-    state.selection = { ...selection };
+    VISIBILITY.setVisible(item, nextVisible);
+    setSelection(selection);
     commit(before, `${nextVisible ? "Showed" : "Hid"} ${selection.id || selection.zoneId || "object"}`);
+  }
+
+  function toggleObjectLock(selection) {
+    if (!selection) return;
+    const item = itemFromSelection(selection);
+    if (!item) return;
+    const before = beforeMutation();
+    const nextLocked = !isItemLocked(item);
+    VISIBILITY.setLocked(item, nextLocked);
+    setSelection(selection);
+    commit(before, `${nextLocked ? "Locked" : "Unlocked"} ${selection.id || selection.zoneId || "object"}`);
+  }
+
+  function mutateGroup(groupId, mode) {
+    const group = objectGroups().find(entry => entry.id === groupId);
+    if (!group?.items.length) return;
+    const before = beforeMutation();
+    if (mode === "visibility") {
+      const nextVisible = !group.items.every(entry => isItemVisible(entry.item));
+      group.items.forEach(entry => VISIBILITY.setVisible(entry.item, nextVisible));
+      commit(before, `${nextVisible ? "Showed" : "Hid"} ${group.title}`);
+    } else {
+      const nextLocked = !group.items.every(entry => isItemLocked(entry.item));
+      group.items.forEach(entry => VISIBILITY.setLocked(entry.item, nextLocked));
+      commit(before, `${nextLocked ? "Locked" : "Unlocked"} ${group.title}`);
+    }
+  }
+
+  function rerollGenerator() {
+    const item = itemForSelection();
+    if (state.selection?.kind !== "patch" || !item || !WOODLAND.isWoodland(item.styleId)) return;
+    const before = beforeMutation();
+    item.generator = item.generator ?? {};
+    item.generator.seed = (Math.trunc(number(item.generator.seed, 0)) + 1 + Math.floor(Math.random() * 9999)) % 2147483647;
+    commit(before, `Rerolled ${item.id} tree layout`);
   }
 
   function updateScenarioType(type) {
@@ -2033,7 +2177,7 @@
     const parsed = JSON.parse(text);
     const before = beforeMutation();
     state.document = DOCUMENT.create(parsed);
-    state.selection = null;
+    setSelection(null);
     commit(before, `Imported ${file.name}`);
   }
 
@@ -2082,6 +2226,24 @@
     refs.snapToggle.addEventListener("change", () => { state.snap = refs.snapToggle.checked; });
     refs.objectFilterInput.addEventListener("input", () => { state.objectFilter = refs.objectFilterInput.value; renderObjectList(); });
     refs.objectList.addEventListener("click", event => {
+      const groupToggle = event.target.closest("[data-group-toggle]");
+      if (groupToggle) {
+        const id = groupToggle.dataset.groupToggle;
+        state.collapsedGroups[id] = !state.collapsedGroups[id];
+        renderObjectList();
+        return;
+      }
+      const groupVisibility = event.target.closest("[data-group-visibility]");
+      if (groupVisibility) { mutateGroup(groupVisibility.dataset.groupVisibility, "visibility"); return; }
+      const groupLock = event.target.closest("[data-group-lock]");
+      if (groupLock) { mutateGroup(groupLock.dataset.groupLock, "lock"); return; }
+      const lockButton = event.target.closest("[data-lock-selection]");
+      if (lockButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleObjectLock(JSON.parse(lockButton.dataset.lockSelection));
+        return;
+      }
       const visibilityButton = event.target.closest("[data-visibility-selection]");
       if (visibilityButton) {
         event.preventDefault();
@@ -2123,6 +2285,7 @@
       if (command === "duplicate-whole-selection") duplicateWholeSelection();
       if (command === "add-objective-point") addObjectivePoint();
       if (command === "remove-last-objective-point") removeLastObjectivePoint();
+      if (command === "reroll-generator") rerollGenerator();
     });
     refs.duplicateSelectionButton.addEventListener("click", duplicateSelection);
     refs.deleteSelectionButton.addEventListener("click", deleteSelection);
@@ -2169,6 +2332,10 @@
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redo();
+      } else if (event.key === "Escape" && state.selection) {
+        event.preventDefault();
+        if (SELECTION.level(state.selection) === "component") select(SELECTION.objectOnly(state.selection));
+        else select(null);
       } else if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         deleteSelection();

@@ -404,7 +404,7 @@
   function renderScenarioLinearTerrain({ layer, scenario }) {
     if (!layer || !scenario) return;
     layer.querySelectorAll(":scope > .linear-terrain-svg").forEach(element => element.remove());
-    const visible = item => item?.visible !== false && item?.hidden !== true;
+    const visible = window.CrossroadsScenarioVisibility?.isVisible ?? (item => item?.visible !== false && item?.hidden !== true);
     const renderScenario = {
       ...scenario,
       linearTerrain:(scenario.linearTerrain ?? []).filter(visible),

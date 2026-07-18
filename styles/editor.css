@@ -412,3 +412,49 @@
 .editor-app .editor-objective-layer { z-index:7200; }
 .editor-app .editor-interaction-svg { z-index:7600; }
 .editor-app .editor-selection-layer { z-index:7800; }
+
+/* Terrain Editor E1.4 — hierarchy, locking, and procedural containers */
+.editor-object-group-heading {
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr) auto 28px 28px;
+  align-items:center;
+  gap:3px;
+  margin:9px 0 3px;
+  padding:2px 1px;
+  border-bottom:1px solid rgba(112,103,91,.24);
+}
+.editor-object-group-heading .editor-object-group-title { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editor-object-group-heading > small { color:#877b6a; font-size:9px; font-weight:900; }
+.editor-object-group-toggle,.editor-object-group-action {
+  width:24px;
+  height:24px;
+  border:1px solid transparent;
+  border-radius:4px;
+  background:transparent;
+  color:#655d52;
+  cursor:pointer;
+  font-weight:900;
+}
+.editor-object-group-action { width:28px; }
+.editor-object-group-toggle:hover,.editor-object-group-action:hover { border-color:#9b8c78; background:#e9dfcd; }
+.editor-object-row { grid-template-columns:minmax(0,1fr) 32px 32px; }
+.editor-object-lock {
+  width:32px;
+  min-height:42px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:#766e63;
+  font-size:16px;
+  font-weight:900;
+  cursor:pointer;
+}
+.editor-object-lock:hover { border-color:#9b8c78; background:#e9dfcd; }
+.editor-object-lock.is-locked { color:#765238; background:rgba(150,100,64,.12); }
+.editor-object-row.is-locked-object .editor-object-item { box-shadow:inset 3px 0 #9a7657; }
+.editor-locked-note { border-left:3px solid #9a7657; padding-left:8px; color:#6f5745; }
+.editor-selection-box.is-locked { border-style:dashed; border-color:#b9936f; box-shadow:0 0 0 1px rgba(67,47,21,.45); }
+.is-editor-locked { cursor:grab!important; }
+.editor-generator-actions { grid-column:1/-1; display:flex; align-items:center; gap:8px; }
+.editor-generator-actions > span { color:#71685d; font-size:10px; font-weight:850; }
+.editor-selection-box.is-patch { outline:1px solid rgba(255,247,196,.45); outline-offset:2px; }

@@ -12,7 +12,7 @@
   }
 
   try {
-    const scenario = JSON.parse(raw);
+    const scenario = window.CrossroadsScenarioSchema?.normalize(JSON.parse(raw)) ?? JSON.parse(raw);
     if (!scenario?.table || !scenario?.forces || !Array.isArray(scenario?.objectives)) {
       throw new Error("Saved editor scenario is incomplete.");
     }

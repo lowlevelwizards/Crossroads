@@ -48,13 +48,13 @@
     const byId = new Map((args.scenario?.terrain ?? []).map(instance => [instance.id, instance]));
     for (const piece of args.layer.querySelectorAll(":scope > .terrain-piece")) {
       const instance = byId.get(piece.dataset.terrainInstanceId);
-      if (instance?.visible === false || instance?.hidden === true) {
+      if (window.CrossroadsScenarioVisibility ? !window.CrossroadsScenarioVisibility.isVisible(instance) : instance?.visible === false || instance?.hidden === true) {
         piece.remove();
         continue;
       }
       configurePiece(piece, instance, args.scenario);
     }
-    window.CrossroadsTerrainPatchPresentation?.renderScenarioTerrainPatches(args);
+    window.CrossroadsTerrainPatchPresentation?.renderScenarioTerrainPatches({ ...args, battlefield });
     window.CrossroadsLinearTerrainPresentation?.renderScenarioLinearTerrain(args);
 
     const editorMode = document.body?.classList?.contains("editor-app");

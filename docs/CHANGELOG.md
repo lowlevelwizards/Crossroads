@@ -1,3 +1,15 @@
+# Terrain Editor E1.4 — Procedural Terrain Containers
+
+- Added Scenario Schema v1 with explicit migrations, canonical visibility/locking fields, and legacy `hidden` cleanup.
+- Added dedicated editor state, selection, and tool boundaries while retaining the existing snapshot history model.
+- Replaced repeating woodland patch fills with deterministic generated layered-circle trees inside polygon boundaries.
+- Added woods, dense-woods, and orchard generator variants with seed, density, spacing, edge padding, scale, rotation, and row controls.
+- Kept generated trees presentation-only; scenario files serialize the polygon and compact generator settings rather than child objects.
+- Shared woodland generation and tree rendering between the editor and live-game terrain runtime.
+- Added object locking, grouped browser sections, and group-level visibility/locking controls.
+- Added a permanent visual fixture and regression checks for deterministic generation, polygon containment, edge padding, orchard rows, and unit/tree depth ordering.
+- Preserved current combat, scenario, objective, and terrain-rule behavior.
+
 # Terrain Editor E1.3 — Advanced Terrain Authoring
 
 - Added full-path selection feedback and group move, resize, rotate, duplicate, normalize, layer, and delete controls.

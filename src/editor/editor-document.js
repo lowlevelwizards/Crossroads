@@ -2,6 +2,9 @@
 
 (() => {
   const SUPPORTED_RUNTIME_OBJECTIVES = new Set(["control_zone", "control_group", "exit_unit"]);
+  const SCHEMA = window.CrossroadsScenarioSchema;
+  const VISIBILITY = window.CrossroadsScenarioVisibility;
+  if (!SCHEMA || !VISIBILITY) throw new Error("Scenario schema and visibility modules must load before editor-document.js.");
 
   function clone(value) {
     return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -16,7 +19,7 @@
 
   function create(source) {
     assertScenario(source);
-    const document = clone(source);
+    const document = SCHEMA.normalize(source);
     document.id = String(document.id || "untitled-scenario");
     document.title = String(document.title || "Untitled Scenario");
     document.rounds = Math.max(1, Number(document.rounds) || 6);
@@ -47,7 +50,8 @@
     return create({
       id:String(options.id || "untitled-scenario"),
       title:String(options.title || "Untitled Scenario"),
-      description:"Created in Terrain Editor E1.3.",
+      schemaVersion:SCHEMA.CURRENT_VERSION,
+      description:"Created in Terrain Editor E1.4.",
       rounds:Math.max(1, Number(options.rounds) || 6),
       table:{ width, height, mat:"grass_temperate" },
       factions:{
@@ -192,7 +196,7 @@
 
   function playtestScenario(document) {
     const scenario = create(document);
-    const visible = item => item?.visible !== false && item?.hidden !== true;
+    const visible = VISIBILITY.isVisible;
     scenario.terrain = scenario.terrain.filter(visible);
     scenario.linearTerrain = scenario.linearTerrain.filter(visible);
     scenario.terrainPatches = scenario.terrainPatches.filter(visible);
@@ -203,7 +207,7 @@
     scenario.forces.red = scenario.forces.red.filter(visible);
     scenario.id = "editor_playtest";
     scenario.title = `${scenario.title || "Untitled Scenario"} — Editor Playtest`;
-    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.3.`.trim();
+    scenario.description = `${scenario.description || ""} Current positions were launched from Terrain Editor E1.4.`.trim();
     scenario.deployment = scenario.deployment ?? { zones:{} };
     scenario.deployment.mode = "fixed";
     scenario.deployment.order = [];

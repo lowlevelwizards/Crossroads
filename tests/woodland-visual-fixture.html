@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Crossroads E1.4 — Woodland Visual Fixture</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/terrain.css">
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; padding:24px; background:#d8cfb6; font-family:system-ui,sans-serif; }
+    h1 { margin:0 0 8px; font-size:22px; }
+    p { margin:0 0 18px; }
+    .fixture-frame { width:min(1200px, calc(100vw - 48px)); aspect-ratio:3/2; position:relative; margin:auto; }
+    .battlefield { position:absolute; inset:0; overflow:hidden; background:#afb185; border:3px solid #554b3a; }
+    .fixture-patch-layer { position:absolute; inset:0; pointer-events:none; }
+    .fixture-unit { position:absolute; width:2.4%; aspect-ratio:1; translate:-50% -50%; border-radius:50%; background:#315f7c; border:3px solid #e8efe8; box-shadow:0 2px 4px #0008; color:white; display:grid; place-items:center; font-weight:800; z-index:5000; }
+    .fixture-unit::after { content:attr(data-label); position:absolute; top:110%; white-space:nowrap; padding:2px 5px; border-radius:4px; background:#f5f0df; color:#2d2922; font-size:10px; border:1px solid #5e5749; }
+    .fixture-label { position:absolute; z-index:7600; padding:4px 7px; background:#f5f0df; border:1px solid #5e5749; border-radius:5px; font-size:11px; font-weight:800; transform:translate(-50%,-50%); }
+  </style>
+</head>
+<body>
+  <h1>Woodland container and depth fixture</h1>
+  <p>Three generated patch variants with units north, inside, and south of their tree bodies.</p>
+  <div class="fixture-frame">
+    <div id="fixtureBattlefield" class="battlefield">
+      <div id="fixturePatchLayer" class="fixture-patch-layer"></div>
+    </div>
+  </div>
+  <script src="../data/terrain.js"></script>
+  <script src="../src/presentation/layer-policy.js"></script>
+  <script src="../src/scenario/scenario-visibility.js"></script>
+  <script src="../src/generation/seeded-random.js"></script>
+  <script src="../src/generation/polygon-geometry.js"></script>
+  <script src="../src/generation/polygon-scatter.js"></script>
+  <script src="../src/generation/row-generator.js"></script>
+  <script src="../src/generation/woodland-generator.js"></script>
+  <script src="../src/presentation/woodland-trees.js"></script>
+  <script src="../src/presentation/terrain-patches.js"></script>
+  <script>
+    "use strict";
+    const table = { width:72, height:48 };
+    const terrainPatches = [
+      { id:"fixture-woods", styleId:"woods", material:"temperate", points:[{x:3,y:5},{x:21,y:4},{x:24,y:18},{x:6,y:20}], generator:{seed:101,density:.7,spacing:2.45,edgePadding:.8,scaleVariation:.12,rotationVariation:10} },
+      { id:"fixture-dense", styleId:"woods_dense", material:"dark", points:[{x:27,y:4},{x:47,y:5},{x:49,y:21},{x:29,y:20}], generator:{seed:202,density:.92,spacing:1.85,edgePadding:.65,scaleVariation:.1,rotationVariation:8} },
+      { id:"fixture-orchard", styleId:"orchard", material:"dry", points:[{x:52,y:5},{x:69,y:4},{x:68,y:20},{x:51,y:21}], generator:{seed:303,density:.72,spacing:2.9,rowSpacing:3.2,rowAngle:-8,edgePadding:.8,scaleVariation:.04,rotationVariation:0} }
+    ];
+    const scenario = { id:"woodland-fixture", table, terrainPatches };
+    const battlefield = document.getElementById("fixtureBattlefield");
+    const layer = document.getElementById("fixturePatchLayer");
+    CrossroadsTerrainPatchPresentation.renderScenarioTerrainPatches({ layer, scenario, battlefield });
+    const fixtures = [
+      {x:12,y:3,label:"north"},{x:12,y:13,label:"inside"},{x:12,y:22,label:"south"},
+      {x:38,y:3,label:"north"},{x:38,y:13,label:"inside"},{x:38,y:23,label:"south"},
+      {x:60,y:3,label:"north"},{x:60,y:13,label:"inside"},{x:60,y:23,label:"south"}
+    ];
+    for (const item of fixtures) {
+      const node = document.createElement("div");
+      node.className = "fixture-unit";
+      node.dataset.label = item.label;
+      node.textContent = "U";
+      node.style.left = `${item.x / table.width * 100}%`;
+      node.style.top = `${item.y / table.height * 100}%`;
+      node.style.zIndex = String(CrossroadsLayerPolicy.unitLayer(item, table.height));
+      battlefield.appendChild(node);
+    }
+    for (const [x, label] of [[12,"WOODS"],[38,"DENSE WOODS"],[60,"ORCHARD"]]) {
+      const node = document.createElement("div");
+      node.className = "fixture-label";
+      node.textContent = label;
+      node.style.left = `${x / table.width * 100}%`;
+      node.style.top = "4%";
+      battlefield.appendChild(node);
+    }
+  </script>
+</body>
+</html>
