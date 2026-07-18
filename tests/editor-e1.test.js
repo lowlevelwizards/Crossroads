@@ -139,8 +139,8 @@ assert(editorSource.includes("finishLinearDraw"), "editor must support waypoint 
 assert(editorSource.includes("deleteLinearSegment"), "editor must expose individual path-section deletion");
 assert(editorHtml.includes("showUnitsToggle"), "editor must expose unit visibility controls");
 assert(editorHtml.includes("newScenarioButton"), "editor must expose new scenario creation at the top of the panel");
-assert(editorHtml.includes("objectiveTypeSelect"), "editor must expose objective type selection");
-assert(editorHtml.includes("patchStyleSelect"), "editor must expose polygon terrain patch drawing");
+assert(editorHtml.includes('data-asset-category="scenario"'), "editor must expose objective creation through the visual library");
+assert(editorHtml.includes('data-asset-category="patches"'), "editor must expose polygon terrain patch drawing through the visual library");
 assert(editorSource.includes("branchLinear"), "editor must support branching linear terrain");
 assert(editorSource.includes("Waypoint width"), "editor must expose per-waypoint widths");
 assert(editorSource.includes("layer-back"), "editor must expose manual relayering");
@@ -199,4 +199,16 @@ assert.strictEqual(playtestBody.dataset.editorPlaytest, "true", "playtest bridge
 
 assert(editorHtml.includes("src/scenario-runtime/scenario-runtime.js"), "editor must load the shared scenario runtime boundary");
 assert(editorSource.includes("choose-objective-target"), "editor must expose visual objective target picking");
-console.log("PASS — Terrain Editor S1.0 schema, objective authoring, formal and multi-selection, collective transforms, clipboard authoring, terrain controls, validation, and playtest checks passed.");
+
+assert(editorHtml.includes('data-editor-workspace-button="build"') && editorHtml.includes('data-editor-workspace-button="organize"') && editorHtml.includes('data-editor-workspace-button="scenario"'), "editor must expose focused Build, Organize, and Scenario workspaces");
+assert(editorHtml.includes('id="assetLibrary"') && editorHtml.includes('id="assetFilterInput"'), "editor must expose a searchable visual object library");
+assert(editorHtml.includes('data-editor-panel-button="inspector"') && editorHtml.includes('data-editor-panel-button="validation"') && editorHtml.includes('data-editor-panel-button="data"'), "right sidebar must use focused Inspector, Validation, and Data tabs");
+assert(editorHtml.includes('id="viewMenu"') && editorHtml.includes('data-editor-popover'), "canvas visibility controls must live in a compact View popover");
+assert(editorHtml.includes('src/editor/editor-shell.js'), "editor must load the editor shell boundary before its coordinator");
+assert(editorSource.includes('renderAssetLibrary') && editorSource.includes('libraryPreview'), "editor coordinator must render registry-driven visual asset cards");
+assert(editorSource.includes('reorderHierarchyLayer') && editorSource.includes('dragstart'), "scene hierarchy must support manual drag relayering");
+assert(editorSource.includes('nudgeHierarchyLayer'), "scene hierarchy must expose compact forward/backward layer controls");
+const shellSource = fs.readFileSync(path.join(root, "src/editor/editor-shell.js"), "utf8");
+assert(shellSource.includes('WORKSPACES') && shellSource.includes('setWorkspace'), "editor shell must own workspace state");
+assert(shellSource.includes('setPanel') && shellSource.includes('closePopovers'), "editor shell must own panel and popover state");
+console.log("PASS — Terrain Editor S1.1 canvas-first shell, visual library, hierarchy, S1.0 schema, objective authoring, formal and multi-selection, collective transforms, clipboard authoring, terrain controls, validation, and playtest checks passed.");

@@ -1,3 +1,16 @@
+# Canvas-First Editor S1.1.0
+
+- Reorganized authoring around focused Build, Organize, and Scenario workspaces while preserving one continuous canvas.
+- Added a visual, searchable object library with categorized preview cards and direct placement/drawing actions.
+- Converted the right sidebar into Inspector, Validation, and Data tabs with a sticky selection action header.
+- Moved visibility, snapping, zoom, validation status, and editor help into compact canvas controls.
+- Added scene-hierarchy drag relayering and compact forward/backward controls alongside existing hide, lock, group, and multi-selection behavior.
+- Added a dedicated editor-shell module for persistent workspace/panel preferences, popovers, and responsive drawers.
+- Removed the old permanently stacked scenario, add-object, view, validation, and raw-data panel layout.
+- Standardized release cache tokens to `v=s110`.
+
+---
+
 # Scenario Runtime S1.0.1 — Release Integrity & Coordinator Cleanup
 
 ## Release integrity

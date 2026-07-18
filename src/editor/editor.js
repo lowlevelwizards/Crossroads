@@ -22,9 +22,10 @@
   const SCHEMA = window.CrossroadsScenarioSchema;
   const SEMANTICS = window.CrossroadsTerrainSemantics;
   const PERSISTENCE = window.CrossroadsEditorPersistence;
+  const SHELL = window.CrossroadsEditorShell;
 
-  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !MULTI || !TOOLS || !WOODLAND || !SCHEMA || !SEMANTICS || !PERSISTENCE) {
-    throw new Error("Scenario Composer S1.0 dependencies did not load.");
+  if (!DOCUMENT || !VALIDATION || !SCENARIOS || !TERRAIN_TYPES || !LINEAR_STYLES || !PATCH_STYLES || !UNIT_TYPES || !TERRAIN_PRESENTATION || !GEOMETRY || !LAYERS || !VISIBILITY || !EDITOR_STATE || !SELECTION || !MULTI || !TOOLS || !WOODLAND || !SCHEMA || !SEMANTICS || !PERSISTENCE || !SHELL) {
+    throw new Error("Scenario Composer S1.1 dependencies did not load.");
   }
 
   const BASE_BOARD_WIDTH = 960;
@@ -43,23 +44,13 @@
     renameScenarioButton: document.getElementById("renameScenarioButton"),
     deleteScenarioButton: document.getElementById("deleteScenarioButton"),
     returnToGameLink: document.getElementById("returnToGameLink"),
-    terrainTypeSelect: document.getElementById("terrainTypeSelect"),
-    linearStyleSelect: document.getElementById("linearStyleSelect"),
-    patchStyleSelect: document.getElementById("patchStyleSelect"),
     unitFactionSelect: document.getElementById("unitFactionSelect"),
-    unitTypeSelect: document.getElementById("unitTypeSelect"),
-    addTerrainButton: document.getElementById("addTerrainButton"),
-    addLinearButton: document.getElementById("addLinearButton"),
     linearDrawActions: document.getElementById("linearDrawActions"),
     finishLinearButton: document.getElementById("finishLinearButton"),
     cancelLinearButton: document.getElementById("cancelLinearButton"),
-    addPatchButton: document.getElementById("addPatchButton"),
     patchDrawActions: document.getElementById("patchDrawActions"),
     finishPatchButton: document.getElementById("finishPatchButton"),
     cancelPatchButton: document.getElementById("cancelPatchButton"),
-    addUnitButton: document.getElementById("addUnitButton"),
-    addObjectiveButton: document.getElementById("addObjectiveButton"),
-    objectiveTypeSelect: document.getElementById("objectiveTypeSelect"),
     resetScenarioButton: document.getElementById("resetScenarioButton"),
     fitButton: document.getElementById("fitButton"),
     zoomOutButton: document.getElementById("zoomOutButton"),
@@ -77,6 +68,12 @@
     objectList: document.getElementById("objectList"),
     objectFilterInput: document.getElementById("objectFilterInput"),
     objectCount: document.getElementById("objectCount"),
+    assetFilterInput: document.getElementById("assetFilterInput"),
+    assetLibrary: document.getElementById("assetLibrary"),
+    assetCount: document.getElementById("assetCount"),
+    assetFactionRow: document.getElementById("assetFactionRow"),
+    assetCategoryButtons: [...document.querySelectorAll("[data-asset-category]")],
+    openObjectiveLibraryButton: document.getElementById("openObjectiveLibraryButton"),
     viewport: document.getElementById("editorViewport"),
     stage: document.getElementById("editorStage"),
     board: document.getElementById("editorBoard"),
@@ -102,6 +99,8 @@
     duplicateSelectionButton: document.getElementById("duplicateSelectionButton"),
     deleteSelectionButton: document.getElementById("deleteSelectionButton"),
     validationCount: document.getElementById("validationCount"),
+    validationStatusButton: document.getElementById("validationStatusButton"),
+    validationStatusCount: document.getElementById("validationStatusCount"),
     validationSummary: document.getElementById("validationSummary"),
     validationList: document.getElementById("validationList"),
     scenarioDataPreview: document.getElementById("scenarioDataPreview"),
@@ -130,6 +129,7 @@
   });
 
   const state = EDITOR_STATE.create();
+  let hierarchyDragSelection = null;
   let editorStorage = null;
   try { editorStorage = window.localStorage; } catch (_error) { /* Storage is optional. */ }
   const persistence = PERSISTENCE.create({
@@ -139,6 +139,11 @@
     storage:editorStorage
   });
   state.clipboard = persistence.loadClipboard();
+  const shell = SHELL.create({
+    root:document.body,
+    storage:editorStorage,
+    onLayoutChange:() => { if (state.document) setupBoardGeometry(); }
+  });
 
   function option(value, label) {
     const node = document.createElement("option");
@@ -166,11 +171,214 @@
   function initializeSelects() {
     persistence.loadCustomScenarios();
     refreshScenarioSelect(persistence.requestedScenarioId(window.location.search));
-    const terrainEntries = Object.values(TERRAIN_TYPES).sort((a, b) => `${a.family} ${a.label}`.localeCompare(`${b.family} ${b.label}`));
-    for (const definition of terrainEntries) refs.terrainTypeSelect.appendChild(option(definition.id, `${definition.family} · ${definition.label}`));
-    for (const style of Object.values(LINEAR_STYLES)) refs.linearStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
-    for (const style of Object.values(PATCH_STYLES)) refs.patchStyleSelect.appendChild(option(style.id, `${style.family} · ${style.label}`));
-    for (const [id, definition] of Object.entries(UNIT_TYPES)) refs.unitTypeSelect.appendChild(option(id, definition.name));
+  }
+
+  const OBJECTIVE_LIBRARY = Object.freeze([
+    { id:"control_zone", label:"Control point", detail:"Score or hold a position" },
+    { id:"control_group", label:"Control group", detail:"Link several positions" },
+    { id:"crossing", label:"Crossing", detail:"Control a route crossing" },
+    { id:"exit_unit", label:"Exit edge", detail:"Break through or withdraw" },
+    { id:"destroy_target", label:"Destroy target", detail:"Eliminate a chosen object" },
+    { id:"protect_target", label:"Protect target", detail:"Keep a chosen object alive" },
+    { id:"hold", label:"Hold until round", detail:"Delay or defend over time" },
+    { id:"casualty", label:"Casualty scoring", detail:"Score destroyed force" },
+    { id:"custom", label:"Custom marker", detail:"Author a bespoke objective" }
+  ]);
+
+  function titleCase(value) {
+    return String(value ?? "").replaceAll("_", " ").replace(/\b\w/g, character => character.toUpperCase());
+  }
+
+  function terrainLibraryGroup(definition) {
+    if (definition.family === "building") return "Buildings";
+    if (definition.family === "defensive") return "Fortifications";
+    if (definition.family === "scatter") return "Battlefield clutter";
+    if (definition.family === "ground") return "Fields and ground";
+    if (definition.family === "water") return "Water";
+    if (definition.family === "transport") return definition.renderer === "rail" || definition.renderer === "rail_crossing" ? "Railway pieces" : "Road pieces";
+    if (definition.renderer === "woods" || definition.renderer === "orchard") return "Trees and woods";
+    if (definition.family === "linear") return "Walls, fences, and cover";
+    return titleCase(definition.family || "Terrain");
+  }
+
+  function libraryAssets() {
+    const assets = [];
+    for (const definition of Object.values(TERRAIN_TYPES)) {
+      assets.push({
+        key:`terrain:${definition.id}`,
+        kind:"terrain",
+        id:definition.id,
+        category:"terrain",
+        group:terrainLibraryGroup(definition),
+        label:titleCase(definition.label),
+        detail:titleCase(definition.family),
+        definition
+      });
+    }
+    for (const style of Object.values(LINEAR_STYLES)) {
+      assets.push({
+        key:`linear:${style.id}`,
+        kind:"linear",
+        id:style.id,
+        category:"paths",
+        group:style.renderer === "rail" ? "Railways" : style.family === "water" ? "Waterways" : "Paths and barriers",
+        label:titleCase(style.label),
+        detail:"Draw path",
+        definition:style
+      });
+    }
+    for (const style of Object.values(PATCH_STYLES)) {
+      assets.push({
+        key:`patch:${style.id}`,
+        kind:"patch",
+        id:style.id,
+        category:"patches",
+        group:style.family === "water" ? "Water patches" : style.family === "natural" ? "Natural patches" : "Ground patches",
+        label:titleCase(style.label),
+        detail:"Draw polygon",
+        definition:style
+      });
+    }
+    for (const [id, definition] of Object.entries(UNIT_TYPES)) {
+      assets.push({
+        key:`unit:${id}`,
+        kind:"unit",
+        id,
+        category:"units",
+        group:"Units",
+        label:definition.name,
+        detail:"Place unit",
+        definition
+      });
+    }
+    for (const definition of OBJECTIVE_LIBRARY) {
+      assets.push({
+        key:`objective:${definition.id}`,
+        kind:"objective",
+        id:definition.id,
+        category:"scenario",
+        group:"Objectives",
+        label:definition.label,
+        detail:definition.detail,
+        definition
+      });
+    }
+    return assets;
+  }
+
+  function libraryPreview(asset) {
+    const preview = document.createElement("span");
+    preview.className = "editor-asset-preview";
+    if (asset.kind === "terrain") {
+      const definition = asset.definition;
+      if (definition.renderer === "building" && BUILDINGS?.createArt) {
+        try {
+          preview.appendChild(BUILDINGS.createArt({
+            definition,
+            instance:{ id:`library-${definition.id}`, terrainId:definition.id, x:0, y:0, width:8, height:5, rotation:0 }
+          }));
+          return preview;
+        } catch (_error) { /* CSS fallback below. */ }
+      }
+      preview.classList.add("is-terrain");
+      const fills = { ground:"#a58d57", water:"#72afc0", natural:"#6f8259", linear:"#7c865c", defensive:"#8b765d", scatter:"#9b805b", transport:"#9c835c" };
+      preview.style.setProperty("--asset-fill", fills[definition.family] ?? "#887c68");
+      return preview;
+    }
+    if (asset.kind === "linear") {
+      preview.classList.add("is-linear");
+      const materialId = defaultLinearMaterial(asset.id);
+      const material = LINEAR_MATERIALS[asset.id]?.[materialId] ?? LINEAR_MATERIALS[asset.definition.renderer]?.[materialId] ?? {};
+      preview.style.setProperty("--asset-base", material.surface ?? material.water ?? material.ballast ?? "#94805b");
+      preview.style.setProperty("--asset-detail", material.detail ?? material.rail ?? "#d0bd8d");
+      return preview;
+    }
+    if (asset.kind === "patch") {
+      preview.classList.add("is-patch");
+      const fills = { woods:"#657f4c", woods_dense:"#3f6142", orchard:"#78915a", field_tilled:"#92724e", field_wheat:"#b9954e", field_cabbage:"#7c8952", concrete:"#9b9a90", cobblestone:"#898a82", mud:"#65513f", pond:"#72afc0" };
+      preview.style.setProperty("--asset-fill", fills[asset.id] ?? "#728450");
+      return preview;
+    }
+    if (asset.kind === "unit") {
+      preview.classList.add("is-unit");
+      preview.style.setProperty("--asset-color", refs.unitFactionSelect.value === "red" ? "#a85850" : "#527da6");
+      return preview;
+    }
+    preview.classList.add("is-objective");
+    return preview;
+  }
+
+  function renderAssetLibrary() {
+    refs.assetLibrary.replaceChildren();
+    const category = state.assetCategory;
+    const filter = state.assetFilter.trim().toLowerCase();
+    refs.assetFactionRow.hidden = category !== "units";
+    for (const button of refs.assetCategoryButtons) {
+      const active = button.dataset.assetCategory === category;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", String(active));
+    }
+
+    let assets = libraryAssets();
+    if (category !== "all") assets = assets.filter(asset => asset.category === category);
+    if (filter) assets = assets.filter(asset => `${asset.label} ${asset.detail} ${asset.group} ${asset.id}`.toLowerCase().includes(filter));
+
+    const groups = new Map();
+    for (const asset of assets) {
+      if (!groups.has(asset.group)) groups.set(asset.group, []);
+      groups.get(asset.group).push(asset);
+    }
+
+    for (const [title, items] of groups) {
+      const section = document.createElement("section");
+      section.className = "editor-asset-group";
+      const heading = document.createElement("h3");
+      heading.className = "editor-asset-group-heading";
+      heading.textContent = title;
+      const grid = document.createElement("div");
+      grid.className = "editor-asset-grid";
+      for (const asset of items.sort((a, b) => a.label.localeCompare(b.label))) {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "editor-asset-card";
+        card.dataset.libraryAsset = asset.key;
+        card.title = asset.kind === "linear" || asset.kind === "patch" ? `Draw ${asset.label}` : `Place ${asset.label}`;
+        const copy = document.createElement("span");
+        copy.className = "editor-asset-copy";
+        const label = document.createElement("strong");
+        label.textContent = asset.label;
+        const detail = document.createElement("small");
+        detail.textContent = asset.detail;
+        copy.append(label, detail);
+        card.append(libraryPreview(asset), copy);
+        grid.appendChild(card);
+      }
+      section.append(heading, grid);
+      refs.assetLibrary.appendChild(section);
+    }
+
+    if (!assets.length) {
+      const empty = document.createElement("div");
+      empty.className = "editor-asset-empty";
+      empty.textContent = "No library objects match this search.";
+      refs.assetLibrary.appendChild(empty);
+    }
+    refs.assetCount.textContent = String(assets.length);
+  }
+
+  function setAssetCategory(category) {
+    state.assetCategory = ["all", "terrain", "paths", "patches", "units", "scenario"].includes(category) ? category : "all";
+    renderAssetLibrary();
+  }
+
+  function activateLibraryAsset(key) {
+    const asset = libraryAssets().find(entry => entry.key === key);
+    if (!asset) return;
+    if (asset.kind === "terrain") addTerrain(asset.id);
+    else if (asset.kind === "linear") addLinear(asset.id);
+    else if (asset.kind === "patch") addPatch(asset.id);
+    else if (asset.kind === "unit") addUnit(asset.id, refs.unitFactionSelect.value);
+    else if (asset.kind === "objective") addObjective(asset.id);
   }
 
   function table() {
@@ -317,6 +525,7 @@
 
   function select(selection, options = {}) {
     setSelection(selection, options);
+    if (selection && shell.panel() !== "inspector") shell.setPanel("inspector");
     renderSelectionAndInspector();
     renderObjectList();
     renderValidation();
@@ -857,6 +1066,38 @@
     return thumb;
   }
 
+  function supportsLayering(selection) {
+    return ["terrain", "linear", "patch", "unit"].includes(selection?.kind);
+  }
+
+  function effectiveLayer(selection, item = itemForSelection(selection)) {
+    if (!supportsLayering(selection) || !item) return null;
+    return item.inheritLayer === false ? number(item.layerOrder, defaultLayerFor(item, selection)) : defaultLayerFor(item, selection);
+  }
+
+  function nudgeHierarchyLayer(selection, direction) {
+    const item = itemForSelection(selection);
+    if (!supportsLayering(selection) || !item || isItemLocked(item)) return;
+    const before = beforeMutation();
+    const current = effectiveLayer(selection, item);
+    item.inheritLayer = false;
+    item.layerOrder = clamp(current + (direction === "up" ? 10 : -10), 0, 6999);
+    setSelection(selection);
+    commit(before, `Moved ${direction === "up" ? "forward" : "backward"} to layer ${item.layerOrder}`);
+  }
+
+  function reorderHierarchyLayer(sourceSelection, targetSelection, placeBefore) {
+    const source = itemForSelection(sourceSelection);
+    const target = itemForSelection(targetSelection);
+    if (!supportsLayering(sourceSelection) || !supportsLayering(targetSelection) || !source || !target || source === target || isItemLocked(source)) return;
+    const before = beforeMutation();
+    const targetLayer = effectiveLayer(targetSelection, target);
+    source.inheritLayer = false;
+    source.layerOrder = clamp(targetLayer + (placeBefore ? 10 : -10), 0, 6999);
+    setSelection(sourceSelection);
+    commit(before, `Reordered ${source.id || sourceSelection.kind} to layer ${source.layerOrder}`);
+  }
+
   function objectGroups() {
     const groups = new Map([
       ["ground", { id:"ground", title:"Ground patches", items:[] }],
@@ -911,6 +1152,13 @@
       }
       for (const item of state.document.forces?.[faction] ?? []) add(faction, { selection:{kind:"unit", id:item.id, faction}, item, label:item.name || item.id, detail:unitAbbreviation(item) });
     }
+    for (const group of groups.values()) {
+      if (!group.items.some(entry => supportsLayering(entry.selection))) continue;
+      group.items.sort((a, b) => {
+        const layerDifference = number(effectiveLayer(b.selection, b.item), -1) - number(effectiveLayer(a.selection, a.item), -1);
+        return layerDifference || String(a.label).localeCompare(String(b.label));
+      });
+    }
     return [...groups.values()];
   }
 
@@ -958,6 +1206,9 @@
         const visible = isItemVisible(entry.item);
         const locked = isItemLocked(entry.item);
         row.className = `editor-object-row${visible ? "" : " is-hidden-object"}${locked ? " is-locked-object" : ""}${isObjectSelected(entry.selection) ? " is-selected" : ""}`;
+        row.dataset.rowSelection = JSON.stringify(entry.selection);
+        row.draggable = supportsLayering(entry.selection) && !locked;
+        if (row.draggable) row.title = "Drag to change layer order";
         const button = document.createElement("button");
         button.type = "button";
         button.className = "editor-object-item";
@@ -989,7 +1240,30 @@
         visibility.setAttribute("aria-label", `${visible ? "Hide" : "Show"} ${entry.label}`);
         visibility.title = `${visible ? "Hide" : "Show"} ${entry.label}`;
         visibility.textContent = visible ? "◉" : "○";
-        row.append(button, lock, visibility);
+        const layerStack = document.createElement("span");
+        layerStack.className = "editor-object-layer-stack";
+        if (supportsLayering(entry.selection)) {
+          const layerUp = document.createElement("button");
+          layerUp.type = "button";
+          layerUp.className = "editor-object-layer-button";
+          layerUp.dataset.layerSelection = JSON.stringify(entry.selection);
+          layerUp.dataset.layerDirection = "up";
+          layerUp.title = "Move forward";
+          layerUp.setAttribute("aria-label", `Move ${entry.label} forward`);
+          layerUp.textContent = "▲";
+          const layerDown = document.createElement("button");
+          layerDown.type = "button";
+          layerDown.className = "editor-object-layer-button";
+          layerDown.dataset.layerSelection = JSON.stringify(entry.selection);
+          layerDown.dataset.layerDirection = "down";
+          layerDown.title = "Move backward";
+          layerDown.setAttribute("aria-label", `Move ${entry.label} backward`);
+          layerDown.textContent = "▼";
+          layerUp.disabled = locked;
+          layerDown.disabled = locked;
+          layerStack.append(layerUp, layerDown);
+        }
+        row.append(button, layerStack, lock, visibility);
         refs.objectList.appendChild(row);
       }
     }
@@ -1276,11 +1550,15 @@
   function renderValidation() {
     state.issues = VALIDATION.validateScenario(state.document);
     refs.validationCount.textContent = String(state.issues.length);
+    refs.validationStatusCount.textContent = String(state.issues.length);
     refs.validationList.replaceChildren();
     const errors = state.issues.filter(item => item.level === "error").length;
     const warnings = state.issues.length - errors;
+    refs.validationStatusButton.classList.toggle("has-errors", errors > 0);
+    refs.validationStatusButton.classList.toggle("has-warnings", warnings > 0);
+    refs.validationStatusButton.title = state.issues.length ? `${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}` : "Scenario passes validation";
     refs.validationSummary.className = `editor-validation-summary${errors ? " has-errors" : state.issues.length ? "" : " is-clean"}`;
-    refs.validationSummary.textContent = state.issues.length ? `${errors} error${errors === 1 ? "" : "s"} · ${warnings} warning${warnings === 1 ? "" : "s"}` : "Scenario passes current E1 validation.";
+    refs.validationSummary.textContent = state.issues.length ? `${errors} error${errors === 1 ? "" : "s"} · ${warnings} warning${warnings === 1 ? "" : "s"}` : "Scenario passes validation.";
     for (const item of state.issues) {
       const button = document.createElement("button");
       button.type = "button";
@@ -2009,8 +2287,7 @@
     return { width:9, height:2.5 };
   }
 
-  function addTerrain() {
-    const terrainId = refs.terrainTypeSelect.value;
+  function addTerrain(terrainId) {
     const definition = TERRAIN_TYPES[terrainId];
     if (!definition) return;
     const before = beforeMutation();
@@ -2032,9 +2309,8 @@
     commit(before, `Added ${definition.label}`);
   }
 
-  function addLinear() {
+  function addLinear(styleId) {
     if (state.drawingPath || state.drawingPatch) return;
-    const styleId = refs.linearStyleSelect.value;
     const style = LINEAR_STYLES[styleId];
     if (!style) return;
     setSelection(null);
@@ -2081,9 +2357,8 @@
     renderAll();
   }
 
-  function addPatch() {
+  function addPatch(styleId) {
     if (state.drawingPath || state.drawingPatch) return;
-    const styleId = refs.patchStyleSelect.value;
     const style = PATCH_STYLES[styleId];
     if (!style) return;
     setSelection(null);
@@ -2139,9 +2414,7 @@
     commit(before, result.split ? "Deleted section and split path" : result.deleted ? "Deleted path section" : "Deleted path section");
   }
 
-  function addUnit() {
-    const faction = refs.unitFactionSelect.value;
-    const unitType = refs.unitTypeSelect.value;
+  function addUnit(unitType, faction = refs.unitFactionSelect.value) {
     const definition = UNIT_TYPES[unitType];
     if (!definition) return;
     const before = beforeMutation();
@@ -2210,9 +2483,9 @@
     return item;
   }
 
-  function addObjective() {
+  function addObjective(type = "control_zone") {
     const before = beforeMutation();
-    const item = objectiveForType(refs.objectiveTypeSelect.value || "control_zone");
+    const item = objectiveForType(type);
     state.document.objectives.push(item);
     setSelection({ kind:"objective", id:item.id });
     commit(before, `Added ${item.label}`);
@@ -2642,15 +2915,10 @@
       if (!refs.newScenarioId.dataset.edited) refs.newScenarioId.value = slugify(refs.newScenarioTitle.value);
     });
     refs.newScenarioId.addEventListener("input", () => { refs.newScenarioId.dataset.edited = "true"; });
-    refs.addTerrainButton.addEventListener("click", addTerrain);
-    refs.addLinearButton.addEventListener("click", addLinear);
     refs.finishLinearButton.addEventListener("click", finishLinearDraw);
     refs.cancelLinearButton.addEventListener("click", cancelLinearDraw);
-    refs.addPatchButton.addEventListener("click", addPatch);
     refs.finishPatchButton.addEventListener("click", finishPatchDraw);
     refs.cancelPatchButton.addEventListener("click", cancelPatchDraw);
-    refs.addUnitButton.addEventListener("click", addUnit);
-    refs.addObjectiveButton.addEventListener("click", addObjective);
     refs.resetScenarioButton.addEventListener("click", resetScenario);
     refs.fitButton.addEventListener("click", fitTable);
     refs.zoomOutButton.addEventListener("click", () => setZoom(state.zoom - .1));
@@ -2665,8 +2933,34 @@
     refs.showFootprintsToggle.addEventListener("change", () => { state.showFootprints = refs.showFootprintsToggle.checked; renderAll(); });
     refs.showZonesToggle.addEventListener("change", () => { state.showZones = refs.showZonesToggle.checked; renderAll(); });
     refs.snapToggle.addEventListener("change", () => { state.snap = refs.snapToggle.checked; });
+    refs.assetFilterInput.addEventListener("input", () => {
+      state.assetFilter = refs.assetFilterInput.value;
+      renderAssetLibrary();
+    });
+    for (const button of refs.assetCategoryButtons) {
+      button.addEventListener("click", () => setAssetCategory(button.dataset.assetCategory));
+    }
+    refs.assetLibrary.addEventListener("click", event => {
+      const card = event.target.closest("[data-library-asset]");
+      if (card) activateLibraryAsset(card.dataset.libraryAsset);
+    });
+    refs.unitFactionSelect.addEventListener("change", renderAssetLibrary);
+    refs.openObjectiveLibraryButton.addEventListener("click", () => {
+      shell.setWorkspace("build");
+      state.assetFilter = "";
+      refs.assetFilterInput.value = "";
+      setAssetCategory("scenario");
+    });
+    refs.validationStatusButton.addEventListener("click", shell.showValidation);
     refs.objectFilterInput.addEventListener("input", () => { state.objectFilter = refs.objectFilterInput.value; renderObjectList(); });
     refs.objectList.addEventListener("click", event => {
+      const layerButton = event.target.closest("[data-layer-selection]");
+      if (layerButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        nudgeHierarchyLayer(JSON.parse(layerButton.dataset.layerSelection), layerButton.dataset.layerDirection);
+        return;
+      }
       const groupToggle = event.target.closest("[data-group-toggle]");
       if (groupToggle) {
         const id = groupToggle.dataset.groupToggle;
@@ -2698,6 +2992,37 @@
         if (state.targetPickerObjectiveId && ["unit", "terrain"].includes(selection.kind)) assignObjectiveTarget(selection);
         else select(selection, { additive:event.shiftKey });
       }
+    });
+    refs.objectList.addEventListener("dragstart", event => {
+      const row = event.target.closest("[data-row-selection]");
+      if (!row?.draggable) return;
+      hierarchyDragSelection = JSON.parse(row.dataset.rowSelection);
+      row.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", row.dataset.rowSelection);
+    });
+    refs.objectList.addEventListener("dragover", event => {
+      const row = event.target.closest("[data-row-selection]");
+      if (!row || !hierarchyDragSelection) return;
+      const targetSelection = JSON.parse(row.dataset.rowSelection);
+      if (!supportsLayering(targetSelection)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      for (const candidate of refs.objectList.querySelectorAll(".is-drop-target")) candidate.classList.remove("is-drop-target");
+      row.classList.add("is-drop-target");
+    });
+    refs.objectList.addEventListener("drop", event => {
+      const row = event.target.closest("[data-row-selection]");
+      if (!row || !hierarchyDragSelection) return;
+      event.preventDefault();
+      const targetSelection = JSON.parse(row.dataset.rowSelection);
+      const bounds = row.getBoundingClientRect();
+      reorderHierarchyLayer(hierarchyDragSelection, targetSelection, event.clientY < bounds.top + bounds.height / 2);
+      hierarchyDragSelection = null;
+    });
+    refs.objectList.addEventListener("dragend", () => {
+      hierarchyDragSelection = null;
+      for (const row of refs.objectList.querySelectorAll(".is-dragging, .is-drop-target")) row.classList.remove("is-dragging", "is-drop-target");
     });
     refs.validationList.addEventListener("click", event => {
       const button = event.target.closest("[data-selection]");
@@ -2811,6 +3136,7 @@
   }
 
   initializeSelects();
+  renderAssetLibrary();
   bindEvents();
   loadScenario(refs.scenarioSelect.value);
   window.CrossroadsStartupDiagnostics?.complete();

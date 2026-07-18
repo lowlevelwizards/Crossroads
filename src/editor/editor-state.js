@@ -30,6 +30,8 @@
       showZones:true,
       snap:true,
       objectFilter:"",
+      assetFilter:"",
+      assetCategory:"all",
       collapsedGroups:{},
       spacePressed:false,
       status:"Source loaded",

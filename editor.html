@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Crossroads — Scenario Composer S1.0.1</title>
+  <title>Crossroads — Scenario Composer S1.1.0</title>
   <script>
     (() => {
       const failures = [];
@@ -93,21 +93,33 @@
     #editorStartupFailure strong { display: block; margin-bottom: 10px; font-size: 20px; }
     #editorStartupFailure p { margin: 8px 0 0; }
   </style>
-  <link rel="stylesheet" href="styles/main.css?v=s101">
-  <link rel="stylesheet" href="styles/terrain.css?v=s101">
-  <link rel="stylesheet" href="styles/linear-terrain.css?v=s101">
-  <link rel="stylesheet" href="styles/mokra.css?v=s101">
-  <link rel="stylesheet" href="styles/stabilization.css?v=s101">
-  <link rel="stylesheet" href="styles/editor.css?v=s101">
+  <link rel="stylesheet" href="styles/main.css?v=s110">
+  <link rel="stylesheet" href="styles/terrain.css?v=s110">
+  <link rel="stylesheet" href="styles/linear-terrain.css?v=s110">
+  <link rel="stylesheet" href="styles/mokra.css?v=s110">
+  <link rel="stylesheet" href="styles/stabilization.css?v=s110">
+  <link rel="stylesheet" href="styles/editor.css?v=s110">
 </head>
-<body class="editor-app">
+<body class="editor-app" data-editor-workspace="build">
   <header class="editor-header">
-    <div>
+    <div class="editor-brand">
       <div class="editor-kicker">INTERNAL AUTHORING TOOL</div>
-      <h1>CROSSROADS — Scenario Composer S1.0.1</h1>
-      <p>Compose battlefields and playable objectives through one shared terrain and scenario runtime.</p>
+      <div class="editor-title-row">
+        <h1>CROSSROADS — Scenario Composer</h1>
+        <span class="editor-version-badge">S1.1.0</span>
+      </div>
+      <p>Build the battlefield first. Organize the scene when needed. Open scenario rules only when they matter.</p>
     </div>
+
+    <nav class="editor-workspace-tabs" aria-label="Editor workspace" role="tablist">
+      <button class="editor-workspace-tab" type="button" role="tab" data-editor-workspace-button="build" aria-selected="true">Build</button>
+      <button class="editor-workspace-tab" type="button" role="tab" data-editor-workspace-button="organize" aria-selected="false">Organize</button>
+      <button class="editor-workspace-tab" type="button" role="tab" data-editor-workspace-button="scenario" aria-selected="false">Scenario</button>
+    </nav>
+
     <div class="editor-header-actions">
+      <button class="editor-button editor-button-quiet editor-mobile-panel-button" type="button" data-editor-toggle-left aria-label="Open workspace panel">Tools</button>
+      <button class="editor-button editor-button-quiet editor-mobile-panel-button" type="button" data-editor-toggle-right aria-label="Open inspector panel">Inspector</button>
       <a id="returnToGameLink" class="editor-button editor-button-quiet" href="index.html">Return to Game</a>
       <button id="undoButton" class="editor-button editor-button-quiet" type="button" disabled>Undo</button>
       <button id="redoButton" class="editor-button editor-button-quiet" type="button" disabled>Redo</button>
@@ -116,135 +128,157 @@
   </header>
 
   <main class="editor-shell">
-    <aside class="editor-panel editor-library-panel" aria-label="Scenario and object library">
-      <section class="editor-panel-section editor-scenario-section">
-        <button id="newScenarioButton" class="editor-button editor-button-primary editor-button-wide editor-button-top" type="button">+ New Scenario</button>
-        <label class="editor-field-label" for="editorScenarioSelect">Scenario</label>
-        <select id="editorScenarioSelect" class="editor-control"></select>
-        <div class="editor-inline-actions editor-scenario-actions">
-          <button id="renameScenarioButton" class="editor-button editor-button-quiet" type="button">Rename Custom</button>
-          <button id="deleteScenarioButton" class="editor-button editor-button-danger" type="button">Delete Custom</button>
+    <aside class="editor-panel editor-left-panel" aria-label="Editor workspace tools">
+      <section class="editor-workspace-panel editor-library-panel" data-editor-workspace-panel="build">
+        <div class="editor-panel-heading">
+          <div>
+            <span class="editor-eyebrow">Build</span>
+            <h2>Object Library</h2>
+          </div>
+          <span id="assetCount" class="editor-count-badge">0</span>
         </div>
-        <label class="editor-field-label" for="scenarioTypeSelect">Scenario type</label>
-        <select id="scenarioTypeSelect" class="editor-control">
-          <option value="control">Control</option>
-          <option value="breakthrough">Breakthrough</option>
-          <option value="delay">Delay</option>
-          <option value="elimination">Elimination</option>
-          <option value="survival">Survival</option>
-          <option value="escort">Escort</option>
-          <option value="raid">Raid</option>
-          <option value="custom">Custom</option>
-        </select>
-        <label class="editor-field-label" for="victoryPolicySelect">Victory policy</label>
-        <select id="victoryPolicySelect" class="editor-control">
-          <option value="points">Points at battle end</option>
-          <option value="asymmetric_thresholds">Asymmetric thresholds</option>
-          <option value="immediate">Decisive objective</option>
-        </select>
-        <div class="editor-row editor-threshold-row">
-          <label>Blue threshold<input id="victoryBlueThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
-          <label>Red threshold<input id="victoryRedThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
+        <p class="editor-panel-intro">Choose a piece, then place or draw it on the table.</p>
+        <input id="assetFilterInput" class="editor-control editor-library-search" type="search" placeholder="Search terrain, units, objectives…" aria-label="Search object library">
+        <div class="editor-library-categories" role="tablist" aria-label="Object library category">
+          <button class="editor-chip is-active" type="button" data-asset-category="all" aria-selected="true">All</button>
+          <button class="editor-chip" type="button" data-asset-category="terrain" aria-selected="false">Terrain</button>
+          <button class="editor-chip" type="button" data-asset-category="paths" aria-selected="false">Paths</button>
+          <button class="editor-chip" type="button" data-asset-category="patches" aria-selected="false">Patches</button>
+          <button class="editor-chip" type="button" data-asset-category="units" aria-selected="false">Units</button>
+          <button class="editor-chip" type="button" data-asset-category="scenario" aria-selected="false">Scenario</button>
         </div>
-        <label class="editor-field-label" for="victoryTiebreakerSelect">Points tiebreaker</label>
-        <select id="victoryTiebreakerSelect" class="editor-control">
-          <option value="survivingUnits">Surviving units</option>
-          <option value="survivingSoldiers">Surviving soldiers</option>
-        </select>
-        <label class="editor-check-row"><input id="eliminationVictoryToggle" type="checkbox"> Elimination ends battle</label>
-        <div class="editor-inline-actions">
-          <button id="resetScenarioButton" class="editor-button editor-button-quiet" type="button">Reset Source</button>
-          <button id="fitButton" class="editor-button editor-button-quiet" type="button">Fit Table</button>
-        </div>
-      </section>
+        <label id="assetFactionRow" class="editor-library-option" hidden>Placement faction
+          <select id="unitFactionSelect" class="editor-control"><option value="blue">Poland</option><option value="red">Germany</option></select>
+        </label>
+        <div id="assetLibrary" class="editor-asset-library" aria-live="polite"></div>
 
-      <section class="editor-panel-section">
-        <h2>Add Objects</h2>
-        <label class="editor-field-label" for="terrainTypeSelect">Discrete terrain</label>
-        <div class="editor-row">
-          <select id="terrainTypeSelect" class="editor-control"></select>
-          <button id="addTerrainButton" class="editor-button" type="button">Add</button>
-        </div>
-
-        <label class="editor-field-label" for="linearStyleSelect">Linear terrain</label>
-        <div class="editor-row">
-          <select id="linearStyleSelect" class="editor-control"></select>
-          <button id="addLinearButton" class="editor-button" type="button">Draw Path</button>
-        </div>
         <div id="linearDrawActions" class="editor-draw-actions" hidden>
+          <span>Click the table to place path waypoints.</span>
           <button id="finishLinearButton" class="editor-button editor-button-primary" type="button">Finish Path</button>
           <button id="cancelLinearButton" class="editor-button editor-button-quiet" type="button">Cancel</button>
         </div>
-
-        <label class="editor-field-label" for="patchStyleSelect">Terrain patch</label>
-        <div class="editor-row">
-          <select id="patchStyleSelect" class="editor-control"></select>
-          <button id="addPatchButton" class="editor-button" type="button">Draw Patch</button>
-        </div>
-        <div id="patchDrawActions" class="editor-draw-actions editor-patch-draw-actions" hidden>
+        <div id="patchDrawActions" class="editor-draw-actions" hidden>
+          <span>Click around the table to draw the patch.</span>
           <button id="finishPatchButton" class="editor-button editor-button-primary" type="button">Finish Patch</button>
           <button id="cancelPatchButton" class="editor-button editor-button-quiet" type="button">Cancel</button>
         </div>
 
-        <label class="editor-field-label" for="unitTypeSelect">Unit</label>
-        <div class="editor-row editor-row-three">
-          <select id="unitFactionSelect" class="editor-control"><option value="blue">Poland</option><option value="red">Germany</option></select>
-          <select id="unitTypeSelect" class="editor-control"></select>
-          <button id="addUnitButton" class="editor-button" type="button">Add</button>
-        </div>
-
-        <label class="editor-field-label" for="objectiveTypeSelect">Objective</label>
-        <div class="editor-row">
-          <select id="objectiveTypeSelect" class="editor-control">
-            <option value="control_zone">Control point</option>
-            <option value="control_group">Control group</option>
-            <option value="crossing">Crossing</option>
-            <option value="exit_unit">Exit edge</option>
-            <option value="destroy_target">Destroy target</option>
-            <option value="protect_target">Protect target</option>
-            <option value="hold">Hold until round</option>
-            <option value="casualty">Casualty scoring</option>
-            <option value="custom">Custom marker</option>
-          </select>
-          <button id="addObjectiveButton" class="editor-button" type="button">Add</button>
-        </div>
       </section>
 
-      <section class="editor-panel-section editor-layer-controls">
-        <h2>View</h2>
-        <label><input id="showGridToggle" type="checkbox" checked> Inch grid</label>
-        <label><input id="showTerrainToggle" type="checkbox" checked> Discrete terrain</label>
-        <label><input id="showLinearToggle" type="checkbox" checked> Linear terrain</label>
-        <label><input id="showUnitsToggle" type="checkbox" checked> Units</label>
-        <label><input id="showUnitLabelsToggle" type="checkbox" checked> Unit labels</label>
-        <label><input id="showObjectivesToggle" type="checkbox" checked> Objectives</label>
-        <label><input id="showZonesToggle" type="checkbox" checked> Deployment zones</label>
-        <label><input id="showFootprintsToggle" type="checkbox"> Rules footprints</label>
-        <label><input id="snapToggle" type="checkbox" checked> Snap to ¼″</label>
-        <div class="editor-zoom-row">
-          <button id="zoomOutButton" class="editor-button editor-button-quiet" type="button" aria-label="Zoom out">−</button>
-          <output id="zoomReadout">100%</output>
-          <button id="zoomInButton" class="editor-button editor-button-quiet" type="button" aria-label="Zoom in">+</button>
+      <section class="editor-workspace-panel editor-object-browser" data-editor-workspace-panel="organize" hidden>
+        <div class="editor-panel-heading">
+          <div>
+            <span class="editor-eyebrow">Organize</span>
+            <h2>Scene Objects</h2>
+          </div>
+          <span id="objectCount" class="editor-count-badge">0</span>
         </div>
-      </section>
-
-      <section class="editor-panel-section editor-object-browser">
-        <div class="editor-section-heading">
-          <h2>Objects</h2>
-          <span id="objectCount">0</span>
-        </div>
-        <input id="objectFilterInput" class="editor-control editor-object-filter" type="search" placeholder="Filter objects…" aria-label="Filter objects">
+        <p class="editor-panel-intro">Shift-click to select several. Drag rows or use arrows to change layer order.</p>
+        <input id="objectFilterInput" class="editor-control editor-object-filter" type="search" placeholder="Filter scene objects…" aria-label="Filter scene objects">
         <div id="objectList" class="editor-object-list"></div>
+      </section>
+
+      <section class="editor-workspace-panel editor-scenario-panel" data-editor-workspace-panel="scenario" hidden>
+        <div class="editor-panel-heading">
+          <div>
+            <span class="editor-eyebrow">Scenario</span>
+            <h2>Scenario Setup</h2>
+          </div>
+        </div>
+        <p class="editor-panel-intro">Battle rules stay out of the way until you are ready to author them.</p>
+
+        <details class="editor-accordion" open>
+          <summary>Scenario</summary>
+          <div class="editor-accordion-content">
+            <label class="editor-field-label" for="editorScenarioSelect">Current scenario</label>
+            <select id="editorScenarioSelect" class="editor-control"></select>
+            <div class="editor-inline-actions">
+              <button id="newScenarioButton" class="editor-button editor-button-primary" type="button">New</button>
+              <button id="renameScenarioButton" class="editor-button editor-button-quiet" type="button">Rename</button>
+              <button id="deleteScenarioButton" class="editor-button editor-button-danger" type="button">Delete</button>
+            </div>
+            <label class="editor-field-label" for="scenarioTypeSelect">Scenario type</label>
+            <select id="scenarioTypeSelect" class="editor-control">
+              <option value="control">Control</option>
+              <option value="breakthrough">Breakthrough</option>
+              <option value="delay">Delay</option>
+              <option value="elimination">Elimination</option>
+              <option value="survival">Survival</option>
+              <option value="escort">Escort</option>
+              <option value="raid">Raid</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div class="editor-inline-actions">
+              <button id="resetScenarioButton" class="editor-button editor-button-quiet" type="button">Reset Source</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="editor-accordion" open>
+          <summary>Victory</summary>
+          <div class="editor-accordion-content">
+            <label class="editor-field-label" for="victoryPolicySelect">Victory policy</label>
+            <select id="victoryPolicySelect" class="editor-control">
+              <option value="points">Points at battle end</option>
+              <option value="asymmetric_thresholds">Asymmetric thresholds</option>
+              <option value="immediate">Decisive objective</option>
+            </select>
+            <div class="editor-row editor-threshold-row">
+              <label>Blue threshold<input id="victoryBlueThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
+              <label>Red threshold<input id="victoryRedThreshold" class="editor-control" type="number" min="1" step="1" value="5"></label>
+            </div>
+            <label class="editor-field-label" for="victoryTiebreakerSelect">Points tiebreaker</label>
+            <select id="victoryTiebreakerSelect" class="editor-control">
+              <option value="survivingUnits">Surviving units</option>
+              <option value="survivingSoldiers">Surviving soldiers</option>
+            </select>
+            <label class="editor-check-row"><input id="eliminationVictoryToggle" type="checkbox"> Elimination ends battle</label>
+          </div>
+        </details>
+
+        <details class="editor-accordion">
+          <summary>Objective tools</summary>
+          <div class="editor-accordion-content">
+            <p class="editor-panel-intro">Add objectives from the Build library, then select one to edit its scoring, timing, or target in the Inspector.</p>
+            <button id="openObjectiveLibraryButton" class="editor-button editor-button-wide" type="button">Open Objective Library</button>
+          </div>
+        </details>
       </section>
     </aside>
 
     <section class="editor-workspace" aria-label="Scenario canvas">
       <div class="editor-workspace-bar">
-        <div>
+        <div class="editor-workspace-title">
           <strong id="scenarioTitleReadout">Scenario</strong>
           <span id="scenarioSizeReadout">72″ × 48″</span>
         </div>
-        <div class="editor-workspace-help">Wheel to zoom. Drag empty ground to pan. First click selects a path or patch; click again for a section or point. Shift-click adds objects; Shift-drag empty ground draws a selection box. Click empty space, Esc, or Enter to deselect.</div>
+        <div class="editor-canvas-tools">
+          <button id="fitButton" class="editor-button editor-button-quiet editor-button-compact" type="button">Fit</button>
+          <div class="editor-popover-anchor">
+            <button id="viewMenuButton" class="editor-button editor-button-quiet editor-button-compact" type="button" data-editor-popover-button aria-controls="viewMenu" aria-expanded="false">View</button>
+            <div id="viewMenu" class="editor-popover editor-view-popover" data-editor-popover hidden>
+              <strong>Canvas visibility</strong>
+              <label><input id="showGridToggle" type="checkbox" checked> Inch grid</label>
+              <label><input id="showTerrainToggle" type="checkbox" checked> Discrete terrain</label>
+              <label><input id="showLinearToggle" type="checkbox" checked> Linear terrain</label>
+              <label><input id="showUnitsToggle" type="checkbox" checked> Units</label>
+              <label><input id="showUnitLabelsToggle" type="checkbox" checked> Unit labels</label>
+              <label><input id="showObjectivesToggle" type="checkbox" checked> Objectives</label>
+              <label><input id="showZonesToggle" type="checkbox" checked> Deployment zones</label>
+              <label><input id="showFootprintsToggle" type="checkbox"> Rules footprints</label>
+              <hr>
+              <label><input id="snapToggle" type="checkbox" checked> Snap to ¼″</label>
+            </div>
+          </div>
+          <div class="editor-popover-anchor">
+            <button class="editor-button editor-button-quiet editor-button-compact" type="button" data-editor-popover-button aria-controls="helpMenu" aria-expanded="false" aria-label="Editor help">?</button>
+            <div id="helpMenu" class="editor-popover editor-help-popover" data-editor-popover hidden>
+              <strong>Canvas controls</strong>
+              <p>Wheel zooms. Drag empty ground or hold Space to pan. Shift-click adds to selection. Shift-drag empty ground draws a selection box.</p>
+              <p>Enter finishes a path or patch. Escape cancels. Ctrl/Cmd+C, V, D and Z handle common editing actions.</p>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="editorViewport" class="editor-viewport">
         <div id="editorStage" class="editor-stage">
@@ -261,39 +295,65 @@
         </div>
       </div>
       <div class="editor-status-bar">
-        <span id="cursorReadout">Cursor: —</span>
-        <span id="selectionReadout">Nothing selected</span>
-        <span id="saveReadout">Source loaded</span>
+        <div class="editor-status-primary">
+          <span id="cursorReadout">Cursor: —</span>
+          <span id="selectionReadout">Nothing selected</span>
+          <span id="saveReadout">Source loaded</span>
+        </div>
+        <div class="editor-status-actions">
+          <button id="validationStatusButton" class="editor-status-button" type="button"><span>Validation</span><strong id="validationStatusCount">0</strong></button>
+          <div class="editor-zoom-row">
+            <button id="zoomOutButton" class="editor-button editor-button-quiet editor-button-compact" type="button" aria-label="Zoom out">−</button>
+            <output id="zoomReadout">100%</output>
+            <button id="zoomInButton" class="editor-button editor-button-quiet editor-button-compact" type="button" aria-label="Zoom in">+</button>
+          </div>
+        </div>
       </div>
     </section>
 
-    <aside class="editor-panel editor-inspector-panel" aria-label="Inspector and validation">
-      <section class="editor-panel-section editor-inspector-section">
-        <div class="editor-section-heading">
-          <h2>Inspector</h2>
-          <span id="selectionKindBadge">NONE</span>
+    <aside class="editor-panel editor-right-panel" aria-label="Inspector, validation, and data">
+      <nav class="editor-panel-tabs" role="tablist" aria-label="Right panel">
+        <button type="button" role="tab" class="editor-panel-tab is-active" data-editor-panel-button="inspector" aria-selected="true">Inspector</button>
+        <button type="button" role="tab" class="editor-panel-tab" data-editor-panel-button="validation" aria-selected="false">Validation <span id="validationCount">0</span></button>
+        <button type="button" role="tab" class="editor-panel-tab" data-editor-panel-button="data" aria-selected="false">Data</button>
+      </nav>
+
+      <section class="editor-right-section editor-inspector-section" data-editor-panel="inspector">
+        <div class="editor-sticky-panel-header">
+          <div class="editor-section-heading">
+            <h2>Inspector</h2>
+            <span id="selectionKindBadge">NONE</span>
+          </div>
+          <div id="selectionActions" class="editor-selection-actions" hidden>
+            <button id="copySelectionButton" class="editor-button editor-button-quiet" type="button" title="Copy">Copy</button>
+            <button id="pasteSelectionButton" class="editor-button editor-button-quiet" type="button" title="Paste">Paste</button>
+            <button id="duplicateSelectionButton" class="editor-button editor-button-quiet" type="button" title="Duplicate">Duplicate</button>
+            <button id="deleteSelectionButton" class="editor-button editor-button-danger" type="button" title="Delete">Delete</button>
+          </div>
         </div>
         <div id="inspectorEmpty" class="editor-empty-state">Select terrain, a path, waypoint, unit, objective, or deployment zone.</div>
         <form id="inspectorForm" class="editor-inspector-form" hidden></form>
-        <div id="selectionActions" class="editor-selection-actions" hidden>
-          <button id="copySelectionButton" class="editor-button editor-button-quiet" type="button">Copy</button>
-          <button id="pasteSelectionButton" class="editor-button editor-button-quiet" type="button">Paste</button>
-          <button id="duplicateSelectionButton" class="editor-button editor-button-quiet" type="button">Duplicate</button>
-          <button id="deleteSelectionButton" class="editor-button editor-button-danger" type="button">Delete</button>
-        </div>
       </section>
 
-      <section class="editor-panel-section">
-        <div class="editor-section-heading">
-          <h2>Validation</h2>
-          <span id="validationCount">0</span>
+      <section class="editor-right-section" data-editor-panel="validation" hidden>
+        <div class="editor-panel-heading">
+          <div>
+            <span class="editor-eyebrow">Scenario health</span>
+            <h2>Validation</h2>
+          </div>
         </div>
         <div id="validationSummary" class="editor-validation-summary">No validation run.</div>
         <div id="validationList" class="editor-validation-list"></div>
       </section>
 
-      <section class="editor-panel-section">
-        <h2>Scenario Data</h2>
+      <section class="editor-right-section" data-editor-panel="data" hidden>
+        <div class="editor-panel-heading">
+          <div>
+            <span class="editor-eyebrow">Advanced</span>
+            <h2>Scenario Data</h2>
+          </div>
+        </div>
+        <p class="editor-panel-intro">Import, export, or inspect the canonical scenario document.</p>
         <div class="editor-export-grid">
           <button id="copyJsonButton" class="editor-button" type="button">Copy JSON</button>
           <button id="copyJsButton" class="editor-button" type="button">Copy JS</button>
@@ -357,55 +417,56 @@
     </form>
   </dialog>
 
-  <script src="data/build-info.js?v=s101"></script>
-  <script src="data/terrain.js?v=s101"></script>
-  <script src="data/linear-terrain.js?v=s101"></script>
-  <script src="data/unit-quality.js?v=s101"></script>
-  <script src="data/unit-types.js?v=s101"></script>
-  <script src="data/scenarios.js?v=s101"></script>
-  <script src="src/presentation/layer-policy.js?v=s101"></script>
-  <script src="src/scenario/scenario-visibility.js?v=s101"></script>
-  <script src="src/scenario/scenario-migrations.js?v=s101"></script>
-  <script src="src/scenario/scenario-schema.js?v=s101"></script>
-  <script src="src/rules/objectives/objective-registry.js?v=s101"></script>
-  <script src="src/rules/objectives/objective-helpers.js?v=s101"></script>
-  <script src="src/rules/objectives/control-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/exit-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/casualty-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/destroy-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/protect-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/hold-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/passive-objective.js?v=s101"></script>
-  <script src="src/rules/objectives/victory-policies.js?v=s101"></script>
-  <script src="src/scenario-runtime/scenario-compiler.js?v=s101"></script>
-  <script src="src/scenario-runtime/scenario-events.js?v=s101"></script>
-  <script src="src/scenario-runtime/scenario-runtime.js?v=s101"></script>
-  <script src="src/scenario-runtime/scenario-presentation.js?v=s101"></script>
-  <script src="src/generation/seeded-random.js?v=s101"></script>
-  <script src="src/generation/polygon-geometry.js?v=s101"></script>
-  <script src="src/generation/polygon-scatter.js?v=s101"></script>
-  <script src="src/generation/row-generator.js?v=s101"></script>
-  <script src="src/generation/woodland-generator.js?v=s101"></script>
-  <script src="src/presentation/buildings.js?v=s101"></script>
-  <script src="src/presentation/woodland-trees.js?v=s101"></script>
-  <script src="src/presentation/terrain.js?v=s101"></script>
-  <script src="src/presentation/terrain-patches.js?v=s101"></script>
-  <script src="src/rules/terrain-semantics.js?v=s101"></script>
-  <script src="src/rules/terrain-spatial.js?v=s101"></script>
-  <script src="src/rules/path-geometry.js?v=s101"></script>
-  <script src="src/rules/linear-terrain.js?v=s101"></script>
-  <script src="src/presentation/linear-terrain.js?v=s101"></script>
-  <script src="src/presentation/scene-compositor.js?v=s101"></script>
-  <script src="src/presentation/terrain-runtime.js?v=s101"></script>
-  <script src="src/rules/terrain-geometry.js?v=s101"></script>
-  <script src="src/editor/editor-state.js?v=s101"></script>
-  <script src="src/editor/editor-selection.js?v=s101"></script>
-  <script src="src/editor/editor-multiselect.js?v=s101"></script>
-  <script src="src/editor/editor-tools.js?v=s101"></script>
-  <script src="src/editor/editor-document.js?v=s101"></script>
-  <script src="src/editor/editor-validation.js?v=s101"></script>
-  <script src="src/editor/editor-geometry.js?v=s101"></script>
-  <script src="src/editor/editor-persistence.js?v=s101"></script>
-  <script src="src/editor/editor.js?v=s101"></script>
+  <script src="data/build-info.js?v=s110"></script>
+  <script src="data/terrain.js?v=s110"></script>
+  <script src="data/linear-terrain.js?v=s110"></script>
+  <script src="data/unit-quality.js?v=s110"></script>
+  <script src="data/unit-types.js?v=s110"></script>
+  <script src="data/scenarios.js?v=s110"></script>
+  <script src="src/presentation/layer-policy.js?v=s110"></script>
+  <script src="src/scenario/scenario-visibility.js?v=s110"></script>
+  <script src="src/scenario/scenario-migrations.js?v=s110"></script>
+  <script src="src/scenario/scenario-schema.js?v=s110"></script>
+  <script src="src/rules/objectives/objective-registry.js?v=s110"></script>
+  <script src="src/rules/objectives/objective-helpers.js?v=s110"></script>
+  <script src="src/rules/objectives/control-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/exit-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/casualty-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/destroy-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/protect-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/hold-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/passive-objective.js?v=s110"></script>
+  <script src="src/rules/objectives/victory-policies.js?v=s110"></script>
+  <script src="src/scenario-runtime/scenario-compiler.js?v=s110"></script>
+  <script src="src/scenario-runtime/scenario-events.js?v=s110"></script>
+  <script src="src/scenario-runtime/scenario-runtime.js?v=s110"></script>
+  <script src="src/scenario-runtime/scenario-presentation.js?v=s110"></script>
+  <script src="src/generation/seeded-random.js?v=s110"></script>
+  <script src="src/generation/polygon-geometry.js?v=s110"></script>
+  <script src="src/generation/polygon-scatter.js?v=s110"></script>
+  <script src="src/generation/row-generator.js?v=s110"></script>
+  <script src="src/generation/woodland-generator.js?v=s110"></script>
+  <script src="src/presentation/buildings.js?v=s110"></script>
+  <script src="src/presentation/woodland-trees.js?v=s110"></script>
+  <script src="src/presentation/terrain.js?v=s110"></script>
+  <script src="src/presentation/terrain-patches.js?v=s110"></script>
+  <script src="src/rules/terrain-semantics.js?v=s110"></script>
+  <script src="src/rules/terrain-spatial.js?v=s110"></script>
+  <script src="src/rules/path-geometry.js?v=s110"></script>
+  <script src="src/rules/linear-terrain.js?v=s110"></script>
+  <script src="src/presentation/linear-terrain.js?v=s110"></script>
+  <script src="src/presentation/scene-compositor.js?v=s110"></script>
+  <script src="src/presentation/terrain-runtime.js?v=s110"></script>
+  <script src="src/rules/terrain-geometry.js?v=s110"></script>
+  <script src="src/editor/editor-state.js?v=s110"></script>
+  <script src="src/editor/editor-selection.js?v=s110"></script>
+  <script src="src/editor/editor-multiselect.js?v=s110"></script>
+  <script src="src/editor/editor-tools.js?v=s110"></script>
+  <script src="src/editor/editor-document.js?v=s110"></script>
+  <script src="src/editor/editor-validation.js?v=s110"></script>
+  <script src="src/editor/editor-geometry.js?v=s110"></script>
+  <script src="src/editor/editor-persistence.js?v=s110"></script>
+  <script src="src/editor/editor-shell.js?v=s110"></script>
+  <script src="src/editor/editor.js?v=s110"></script>
 </body>
 </html>

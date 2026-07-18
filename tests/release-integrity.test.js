@@ -114,7 +114,8 @@ assertOrdered("index.html", "src/infrastructure/startup-validation.js", "src/eng
 assertOrdered("editor.html", "data/build-info.js", "src/editor/editor.js");
 assertOrdered("editor.html", "src/scenario/scenario-schema.js", "src/editor/editor-validation.js");
 assertOrdered("editor.html", "src/editor/editor-multiselect.js", "src/editor/editor.js");
-assertOrdered("editor.html", "src/editor/editor-persistence.js", "src/editor/editor.js");
+assertOrdered("editor.html", "src/editor/editor-persistence.js", "src/editor/editor-shell.js");
+assertOrdered("editor.html", "src/editor/editor-shell.js", "src/editor/editor.js");
 assertOrdered("tests/startup-smoke.html", "src/runtime/building-occupancy.js", "src/infrastructure/startup-validation.js");
 
 const buildContext = vm.createContext({ window: {} });

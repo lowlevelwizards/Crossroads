@@ -1,3 +1,17 @@
+# Editor shell boundary (S1.1.0)
+
+`src/editor/editor-shell.js` owns only transient interface state: active workspace, active right-panel tab, popovers, and responsive drawers. It does not own the scenario document, selection, history, tools, or persistence. `src/editor/editor.js` remains the authoring coordinator and renders the visual asset library and scene hierarchy from the authoritative registries and document.
+
+The editor now has three focused workspaces:
+
+- **Build** — searchable visual asset library and placement/drawing entry points.
+- **Organize** — grouped scene hierarchy, multi-selection, visibility, locking, and layer order.
+- **Scenario** — scenario management, template, victory, and objective-authoring entry points.
+
+Inspector, validation, and canonical scenario data are mutually exclusive right-panel tabs rather than a permanent vertical stack.
+
+---
+
 # Crossroads Architecture
 
 ## Current foundation

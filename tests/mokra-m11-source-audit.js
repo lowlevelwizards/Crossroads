@@ -22,5 +22,5 @@ check("farm ground pieces are open terrain", terrain.includes("field_tilled") &&
 check("woodpile primitive is namespaced", runtime.includes("woodpile-log") && css.includes(".woodpile-log"));
 check("battlefield terrain labels default to hidden", css.includes("visibility:hidden") && css.includes("terrain-label-visible"));
 check("Mokra uses waypoint linear terrain", scenarios.includes("linearTerrain:freezeList") && scenarios.includes('styleId:"railway_embankment"') && scenarios.includes('terrainId:"field_wheat"'));
-check("build metadata and cache version are current", /version:\s*"[^"]+"/.test(read("data/build-info.js")) && index.includes("v=s101"));
+check("build metadata and cache version are current", /version:\s*"[^"]+"/.test(read("data/build-info.js")) && index.includes("v=s110"));
 if (!process.exitCode) console.log(`Mokra M1.1 source audit: ${passed}/10 passed.`);

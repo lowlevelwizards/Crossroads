@@ -27,6 +27,7 @@ const tests = [
   "scene-compositor.test.js",
   "woodland-generation.test.js",
   "editor-persistence.test.js",
+  "editor-shell.test.js",
   "editor-e1.test.js"
 ];
 
@@ -37,4 +38,4 @@ for (const test of tests) {
   });
 }
 
-console.log("\nPASS — complete Crossroads S1.0.1 Node regression suite passed.");
+console.log("\nPASS — complete Crossroads S1.1.0 Node regression suite passed.");

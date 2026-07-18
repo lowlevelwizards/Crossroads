@@ -40,8 +40,8 @@ assert(editorSource.includes("Lock object on battlefield"), "locking must be exp
 assert(editorSource.includes("mutateGroup"), "object-browser groups must support locking");
 assert(patchSource.includes("WOODLAND.generate(patch)"), "patch runtime must use deterministic woodland generation");
 assert(!patchSource.includes("woods-tree-dot"), "legacy dot-fill woodland output must not remain");
-assert(buildInfo.includes('version: "S1.0.1"'), "build metadata must identify Scenario Runtime S1.0.1");
-assert(buildInfo.includes('codename: "Release Integrity & Coordinator Cleanup"'), "build codename must match the release");
+assert(buildInfo.includes('version: "S1.1.0"'), "build metadata must identify Canvas-First Editor S1.1.0");
+assert(buildInfo.includes('codename: "Canvas-First Editor"'), "build codename must match the release");
 assert(fs.existsSync(path.join(root, "tests/woodland-visual-fixture.html")), "woodland visual fixture must be packaged");
 
 
