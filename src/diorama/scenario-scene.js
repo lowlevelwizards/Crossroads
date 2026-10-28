@@ -696,6 +696,34 @@ function initialize(THREE) {
   let lastTargetTap=0;
   let pendingMovePoint=null;
   let lastMoveTap=0;
+  const visualEffects=[];
+  function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
+    const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.94,depthWrite:false});
+    const particle=shape(scene,new THREE.SphereGeometry(size,8,6),material,x,y,z);
+    particle.castShadow=false;particle.receiveShadow=false;
+    visualEffects.push({mesh:particle,duration,age:0});
+  }
+  function showCombatAction(event) {
+    if(event.action!=="target"||!event.before?.selectedUnitId)return;
+    const shooter=squads.find(s=>s.unit.id===event.before.selectedUnitId);
+    if(!shooter)return;
+    const shooters=shooter.soldiers.filter(s=>s.figure.visible);
+    // Physical muzzle effects belong to 3D; outcomes belong to the engine.
+    for(const soldier of shooters.slice(0,6)){
+      const facing=soldier.figure.rotation.y;
+      const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.31;
+      const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.31;
+      spawnBriefFlash(x,soldier.figure.position.y+.54,z,0xffcb75,.057,.16);
+    }
+    const after=event.after?.units||[],before=event.before?.units||[];
+    for(const target of after){
+      const prev=before.find(u=>u.id===target.id);
+      if(!prev||prev.soldiers<=target.soldiers)continue;
+      const hit=squads.find(u=>u.unit.id===target.id);
+      if(hit)spawnBriefFlash(hit.root.position.x,.35,hit.root.position.z,
+        0xc1b9a1,.19,.35);
+    }
+  }
   const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({color:0xdac78b,transparent:true,opacity:.85,depthTest:false}));
   movePreviewLine.visible=false;
@@ -913,6 +941,7 @@ function initialize(THREE) {
       if(selectedSquad!==selected)selectSquad(selected);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
+    battle.onAction(showCombatAction);
   }
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
@@ -1272,6 +1301,18 @@ function initialize(THREE) {
       if(squad.ring.visible&&!squad.ring.userData.grounded) {
         squad.ring.position.y=footingHeight(squad.root.position.x,squad.root.position.z)+.03;
         squad.ring.userData.grounded=true;
+      }
+    }
+    for(let i=visualEffects.length-1;i>=0;i--){
+      const effect=visualEffects[i];
+      effect.age+=dt;
+      effect.mesh.material.opacity=Math.max(0,1-effect.age/effect.duration);
+      effect.mesh.scale.setScalar(1+effect.age/effect.duration*.6);
+      if(effect.age>=effect.duration){
+        scene.remove(effect.mesh);
+        effect.mesh.geometry.dispose();
+        effect.mesh.material.dispose();
+        visualEffects.splice(i,1);
       }
     }
     renderer.render(scene, camera);
