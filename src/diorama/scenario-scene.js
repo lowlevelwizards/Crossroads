@@ -716,8 +716,12 @@ function initialize(THREE) {
       block(g, size, .06, .06, darkWood, 0, size * .36, side * size * .50);
     }
   }
-  crate(-6.94, -2.12, .41);
-  crate(-6.35, -2.28, .31);
+  const barnForCrates=authoredTerrain.find(item=>item.terrainId==="barn");
+  if(barnForCrates) {
+    const footprint=scenarioAdapter.boundsWorld(barnForCrates.rulesRect);
+    crate(footprint.x-.70,footprint.z+footprint.depth/2+.53,.37);
+    crate(footprint.x-.20,footprint.z+footprint.depth/2+.56,.30);
+  }
 
   // Camera: horizontal orbit only, locked isometric elevation, orthographic zoom.
   function updateCamera() {
