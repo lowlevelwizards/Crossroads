@@ -22,6 +22,8 @@ function initialize(THREE) {
   const canvas = document.getElementById("dioramaCanvas");
   const stage = document.getElementById("stage");
   const bridge = window.CrossroadsDioramaBridge;
+  const motion = window.CrossroadsDioramaMotion;
+  if (!motion) throw new Error("Crossroads 3D motion helpers were not loaded.");
   if (!bridge) throw new Error("Crossroads 3D movement bridge was not loaded.");
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x6f7d73);
@@ -133,6 +135,9 @@ function initialize(THREE) {
   groundGeometry.computeVertexNormals();
   const ground = shape(scene, groundGeometry, mat(0x758355), 0, 0, 0);
   ground.castShadow = false;
+  // Sample the actual visible triangles (not the analytical height estimate).
+  // Includes grass-color overlays and road surfaces, which sit higher than soil.
+  const walkableSurfaceMeshes = [ground];
 
   // Tonal field patches: no repeating photo texture, no noisy realism.
   const patchColors = [0x6b7c50, 0x87915d, 0x708052, 0x8e9565];
@@ -143,6 +148,7 @@ function initialize(THREE) {
     patch.rotation.x = -Math.PI / 2;
     patch.scale.set(between(0.65, 2.4), between(0.48, 1.7), 1);
     patch.castShadow = false;
+    walkableSurfaceMeshes.push(patch);
   }
 
   function roadCenter(x) { return 0.52 - x * 0.155 + Math.sin(x * 0.43) * 0.36; }
@@ -169,11 +175,13 @@ function initialize(THREE) {
     const material = new THREE.MeshStandardMaterial({ color: color, roughness: 1, side: THREE.DoubleSide });
     const path = shape(scene, geometry, material, 0, 0, 0);
     path.castShadow = false;
+    walkableSurfaceMeshes.push(path);
   }
-  makeRoadBand(3.14, 0x918764, 0, 0.047);
-  makeRoadBand(2.64, 0xb0a17c, 0, 0.058);
-  makeRoadBand(0.20, 0x948363, -0.67, 0.061);
-  makeRoadBand(0.20, 0x948363, 0.67, 0.061);
+  // Five-inch model roadway rather than a road ten miniature bases wide.
+  makeRoadBand(1.65, 0x918764, 0, 0.047);
+  makeRoadBand(1.40, 0xb0a17c, 0, 0.058);
+  makeRoadBand(0.11, 0x948363, -0.38, 0.061);
+  makeRoadBand(0.11, 0x948363, 0.38, 0.061);
 
   // Angular low-poly stones and seasonal miniature vegetation.
   const grassBlade = new THREE.ConeGeometry(0.055, 0.20, 3);
@@ -216,7 +224,11 @@ function initialize(THREE) {
 
   // Shared world geometry is used both for visible objects and movement collision.
   const studyGeometry = Object.freeze({
-    farm: { x:-4.18, z:-3.19, width:4.12, depth:3.13 },
+    // This is a roughly nine-inch *model* farmhouse, not a full-size house
+    // projected into the gaming surface. The visible foundation and the
+    // impassable game footprint deliberately share the same scaled dimensions.
+    farm: { x:-4.18, z:-3.19, scale:.66, width:4.35*.66, depth:3.38*.66 },
+    wallDepth: .24,
     wallSections: [
       { x1:-9.55, x2:-5.45, z:-.82 },
       { x1:-2.77, x2:-.85, z:-.82 }
@@ -227,6 +239,7 @@ function initialize(THREE) {
   function makeFarmhouse() {
     const group = new THREE.Group();
     group.position.set(studyGeometry.farm.x, terrainY(studyGeometry.farm.x, studyGeometry.farm.z), studyGeometry.farm.z);
+    group.scale.setScalar(studyGeometry.farm.scale);
     scene.add(group);
     block(group, 4.35, 0.25, 3.38, mat(0x8b8a77), 0, .14, 0);
     block(group, 4.12, 1.96, 3.13, mat(0xe1cfab), 0, 1.12, 0);
@@ -283,25 +296,25 @@ function initialize(THREE) {
   function wallSection(x1, x2, z) {
     const length = x2 - x1;
     const courses = 3;
-    const unit = .34;
+    const unit = .27;
     const count = Math.ceil(length / unit);
     for (let c = 0; c < courses; c++) {
       for (let i = 0; i < count; i++) {
         const dx = x1 + ((i + 0.5) / count) * length + (c % 2 ? .07 : 0);
-        const y = terrainY(dx, z) + .14 + c * .23;
-        const stone = block(scene, length / count - .02, .22, .48, mat(stonePalette[(i + c * 2) % stonePalette.length]), dx, y, z);
+        const y = terrainY(dx, z) + .07 + c * .13;
+        const stone = block(scene, length / count - .014, .13, .20, mat(stonePalette[(i + c * 2) % stonePalette.length]), dx, y, z);
         stone.rotation.y = Math.sin(i * 1.9 + c) * .018;
       }
     }
     for (let i = 0; i < count; i++) {
       const x = x1 + ((i + .5) / count) * length;
-      block(scene, length / count - .01, .12, .58, mat(0xa6a18b), x, terrainY(x, z) + .86, z);
+      block(scene, length / count - .01, .07, studyGeometry.wallDepth, mat(0xa6a18b), x, terrainY(x, z) + .43, z);
     }
   }
   for (const wall of studyGeometry.wallSections) wallSection(wall.x1, wall.x2, wall.z);
   for (const x of [-5.44, -2.77]) {
-    block(scene, .60, 1.10, .65, mat(0xa39c85), x, terrainY(x, -.82) + .58, -.82);
-    block(scene, .76, .17, .80, mat(0xbbb29a), x, terrainY(x, -.82) + 1.16, -.82);
+    block(scene, .30, .58, .32, mat(0xa39c85), x, terrainY(x, -.82) + .30, -.82);
+    block(scene, .39, .10, .40, mat(0xbbb29a), x, terrainY(x, -.82) + .64, -.82);
   }
 
   // An old fence marks the cultivated field; posts and rails are true geometry.
@@ -311,6 +324,7 @@ function initialize(THREE) {
     const group = new THREE.Group();
     group.position.set((x1 + x2) / 2, terrainY((x1 + x2) / 2, (z1 + z2) / 2), (z1 + z2) / 2);
     group.rotation.y = -Math.atan2(dz, dx);
+    group.scale.set(1, .57, .78);
     scene.add(group);
     for (let i = 0; i <= posts; i++) {
       const x = -length / 2 + i * length / posts;
@@ -329,6 +343,7 @@ function initialize(THREE) {
   function makeTree(x, z, size, paletteIndex) {
     const group = new THREE.Group();
     group.position.set(x, terrainY(x, z), z);
+    group.scale.setScalar(.78);
     scene.add(group);
     const bark = mat(0x65503b);
     shape(group, new THREE.CylinderGeometry(.18 * size, .28 * size, 1.5 * size, 7), bark, 0, .75 * size, 0);
@@ -362,21 +377,21 @@ function initialize(THREE) {
   function makeHedge(x, z, count, step, index) {
     for (let i = 0; i < count; i++) {
       const tx = x + i * step;
-      const g = shape(scene, new THREE.DodecahedronGeometry(.47 + (i % 3) * .08, 0), mat(leafPalette[(i + index) % leafPalette.length]), tx, terrainY(tx, z) + .47, z + Math.sin(i * 3.4) * .11);
+      const g = shape(scene, new THREE.DodecahedronGeometry(.30 + (i % 3) * .05, 0), mat(leafPalette[(i + index) % leafPalette.length]), tx, terrainY(tx, z) + .30, z + Math.sin(i * 3.4) * .08);
       g.scale.set(1.08, .83, .83);
     }
   }
   makeHedge(.08, -5.46, 9, .57, 2);
 
   // Small wheat stalks in ordered rows: a deliberately cultivated patch.
-  const wheat = new THREE.InstancedMesh(new THREE.ConeGeometry(.052, .39, 4), mat(0xc4ad67), 252);
+  const wheat = new THREE.InstancedMesh(new THREE.ConeGeometry(.037, .31, 4), mat(0xc4ad67), 252);
   const stalk = new THREE.Object3D();
   let wIndex = 0;
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 28; col++) {
       const x = 5.0 + col * .146 + between(-.035, .035);
       const z = 2.55 + row * .42 + between(-.06, .06);
-      stalk.position.set(x, terrainY(x, z) + .20, z);
+      stalk.position.set(x, terrainY(x, z) + .16, z);
       stalk.rotation.set(between(-.15, .15), between(0, 6), between(-.12, .12));
       stalk.scale.setScalar(between(.7, 1.25));
       stalk.updateMatrix();
@@ -396,7 +411,7 @@ function initialize(THREE) {
     ...studyGeometry.wallSections.map((wall, index) => ({
       id:"study-wall-" + index, type:"wall",
       worldX:(wall.x1 + wall.x2) / 2, worldZ:wall.z,
-      worldWidth:wall.x2 - wall.x1, worldDepth:.48
+      worldWidth:wall.x2 - wall.x1, worldDepth:studyGeometry.wallDepth
     }))
   ]);
   const soldiers = [];
@@ -407,6 +422,29 @@ function initialize(THREE) {
 
   let squadSelected = true; // The one-squad study starts ready for tap-to-move.
   let activeMovement = null;
+  // A painted base must be physically *above* grass, patch and road geometry;
+  // do not disable its depth test (that would draw it through walls/buildings).
+  const groundRay = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,-1,0), 0, 20);
+  const MINIATURE_SCALE = .37;
+  const baseSampleRadius = .42 * MINIATURE_SCALE;
+  const baseSamples = [
+    [0,0], [baseSampleRadius,0], [-baseSampleRadius,0],
+    [0,baseSampleRadius], [0,-baseSampleRadius],
+    [.707*baseSampleRadius,.707*baseSampleRadius],
+    [-.707*baseSampleRadius,.707*baseSampleRadius],
+    [.707*baseSampleRadius,-.707*baseSampleRadius],
+    [-.707*baseSampleRadius,-.707*baseSampleRadius]
+  ];
+  function footingHeight(x,z) {
+    let top = -Infinity;
+    for (const offset of baseSamples) {
+      const sx=x+offset[0], sz=z+offset[1];
+      groundRay.ray.origin.set(sx, 8, sz);
+      const hits=groundRay.intersectObjects(walkableSurfaceMeshes, false);
+      if (hits.length) top=Math.max(top, hits[0].point.y);
+    }
+    return Number.isFinite(top) ? top : terrainY(x,z);
+  }
   const selectedRing = shape(squadRoot, new THREE.RingGeometry(1.24, 1.30, 32),
     new THREE.MeshBasicMaterial({color:0xd7c29b,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}),
     0, terrainY(squadRoot.position.x,squadRoot.position.z) + .1, 0);
@@ -421,11 +459,11 @@ function initialize(THREE) {
 
   function makeSoldier(x, z, facing, recipe, variant) {
     const figure = new THREE.Group();
-    figure.position.set(x, terrainY(squadRoot.position.x + x, squadRoot.position.z + z) + .045, z);
+    figure.position.set(x, 0, z);
     figure.rotation.y = facing;
     // Approximate 1-inch miniature bases on a true 72x48-inch tabletop.
     // Height is intentionally heroic so facial/weapon silhouettes read on phone.
-    figure.scale.setScalar(.37);
+    figure.scale.setScalar(MINIATURE_SCALE);
     squadRoot.add(figure);
 
     const base = shape(figure, new THREE.CylinderGeometry(.39, .42, .11, 18), mat(0x3d3f34), 0, .02, 0);
@@ -480,7 +518,7 @@ function initialize(THREE) {
     }
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
-    soldiers.push({ figure, breathing, legs, phase: between(0, Math.PI * 2), baseY: .78 });
+    soldiers.push({ figure, breathing, legs, phase: between(0, Math.PI * 2), baseY: .78, grounded: false });
     return figure;
   }
   for (const slot of bridge.slotsFor(squadData)) {
@@ -500,8 +538,8 @@ function initialize(THREE) {
       block(g, size, .06, .06, darkWood, 0, size * .36, side * size * .50);
     }
   }
-  crate(-6.94, -2.12, .58);
-  crate(-6.35, -2.28, .44);
+  crate(-6.94, -2.12, .41);
+  crate(-6.35, -2.28, .31);
 
   // Camera: horizontal orbit only, locked isometric elevation, orthographic zoom.
   function updateCamera() {
@@ -565,11 +603,14 @@ function initialize(THREE) {
     }
     const start = {x:squadRoot.position.x,z:squadRoot.position.z};
     const dx=plan.worldEnd.x-start.x, dz=plan.worldEnd.z-start.z;
-    const facing = Math.atan2(-dx,-dz);
-    activeMovement = {plan,start,end:plan.worldEnd,elapsed:0,
-      duration:Math.max(.55,Math.hypot(dx,dz)/.68),yawStart:squadRoot.rotation.y,
-      yawEnd:squadRoot.rotation.y + Math.atan2(Math.sin(facing-squadRoot.rotation.y),Math.cos(facing-squadRoot.rotation.y))};
+    const turn = motion.makeTurn(soldiers.map(soldier => soldier.figure.rotation.y),
+      motion.heading(start, plan.worldEnd));
+    activeMovement = {
+      plan, start, end:plan.worldEnd, elapsed:0, phase:"turn", turn,
+      travelDuration:Math.max(.55,Math.hypot(dx,dz)/.68)
+    };
     selectedRing.visible = false;
+    selectedRing.userData.grounded = false;
   }
   let lastPinchDistance = null;
   canvas.addEventListener("pointerdown", function (event) {
@@ -642,36 +683,50 @@ function initialize(THREE) {
     requestAnimationFrame(render);
     const dt = Math.min(clock.getDelta(), .05);
     const t = clock.elapsedTime;
+    let walking = false;
     if (activeMovement) {
       const m = activeMovement;
       m.elapsed += dt;
-      const u = Math.min(1, m.elapsed / m.duration);
-      // Linear translation is intentional: it preserves inch-per-second
-      // progress and reaches exactly the tabletop destination.
-      squadRoot.position.set(
-        m.start.x + (m.end.x - m.start.x) * u,
-        0,
-        m.start.z + (m.end.z - m.start.z) * u
-      );
-      const turnT = Math.min(1, u * 3);
-      squadRoot.rotation.y = m.yawStart + (m.yawEnd - m.yawStart) * turnT;
-      if (u >= 1) {
-        squadRules.commitMove(m.plan);
-        activeMovement = null;
-        selectedRing.visible = true;
+      if (m.phase === "turn") {
+        const fraction = Math.min(1, m.elapsed / m.turn.duration);
+        for (let i=0; i<soldiers.length; i++) {
+          // Individual facing pivots; the squad origin and its six slots stay put.
+          soldiers[i].figure.rotation.y = motion.headingAt(m.turn.turns[i], fraction);
+        }
+        if (fraction >= 1) {
+          m.phase = "travel";
+          m.elapsed = 0;
+        }
+      } else {
+        walking = true;
+        const u = Math.min(1, m.elapsed / m.travelDuration);
+        squadRoot.position.set(
+          m.start.x + (m.end.x - m.start.x) * u,
+          0,
+          m.start.z + (m.end.z - m.start.z) * u
+        );
+        if (u >= 1) {
+          squadRules.commitMove(m.plan);
+          activeMovement = null;
+          selectedRing.visible = true;
+        }
       }
     }
-    // Reposition every miniature against the actual ground surface.
-    // This does not mutate logical unit positions or combat state.
-    const c = Math.cos(squadRoot.rotation.y), s = Math.sin(squadRoot.rotation.y);
+    // The squad origin NEVER rotates: each soldier has its own facing and
+    // walks along its original slot offset, avoiding a spinning formation.
     for (const soldier of soldiers) {
-      const fx = squadRoot.position.x + soldier.figure.position.x * c - soldier.figure.position.z * s;
-      const fz = squadRoot.position.z + soldier.figure.position.x * s + soldier.figure.position.z * c;
-      soldier.figure.position.y = terrainY(fx, fz) + .045;
+      const fx = squadRoot.position.x + soldier.figure.position.x;
+      const fz = squadRoot.position.z + soldier.figure.position.z;
+      if (walking || !soldier.grounded) {
+        // Bottom of the scaled cylindrical base, plus a minute visual clearance.
+        const baseBottom = (.02 - .11 / 2) * soldier.figure.scale.y;
+        soldier.figure.position.y = footingHeight(fx, fz) - baseBottom + .009;
+        soldier.grounded = !walking;
+      }
       soldier.breathing.position.y = soldier.baseY;
       soldier.breathing.rotation.z = 0;
       for (const leg of soldier.legs) leg.mesh.rotation.x = leg.side * .08;
-      if (activeMovement && !reducedMotion) {
+      if (walking && !reducedMotion) {
         const stride = Math.sin(t * 11.5 + soldier.phase);
         soldier.breathing.position.y += Math.abs(stride) * .085;
         soldier.breathing.rotation.x = -.07;
@@ -684,7 +739,10 @@ function initialize(THREE) {
         }
       }
     }
-    selectedRing.position.y = terrainY(squadRoot.position.x, squadRoot.position.z) + .065;
+    if (selectedRing.visible && !selectedRing.userData.grounded) {
+      selectedRing.position.y = footingHeight(squadRoot.position.x, squadRoot.position.z) + .03;
+      selectedRing.userData.grounded = true;
+    }
     renderer.render(scene, camera);
   }
   render();

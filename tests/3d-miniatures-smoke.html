@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Crossroads 3D miniature movement smoke</title>
+<pre id="report">Running checks…</pre>
+<script src="../src/diorama/study-motion.js"></script>
+<script>
+"use strict";
+(() => {
+  const m = window.CrossroadsDioramaMotion;
+  const results = [];
+  const near = (a,b,eps=1e-6) => Math.abs(a-b) < eps;
+  const check = (name, pass) => {
+    results.push((pass ? "PASS " : "FAIL ") + name);
+  };
+  check("Facing negative Z is zero yaw",near(m.heading({x:0,z:0},{x:0,z:-1}),0));
+  check("Facing positive X is negative quarter turn",near(m.heading({x:0,z:0},{x:1,z:0}),-Math.PI/2));
+  check("Crossing -PI/PI takes shortest rotation",near(m.shortestDelta(Math.PI-.05,-Math.PI+.05),.1));
+  const starts=[-1,0,.5,1.1,-2,2.7];
+  const turn=m.makeTurn(starts,Math.PI);
+  check("One independent turn for every miniature",turn.turns.length === 6);
+  check("Turn durations are finite and positive",turn.duration >= .18 && turn.duration <= .69);
+  check("No soldier position appears in turn data",turn.turns.every(t => !("x" in t) && !("z" in t)));
+  check("Each starts at its own heading",turn.turns.every((t)=>near(m.headingAt(t,0),t.start)));
+  check("Each arrives at same intended heading",turn.turns.every((t)=>near(Math.sin(m.headingAt(t,1)),Math.sin(Math.PI))));
+  check("Headings do not overshoot",turn.turns.every(t=>{
+    const mid=m.headingAt(t,.5);
+    return (mid-t.start)*t.delta>=0 && Math.abs(mid-t.start)<=Math.abs(t.delta)+1e-6;
+  }));
+  document.getElementById("report").textContent=results.join("\n")+"\n"+results.filter(x=>x.startsWith("PASS")).length+"/"+results.length+" passed";
+  if(results.some(x=>x.startsWith("FAIL")))document.body.style.background="#632a2a";
+})();
+</script>
