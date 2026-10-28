@@ -937,7 +937,7 @@ function initialize(THREE) {
           }
         }
       }
-      const selected=squads.find(item=>item.unit.id===snapshot.selectedUnitId)||null;
+      const selected=squads.find(item=>item.unit.id===(snapshot.selectedUnitId||snapshot.deploymentUnitId))||null;
       if(selectedSquad!==selected)selectSquad(selected);
     }
     battle.subscribe(applyAuthoritativeSnapshot);

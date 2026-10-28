@@ -4222,6 +4222,7 @@
             moverId:pendingMovement?.moverId??null
           } : null,
           deploymentFaction:phase==="deployment"?currentDeploymentFaction():null,
+          deploymentUnitId:phase==="deployment"?deploymentUnitId:null,
           canCancel:Boolean(activationSnapshot)&&!transactionLockReason,
           building:selected&&phase==="choose-order"&&buildingCommand(selected)?.enabled
             ? {action:selected.inBuilding?"exit":"enter",
