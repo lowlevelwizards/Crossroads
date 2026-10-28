@@ -491,17 +491,12 @@ function initialize(THREE) {
   }
   authoredTerrain.filter(e=>e.renderer==="field").forEach(makeField);
 
-  // Four real Hold the Farm units, relocated onto this handmade tabletop.
-  const units=bridge.createStudyUnits();
-  const scenarioTerrain=[
-    {id:"study-farm",type:"long_farmhouse",worldX:studyGeometry.farm.x,
-      worldZ:studyGeometry.farm.z,worldWidth:studyGeometry.farm.width,
-      worldDepth:studyGeometry.farm.depth},
-    ...studyGeometry.wallSections.map((wall,index)=>({
-      id:"study-wall-"+index,type:"wall",worldX:(wall.x1+wall.x2)/2,
-      worldZ:wall.z,worldWidth:wall.x2-wall.x1,worldDepth:studyGeometry.wallDepth
-    }))
-  ];
+  // Stage 6: all real units load at their authored scenario coordinates.
+  // No study-specific deployments or unit identities remain in this scene.
+  const units=bridge.createScenarioUnits(layout.scenario);
+  // Stage 7: the pure 2D movement module receives the SAME normalized
+  // terrain instances that the 3D scenery renderers consume.
+  const scenarioTerrain=layout.normalized;
   const squads=[];
   const hitBoxes=[];
   const getLivingUnits=()=>units;
@@ -601,7 +596,23 @@ function initialize(THREE) {
     block(breathing,.055,.14,.07,metal,.08,-.09,center-length*.43);
     if(officer)block(breathing,.07,.18,.07,leather,.08,-.27,-.31);
     if(recipe.role==="smg")block(breathing,.09,.27,.10,metal,.08,-.31,-.43);
-    if (recipe.role === "lmg") {
+    if (recipe.role === "mmg") {
+      // Heavy receiver, long mounted barrel and a stable three-legged tripod.
+      block(breathing,.22,.26,.32,mat(0x343b36),.08,-.19,-.52);
+      block(breathing,.24,.27,.14,leather,-.18,-.22,-.47);
+      const muzzle=shape(breathing,new THREE.CylinderGeometry(.065,.055,.73,9),
+        mat(0x333a36,.22),.08,-.15,-.94);
+      muzzle.rotation.x=Math.PI/2;
+      for(const a of [-.75,0,.75]){
+        const foot=block(figure,.065,.45,.055,mat(0x343b36),
+          Math.sin(a)*.26,.31,-.40+Math.cos(a)*.19);
+        foot.rotation.z=Math.sin(a)*.7;
+        foot.rotation.x=-.55;
+      }
+    } else if(recipe.role==="crew") {
+      block(breathing,.23,.18,.20,leather,-.20,-.25,.16);
+      block(breathing,.19,.16,.16,mat(0x64604a),-.23,-.20,.25);
+    } else if (recipe.role === "lmg") {
       block(breathing, .18, .23, .21, mat(0x34392e), .08, -.26, -.54);
       block(breathing, .07, .08, .20, mat(0x34392e), .08, -.12, -.98);
     } else if (recipe.role === "loader") {
