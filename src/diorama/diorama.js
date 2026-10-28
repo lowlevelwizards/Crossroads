@@ -531,7 +531,7 @@ function initialize(THREE) {
     const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
     for(const slot of bridge.slotsFor(unit))
-      makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI:0)+.045*(slot.index-2),
+      makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
     const radius=unit.role==="officer"?.53:1.27;
     const ring=shape(root,new THREE.RingGeometry(radius,radius+.043,32),
