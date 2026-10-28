@@ -23,6 +23,8 @@ function initialize(THREE) {
   const stage = document.getElementById("stage");
   const bridge = window.CrossroadsDioramaBridge;
   const motion = window.CrossroadsDioramaMotion;
+  const gestures = window.CrossroadsDioramaGestures;
+  if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
   if (!motion) throw new Error("Crossroads 3D motion helpers were not loaded.");
   if (!bridge) throw new Error("Crossroads 3D movement bridge was not loaded.");
   const scene = new THREE.Scene();
@@ -588,9 +590,11 @@ function initialize(THREE) {
     camera.top = h / 2;
     camera.bottom = -h / 2;
     camera.updateProjectionMatrix();
+    // A gesture may query the camera before the next rendered frame.
+    camera.updateMatrixWorld();
   }
   function setZoom(value) {
-    zoom = clamp(value, .75, 3.35);
+    zoom = clamp(value, .70, 6.75);
     updateCamera();
   }
   function resize() {
@@ -603,9 +607,30 @@ function initialize(THREE) {
     renderer.setSize(viewportWidth, viewportHeight, false);
     updateCamera();
   }
+  // Intersect an orthographic screen ray with the physical tabletop. Panning
+  // uses the same world coordinates as the 72 x 48-inch board and stays exact
+  // at every zoom or camera yaw, including while pinching.
+  const panPlane = new THREE.Plane(new THREE.Vector3(0,1,0), -.20);
+  const panRay = new THREE.Raycaster();
+  const panNdc = new THREE.Vector2();
+  function groundAtScreen(clientX,clientY) {
+    const rect=canvas.getBoundingClientRect();
+    panNdc.set((clientX-rect.left)/rect.width*2-1,
+      1-(clientY-rect.top)/rect.height*2);
+    panRay.setFromCamera(panNdc,camera);
+    return panRay.ray.intersectPlane(panPlane,new THREE.Vector3());
+  }
+  function moveCameraTarget(delta) {
+    if(!delta)return;
+    target.x=clamp(target.x+delta.x,-worldWidth/2-3,worldWidth/2+3);
+    target.z=clamp(target.z+delta.z,-worldDepth/2-3,worldDepth/2+3);
+    updateCamera();
+  }
   canvas.addEventListener("wheel", function (event) {
     event.preventDefault();
+    const anchored=groundAtScreen(event.clientX,event.clientY);
     setZoom(zoom * Math.exp(-event.deltaY * .0014));
+    moveCameraTarget(gestures.targetShift(anchored,groundAtScreen(event.clientX,event.clientY)));
   }, { passive: false });
   const pointers = new Map();
   const tapStarts = new Map();
@@ -641,32 +666,35 @@ function initialize(THREE) {
     squad.ring.visible=false;
     squad.ring.userData.grounded=false;
   }
-  let lastPinchDistance = null;
   canvas.addEventListener("pointerdown", function (event) {
     canvas.setPointerCapture(event.pointerId);
-    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
     tapStarts.set(event.pointerId, { x:event.clientX, y:event.clientY, dragged:false });
     if (pointers.size > 1) {
+      // A pinch/pan must never accidentally become a squad tap on release.
       for (const tap of tapStarts.values()) tap.dragged = true;
     }
-    lastPinchDistance = null;
   });
   canvas.addEventListener("pointermove", function (event) {
     if (!pointers.has(event.pointerId)) return;
+    const previousPair = pointers.size === 2 ? [...pointers.values()] : null;
     const old = pointers.get(event.pointerId);
-    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
     const tap = tapStarts.get(event.pointerId);
-    if (tap && Math.hypot(event.clientX - tap.x,event.clientY-tap.y) > 9) tap.dragged = true;
+    if (tap && Math.hypot(event.clientX-tap.x,event.clientY-tap.y) > 9) tap.dragged=true;
     if (pointers.size === 1) {
-      yaw -= (event.clientX - old.x) * .0085;
+      yaw -= (event.clientX-old.x) * .0085;
       updateCamera();
     } else if (pointers.size === 2) {
-      const pair = [...pointers.values()];
-      const distance = Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y);
-      if (lastPinchDistance !== null && lastPinchDistance > 5) {
-        setZoom(zoom * (distance / lastPinchDistance));
-      }
-      lastPinchDistance = distance;
+      const gesture=gestures.twoFingerGesture(previousPair,[...pointers.values()]);
+      if (!gesture) return;
+      const anchored=groundAtScreen(gesture.previousCenter.x,gesture.previousCenter.y);
+      // Pan and pinch are intentionally simultaneous. Reprojecting after
+      // zoom keeps the tabletop point under the fingers as they travel.
+      if (gesture.zoomFactor !== 1) setZoom(zoom*gesture.zoomFactor);
+      moveCameraTarget(gestures.targetShift(
+        anchored,groundAtScreen(gesture.nextCenter.x,gesture.nextCenter.y)
+      ));
     }
   });
   function endPointer(event) {
@@ -676,7 +704,6 @@ function initialize(THREE) {
     }
     tapStarts.delete(event.pointerId);
     pointers.delete(event.pointerId);
-    lastPinchDistance = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
   canvas.addEventListener("pointerup", endPointer);
@@ -684,7 +711,6 @@ function initialize(THREE) {
   canvas.addEventListener("lostpointercapture", function (event) {
     pointers.delete(event.pointerId);
     tapStarts.delete(event.pointerId);
-    lastPinchDistance = null;
   });
   window.addEventListener("keydown", function (event) {
     const el = event.target;
@@ -693,7 +719,11 @@ function initialize(THREE) {
     if (event.key === "ArrowRight") { yaw += .13; updateCamera(); }
     if (event.key === "+" || event.key === "=") setZoom(zoom * 1.12);
     if (event.key === "-" || event.key === "_") setZoom(zoom / 1.12);
-    if (event.key === "0" || event.key === "Home") { yaw = initialYaw; setZoom(1); }
+    if (event.key === "0" || event.key === "Home") {
+      yaw=initialYaw;
+      target.set(0,.75,0);
+      setZoom(1);
+    }
   });
 
   window.addEventListener("resize", resize);
