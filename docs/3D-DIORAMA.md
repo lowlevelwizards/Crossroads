@@ -14,9 +14,9 @@ Requires a browser with WebGL support.
 
 - Drag left/right (mouse or one finger): orbit around the scene horizontally.
 - Mouse wheel / two-finger pinch: orthographic zoom.
-- Arrow buttons: orbit in steps. Plus/minus buttons: zoom.
-- Reset View restores the starting three-quarter isometric angle and framing.
-- Keyboard left/right arrows and +/- keys also work.
+- Keyboard left/right arrows: orbit in steps; +/-: zoom.
+- Keyboard 0 or Home: reset the starting three-quarter isometric camera.
+- The view contains no controls or captions, just a small version number.
 
 ## Deliberate boundaries
 
@@ -24,7 +24,9 @@ This first study is **visual only**: no selection, orders, game rules, movement,
 unit logic, line of sight, or scenario import. Breathing is a subtle decorative
 idle motion, not a gameplay update.
 
-The self-contained files are diorama.html and src/diorama/*. Existing data,
+The self-contained files are diorama.html and src/diorama/*. On-screen controls
+and explanatory text were removed after Study 01 to keep the view uncluttered.
+Existing data,
 rules, editor, scenario flow, and 2D presentation are not modified.
 
 ## Next integration pass

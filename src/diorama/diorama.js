@@ -21,7 +21,6 @@
 function initialize(THREE) {
   const canvas = document.getElementById("dioramaCanvas");
   const stage = document.getElementById("stage");
-  const readout = document.getElementById("zoomReadout");
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x6f7d73);
   scene.fog = new THREE.Fog(0x6f7d73, 44, 82);
@@ -465,7 +464,6 @@ function initialize(THREE) {
     camera.top = h / 2;
     camera.bottom = -h / 2;
     camera.updateProjectionMatrix();
-    readout.textContent = String(Math.round(zoom * 100)) + "%";
   }
   function setZoom(value) {
     zoom = clamp(value, .75, 3.35);
@@ -481,17 +479,6 @@ function initialize(THREE) {
     renderer.setSize(viewportWidth, viewportHeight, false);
     updateCamera();
   }
-  document.getElementById("orbitLeft").addEventListener("click", function () {
-    yaw -= Math.PI / 9; updateCamera();
-  });
-  document.getElementById("orbitRight").addEventListener("click", function () {
-    yaw += Math.PI / 9; updateCamera();
-  });
-  document.getElementById("zoomOut").addEventListener("click", function () { setZoom(zoom / 1.2); });
-  document.getElementById("zoomIn").addEventListener("click", function () { setZoom(zoom * 1.2); });
-  document.getElementById("resetView").addEventListener("click", function () {
-    yaw = initialYaw; setZoom(1);
-  });
   canvas.addEventListener("wheel", function (event) {
     event.preventDefault();
     setZoom(zoom * Math.exp(-event.deltaY * .0014));
@@ -537,6 +524,7 @@ function initialize(THREE) {
     if (event.key === "ArrowRight") { yaw += .13; updateCamera(); }
     if (event.key === "+" || event.key === "=") setZoom(zoom * 1.12);
     if (event.key === "-" || event.key === "_") setZoom(zoom / 1.12);
+    if (event.key === "0" || event.key === "Home") { yaw = initialYaw; setZoom(1); }
   });
 
   window.addEventListener("resize", resize);
