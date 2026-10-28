@@ -658,6 +658,52 @@ function initialize(THREE) {
   units.forEach(createSquadRenderer);
   selectSquad(squads[0]);
 
+  // Stage 8: real objective markers, painted directly onto the tabletop.
+  // These don't resolve objective control; scoring remains owned by the engine.
+  const objectiveMarkers=[];
+  for(const objective of layout.objectives) {
+    if(!Number.isFinite(objective.x)||!Number.isFinite(objective.y))continue;
+    const at=bridge.toWorld(objective);
+    const radius=Math.max(.22,(objective.radius||1)*bridge.table.worldUnitsPerInch);
+    const y=footingHeight(at.x,at.z)+.035;
+    const marker=shape(scene,new THREE.RingGeometry(radius-.038,radius,48),
+      new THREE.MeshBasicMaterial({color:0xd6be89,transparent:true,opacity:.48,
+        depthWrite:false,side:THREE.DoubleSide}),at.x,y,at.z);
+    marker.rotation.x=-Math.PI/2;
+    marker.castShadow=false;
+    marker.receiveShadow=false;
+    marker.userData.objectiveId=objective.id;
+    objectiveMarkers.push(marker);
+    // Small flag pin reads as a practical miniature objective marker.
+    const pole=shape(scene,new THREE.CylinderGeometry(.017,.019,.58,7),
+      mat(0x948571),at.x,y+.29,at.z);
+    pole.castShadow=false;
+    const flag=block(scene,.30,.14,.025,mat(0xb49b72),
+      at.x+.15,y+.47,at.z);
+    flag.castShadow=false;
+  }
+
+  // Optional comparison overlay for mapping/debug only; normal players
+  // see neither panels nor rectangles. Enable with ?debugTerrain=1.
+  if(new URLSearchParams(window.location.search).get("debugTerrain")==="1") {
+    console.table(layout.entries.map(e=>({
+      id:e.id,type:e.terrainId,x:e.rulesRect.x,y:e.rulesRect.y,
+      width:e.rulesRect.width,height:e.rulesRect.height,
+      visualWidth:e.visualRect.width,visualHeight:e.visualRect.height
+    })));
+    for(const entry of layout.entries) {
+      const p=scenarioAdapter.boundsWorld(entry.rulesRect);
+      const mesh=shape(scene,new THREE.BoxGeometry(p.width,.014,p.depth),
+        new THREE.MeshBasicMaterial({
+          color:entry.renderer==="building"?0xd6af6e:0x57e5c1,
+          wireframe:true,transparent:true,opacity:.92,depthTest:false
+        }),p.x,footingHeight(p.x,p.z)+.06,p.z);
+      mesh.castShadow=false;
+      mesh.receiveShadow=false;
+      mesh.rotation.y=-(entry.rotation||0)*Math.PI/180;
+    }
+  }
+
   // The ground has subtle negative space; a few wartime props provide scale.
   function crate(x, z, size) {
     const y = terrainY(x, z);
