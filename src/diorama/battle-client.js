@@ -7,7 +7,7 @@
   if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
   const scenario=new URLSearchParams(location.search).get("scenario");
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
-    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.0";
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.1";
   let session=null,state=null,busy=false,warning="",hint="",error="";
   let logOpen=false,signature="",lastStateKey="";
   let toastExpires=0,lastEventCount=-1;

@@ -293,3 +293,42 @@ earlier 3D scene remains available at `diorama.html`.
 - Syntax, scenario-data, simulated host UI interaction and simulated WebGL
   initialization checks were performed. **Real iOS WebGL frame pacing,
   combat outcome timing and full-turn AAR still need on-device verification.**
+
+
+## v0.6.1 — Tabletop Interaction and Motion Fixes
+
+**Orbit:** The orthographic camera now always orbits around the global board
+center. Selection focus and two-finger panning shift the orthographic frustum
+while keeping the orbit pivot fixed. The player can still interrupt focus with
+a drag, wheel, pinch or keyboard command. Auto-focus uses a smaller 1.5x zoom.
+
+**Labels:** Only the selected unit has a contextual nameplate, and only while
+choosing its order, plotting a move, or targeting at a useful zoom. Names for
+eligible, activated, pinned or lost units no longer cover the scene. The one
+visible label is anchored to its moving base and projected every frame, so
+rotation or movement cannot leave a 15Hz label trailing across the sky.
+
+**Soldier motion:** No passive breathing/bob animations at rest. Soldiers
+settle into their final authored formation slots. Individual steps taper near
+the end of each soldier's motion. Visual Run animations travel approximately
+70% faster than before (from 0.8 to 1.42 model units/second) with a slower,
+larger vertical gait cadence. Logical rules allowances remain unchanged.
+
+**Selection/order markers:** Thicker gold selection rings and a
+terrain-following gold movement ruler replace thin pale lines. Eligible rings
+use distinct teal (Poland) and rust (Germany) colors. Used dice only appear
+after an order activates/finishes; they are hidden during movement, rather than
+dragged behind a traveling formation.
+
+**Controls and die presentation:** Polish/German scores and order dice have
+distinct palettes. A drawn die makes a large, brief physical reveal and
+selection rings pulse when a unit is chosen. The command tray is narrower,
+scrolls horizontally as needed, and the event summary fades into a small log
+button instead of occupying a persistent full-width HUD strip.
+
+**Validation:** `tests/3d-v061-interaction-smoke.html` checks key visual
+contracts and the deterministic gait settings. Actual iPhone WebGL and
+firing/pinning play still warrant hands-on verification.
+
+**Rollback:** `battle3d-v060.html` retains the prior 3D renderer, motion
+module, UI scripts and CSS (still using the shared authoritative coordinator).
