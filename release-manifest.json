@@ -9,7 +9,8 @@
     "index.html",
     "classic.html",
     "editor.html",
-    "tests/startup-smoke.html"
+    "tests/startup-smoke.html",
+    "battle3d.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -38,6 +39,10 @@
     "tests/viewport-interactions-s111.test.js",
     "classic.html",
     "diorama.html",
-    "styles/landing.css"
+    "styles/landing.css",
+    "battle3d.html",
+    "classic-session.html",
+    "src/diorama/battle-client.js",
+    "src/diorama/battle-controls.css"
   ]
 }

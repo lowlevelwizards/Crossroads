@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Crossroads 3D Play routing</title>
+<style>body{font:14px system-ui;background:#26322e;color:#eee4d3;padding:24px}</style>
+<h1>Crossroads 3D battle route</h1><pre id="result">Checking…</pre>
+<script>
+(async () => {
+  const checks=[];
+  const assert=(name,ok)=>checks.push({name,ok:!!ok});
+  try {
+    const [homepage,battle,engine,study]=await Promise.all(
+      ["../index.html","../battle3d.html","../classic-session.html","../diorama.html"]
+        .map(url=>fetch(url,{cache:"no-store"}).then(resp=>{
+          if(!resp.ok)throw Error(url+" returned "+resp.status);
+          return resp.text();
+        }))
+    );
+    assert("Homepage Play opens Battle",homepage.includes('href="./battle3d.html"'));
+    assert("Homepage bypasses movement study",!homepage.includes('href="./diorama.html"'));
+    assert("Live battle scene present",battle.includes('src/diorama/scenario-scene.js'));
+    assert("Live battle client present",battle.includes('src/diorama/battle-client.js'));
+    assert("Authoritative hidden host present",battle.includes('id="battleSessionFrame"'));
+    assert("Host uses existing coordinator",engine.includes('src/engine.js'));
+    assert("Original scenic route retained",study.includes('src/diorama/scenario-scene.js'));
+  }catch(err){checks.push({name:String(err),ok:false})}
+  const passed=checks.filter(x=>x.ok).length;
+  document.querySelector("#result").textContent=checks
+    .map(x=>(x.ok?"PASS ":"FAIL ")+x.name).join("\n")+"\n\n"+passed+"/"+checks.length+" passed";
+})();
+</script>

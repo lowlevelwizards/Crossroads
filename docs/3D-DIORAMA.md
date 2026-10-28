@@ -203,9 +203,9 @@ scene and page were preserved at `diorama-v040.html` and
 
 ## v0.5 experimental battle session (in development)
 
-The production homepage stays on the proven v0.4.1 battlefield during the
-session migration. Visit `battle3d.html` to test a *separate experimental*
-3D client of the actual 2D `InfantryCore.session` coordinator.
+In v0.5.0 the production homepage stayed on the v0.4.1 battlefield while
+`battle3d.html` exposed a separate, experimental client of the original
+2D `InfantryCore.session` coordinator.
 
 The same-origin `classic-session.html` hosts the original engine with 2D
 presentation effects disabled to avoid waste and animation stalls in an
@@ -224,3 +224,20 @@ compatibility and extended activation sequences require live validation.
 
 Open `tests/3d-session-smoke.html` for browser-based coordinator integration
 checks and `tests/3d-scale-smoke.html` for model dimensions.
+
+
+## v0.5.1 — Battle promoted to Play (October 2026)
+
+The normal GitHub Pages homepage (`index.html`) now routes PLAY directly to
+`battle3d.html`, the existing authoritative battle-session client. This
+changes the public entry point **only**; it does not create a second rules
+engine or alter the existing battle coordinator. The previous data-driven
+scenery/movement-only scene is preserved at `diorama.html`, the original
+handcrafted reference at `diorama-study.html`, and the legacy 2D game at
+`classic.html`. The release integrity regression test enforces the new
+entry point and the presence of its engine host/client dependencies.
+
+Known work for the next milestones: mobile animation hitch profiling,
+selection and camera focus, visible order dice and turn-draw presentation,
+fire/cover/pin/casualty state feedback, contextual status, and battle-end
+presentation. These were deliberately not bundled into the routing change.
