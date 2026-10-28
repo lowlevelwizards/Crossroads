@@ -35,8 +35,8 @@
     return Object.freeze({
       pace: 1 + oscillation * .14, // 0.86–1.14× duration (visual only)
       delay: .03 + (.5 + .5 * Math.sin(n * 2.51 + .34)) * .14,
-      stride: 9.3 + (.5 + .5 * Math.sin(n * 1.74)) * 5.1,
-      bob: .060 + (.5 + .5 * Math.cos(n * 2.14)) * .045
+      stride: 5.7 + (.5 + .5 * Math.sin(n * 1.74)) * 3.6,
+      bob: .084 + (.5 + .5 * Math.cos(n * 2.14)) * .054
     });
   }
   function progressFor(elapsed, duration, gait) {

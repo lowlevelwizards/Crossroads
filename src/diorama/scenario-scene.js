@@ -731,16 +731,18 @@ function initialize(THREE) {
       const destroyed=u.soldiers<=0;
       if(squad.eligibleRing){
         squad.eligibleRing.visible=eligible&&!selected;
-        squad.eligibleRing.material.opacity=eligible?.6:0;
+        squad.eligibleRing.material.opacity=eligible?.8:0;
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
-      squad.orderToken.visible=Boolean(u.order)&&!destroyed;
+      // Used dice appear only once the soldiers have finished moving.
+      squad.orderToken.visible=Boolean(u.order)&&!destroyed&&!squad.moving;
       for(let i=0;i<squad.pinTokens.length;i++)
         squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
       const m=squad.marker;
       if(!m)continue;
-      const visible=selected||eligible||u.pins>0||Boolean(u.order)||destroyed;
-      m.item.hidden=!visible;
+      // Hide stale labels immediately. The projection pass only unhides the
+      // current selected unit, preventing detached unselected text.
+      m.item.hidden=true;
       m.item.className="miniature-marker"+(selected?" selected":"")+
         (eligible?" eligible":"")+(destroyed?" destroyed":"");
       m.title.textContent=destroyed?u.name+" · LOST":
@@ -752,19 +754,28 @@ function initialize(THREE) {
       m.order.textContent=u.order||"USED";
     }
   }
+  // Only selected units get a nameplate, at useful zoom and interaction phases.
+  // Project every render frame so the single label cannot lag behind its base.
   function placeUnitMarkers(){
     const width=stage.clientWidth,height=stage.clientHeight;
+    const state=battle?.snapshot;
     for(const squad of squads){
       const marker=squad.marker?.item;
-      if(!marker||marker.hidden)continue;
-      const at=new THREE.Vector3(squad.root.position.x,
-        squad.soldiers.length?.74:.25,squad.root.position.z);
+      if(!marker)continue;
+      const show=squad===selectedSquad&&squad.unit.soldiers>0&&
+        zoom>=1.12&&(!state||["choose-order","plan-movement",
+          "choose-target","choose-assault-target","deployment"].includes(state.phase));
+      if(!show){marker.hidden=true;marker.style.display="none";continue}
+      const ground=terrainY(squad.root.position.x,squad.root.position.z);
+      const at=new THREE.Vector3(squad.root.position.x,ground+.92,squad.root.position.z);
       at.project(camera);
       const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
+      if(at.z<-1||at.z>1||x<20||x>width-20||y<30||y>height-30){
+        marker.hidden=true;marker.style.display="none";continue;
+      }
+      marker.hidden=false;marker.style.display="flex";
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
-      marker.style.display=(at.z<-1||at.z>1||x<-120||x>width+120||
-        y<-50||y>height+50)?"none":"flex";
     }
   }
   function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
@@ -880,7 +891,7 @@ function initialize(THREE) {
     }
     if(next&&changed){
       cameraFocus={x:next.root.position.x,z:next.root.position.z};
-      focusZoom=Math.max(zoom,1.85);
+      focusZoom=Math.max(zoom,1.50);
     }
     if(battle)updateUnitPresentation(battle.snapshot);
   }
@@ -993,18 +1004,20 @@ function initialize(THREE) {
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
     const radius=unit.role==="officer"?.53:1.27;
-    const ring=shape(root,new THREE.RingGeometry(radius,radius+.043,32),
-      new THREE.MeshBasicMaterial({color:unit.faction==="red"?0xc5a68c:0xc4cfa9,
-        transparent:true,opacity:.73,side:THREE.DoubleSide,depthWrite:false}),0,.32,0);
+    const ring=shape(root,new THREE.RingGeometry(radius,radius+.13,48),
+      new THREE.MeshBasicMaterial({color:0xe7c16b,
+        transparent:true,opacity:.96,side:THREE.DoubleSide,
+        depthWrite:false,depthTest:false}),0,.32,0);
     ring.rotation.x=-Math.PI/2;
     ring.castShadow=false;
     ring.receiveShadow=false;
     ring.visible=false;
     squad.ring=ring;
-    const eligibleRing=shape(root,new THREE.RingGeometry(radius+.12,radius+.155,40),
+    const eligibleRing=shape(root,new THREE.RingGeometry(radius+.18,radius+.27,40),
       new THREE.MeshBasicMaterial({
-        color:unit.faction==="red"?0xcaa78e:0xbdcfac,
-        transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false
+        color:unit.faction==="red"?0xdc8c71:0x80becb,
+        transparent:true,opacity:.78,side:THREE.DoubleSide,
+        depthWrite:false,depthTest:false
       }),0,.33,0);
     eligibleRing.rotation.x=-Math.PI/2;
     eligibleRing.visible=false;
@@ -1013,8 +1026,9 @@ function initialize(THREE) {
     squad.eligibleRing=eligibleRing;
     // Physical markers remain on the board instead of becoming a large HUD.
     // Order and pin count text is projected separately at low frequency.
-    const orderToken=block(root,.23,.23,.23,
-      mat(unit.faction==="red"?0x8f674b:0x66765a),radius+.28,.17,0);
+    const orderToken=block(root,.22,.17,.22,
+      mat(unit.faction==="red"?0xa5614d:0x598c99),radius+.18,.18,-.05);
+    orderToken.rotation.y=Math.PI/4;
     orderToken.visible=false;
     squad.orderToken=orderToken;
     squad.pinTokens=[];
@@ -1152,18 +1166,23 @@ function initialize(THREE) {
   // Camera: horizontal orbit only, locked isometric elevation, orthographic zoom.
   function updateCamera() {
     const radius = 31;
+    // Always orbit the board center. Focus and two-finger pan translate the
+    // orthographic window, not the camera's orbital pivot.
     camera.position.set(
-      target.x + Math.sin(yaw) * Math.cos(elevation) * radius,
-      target.y + Math.sin(elevation) * radius,
-      target.z + Math.cos(yaw) * Math.cos(elevation) * radius
+      Math.sin(yaw)*Math.cos(elevation)*radius,
+      .75+Math.sin(elevation)*radius,
+      Math.cos(yaw)*Math.cos(elevation)*radius
     );
-    camera.lookAt(target);
-    const h = baseHeight / zoom;
-    const aspect = viewportWidth / viewportHeight;
-    camera.left = -h * aspect / 2;
-    camera.right = h * aspect / 2;
-    camera.top = h / 2;
-    camera.bottom = -h / 2;
+    camera.lookAt(0,.75,0);
+    const h=baseHeight/zoom,aspect=viewportWidth/viewportHeight;
+    const dx=target.x,dz=target.z,dy=target.y-.75;
+    const horizontal=dx*Math.cos(yaw)-dz*Math.sin(yaw);
+    const vertical=dy*Math.cos(elevation)-
+      (dx*Math.sin(yaw)+dz*Math.cos(yaw))*Math.sin(elevation);
+    camera.left=-h*aspect/2+horizontal;
+    camera.right=h*aspect/2+horizontal;
+    camera.top=h/2+vertical;
+    camera.bottom=-h/2+vertical;
     camera.updateProjectionMatrix();
     // A gesture may query the camera before the next rendered frame.
     camera.updateMatrixWorld();
@@ -1478,8 +1497,8 @@ function initialize(THREE) {
         visualEffects.splice(i,1);
       }
     }
-    // Markers are cheap HTML chips, projected at 15fps rather than every frame.
-    if(frameIndex%4===0)placeUnitMarkers();
+    // One label max: keep synchronized with camera and soldiers at 60fps.
+    placeUnitMarkers();
     if(frameIndex%12===0&&battle?.snapshot?.objectives){
       // Objective tint follows the original scenario-runtime evaluator.
       for(const marker of objectiveMarkers){
