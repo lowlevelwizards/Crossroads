@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#212b29">
+  <title>Crossroads — Living Tabletop Study</title>
+  <link rel="stylesheet" href="src/diorama/diorama.css">
+</head>
+<body>
+  <main class="experience" aria-label="Crossroads 3D miniature battlefield study">
+    <div class="stage" id="stage">
+      <canvas id="dioramaCanvas" aria-label="3D tabletop diorama. Drag horizontally to orbit, use pinch or scroll to zoom."></canvas>
+      <div class="stage-vignette" aria-hidden="true"></div>
+      <div id="loadingState" class="loading-state" role="status">Preparing the tabletop…</div>
+      <header class="masthead">
+        <div class="brand">
+          <a href="./index.html" class="back-link" aria-label="Return to the 2D game">← 2D GAME</a>
+          <div class="brand-line">CROSSROADS <span>1939–1945</span></div>
+          <div class="subtitle">THE LIVING TABLETOP <span class="dot">◆</span> FIELD STUDY 01</div>
+        </div>
+        <div class="study-tag" aria-label="Non-playable scene study"><span class="study-light"></span> SCENE STUDY / NO RULES</div>
+      </header>
+      <aside class="scene-label" aria-label="Scene description">
+        <span class="eyebrow">01 / THE FARMSTEAD</span>
+        <h1>A little piece of the front.</h1>
+        <p>Painted miniatures. Real shadows. A battlefield waiting for its first order.</p>
+      </aside>
+      <div class="camera-panel" role="group" aria-label="Camera controls">
+        <span class="panel-label">ORBIT</span>
+        <div class="control-row">
+          <button type="button" id="orbitLeft" aria-label="Orbit left">↶</button>
+          <button type="button" id="orbitRight" aria-label="Orbit right">↷</button>
+        </div>
+        <div class="panel-divider"></div>
+        <span class="panel-label">ZOOM</span>
+        <div class="control-row">
+          <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+          <output id="zoomReadout" aria-live="off">100%</output>
+          <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+        </div>
+        <button type="button" id="resetView" class="reset-button">RESET VIEW</button>
+      </div>
+      <footer class="stage-footer">
+        <span class="gesture-help"><span class="desktop-hint">DRAG TO ORBIT <span class="sep">·</span> SCROLL TO ZOOM</span><span class="touch-hint">DRAG TO ORBIT <span class="sep">·</span> PINCH TO ZOOM</span></span>
+        <span class="footer-version">EXPERIMENTAL 3D / VISUAL ONLY</span>
+      </footer>
+    </div>
+  </main>
+  <script type="module" src="src/diorama/diorama.js"></script>
+</body>
+</html>
