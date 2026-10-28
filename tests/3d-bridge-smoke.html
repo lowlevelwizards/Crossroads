@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Crossroads 3D Bridge Smoke</title>
+<style>
+  body{background:#202b28;color:#efe6d3;font:14px/1.6 system-ui;padding:2rem}
+  .pass{color:#a7d49d}.fail{color:#ed8d7f}pre{white-space:pre-wrap}
+</style>
+<h1>Crossroads 3D bridge smoke</h1>
+<pre id="report">Loading live game data…</pre>
+<script src="../data/scenarios.js"></script>
+<script src="../data/unit-types.js"></script>
+<script src="../data/formations.js"></script>
+<script src="../data/faction-kits.js"></script>
+<script src="../data/terrain.js"></script>
+<script src="../src/presentation/miniatures.js"></script>
+<script src="../src/rules/movement.js"></script>
+<script src="../src/diorama/study-bridge.js"></script>
+<script>
+"use strict";
+(() => {
+  const output = document.getElementById("report");
+  const lines = [];
+  const b = window.CrossroadsDioramaBridge;
+  function test(label, check) {
+    try {
+      if (!check()) throw Error("Assertion failed");
+      lines.push("PASS " + label);
+    } catch (error) {
+      lines.push("FAIL " + label + ": " + error.message);
+    }
+  }
+  const near = (a,b) => Math.abs(a-b) < 0.01;
+  const terrain = [
+    { id:"farm", type:"long_farmhouse", worldX:-4.18, worldZ:-3.19, worldWidth:4.12, worldDepth:3.13 },
+    { id:"wall-left", type:"wall", worldX:-7.5, worldZ:-.82, worldWidth:4.10, worldDepth:.48 },
+    { id:"wall-right", type:"wall", worldX:-1.81, worldZ:-.82, worldWidth:1.92, worldDepth:.48 }
+  ];
+  const unit = b.createSquad();
+  const movement = b.createMovementController(unit, terrain);
+  const start = b.toWorld(unit);
+  test("Canonical 72 x 48 inch table", () => b.table.width === 72 && b.table.height === 48);
+  test("Physical board extent", () => near(b.toWorld({x:0,y:0}).x,-10.8) && near(b.toWorld({x:72,y:48}).z,7.2));
+  test("Table coordinate round trip", () => {
+    const point = b.toTable(b.toWorld({x:24,y:11}));
+    return near(point.x,24) && near(point.y,11);
+  });
+  test("Live Polish rifle squad definition", () =>
+    unit.id === "blue-rifle" && unit.quality === "veteran" &&
+    unit.soldiers === 6 && unit.kitId === "poland_1939");
+  test("Live formation and weapon roles", () =>
+    b.slotsFor(unit).length === 6 &&
+    b.slotsFor(unit).some(slot => slot.recipe.role === "lmg") &&
+    b.slotsFor(unit).some(slot => slot.recipe.role === "loader"));
+  test("Short Advance remains legal", () => {
+    const plan = movement.planMove({x:start.x+1.1,z:start.z});
+    return plan.legal && near(plan.cost,1.1/.3) && plan.order === "Advance";
+  });
+  test("Long Advance fits 6-inch budget", () => {
+    const plan = movement.planMove({x:start.x+3,z:start.z});
+    return plan.legal && plan.shortened &&
+      near(Math.hypot(plan.endpoint.x-unit.x,plan.endpoint.y-unit.y),6);
+  });
+  test("Outside-board destination rejected", () =>
+    !movement.planMove({x:40,z:0}).legal);
+  test("Impassable farmhouse footprint blocks movement", () => {
+    const farmUnit = b.createSquad({x:-7.2,z:-3.2});
+    const plan = b.createMovementController(farmUnit,terrain).planMove({x:-3.5,z:-3.2});
+    return !plan.legal && plan.kind === "obstacle";
+  });
+  test("Successful movement commits live state", () => {
+    const plan = movement.planMove({x:start.x+1.1,z:start.z});
+    movement.commitMove(plan);
+    return unit.moved && unit.order === "Advance" && near(unit.x,plan.endpoint.x);
+  });
+  output.textContent = lines.join("\n") + "\n\n" +
+    lines.filter(line => line.startsWith("PASS")).length + "/" + lines.length + " passed";
+  output.className = lines.some(line => line.startsWith("FAIL")) ? "fail" : "pass";
+})();
+</script>
