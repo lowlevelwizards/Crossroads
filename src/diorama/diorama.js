@@ -228,6 +228,7 @@ function initialize(THREE) {
     // projected into the gaming surface. The visible foundation and the
     // impassable game footprint deliberately share the same scaled dimensions.
     farm: { x:-4.18, z:-3.19, scale:.66, width:4.35*.66, depth:3.38*.66 },
+    wallDepth: .24,
     wallSections: [
       { x1:-9.55, x2:-5.45, z:-.82 },
       { x1:-2.77, x2:-.85, z:-.82 }
@@ -307,7 +308,7 @@ function initialize(THREE) {
     }
     for (let i = 0; i < count; i++) {
       const x = x1 + ((i + .5) / count) * length;
-      block(scene, length / count - .01, .07, .24, mat(0xa6a18b), x, terrainY(x, z) + .43, z);
+      block(scene, length / count - .01, .07, studyGeometry.wallDepth, mat(0xa6a18b), x, terrainY(x, z) + .43, z);
     }
   }
   for (const wall of studyGeometry.wallSections) wallSection(wall.x1, wall.x2, wall.z);
@@ -410,7 +411,7 @@ function initialize(THREE) {
     ...studyGeometry.wallSections.map((wall, index) => ({
       id:"study-wall-" + index, type:"wall",
       worldX:(wall.x1 + wall.x2) / 2, worldZ:wall.z,
-      worldWidth:wall.x2 - wall.x1, worldDepth:.24
+      worldWidth:wall.x2 - wall.x1, worldDepth:studyGeometry.wallDepth
     }))
   ]);
   const soldiers = [];
@@ -424,7 +425,8 @@ function initialize(THREE) {
   // A painted base must be physically *above* grass, patch and road geometry;
   // do not disable its depth test (that would draw it through walls/buildings).
   const groundRay = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,-1,0), 0, 20);
-  const baseSampleRadius = .42 * .37;
+  const MINIATURE_SCALE = .37;
+  const baseSampleRadius = .42 * MINIATURE_SCALE;
   const baseSamples = [
     [0,0], [baseSampleRadius,0], [-baseSampleRadius,0],
     [0,baseSampleRadius], [0,-baseSampleRadius],
@@ -461,7 +463,7 @@ function initialize(THREE) {
     figure.rotation.y = facing;
     // Approximate 1-inch miniature bases on a true 72x48-inch tabletop.
     // Height is intentionally heroic so facial/weapon silhouettes read on phone.
-    figure.scale.setScalar(.37);
+    figure.scale.setScalar(MINIATURE_SCALE);
     squadRoot.add(figure);
 
     const base = shape(figure, new THREE.CylinderGeometry(.39, .42, .11, 18), mat(0x3d3f34), 0, .02, 0);
@@ -608,6 +610,7 @@ function initialize(THREE) {
       travelDuration:Math.max(.55,Math.hypot(dx,dz)/.68)
     };
     selectedRing.visible = false;
+    selectedRing.userData.grounded = false;
   }
   let lastPinchDistance = null;
   canvas.addEventListener("pointerdown", function (event) {
@@ -736,7 +739,10 @@ function initialize(THREE) {
         }
       }
     }
-    selectedRing.position.y = footingHeight(squadRoot.position.x, squadRoot.position.z) + .03;
+    if (selectedRing.visible && !selectedRing.userData.grounded) {
+      selectedRing.position.y = footingHeight(squadRoot.position.x, squadRoot.position.z) + .03;
+      selectedRing.userData.grounded = true;
+    }
     renderer.render(scene, camera);
   }
   render();
