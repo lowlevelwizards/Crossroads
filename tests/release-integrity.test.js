@@ -138,7 +138,14 @@ assert(/standalone/i.test(readme), "README must identify this as a standalone re
 assert(read("editor.html").includes(manifest.version), "Editor shell does not display the release version");
 assert(read("classic.html").includes("data/build-info.js"), "Classic game shell no longer loads authoritative build metadata");
 const frontDoor = read("index.html");
-assert(frontDoor.includes('href="./diorama.html"'), "Homepage Play link must open the 3D diorama");
+assert(frontDoor.includes('href="./battle3d.html"'), "Homepage Play link must open the authoritative 3D battle");
+assert(!frontDoor.includes('href="./diorama.html"'), "Homepage must not launch the old movement study");
+const battleDoor = read("battle3d.html");
+assert(battleDoor.includes('id="battleSessionFrame"'), "Battle page must load its authoritative engine host");
+assert(battleDoor.includes("src/diorama/battle-client.js"), "Battle page must load the 3D battle client");
+assert(battleDoor.includes("src/diorama/scenario-scene.js"), "Battle page must load the 3D scene");
+assert(read("classic-session.html").includes("CROSSROADS_3D_SESSION_HOST=true"), "The battle's engine host must be configured");
+assert(read("diorama.html").includes("src/diorama/scenario-scene.js"), "Preserve the 3D scenic study as a fallback");
 assert(!frontDoor.includes("src/engine.js"), "Homepage must not load the old 2D engine");
 assert(!frontDoor.includes("editor.html"), "The public homepage should not expose the editor");
 assert(read("classic.html").includes('id="scenarioSelect"'), "Classic 2D game must remain preserved");
