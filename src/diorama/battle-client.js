@@ -63,6 +63,7 @@
         for(const order of state.orders||[]){
           if(order.available)addButton(actions,order.order,"order",{order:order.order});
         }
+        if(state.building) addButton(actions,state.building.label,"building");
         if(state.canCancel)addButton(actions,"Cancel","cancel",{},true);
       }
     }else if(state.phase==="plan-movement"){

@@ -4223,6 +4223,9 @@
           } : null,
           deploymentFaction:phase==="deployment"?currentDeploymentFaction():null,
           canCancel:Boolean(activationSnapshot)&&!transactionLockReason,
+          building:selected&&phase==="choose-order"&&buildingCommand(selected)?.enabled
+            ? {action:selected.inBuilding?"exit":"enter",
+              label:buildingCommand(selected).label} : null,
           orders:selected&&phase==="choose-order"
             ? ["Advance","Run","Fire","Ambush","Down","Rally","Assault"]
               .map(order=>({order,...orderAvailability(selected,order)}))
@@ -4295,6 +4298,15 @@
         else if(name==="target"){
           if(phase==="choose-target")await chooseTarget(String(payload.id||""));
           else if(phase==="choose-assault-target")chooseAssaultTarget(String(payload.id||""));
+        }
+        else if(name==="building"){
+          if(phase==="choose-order") {
+            const unit=getUnit(selectedUnitId);
+            const available=buildingCommand(unit);
+            if(!available?.enabled)return {ok:false,reason:available?.reason||"Building interaction not available",snapshot:this.snapshot()};
+            if(unit?.inBuilding)exitBuildingAction();
+            else enterBuildingAction();
+          }
         }
         else if(name==="finish-advance")finishAdvanceWithoutShooting();
         else if(name==="cancel")handleCancelAction();
