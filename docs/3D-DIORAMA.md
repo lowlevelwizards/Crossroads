@@ -186,3 +186,16 @@ morale, casualties, assaults, building occupancy, objective scoring,
 victory, editor scenario handoff, and 3D renderers for editor-authored
 `linearTerrain`, `terrainPatches`, junctions and crossings. This stage
 preserves the 2D game and its authoritative rules modules.
+
+
+## v0.4.1 — model proportions and physical scale
+
+The authored long farmhouse is rebuilt as six discrete architectural bays with
+human-scale doors and windows and real pitched roof panels. Its 13.6 x 3.76 in
+rules footprint stays unchanged. Painted stone walls are now roughly 0.72
+model inches thick and 1.22 inches tall inside the original larger 2.5-inch
+crossing rule zone: full-thickness slab geometry was removed. Both model
+families read measurements from `src/diorama/scale-spec.js`; physical game
+units remain 0.30 Three.js world units per inch. The former v0.4 production
+scene and page were preserved at `diorama-v040.html` and
+`src/diorama/scenario-scene-v040.js` for before/after review.

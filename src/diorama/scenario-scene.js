@@ -23,6 +23,8 @@ function initialize(THREE) {
   const stage = document.getElementById("stage");
   const bridge = window.CrossroadsDioramaBridge;
   const scenarioAdapter = window.Crossroads3DScenarioAdapter;
+  const scaleSpec = window.Crossroads3DScale;
+  if(!scaleSpec)throw new Error("Shared miniature scale reference missing.");
   if(!scenarioAdapter)throw new Error("3D scenario adapter not loaded.");
   const requestedScenario=new URLSearchParams(window.location.search).get("scenario")||"hold_the_farm";
   const layout=scenarioAdapter.loadScenario(requestedScenario);
@@ -255,69 +257,94 @@ function initialize(THREE) {
   pebbles.castShadow = false;
   scene.add(pebbles);
 
-  // The rules-normalized building footprint, not its loose 2D art rectangle,
-  // is the size of the physical solid. All transforms are derived from data.
-  // Farmhouse with masonry, timber, inset windows, shutters and a true pitched roof.
+  // Real longhouse: independent structural bays, NOT scaled model geometry.
+  // The game rules footprint remains authoritative; every decorative piece
+  // is constructed directly in physical world units from that footprint.
   function makeFarmhouse(entry) {
     const rect=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const dim=scaleSpec.houseDimensions(rect,6);
     const group=new THREE.Group();
     group.position.set(rect.x,terrainY(rect.x,rect.z),rect.z);
-    group.scale.set(rect.width/4.35,.73,rect.depth/3.38);
-    group.rotation.y=-(entry.rotation||0)*Math.PI/180;
+    group.rotation.y=(rect.width>=rect.depth?0:-Math.PI/2) -
+      (entry.rotation||0)*Math.PI/180;
     group.userData.terrainId=entry.id;
+    group.userData.rulesRect=entry.rulesRect;
     scene.add(group);
-    const buildingRoof=entry.appearance?.includes("thatch")?
-      mat(0x8f845e):roofMat;
-    const buildingWall=entry.appearance?.includes("peach")?
-      mat(0xc9ae92):mat(0xe1cfab);
-    block(group, 4.35, 0.25, 3.38, mat(0x8b8a77), 0, .14, 0);
-    block(group, 4.12, 1.96, 3.13, buildingWall, 0, 1.12, 0);
-    block(group, 4.18, .30, 3.20, mat(0xb5a78a), 0, .34, 0);
-    for (const x of [-1.4, -.46, .47, 1.45]) {
-      block(group, .095, 1.85, .055, mat(0xc7b693), x, 1.19, 1.59);
+    const wallMat=mat(entry.appearance?.includes("peach")?0xcdb39c:0xddd2b6);
+    const masonry=mat(0xada28a),lintel=mat(0x988a70);
+    const tiledRoof=mat(entry.appearance?.includes("thatch")?0x948866:0xb54f36);
+    const timber=mat(0x66503a),windowGlass=mat(0x687978),shutter=mat(0x61724f);
+    const L=dim.length, D=dim.depth;
+    const eave=dim.eaveHeight, rise=dim.roofRise;
+    const halfL=L/2,halfD=D/2;
+    // A single, solid load-bearing structure with foundations in scale.
+    block(group,L,.085,D,masonry,0,.035,0);
+    block(group,L-.055,eave-.13,D-.09,wallMat,0,eave/2+.04,0);
+    block(group,L,.075,D,masonry,0,.16,0);
+    // Separate bay posts/rhythm at sensible regular intervals.
+    for(let i=0;i<=dim.bays;i++){
+      const x=-halfL+i*dim.bayWidth;
+      const corrected=Math.max(-halfL+.036,Math.min(halfL-.036,x));
+      for(const side of [-1,1]){
+        block(group,.045,eave-.12,.042,lintel,corrected,eave/2+.055,side*(halfD+.002));
+      }
     }
-    const pitch = Math.atan2(1.00, 1.80);
-    const roofFront = block(group, 4.78, .18, 2.08, buildingRoof, 0, 2.52, .89);
-    roofFront.rotation.x = pitch;
-    const roofBack = block(group, 4.78, .18, 2.08, buildingRoof, 0, 2.52, -.89);
-    roofBack.rotation.x = -pitch;
-    block(group, 4.80, .17, .20, mat(0x55372d), 0, 3.02, 0);
-    for (const x of [-2.16, 2.16]) {
-      const verts = new Float32Array([
-        x, 2.06, -1.57,
-        x, 2.06, 1.57,
-        x, 3.05, 0
-      ]);
-      const geom = new THREE.BufferGeometry();
-      geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-      geom.computeVertexNormals();
-      shape(group, geom, new THREE.MeshStandardMaterial({ color: 0xd6c49f, side: THREE.DoubleSide }), 0, 0, 0);
+    // Physically pitched two-panel roof with correct rise on a narrow,
+    // elongated longhouse; no width-dependent stretching of the roof slope.
+    const pitch=Math.atan2(rise,halfD+.11);
+    const slope=Math.hypot(rise,halfD+.11);
+    for(const side of [-1,1]){
+      const panel=block(group,L+.19,.074,slope+.09,tiledRoof,0,eave+rise/2,side*(halfD+.11)/2);
+      panel.rotation.x=side*pitch;
+      block(group,L+.16,.055,.040,mat(0x71402f),0,eave-.045,side*(halfD+.16));
     }
-    block(group, .55, 1.04, .56, mat(0x9a8b74), 1.17, 3.13, -.55);
-    block(group, .68, .15, .67, mat(0x756453), 1.17, 3.67, -.55);
-    function windowAt(x, z, y, side) {
-      const front = side || 1;
-      block(group, .68, .81, .055, wood, x, y, z + .08 * front);
-      block(group, .52, .64, .069, mat(0x667879), x, y, z + .11 * front);
-      block(group, .065, .68, .09, mat(0xdfd1ae), x, y, z + .15 * front);
-      block(group, .61, .065, .095, mat(0xdfd1ae), x, y, z + .15 * front);
-      block(group, .30, .82, .075, mat(0x697349), x - .51, y, z + .08 * front);
-      block(group, .30, .82, .075, mat(0x697349), x + .51, y, z + .08 * front);
-      block(group, .95, .1, .25, mat(0xc4b391), x, y - .45, z + .17 * front);
+    block(group,L+.23,.065,.085,mat(0x6a3d2e),0,eave+rise,0);
+    // Triangular gables are architecturally independent, not scaled windows.
+    for(const side of [-1,1]){
+      const x=side*(halfL-.017);
+      const triangle=new THREE.BufferGeometry();
+      triangle.setAttribute("position",new THREE.Float32BufferAttribute([
+        x,eave,-halfD, x,eave,halfD, x,eave+rise,0
+      ],3));
+      triangle.computeVertexNormals();
+      shape(group,triangle,new THREE.MeshStandardMaterial({
+        color:0xd3c4a4,roughness:1,side:THREE.DoubleSide
+      }),0,0,0);
     }
-    windowAt(-1.23, 1.57, 1.24, 1);
-    windowAt(1.22, 1.57, 1.24, 1);
-    windowAt(-1.23, -1.57, 1.24, -1);
-    block(group, .77, 1.50, .12, darkWood, 0, 1.05, 1.65);
-    block(group, .65, 1.36, .15, mat(0x785637), 0, 1.05, 1.73);
-    block(group, .055, 1.36, .045, mat(0x9d7244), -.20, 1.05, 1.82);
-    shape(group, new THREE.SphereGeometry(.045, 8, 6), mat(0xc6a76a, .30), .21, 1.02, 1.84);
-    // Stepping stones, sacks and firewood in front of the door.
-    block(group, 1.25, .11, .43, mat(0xaaa18b), 0, .13, 2.00);
-    for (let i = 0; i < 3; i++) {
-      const log = shape(group, new THREE.CylinderGeometry(.13, .13, .72, 7), wood, -1.83 + .21 * i, .23 + i * .04, 1.98);
-      log.rotation.z = Math.PI / 2;
+    // Five regular window bays and one real human-scale doorway.
+    const doorwayBay=Math.floor(dim.bays/2);
+    for(let i=0;i<dim.bays;i++){
+      const x=-halfL+(i+.5)*dim.bayWidth;
+      for(const side of [-1,1]){
+        const z=side*(halfD+.025);
+        const isDoor=side===1&&i===doorwayBay;
+        if(isDoor){
+          const doorWidth=Math.min(.285,dim.bayWidth*.56);
+          const doorHeight=Math.min(.57,eave*.88);
+          block(group,doorWidth+.055,doorHeight+.062,.065,timber,x,doorHeight/2+.09,z);
+          block(group,doorWidth,doorHeight,.073,mat(0x805d3d),x,doorHeight/2+.07,z+side*.038);
+          block(group,.022,.030,.08,mat(0xbca06a),x+doorWidth*.34,doorHeight*.53,z+side*.085);
+          block(group,doorWidth+.22,.055,.20,masonry,x,.09,z+side*.12);
+        }else{
+          const width=Math.min(.255,dim.bayWidth*.43);
+          const height=.31;
+          const centerY=eave*.54;
+          block(group,width+.06,height+.055,.055,timber,x,centerY,z);
+          block(group,width,height,.064,windowGlass,x,centerY,z+side*.032);
+          block(group,.024,height+.06,.072,mat(0xe1cfac),x,centerY,z+side*.065);
+          block(group,width+.04,.028,.073,mat(0xe1cfac),x,centerY,z+side*.065);
+          for(const shutterSide of [-1,1])
+            block(group,.085,height+.04,.048,shutter,x+shutterSide*(width/2+.075),
+              centerY,z+side*.043);
+          block(group,width+.11,.041,.13,masonry,x,centerY-height/2-.043,z+side*.055);
+        }
+      }
     }
+    // A sensible chimney stack through the roof at one end.
+    block(group,.27,.46,.27,mat(0x998873),
+      halfL-dim.bayWidth*.72,eave+rise+.03,-D*.10);
+    block(group,.33,.068,.33,mat(0x756655),
+      halfL-dim.bayWidth*.72,eave+rise+.27,-D*.10);
   }
   function makeBarn(entry) {
     const rect=scenarioAdapter.boundsWorld(entry.rulesRect);
@@ -361,32 +388,48 @@ function initialize(THREE) {
     else makeFarmhouse(entry);
   }
 
-  // Stage 3: built from canonical normalized wall footprints in game inches.
+  // The 2.5-inch movement zone is deliberately NOT a 2.5-inch thick wall.
+  // Preserve the invisible rules region for the live movement/cover modules;
+  // draw genuinely narrow, hand-laid physical masonry at its centerline.
   function makeAuthoredWall(entry) {
     const r=scenarioAdapter.boundsWorld(entry.rulesRect);
-    const alongX=r.width>=r.depth;
-    const length=alongX?r.width:r.depth;
-    const width=alongX?r.depth:r.width;
+    const dims=scaleSpec.wallDimensions(r);
     const group=new THREE.Group();
     group.position.set(r.x,terrainY(r.x,r.z),r.z);
-    group.rotation.y=(alongX?0:-Math.PI/2)-(entry.rotation||0)*Math.PI/180;
-    scene.add(group);
+    group.rotation.y=(dims.alongX?0:-Math.PI/2)-
+      (entry.rotation||0)*Math.PI/180;
     group.userData.terrainId=entry.id;
-    // The painted stone base depicts the FULL crossing-cost footprint.
-    block(group,length,.075,width,mat(0x988f7b),0,.03,0);
-    const count=Math.max(1,Math.ceil(length/.25));
-    const palette=stonePalette;
-    for(let course=0;course<3;course++){
-      for(let i=0;i<count;i++){
-        const x=-length/2+(i+.5)*length/count;
-        const stagger=course%2 ? length/count*.11 : 0;
-        const stone=block(group,length/count-.012,.135,Math.max(.20,width*.80),
-          mat(palette[(i+course*2)%palette.length]),
-          Math.min(length/2-.10,x+stagger),.125+course*.13,0);
-        stone.rotation.y=Math.sin(i*1.9+course)*.012;
+    group.userData.rulesRect=entry.rulesRect;
+    scene.add(group);
+    const L=dims.length, thick=dims.visibleThickness, height=dims.height;
+    const courses=3;
+    const stoneHeight=(height-.04)/courses;
+    const stoneLength=.22;
+    const variants=[0x9e9a88,0xb2ac94,0x8f9081,0xbdb59b,0xaaa18a];
+    // No continuous wide base/slab; each stone is part of the actual wall.
+    for(let course=0;course<courses;course++){
+      const rowCount=Math.ceil(L/stoneLength)+1;
+      for(let i=0;i<rowCount;i++){
+        const left=-L/2+i*stoneLength+(course%2?stoneLength*.5:0);
+        const right=Math.min(L/2,left+stoneLength-.009);
+        const boundedLeft=Math.max(-L/2,left);
+        if(right<=boundedLeft+.018)continue;
+        const cx=(right+boundedLeft)/2, length=right-boundedLeft;
+        const color=variants[(i*7+course*3)%variants.length];
+        const stone=block(group,length,stoneHeight-.008,
+          thick*(.88+((i+course)%3)*.045),mat(color),
+          cx,.015+(course+.5)*stoneHeight,0);
+        stone.rotation.y=Math.sin(i*1.91+course*5)*.018;
       }
     }
-    block(group,length,.075,Math.max(.23,width*.90),mat(0xb5ab97),0,.53,0);
+    // Cap is a line of individual coping stones; no giant lid.
+    const count=Math.ceil(L/.27);
+    for(let i=0;i<count;i++){
+      const width=Math.min(.27,L-i*.27);
+      block(group,width-.012,.047,Math.min(scaleSpec.model.wallCapThickness,thick+.06),
+        mat(variants[(i+2)%variants.length]),
+        -L/2+i*.27+width/2,height-.003,0);
+    }
   }
   authoredTerrain.filter(e=>e.renderer==="wall").forEach(makeAuthoredWall);
 
