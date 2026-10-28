@@ -735,7 +735,8 @@ function initialize(THREE) {
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
       // Used dice appear only once the soldiers have finished moving.
-      squad.orderToken.visible=Boolean(u.order)&&!destroyed&&!squad.moving;
+      squad.orderToken.visible=Boolean(u.order)&&Boolean(u.activated)&&
+        !destroyed&&!squad.moving;
       for(let i=0;i<squad.pinTokens.length;i++)
         squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
       const m=squad.marker;
@@ -1457,7 +1458,8 @@ function initialize(THREE) {
           }
           if(!moving.remote) squad.controller.commitMove(moving.plan);
           squad.moving=false;
-          squad.orderToken.visible=Boolean(squad.unit.order)&&squad.unit.soldiers>0;
+          squad.orderToken.visible=Boolean(squad.unit.order)&&
+            Boolean(squad.unit.activated)&&squad.unit.soldiers>0;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
           for(const soldier of squad.soldiers) soldier.grounded=false;
