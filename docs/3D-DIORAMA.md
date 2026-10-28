@@ -93,3 +93,26 @@ must extract a shared authoritative rules settings source.
   in proportion to the unchanged heroic soldier sculpt.
 - Camera gestures, 72×48-inch physical board, clean HUD and shared squad data
   remain untouched.
+
+
+## First platoon study — 3D v0.3.0
+
+Four selectable units are borrowed from live Hold the Farm scenario definitions:
+Polish rifle squad (6) and officer (2), German rifle squad (6) and assault squad (6).
+The scenario itself is not modified; these four units have study-specific starts.
+They use shared unit templates, faction kits, formation slots, and miniature recipes.
+
+Tap any squad's miniatures to select the unit (subtle faction-colored ring), then
+tap terrain to Advance. 3D movement delegates to the live movement rule module
+for the 6-inch allowance, building and wall checks, and separation from all
+other units (3.4 inches). One unit moves at a time for now, with independent
+positions and state; this remains a sandbox, not an order-die turn system.
+
+Distinctive equipment silhouettes now include field-grey German uniforms and
+flared helmets, Polish khaki and helmets, officers' peaked caps and sidearms,
+SMGs, rifles and LMGs. Grounding stays accurate for every miniature.
+
+Each soldier independently turns before formation motion, has a subtly
+different walking pace (0.925–1.075x), delayed start, stride rhythm and bob,
+and settles back into its exact authored formation slot at the end of a move.
+These changes do not alter the legal 6-inch game movement distance.

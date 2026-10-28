@@ -76,9 +76,10 @@
   // The farm study is not a full rendering of Hold the Farm. We borrow its
   // authored Polish rifle squad and deliberately place it on this vignette's
   // meadow. No scenario spawn coordinates or authored scenario files change.
-  function createSquad(worldStart = { x: 1.85, z: 3.92 }) {
-    const source = scenario.forces.blue.find(entry => entry.unitType === "rifleSquad");
-    if (!source) throw new Error("Hold the Farm has no Polish rifle squad.");
+  function createSquad(worldStart = { x: 1.85, z: 3.92 }, sourceId = "blue-rifle") {
+    const faction = sourceId.startsWith("red-") ? "red" : "blue";
+    const source = scenario.forces[faction].find(entry => entry.id === sourceId);
+    if (!source) throw new Error("Hold the Farm does not define unit " + sourceId);
     const template = types[source.unitType];
     if (!template) throw new Error("Unknown rifle squad template.");
     const start = toTable(worldStart);
@@ -87,9 +88,9 @@
       type: source.unitType,
       role: template.role,
       name: source.name ?? template.name,
-      faction: "blue",
+      faction,
       quality: source.quality ?? template.quality,
-      kitId: scenario.factions.blue.kitId,
+      kitId: scenario.factions[faction].kitId,
       soldiers: template.soldiers,
       weapons: { ...template.weapons },
       x: start.x,
@@ -102,10 +103,23 @@
     return unit;
   }
 
+  // Four live Hold the Farm records, relocated onto the current handmade
+  // vignette. This is a movement laboratory, not an imported 2D scenario.
+  const studyDeployment = Object.freeze([
+    Object.freeze({sourceId:"blue-rifle",worldStart:Object.freeze({x:1.85,z:3.92})}),
+    Object.freeze({sourceId:"blue-officer",worldStart:Object.freeze({x:-1.48,z:4.68})}),
+    Object.freeze({sourceId:"red-rifle",worldStart:Object.freeze({x:7.20,z:-2.05})}),
+    Object.freeze({sourceId:"red-assault",worldStart:Object.freeze({x:4.65,z:-3.64})})
+  ]);
+  function createStudyUnits() {
+    return studyDeployment.map(({sourceId,worldStart}) => createSquad(worldStart,sourceId));
+  }
+
   // Original formation slot percentages now refer to physical inches rather
   // than the CSS canvas. Six soldiers occupy a roughly 8x3-inch formation.
   function slotsFor(unit) {
-    const definition = formations[unit.role] ?? formations.line;
+    const definition = formations[unit.role] ??
+      (unit.role === "support" ? formations.supportPacked : formations.line);
     return definition.slots.slice(0, unit.soldiers).map(([x, y], index) =>
       Object.freeze({
         index,
@@ -141,13 +155,13 @@
     wallCrossingCost: 2
   });
 
-  function createMovementController(unit, terrainDefinitions) {
+  function createMovementController(unit, terrainDefinitions, getLivingUnits = () => [unit]) {
     const terrain = { instances: terrainDefinitions.map(terrainInstance) };
     const movement = movementFactory.create({
       rules: movementSettings,
       terrain,
       movementIntegrityEnabled: () => true,
-      livingUnits: () => [unit],
+      livingUnits: getLivingUnits,
       distanceBetweenPoints: distance,
       pointAtSegment,
       pointInsideRect: insideRect,
@@ -194,6 +208,6 @@
 
   window.CrossroadsDioramaBridge = Object.freeze({
     table, toWorld, toTable, inBounds, terrainInstance, createSquad,
-    slotsFor, createMovementController
+    createStudyUnits, slotsFor, createMovementController
   });
 })();
