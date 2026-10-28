@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>Crossroads 3D scenario smoke</title>
+<style>body{background:#24332e;color:#efe2ca;font:14px/1.5 system-ui;padding:2rem}</style>
+<h1>Crossroads 3D authored scenario tests</h1><pre id="out">Loading…</pre>
+<script src="../data/scenarios.js"></script><script src="../data/unit-types.js"></script>
+<script src="../data/formations.js"></script><script src="../data/faction-kits.js"></script>
+<script src="../data/terrain.js"></script><script src="../src/presentation/miniatures.js"></script>
+<script src="../src/rules/movement.js"></script><script src="../src/rules/terrain-semantics.js"></script>
+<script src="../src/rules/terrain-spatial.js"></script><script src="../src/rules/terrain-geometry.js"></script>
+<script src="../src/diorama/study-bridge.js"></script><script src="../src/diorama/scenario-adapter.js"></script>
+<script>
+"use strict";
+(() => {
+ const b=window.CrossroadsDioramaBridge,a=window.Crossroads3DScenarioAdapter;
+ const f=a.loadScenario("hold_the_farm"),c=a.loadScenario("take_the_crossroads");
+ const units=b.createScenarioUnits(f.scenario),r=[];
+ const eq=(x,y)=>Math.abs(x-y)<1e-5,check=(n,p)=>r.push([n,p]);
+ check("8 imported terrain objects",f.entries.length===8);
+ check("2 roads, 2 walls, 2 woods, 2 buildings",
+   ["road","wall","woods","building"].every(k=>f.entries.filter(e=>e.renderer===k).length===2));
+ check("8 units, 34 figures",units.length===8&&units.reduce((n,u)=>n+u.soldiers,0)===34);
+ check("All units at exact scenario positions",units.every(u=>{
+   const src=f.forces[u.faction].find(s=>s.id===u.id);
+   return src&&u.x===src.x&&u.y===src.y;
+ }));
+ check("Correct Polish/German kits",units.filter(u=>u.kitId==="poland_1939").length===4 &&
+   units.filter(u=>u.kitId==="germany_1939").length===4);
+ check("All real formation roles",units.every(u=>b.slotsFor(u).length===u.soldiers));
+ check("Two three-person MMG crews",units.filter(u=>u.type==="mmgTeam").length===2 &&
+   units.filter(u=>u.type==="mmgTeam").every(u=>u.soldiers===3));
+ check("72 by 48 inches",b.table.width===72&&b.table.height===48);
+ const p=b.toTable(b.toWorld({x:15,y:31}));
+ check("Game/world inch roundtrip",eq(p.x,15)&&eq(p.y,31));
+ const house=f.entries.find(e=>e.id==="farmhouse");
+ check("Authoritative building inset",eq(house.rulesRect.width,13.6)&&
+   eq(house.rulesRect.height,3.76)&&house.rulesRect.width<house.visualRect.width);
+ check("1 farm objective",f.objectives.length===1&&f.objectives[0].id==="farm_yard");
+ const model={id:"test",x:34,y:23,name:"Tester",faction:"blue"};
+ const movement=b.createMovementController(model,f.normalized,()=>[model]);
+ check("8 rule-authoritative terrain instances",movement.terrain.instances.length===8);
+ const walls=movement.movement.analyzeMovementPath(model,[{x:34,y:23},{x:34,y:29}],"Run");
+ check("Wall crossing adds exactly 2 inches",walls.legal&&eq(walls.cost,8));
+ const blocked=movement.movement.analyzeMovementPath(model,[{x:40,y:18},{x:47,y:18}],"Run");
+ check("Building blocks travel",!blocked.legal&&blocked.kind==="obstacle");
+ const woods=movement.movement.analyzeMovementPath(model,[{x:9,y:7},{x:15,y:7}],"Run");
+ check("Woods cost x1.5",woods.legal&&eq(woods.cost,9));
+ check("Alternate scenario adapter",c.entries.length===5&&c.summary.unitCount===8);
+ const passing=r.filter(x=>x[1]).length;
+ document.getElementById("out").textContent=r.map(x=>(x[1]?"PASS ":"FAIL ")+x[0]).join("\n")
+   +"\n"+passing+"/"+r.length+" passed";
+ if(passing!==r.length)document.body.style.background="#633";
+})();
+</script>

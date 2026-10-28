@@ -137,3 +137,52 @@ These changes do not alter the legal 6-inch game movement distance.
 - These are presentation timings only; the live 6-inch Advance allowance,
   unit separation, figure counts, positions, and formation convergence remain
   unchanged. No new HUD elements were added.
+
+
+## v0.4 — Stages 0–8: Data-driven 3D battlefields
+
+- **Stage 0:** The prior v0.3.1 study is preserved at `diorama-study.html`,
+  continuing to use its original `src/diorama/diorama.js`. The public Play
+  route launches `diorama.html` for the authored version.
+- **Stage 1:** `src/diorama/scenario-adapter.js` loads the live scenario
+  registry and `CrossroadsTerrainGeometry.setActiveScenario`. Authoritative
+  normalized *rules* footprints remain distinct from 2D visual rectangles.
+- **Stage 2:** Roads and their surface/ruts are placed from both actual
+  `road_straight` instances, instead of the handmade diagonal path.
+- **Stage 3:** Wall length, center and full crossing footprint derive directly
+  from both normalized wall entries; the old decorative gate is gone.
+- **Stage 4:** A farmhouse and a distinct timber barn are scaled and positioned
+  using normalized solid building footprints. Appearance metadata selects
+  material colors; no independent collision rectangles are created.
+- **Stage 5:** Deterministically seeded faceted woodland trees and shrubs fill
+  each authored woods footprint, with a ground surface. Reusable field stalk
+  rendering supports other scenarios that have crop fields.
+- **Stage 6:** All eight *Hold the Farm* units spawn at their exact authored
+  coordinates: 34 miniatures in all, with the correct 1939 kits, soldier counts,
+  roles and distinct three-person MMG crews.
+- **Stage 7:** The original pure `CrossroadsMovementRules` module receives the
+  exact normalized terrain instances shared with the new renderer, so legal
+  movement respects 6-inch Advance, wall costs, rough woods, impassable
+  buildings, the table edge and the existing unit-separation rule.
+- **Stage 8:** The authored Farm Yard objective is rendered as a painted ring
+  and flag, and `?debugTerrain=1` adds opt-in wireframe rules footprints and
+  console diagnostics, hidden in ordinary play.
+
+The standalone page can also display the simpler *Take the Crossroads* scenario
+via `diorama.html?scenario=take_the_crossroads`. This is a visual/Advance
+movement preview, not player deployment or the full battle coordinator.
+The original handcrafted reference remains at `diorama-study.html`.
+
+### Validation
+
+`tests/3d-scenario-smoke.html` checks scenario objects, unit positions,
+34 soldier roles, building footprint normalization, exact wall crossing
+cost, woods movement multiplier and second-scenario adapter support.
+
+### Still future work
+
+Full battle state/turns, randomized order dice, shooting and cover,
+morale, casualties, assaults, building occupancy, objective scoring,
+victory, editor scenario handoff, and 3D renderers for editor-authored
+`linearTerrain`, `terrainPatches`, junctions and crossings. This stage
+preserves the 2D game and its authoritative rules modules.
