@@ -1,0 +1,39 @@
+/* A real Crossroads battle is run by the original coordinator, not 3D code. */
+.battle-session-frame{
+  position:absolute;left:-12000px;top:-12000px;width:1180px;height:850px;
+  opacity:0;pointer-events:none;border:0
+}
+.battle-controls{
+  position:absolute;z-index:9;
+  left:max(12px,env(safe-area-inset-left));
+  right:max(12px,env(safe-area-inset-right));
+  bottom:calc(35px + env(safe-area-inset-bottom));
+  width:min(560px,calc(100% - 24px));
+  margin-inline:auto;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  pointer-events:none;
+  color:#f1e6cd;font-family:system-ui,sans-serif;text-shadow:0 1px 3px #111
+}
+.battle-controls .battle-heading{
+  background:#27332de9;border:1px solid #d8c5a355;border-radius:6px;
+  padding:9px 12px;max-width:100%;text-align:center;font-size:12px;
+}
+.battle-controls .battle-primary{font-size:14px;font-weight:750}
+.battle-controls .battle-hint{font-size:11px;opacity:.92}
+.battle-controls .battle-actions{
+  display:flex;justify-content:center;flex-wrap:wrap;gap:7px;max-width:100%
+}
+.battle-controls button{
+  appearance:none;pointer-events:auto;border:1px solid #a99d7e;
+  border-radius:5px;background:#ece0bd;color:#292b25;min-height:42px;
+  padding:7px 11px;font-weight:750;font-size:12px;touch-action:manipulation
+}
+.battle-controls button:disabled{opacity:.44}
+.battle-controls button:focus-visible{outline:3px solid #e4c88c}
+.battle-controls .battle-cancel{background:#414a43;color:#f0e6d3}
+.battle-controls .battle-loading{background:#2b3832d6;border-radius:5px;padding:10px}
+@media (max-height:580px){
+ .battle-controls{bottom:calc(12px + env(safe-area-inset-bottom))}
+ .battle-controls .battle-heading{padding:5px 9px}
+ .battle-controls button{min-height:36px;padding:5px 8px}
+}

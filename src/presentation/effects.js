@@ -12,6 +12,23 @@
   ]);
 
   function create({ battlefield, tableWidth, tableHeight, getTableSize = null }) {
+    // The same-origin 3D client has its own miniature animations. This hidden
+    // engine host must resolve visual effects immediately, without waiting on
+    // offscreen Web Animations or requestAnimationFrame throttling on iOS.
+    if(window.CROSSROADS_3D_SESSION_HOST) {
+      return Object.freeze({
+        playMovementPath:async()=>{},
+        playEligibilityHop:()=>{},
+        playUnitHop:async()=>{},
+        playFire:async()=>{},
+        playCasualtyPuffs:()=>{},
+        playRally:async()=>{},
+        playCommandPulse:()=>{},
+        playStatePulse:()=>{},
+        isBusy:()=>false
+      });
+    }
+
     let busyCount = 0;
 
     function currentTableSize() {
