@@ -51,6 +51,10 @@ function initialize(THREE) {
 
   const camera = new THREE.OrthographicCamera(-12, 12, 9, -9, 0.1, 150);
   const target = new THREE.Vector3(0, 0.75, 0);
+  // Smooth focus has no effect on game coordinates. Manual pan/orbit interrupts.
+  let cameraFocus=null;
+  let focusZoom=null;
+  function stopCameraFocus(){cameraFocus=null;focusZoom=null;}
   const initialYaw = Math.PI / 4;
   let yaw = initialYaw;
   let zoom = 1;
@@ -697,6 +701,72 @@ function initialize(THREE) {
   let pendingMovePoint=null;
   let lastMoveTap=0;
   const visualEffects=[];
+  let frameIndex=0;
+  const unitLookup=new Map();
+  const markerLayer=document.createElement("div");
+  markerLayer.className="miniature-markers";
+  markerLayer.setAttribute("aria-hidden","true");
+  stage.appendChild(markerLayer);
+  function markerPart(className){
+    const item=document.createElement("span");
+    item.className=className;
+    return item;
+  }
+  function makeUnitMarker(squad){
+    const item=document.createElement("div");
+    item.className="miniature-marker";
+    const title=markerPart("mini-chip");
+    const row=document.createElement("div");row.className="mini-row";
+    const pins=markerPart("mini-pins"),order=markerPart("mini-order");
+    row.append(pins,order);item.append(title,row);
+    markerLayer.append(item);
+    squad.marker={item,title,pins,order};
+  }
+  function updateUnitPresentation(snapshot){
+    for(const squad of squads){
+      const u=squad.unit;
+      const selected=selectedSquad===squad;
+      const eligible=snapshot?.phase==="choose-unit"&&
+        u.faction===snapshot.faction&&!u.activated&&u.soldiers>0;
+      const destroyed=u.soldiers<=0;
+      if(squad.eligibleRing){
+        squad.eligibleRing.visible=eligible&&!selected;
+        squad.eligibleRing.material.opacity=eligible?.6:0;
+      }
+      squad.ring.visible=selected&&!squad.moving&&!destroyed;
+      squad.orderToken.visible=Boolean(u.order)&&!destroyed;
+      for(let i=0;i<squad.pinTokens.length;i++)
+        squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
+      const m=squad.marker;
+      if(!m)continue;
+      const visible=selected||eligible||u.pins>0||Boolean(u.order)||destroyed;
+      m.item.hidden=!visible;
+      m.item.className="miniature-marker"+(selected?" selected":"")+
+        (eligible?" eligible":"")+(destroyed?" destroyed":"");
+      m.title.textContent=destroyed?u.name+" · LOST":
+        selected?u.name+" · "+u.soldiers+" SOLDIERS":
+        eligible?u.name+" · READY":u.name;
+      m.pins.hidden=!u.pins;
+      m.pins.textContent=u.pins+" PIN"+(u.pins===1?"":"S");
+      m.order.hidden=!u.order&&!u.activated;
+      m.order.textContent=u.order||"USED";
+    }
+  }
+  function placeUnitMarkers(){
+    const width=stage.clientWidth,height=stage.clientHeight;
+    for(const squad of squads){
+      const marker=squad.marker?.item;
+      if(!marker||marker.hidden)continue;
+      const at=new THREE.Vector3(squad.root.position.x,
+        squad.soldiers.length?.74:.25,squad.root.position.z);
+      at.project(camera);
+      const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
+      marker.style.left=x.toFixed(1)+"px";
+      marker.style.top=y.toFixed(1)+"px";
+      marker.style.display=(at.z<-1||at.z>1||x<-120||x>width+120||
+        y<-50||y>height+50)?"none":"flex";
+    }
+  }
   function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
     const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.94,depthWrite:false});
     const particle=shape(scene,new THREE.SphereGeometry(size,8,6),material,x,y,z);
@@ -704,28 +774,50 @@ function initialize(THREE) {
     visualEffects.push({mesh:particle,duration,age:0});
   }
   function showCombatAction(event) {
-    if(event.action!=="target"||!event.before?.selectedUnitId)return;
-    const shooter=squads.find(s=>s.unit.id===event.before.selectedUnitId);
+    if(!["target","reaction-fire"].includes(event.action))return;
+    const shooterId=event.action==="reaction-fire"?
+      event.before?.reaction?.ambusherId:event.before?.selectedUnitId;
+    if(!shooterId)return;
+    const shooter=unitLookup.get(shooterId);
     if(!shooter)return;
     const shooters=shooter.soldiers.filter(s=>s.figure.visible);
-    // Physical muzzle effects belong to 3D; outcomes belong to the engine.
-    for(const soldier of shooters.slice(0,6)){
+    // Role-specific pulses; hits and casualties always come from engine state.
+    for(let i=0;i<shooters.length;i++){
+      const soldier=shooters[i];
+      if(soldier.role==="crew"||soldier.role==="loader")continue;
+      soldier.recoil=soldier.role==="mmg"?.36:soldier.role==="smg"?.24:.17;
       const facing=soldier.figure.rotation.y;
       const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.31;
       const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.31;
-      spawnBriefFlash(x,soldier.figure.position.y+.54,z,0xffcb75,.057,.16);
+      const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
+      spawnBriefFlash(x,soldier.figure.position.y+.54,z,
+        0xffca78,mmg?.09:smg?.073:.055,mmg?.25:.15);
+      if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.59,z-.07,
+        0x9e9990,mmg?.13:.085,.46);
     }
     const after=event.after?.units||[],before=event.before?.units||[];
-    for(const target of after){
-      const prev=before.find(u=>u.id===target.id);
-      if(!prev||prev.soldiers<=target.soldiers)continue;
-      const hit=squads.find(u=>u.unit.id===target.id);
-      if(hit)spawnBriefFlash(hit.root.position.x,.35,hit.root.position.z,
-        0xc1b9a1,.19,.35);
+    for(const unit of after){
+      const previous=before.find(u=>u.id===unit.id);
+      if(!previous)continue;
+      const target=unitLookup.get(unit.id);
+      if(!target)continue;
+      if(unit.soldiers<previous.soldiers)
+        spawnBriefFlash(target.root.position.x,.38,target.root.position.z,
+          0xc2b8a1,.16,.42);
+      if(unit.pins>previous.pins)
+        spawnBriefFlash(target.root.position.x,.72,target.root.position.z,
+          0xd7b268,.11,.38);
+      if(previous.soldiers>0&&unit.soldiers===0)
+        for(let i=0;i<3;i++)
+          spawnBriefFlash(target.root.position.x+Math.sin(i*2.1)*.25,.15,
+            target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
     }
   }
   const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({color:0xdac78b,transparent:true,opacity:.85,depthTest:false}));
+    new THREE.LineDashedMaterial({
+      color:0xdac78b,transparent:true,opacity:.92,depthTest:false,
+      dashSize:.18,gapSize:.09
+    }));
   movePreviewLine.visible=false;
   movePreviewLine.renderOrder=13;
   scene.add(movePreviewLine);
@@ -744,9 +836,14 @@ function initialize(THREE) {
     ],3));
     movePreviewLine.geometry.dispose();
     movePreviewLine.geometry=geo;
+    movePreviewLine.computeLineDistances();
     movePreviewLine.visible=true;
   }
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
+  // Quantized, bounded cache: terrain surfaces are static throughout a battle.
+  // Keeps base-height calculations from raycasting all ground layers at 60fps.
+  const footingCache=new Map();
+  let groundingRaycasts=0;
   const MINIATURE_SCALE=.37;
   const baseSampleRadius=.42*MINIATURE_SCALE;
   const baseSamples=[
@@ -756,20 +853,36 @@ function initialize(THREE) {
     [.707*baseSampleRadius,-.707*baseSampleRadius],[-.707*baseSampleRadius,-.707*baseSampleRadius]
   ];
   function footingHeight(x,z) {
+    const key=Math.round(x*40)+":"+Math.round(z*40);
+    const known=footingCache.get(key);
+    if(known!==undefined)return known;
     let top=-Infinity;
     for(const [ox,oz] of baseSamples) {
       groundRay.ray.origin.set(x+ox,8,z+oz);
       const hits=groundRay.intersectObjects(walkableSurfaceMeshes,false);
+      groundingRaycasts++;
       if(hits.length)top=Math.max(top,hits[0].point.y);
     }
-    return Number.isFinite(top)?top:terrainY(x,z);
+    const height=Number.isFinite(top)?top:terrainY(x,z);
+    if(footingCache.size>2200)footingCache.clear();
+    footingCache.set(key,height);
+    return height;
   }
+  // Use ?perf3d=1 to inspect draw cost and ground-ray count in the console.
+  const perfEnabled=new URLSearchParams(location.search).get("perf3d")==="1";
+  let perfStart=performance.now(),perfFrames=0,perfDuration=0;
   function selectSquad(next) {
+    const changed=selectedSquad!==next;
     selectedSquad=next;
     for(const squad of squads) {
-      squad.ring.visible=squad===next&&!squad.moving;
+      squad.ring.visible=squad===next&&!squad.moving&&squad.unit.soldiers>0;
       squad.ring.userData.grounded=false;
     }
+    if(next&&changed){
+      cameraFocus={x:next.root.position.x,z:next.root.position.z};
+      focusZoom=Math.max(zoom,1.85);
+    }
+    if(battle)updateUnitPresentation(battle.snapshot);
   }
   function makeSoldier(squad, x, z, facing, recipe, variant, index) {
     const figure = new THREE.Group();
@@ -865,7 +978,8 @@ function initialize(THREE) {
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
     squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
-      baseY:.78,grounded:false,gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
+      baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
+      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
     return figure;
   }
 
@@ -887,6 +1001,29 @@ function initialize(THREE) {
     ring.receiveShadow=false;
     ring.visible=false;
     squad.ring=ring;
+    const eligibleRing=shape(root,new THREE.RingGeometry(radius+.12,radius+.155,40),
+      new THREE.MeshBasicMaterial({
+        color:unit.faction==="red"?0xcaa78e:0xbdcfac,
+        transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false
+      }),0,.33,0);
+    eligibleRing.rotation.x=-Math.PI/2;
+    eligibleRing.visible=false;
+    eligibleRing.castShadow=false;
+    eligibleRing.receiveShadow=false;
+    squad.eligibleRing=eligibleRing;
+    // Physical markers remain on the board instead of becoming a large HUD.
+    // Order and pin count text is projected separately at low frequency.
+    const orderToken=block(root,.23,.23,.23,
+      mat(unit.faction==="red"?0x8f674b:0x66765a),radius+.28,.17,0);
+    orderToken.visible=false;
+    squad.orderToken=orderToken;
+    squad.pinTokens=[];
+    for(let i=0;i<5;i++){
+      const pin=shape(root,new THREE.CylinderGeometry(.105,.115,.045,10),
+        mat(0xc99c4d),radius+.30,.28+i*.048,-.33);
+      pin.visible=false;
+      squad.pinTokens.push(pin);
+    }
     const hitBox=shape(root,new THREE.BoxGeometry(unit.role==="officer"?1.2:3.1,
       1.3,unit.role==="officer"?1.05:1.85),
       new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false}),
@@ -897,6 +1034,8 @@ function initialize(THREE) {
     squad.hitBox=hitBox;
     hitBoxes.push(hitBox);
     squads.push(squad);
+    unitLookup.set(unit.id,squad);
+    makeUnitMarker(squad);
     return squad;
   }
   units.forEach(createSquadRenderer);
@@ -912,7 +1051,7 @@ function initialize(THREE) {
         pendingTargetId=null;
       if(snapshot.phase!=="plan-movement")clearMovePreview();
       for(const stateUnit of snapshot.units || []) {
-        const squad=squads.find(item=>item.unit.id===stateUnit.id);
+        const squad=unitLookup.get(stateUnit.id);
         if(!squad)continue;
         const before={x:squad.root.position.x,z:squad.root.position.z};
         Object.assign(squad.unit,stateUnit);
@@ -937,8 +1076,9 @@ function initialize(THREE) {
           }
         }
       }
-      const selected=squads.find(item=>item.unit.id===(snapshot.selectedUnitId||snapshot.deploymentUnitId))||null;
+      const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
       if(selectedSquad!==selected)selectSquad(selected);
+      updateUnitPresentation(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onAction(showCombatAction);
@@ -1057,12 +1197,14 @@ function initialize(THREE) {
   }
   function moveCameraTarget(delta) {
     if(!delta)return;
+    stopCameraFocus();
     target.x=clamp(target.x+delta.x,-worldWidth/2-3,worldWidth/2+3);
     target.z=clamp(target.z+delta.z,-worldDepth/2-3,worldDepth/2+3);
     updateCamera();
   }
   canvas.addEventListener("wheel", function (event) {
     event.preventDefault();
+    stopCameraFocus();
     const anchored=groundAtScreen(event.clientX,event.clientY);
     setZoom(zoom * Math.exp(-event.deltaY * .0014));
     moveCameraTarget(gestures.targetShift(anchored,groundAtScreen(event.clientX,event.clientY)));
@@ -1157,6 +1299,7 @@ function initialize(THREE) {
     squad.ring.userData.grounded=false;
   }
   canvas.addEventListener("pointerdown", function (event) {
+    stopCameraFocus();
     canvas.setPointerCapture(event.pointerId);
     pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
     tapStarts.set(event.pointerId, { x:event.clientX, y:event.clientY, dragged:false });
@@ -1205,10 +1348,10 @@ function initialize(THREE) {
   window.addEventListener("keydown", function (event) {
     const el = event.target;
     if (el && /INPUT|TEXTAREA|SELECT/.test(el.tagName)) return;
-    if (event.key === "ArrowLeft") { yaw -= .13; updateCamera(); }
-    if (event.key === "ArrowRight") { yaw += .13; updateCamera(); }
-    if (event.key === "+" || event.key === "=") setZoom(zoom * 1.12);
-    if (event.key === "-" || event.key === "_") setZoom(zoom / 1.12);
+    if (event.key === "ArrowLeft") { stopCameraFocus();yaw -= .13; updateCamera(); }
+    if (event.key === "ArrowRight") { stopCameraFocus();yaw += .13; updateCamera(); }
+    if (event.key === "+" || event.key === "=") {stopCameraFocus();setZoom(zoom * 1.12);}
+    if (event.key === "-" || event.key === "_") {stopCameraFocus();setZoom(zoom / 1.12);}
     if (event.key === "0" || event.key === "Home") {
       yaw=initialYaw;
       target.set(0,.75,0);
@@ -1230,8 +1373,21 @@ function initialize(THREE) {
   function render() {
     if (!running) return;
     requestAnimationFrame(render);
+    const frameBegin=perfEnabled?performance.now():0;
     const dt = Math.min(clock.getDelta(), .05);
     const t=clock.elapsedTime;
+    frameIndex++;
+    if(cameraFocus){
+      // Camera eases toward a selected unit; never resets orbit/zoom.
+      const k=1-Math.exp(-dt*5.8);
+      target.x+=(cameraFocus.x-target.x)*k;
+      target.z+=(cameraFocus.z-target.z)*k;
+      if(focusZoom!==null)zoom+=(focusZoom-zoom)*k;
+      if(Math.hypot(cameraFocus.x-target.x,cameraFocus.z-target.z)<.015&&
+          (focusZoom===null||Math.abs(focusZoom-zoom)<.015))
+        cameraFocus=null;
+      updateCamera();
+    }
     const moving=activeMovement;
     let walking=false;
     let centerProgress=0;
@@ -1268,19 +1424,24 @@ function initialize(THREE) {
     }
     for(const squad of squads) {
       const isWalking=walking&&moving?.squad===squad;
-      for(const soldier of squad.soldiers) {
+      if(isWalking&&cameraFocus===null&&selectedSquad===squad&&
+        !pointers.size){/* manual camera input always takes priority */}
+      for(let soldierIndex=0;soldierIndex<squad.soldiers.length;soldierIndex++){
+        const soldier=squad.soldiers[soldierIndex];
         if(isWalking) {
           const ownProgress=motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait);
           const delta=ownProgress-centerProgress;
           soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
           soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
         }
-        if(isWalking||!soldier.grounded) {
+        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
+            (!isWalking&&!soldier.grounded)) {
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
           const baseBottom=(.02-.11/2)*MINIATURE_SCALE;
-          soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.009;
+          soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.016;
           soldier.grounded=!isWalking;
+          soldier.lastFootingFrame=frameIndex;
         }
         soldier.breathing.position.y=soldier.baseY;
         soldier.breathing.rotation.z=0;
@@ -1291,7 +1452,9 @@ function initialize(THREE) {
           soldier.breathing.rotation.x=-.07;
           for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
         } else {
-          soldier.breathing.rotation.x=(battle&&squad.unit.down)?.32:0;
+          soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
+          soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
+            soldier.recoil;
           if(!reducedMotion) {
             soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
             soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
@@ -1315,7 +1478,36 @@ function initialize(THREE) {
         visualEffects.splice(i,1);
       }
     }
+    // Markers are cheap HTML chips, projected at 15fps rather than every frame.
+    if(frameIndex%4===0)placeUnitMarkers();
+    if(frameIndex%12===0&&battle?.snapshot?.objectives){
+      // Objective tint follows the original scenario-runtime evaluator.
+      for(const marker of objectiveMarkers){
+        const authoritative=battle.snapshot.objectives.find(o=>
+          o.id===marker.userData.objectiveId);
+        const owner=authoritative?.state;
+        const color=owner==="blue"?0xb7d2a1:
+          owner==="red"?0xc89173:
+          owner==="contested"?0xe2a66c:0xd6be89;
+        if(marker.userData.previousOwner!==owner){
+          marker.material.color.setHex(color);
+          marker.userData.previousOwner=owner;
+        }
+      }
+    }
     renderer.render(scene, camera);
+    if(perfEnabled){
+      perfDuration+=performance.now()-frameBegin;
+      perfFrames++;
+      if(performance.now()-perfStart>3000){
+        console.info("[Crossroads 3D perf]",{
+          frameMs:(perfDuration/perfFrames).toFixed(2),frames:perfFrames,
+          groundRaycasts:groundingRaycasts,cache:footingCache.size,
+          triangleDraws:renderer.info.render.calls
+        });
+        perfFrames=0;perfDuration=0;groundingRaycasts=0;perfStart=performance.now();
+      }
+    }
   }
   render();
 }
