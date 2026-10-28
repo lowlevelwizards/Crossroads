@@ -13,7 +13,7 @@ function check(condition, message) {
   if (!condition) failures.push(message);
 }
 
-const index = read("index.html");
+const index = read("classic.html");
 const morale = read("src/rules/morale.js");
 const shooting = read("src/rules/shooting.js");
 const runtime = read("src/rules/combat-runtime.js");

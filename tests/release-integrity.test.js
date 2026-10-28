@@ -103,16 +103,16 @@ for (const retiredFile of retiredFiles) {
   }
 }
 
-assertOrdered("index.html", "data/build-info.js", "src/engine.js");
-assertOrdered("index.html", "src/camera/table-viewport.js", "src/camera/camera.js");
-assertOrdered("index.html", "src/camera/camera.js", "src/camera/coordinates.js");
-assertOrdered("index.html", "src/scenario/scenario-schema.js", "src/scenario-runtime/scenario-compiler.js");
-assertOrdered("index.html", "src/rules/morale.js", "src/rules/combat-runtime.js");
-assertOrdered("index.html", "src/rules/shooting.js", "src/rules/combat-runtime.js");
-assertOrdered("index.html", "src/rules/assault.js", "src/rules/combat-runtime.js");
-assertOrdered("index.html", "src/runtime/building-occupancy.js", "src/rules/combat-runtime.js");
-assertOrdered("index.html", "src/rules/combat-runtime.js", "src/infrastructure/startup-validation.js");
-assertOrdered("index.html", "src/infrastructure/startup-validation.js", "src/engine.js");
+assertOrdered("classic.html", "data/build-info.js", "src/engine.js");
+assertOrdered("classic.html", "src/camera/table-viewport.js", "src/camera/camera.js");
+assertOrdered("classic.html", "src/camera/camera.js", "src/camera/coordinates.js");
+assertOrdered("classic.html", "src/scenario/scenario-schema.js", "src/scenario-runtime/scenario-compiler.js");
+assertOrdered("classic.html", "src/rules/morale.js", "src/rules/combat-runtime.js");
+assertOrdered("classic.html", "src/rules/shooting.js", "src/rules/combat-runtime.js");
+assertOrdered("classic.html", "src/rules/assault.js", "src/rules/combat-runtime.js");
+assertOrdered("classic.html", "src/runtime/building-occupancy.js", "src/rules/combat-runtime.js");
+assertOrdered("classic.html", "src/rules/combat-runtime.js", "src/infrastructure/startup-validation.js");
+assertOrdered("classic.html", "src/infrastructure/startup-validation.js", "src/engine.js");
 assertOrdered("editor.html", "data/build-info.js", "src/editor/editor.js");
 assertOrdered("editor.html", "src/camera/table-viewport.js", "src/editor/editor.js");
 assertOrdered("editor.html", "src/scenario/scenario-schema.js", "src/editor/editor-validation.js");
@@ -136,7 +136,12 @@ assert(
 );
 assert(/standalone/i.test(readme), "README must identify this as a standalone release");
 assert(read("editor.html").includes(manifest.version), "Editor shell does not display the release version");
-assert(read("index.html").includes("data/build-info.js"), "Game shell no longer loads authoritative build metadata");
+assert(read("classic.html").includes("data/build-info.js"), "Classic game shell no longer loads authoritative build metadata");
+const frontDoor = read("index.html");
+assert(frontDoor.includes('href="./diorama.html"'), "Homepage Play link must open the 3D diorama");
+assert(!frontDoor.includes("src/engine.js"), "Homepage must not load the old 2D engine");
+assert(!frontDoor.includes("editor.html"), "The public homepage should not expose the editor");
+assert(read("classic.html").includes('id="scenarioSelect"'), "Classic 2D game must remain preserved");
 
 console.log(
   `PASS — release ${manifest.version} has complete resources, valid load order, ` +

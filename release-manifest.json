@@ -7,6 +7,7 @@
   "cacheVersion": "s111h3",
   "entryPoints": [
     "index.html",
+    "classic.html",
     "editor.html",
     "tests/startup-smoke.html"
   ],
@@ -34,6 +35,9 @@
     "tests/release-integrity.test.js",
     "tests/startup-smoke.html",
     "tests/editor-shell.test.js",
-    "tests/viewport-interactions-s111.test.js"
+    "tests/viewport-interactions-s111.test.js",
+    "classic.html",
+    "diorama.html",
+    "styles/landing.css"
   ]
 }

@@ -8,7 +8,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf
 const failures = [];
 function check(condition, message) { if (!condition) failures.push(message); }
 
-const index = read("index.html");
+const index = read("classic.html");
 const engine = read("src/engine.js");
 const morale = read("src/rules/morale.js");
 const shooting = read("src/rules/shooting.js");

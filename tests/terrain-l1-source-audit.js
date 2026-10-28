@@ -2,7 +2,7 @@
 const fs=require("fs"),path=require("path"),assert=require("assert");
 const root=path.resolve(__dirname,"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
-const index=read("index.html"), scenarios=read("data/scenarios.js"), geometry=read("src/rules/terrain-geometry.js");
+const index=read("classic.html"), scenarios=read("data/scenarios.js"), geometry=read("src/rules/terrain-geometry.js");
 const order=["data/linear-terrain.js","data/scenarios.js","src/rules/path-geometry.js","src/rules/linear-terrain.js","src/presentation/linear-terrain.js","src/presentation/terrain-runtime.js","src/rules/terrain-geometry.js","src/infrastructure/startup-validation.js","src/engine.js"];
 for(let i=1;i<order.length;i+=1) assert(index.indexOf(order[i-1])<index.indexOf(order[i]),`Bad load order: ${order[i-1]} before ${order[i]}`);
 assert(scenarios.includes("linearTerrain:freezeList"));

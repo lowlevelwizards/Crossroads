@@ -1,0 +1,87 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Avenir Next", sans-serif;
+  background: #6f735d;
+  color: #28261f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-width: 280px; min-height: 100%; }
+.main-menu-overlay {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  background:
+    linear-gradient(rgba(36,34,29,.36), rgba(36,34,29,.72)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 5px),
+    #6f735d;
+}
+.main-menu-card {
+  width: min(92vw, 460px);
+  padding: clamp(24px, 6vw, 42px);
+  border: 3px solid #514b41;
+  border-radius: 14px;
+  background: #f2ead8;
+  box-shadow: 0 16px 0 rgba(25,23,20,.28), 0 30px 70px rgba(0,0,0,.32);
+  text-align: center;
+}
+.main-menu-kicker {
+  margin-bottom: 7px;
+  font: 900 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .18em;
+  color: #716858;
+}
+.main-menu-title {
+  margin: 0;
+  font-size: clamp(42px, 12.5vw, 72px);
+  line-height: .9;
+  letter-spacing: -.045em;
+  overflow-wrap: anywhere;
+}
+.main-menu-years {
+  margin: 10px 0 25px;
+  font: 950 clamp(18px, 5vw, 26px)/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .19em;
+  color: #61594d;
+}
+.main-menu-actions { display: grid; }
+.main-menu-play {
+  display: grid;
+  place-items: center;
+  min-height: 56px;
+  padding: 12px 18px;
+  border: 2px solid #506244;
+  border-radius: 6px;
+  background: #d8e2c8;
+  color: #253022;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.main-menu-play:hover { background: #e0e9d1; }
+.main-menu-play:active { background: #cad9ba; }
+.main-menu-play:focus-visible {
+  outline: 3px solid #506244;
+  outline-offset: 4px;
+}
+.main-menu-note {
+  margin: 17px 0 0;
+  color: #746a5c;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  .main-menu-overlay { place-items: start center; overflow-y: auto; }
+  .main-menu-card { padding: 20px 26px; }
+  .main-menu-title { font-size: 44px; }
+  .main-menu-years { margin-bottom: 15px; font-size: 17px; }
+}
