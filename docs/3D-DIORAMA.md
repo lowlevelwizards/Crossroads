@@ -72,3 +72,24 @@ vignette. Other decorative features remain visual-only; the full
 Movement constants are matched to the 2D engine, but are not currently
 exported by it as a public settings module. Future full rules integration
 must extract a shared authoritative rules settings source.
+
+
+## Grounding, turning and model proportions — v0.2.1
+
+- All six physical miniature bases are placed on the **highest visible**
+  ground/paint patch/road mesh beneath nine footprint samples. The base
+  cylinder's *bottom face* is lifted 0.009 world units above that surface,
+  without disabling depth testing (so walls still occlude figures correctly).
+  Footing is sampled on first render, during walking, and at landing.
+- Orders have two separate animation phases: **each figure independently
+  turns** toward the new movement heading on its own pivot; only after all
+  six finish turning does the unchanged formation translate to its endpoint.
+  The squad group never rotates, so six formation slots do not orbit around
+  one another. The shared 6-inch Advance rules are unchanged.
+- The original farmhouse is scaled to 66%, and its rules footprint is derived
+  from its scaled foundation width/depth; stone wall height is roughly halved
+  and thickness reduced, with the crossing footprint matching the new wall.
+  Gateposts, fences, trees, hedges, road width, wheat and crates were reduced
+  in proportion to the unchanged heroic soldier sculpt.
+- Camera gestures, 72×48-inch physical board, clean HUD and shared squad data
+  remain untouched.
