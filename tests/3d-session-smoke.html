@@ -1,0 +1,45 @@
+<!doctype html><meta charset="utf-8"><title>Crossroads 3D authoritative game bridge</title>
+<style>body{background:#23312a;color:#eae0c5;font:14px/1.5 system-ui;padding:20px}
+iframe{position:absolute;left:-11000px;top:-11000px;width:1100px;height:800px;border:0}</style>
+<h1>Crossroads 3D shared battle coordinator</h1>
+<pre id="report">Loading the actual 2D engine…</pre>
+<iframe id="game" src="../classic-session.html?scenario=hold_the_farm" title="Test rules host"></iframe>
+<script>
+"use strict";
+document.getElementById("game").addEventListener("load",async function(){
+  const lines=[];
+  const check=(name,result)=>lines.push([name,Boolean(result)]);
+  try {
+    const session=this.contentWindow.InfantryCore?.session;
+    check("Exposes one shared battle session",Boolean(session?.snapshot&&session?.command));
+    if(!session)throw Error("No shared coordinator");
+    const original=session.snapshot();
+    check("Scenario loaded from 2D engine",original.scenarioId==="hold_the_farm");
+    check("Eight authoritative units",original.units.length===8);
+    check("Ready to draw die",original.phase==="ready-to-draw");
+    await session.command("draw");
+    const drawn=session.snapshot();
+    check("Real bag produced an eligible faction",drawn.phase==="choose-unit"&&["red","blue"].includes(drawn.faction));
+    const unit=drawn.units.find(u=>u.faction===drawn.faction&&!u.activated);
+    await session.command("select",{id:unit.id});
+    const chosen=session.snapshot();
+    check("Selected unit in transaction",chosen.phase==="choose-order"&&chosen.selectedUnitId===unit.id);
+    check("Order legality originates in engine",chosen.orders.some(o=>o.order==="Advance"&&o.available));
+    await session.command("order",{order:"Advance"});
+    const move=session.snapshot();
+    check("Movement order enters real plan phase",move.phase==="plan-movement");
+    const preview=session.previewMove({x:unit.x+.75,y:unit.y});
+    check("Movement preview returns rule analysis",typeof preview.legal==="boolean");
+    await session.command("cancel");
+    const restored=session.snapshot();
+    check("Cancellation preserves drawn die",restored.phase==="choose-unit"&&restored.faction===drawn.faction);
+    check("Cancel restores original position",restored.units.find(u=>u.id===unit.id).x===unit.x);
+    check("All commands use one engine instance",this.contentWindow.InfantryCore.state.units.length===8);
+  }catch(error){lines.push(["Runtime error: "+error.message,false]);}
+  const passes=lines.filter(row=>row[1]).length;
+  const report=document.getElementById("report");
+  report.textContent=lines.map(row=>(row[1]?"PASS ":"FAIL ")+row[0]).join("\n")+
+    "\n\n"+passes+"/"+lines.length+" passed";
+  report.style.color=passes===lines.length?"#aad3ac":"#f59a90";
+});
+</script>

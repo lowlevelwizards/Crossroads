@@ -199,3 +199,28 @@ families read measurements from `src/diorama/scale-spec.js`; physical game
 units remain 0.30 Three.js world units per inch. The former v0.4 production
 scene and page were preserved at `diorama-v040.html` and
 `src/diorama/scenario-scene-v040.js` for before/after review.
+
+
+## v0.5 experimental battle session (in development)
+
+The production homepage stays on the proven v0.4.1 battlefield during the
+session migration. Visit `battle3d.html` to test a *separate experimental*
+3D client of the actual 2D `InfantryCore.session` coordinator.
+
+The same-origin `classic-session.html` hosts the original engine with 2D
+presentation effects disabled to avoid waste and animation stalls in an
+invisible frame. Only the coordinator controls die drawing, eligibility,
+selection, order commitment, movement, LOS/shooting, morale, reactions,
+assault, objectives and victory. An immutable read-model snapshot and
+validated command dispatch are exported from the original `src/engine.js`.
+The 3D scene watches that session and animates results, not decisions.
+
+The battle client supplies a contextual order tray for draw/selection/orders,
+move, fire, assault, reaction, score round, cancel and restart. Read-only
+state projection updates figures and casualties. Mobile pan/orbit remain.
+This is an *experimental integration*, not certified complete playability;
+it needs a full iOS/WebGL browser playtest. In particular, hidden-frame
+compatibility and extended activation sequences require live validation.
+
+Open `tests/3d-session-smoke.html` for browser-based coordinator integration
+checks and `tests/3d-scale-smoke.html` for model dimensions.
