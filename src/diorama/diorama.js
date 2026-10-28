@@ -401,81 +401,69 @@ function initialize(THREE) {
   wheat.castShadow = false;
   scene.add(wheat);
 
-  // The first squad is built from the exact live Hold the Farm unit record,
-  // unit-type registry, six-man formation slots and live miniature roles.
-  const squadData = bridge.createSquad();
-  const squadRules = bridge.createMovementController(squadData, [
-    { id:"study-farm", type:"long_farmhouse", worldX:studyGeometry.farm.x,
-      worldZ:studyGeometry.farm.z, worldWidth:studyGeometry.farm.width,
-      worldDepth:studyGeometry.farm.depth },
-    ...studyGeometry.wallSections.map((wall, index) => ({
-      id:"study-wall-" + index, type:"wall",
-      worldX:(wall.x1 + wall.x2) / 2, worldZ:wall.z,
-      worldWidth:wall.x2 - wall.x1, worldDepth:studyGeometry.wallDepth
+  // Four real Hold the Farm units, relocated onto this handmade tabletop.
+  const units=bridge.createStudyUnits();
+  const scenarioTerrain=[
+    {id:"study-farm",type:"long_farmhouse",worldX:studyGeometry.farm.x,
+      worldZ:studyGeometry.farm.z,worldWidth:studyGeometry.farm.width,
+      worldDepth:studyGeometry.farm.depth},
+    ...studyGeometry.wallSections.map((wall,index)=>({
+      id:"study-wall-"+index,type:"wall",worldX:(wall.x1+wall.x2)/2,
+      worldZ:wall.z,worldWidth:wall.x2-wall.x1,worldDepth:studyGeometry.wallDepth
     }))
-  ]);
-  const soldiers = [];
-  const squadRoot = new THREE.Group();
-  const squadInitialWorld = bridge.toWorld(squadData);
-  squadRoot.position.set(squadInitialWorld.x, 0, squadInitialWorld.z);
-  scene.add(squadRoot);
-
-  let squadSelected = true; // The one-squad study starts ready for tap-to-move.
-  let activeMovement = null;
-  // A painted base must be physically *above* grass, patch and road geometry;
-  // do not disable its depth test (that would draw it through walls/buildings).
-  const groundRay = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,-1,0), 0, 20);
-  const MINIATURE_SCALE = .37;
-  const baseSampleRadius = .42 * MINIATURE_SCALE;
-  const baseSamples = [
-    [0,0], [baseSampleRadius,0], [-baseSampleRadius,0],
-    [0,baseSampleRadius], [0,-baseSampleRadius],
-    [.707*baseSampleRadius,.707*baseSampleRadius],
-    [-.707*baseSampleRadius,.707*baseSampleRadius],
-    [.707*baseSampleRadius,-.707*baseSampleRadius],
-    [-.707*baseSampleRadius,-.707*baseSampleRadius]
+  ];
+  const squads=[];
+  const hitBoxes=[];
+  const getLivingUnits=()=>units;
+  let selectedSquad=null;
+  let activeMovement=null;
+  const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
+  const MINIATURE_SCALE=.37;
+  const baseSampleRadius=.42*MINIATURE_SCALE;
+  const baseSamples=[
+    [0,0],[baseSampleRadius,0],[-baseSampleRadius,0],
+    [0,baseSampleRadius],[0,-baseSampleRadius],
+    [.707*baseSampleRadius,.707*baseSampleRadius],[-.707*baseSampleRadius,.707*baseSampleRadius],
+    [.707*baseSampleRadius,-.707*baseSampleRadius],[-.707*baseSampleRadius,-.707*baseSampleRadius]
   ];
   function footingHeight(x,z) {
-    let top = -Infinity;
-    for (const offset of baseSamples) {
-      const sx=x+offset[0], sz=z+offset[1];
-      groundRay.ray.origin.set(sx, 8, sz);
-      const hits=groundRay.intersectObjects(walkableSurfaceMeshes, false);
-      if (hits.length) top=Math.max(top, hits[0].point.y);
+    let top=-Infinity;
+    for(const [ox,oz] of baseSamples) {
+      groundRay.ray.origin.set(x+ox,8,z+oz);
+      const hits=groundRay.intersectObjects(walkableSurfaceMeshes,false);
+      if(hits.length)top=Math.max(top,hits[0].point.y);
     }
-    return Number.isFinite(top) ? top : terrainY(x,z);
+    return Number.isFinite(top)?top:terrainY(x,z);
   }
-  const selectedRing = shape(squadRoot, new THREE.RingGeometry(1.24, 1.30, 32),
-    new THREE.MeshBasicMaterial({color:0xd7c29b,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}),
-    0, terrainY(squadRoot.position.x,squadRoot.position.z) + .1, 0);
-  selectedRing.rotation.x = -Math.PI / 2;
-  selectedRing.castShadow = false;
-  selectedRing.receiveShadow = false;
-  selectedRing.visible = false;
-  const squadHitBox = shape(squadRoot, new THREE.BoxGeometry(3.05, .85, 1.75),
-    new THREE.MeshBasicMaterial({visible:false}), 0, .42, 0);
-  squadHitBox.castShadow = false;
-  squadHitBox.receiveShadow = false;
-
-  function makeSoldier(x, z, facing, recipe, variant) {
+  function selectSquad(next) {
+    selectedSquad=next;
+    for(const squad of squads) {
+      squad.ring.visible=squad===next&&!squad.moving;
+      squad.ring.userData.grounded=false;
+    }
+  }
+  function makeSoldier(squad, x, z, facing, recipe, variant, index) {
     const figure = new THREE.Group();
     figure.position.set(x, 0, z);
     figure.rotation.y = facing;
     // Approximate 1-inch miniature bases on a true 72x48-inch tabletop.
     // Height is intentionally heroic so facial/weapon silhouettes read on phone.
     figure.scale.setScalar(MINIATURE_SCALE);
-    squadRoot.add(figure);
+    squad.root.add(figure);
 
-    const base = shape(figure, new THREE.CylinderGeometry(.39, .42, .11, 18), mat(0x3d3f34), 0, .02, 0);
+    const german=recipe.kit.factionId==="germany";
+    const officer=recipe.role==="officer";
+    const base = shape(figure, new THREE.CylinderGeometry(.39, .42, .11, 18),
+      mat(german?0x333e37:0x3d3f34), 0, .02, 0);
     base.castShadow = true;
-    shape(figure, new THREE.CylinderGeometry(.345, .345, .019, 18), mat(0x6b7851), 0, .086, 0);
-    const uniform = mat(recipe.kit.factionId === "germany"
-      ? (variant % 2 ? 0x73796c : 0x626e63)
-      : (variant % 2 ? 0x696f4b : 0x777a57));
-    const trousers = mat(0x575d46);
-    const leather = mat(0x503f31);
-    const skin = mat(0xc5a17d);
-    const helmet = mat(variant % 2 ? 0x4f634b : 0x5c6a4f);
+    shape(figure, new THREE.CylinderGeometry(.345, .345, .019, 18),
+      mat(german?0x6c7763:0x6b7851), 0, .086, 0);
+    const uniform=mat(german?(variant%2?0x758076:0x606e65)
+      :(variant%2?0x787152:0x89805b));
+    const trousers=mat(german?0x515d56:0x696249);
+    const leather=mat(german?0x453c34:0x674b35);
+    const skin=mat(0xc5a17d);
+    const helmet=mat(german?0x53625b:0x677154);
     const legs = [];
     for (const side of [-1, 1]) {
       const leg = block(figure, .15, .39, .19, trousers, side * .125, .34, 0);
@@ -501,15 +489,28 @@ function initialize(THREE) {
     }
     block(breathing, .17, .15, .16, skin, 0, .37, 0);
     shape(breathing, new THREE.SphereGeometry(.17, 10, 8), skin, 0, .51, -.01);
-    const dome = shape(breathing, new THREE.SphereGeometry(.215, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), helmet, 0, .63, -.012);
-    dome.rotation.y = variant * .25;
-    shape(breathing, new THREE.CylinderGeometry(.235, .222, .065, 12), helmet, 0, .61, -.012);
+    if(officer) {
+      shape(breathing,new THREE.CylinderGeometry(.187,.195,.18,10),uniform,0,.66,-.01);
+      block(breathing,.40,.045,.25,mat(0x343c34),0,.62,-.13); // peaked cloth cap
+    } else {
+      shape(breathing,new THREE.SphereGeometry(german?.23:.205,12,8,0,Math.PI*2,0,Math.PI/2),
+        helmet,0,.63,-.012);
+      shape(breathing,new THREE.CylinderGeometry(german?.245:.212,german?.28:.218,
+        german?.09:.055,12),helmet,0,.603,-.012);
+      if(german) for(const side of [-1,1])
+        block(breathing,.06,.09,.26,helmet,side*.228,.57,-.02); // flared Stahlhelm
+    }
     // Sling, stock, receiver and forward-pointing rifle.
-    block(breathing, .13, .13, .29, wood, .08, -.15, -.19);
-    block(breathing, .12, .14, .30, mat(0x353a33, .12), .08, -.13, -.43);
-    const barrel = shape(breathing, new THREE.CylinderGeometry(.031, .036, .54, 7), mat(0x353a33, .21), .08, -.105, -.74);
-    barrel.rotation.x = Math.PI / 2;
-    block(breathing, .055, .14, .07, mat(0x353a33), .08, -.09, -.91);
+    const metal=mat(0x353a33,.16);
+    const length=officer?.14:recipe.role==="smg"?.24:recipe.role==="lmg"?.64:.54;
+    const center=officer?-.46:recipe.role==="smg"?-.59:recipe.role==="lmg"?-.79:-.74;
+    block(breathing,.13,.13,officer?.12:.29,officer?metal:wood,.08,-.15,-.19);
+    block(breathing,.12,.14,officer?.15:.30,metal,.08,-.13,officer?-.32:-.43);
+    shape(breathing,new THREE.CylinderGeometry(.031,.036,length,7),metal,
+      .08,-.105,center).rotation.x=Math.PI/2;
+    block(breathing,.055,.14,.07,metal,.08,-.09,center-length*.43);
+    if(officer)block(breathing,.07,.18,.07,leather,.08,-.27,-.31);
+    if(recipe.role==="smg")block(breathing,.09,.27,.10,metal,.08,-.31,-.43);
     if (recipe.role === "lmg") {
       block(breathing, .18, .23, .21, mat(0x34392e), .08, -.26, -.54);
       block(breathing, .07, .08, .20, mat(0x34392e), .08, -.12, -.98);
@@ -518,13 +519,43 @@ function initialize(THREE) {
     }
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
-    soldiers.push({ figure, breathing, legs, phase: between(0, Math.PI * 2), baseY: .78, grounded: false });
+    squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
+      baseY:.78,grounded:false,gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
     return figure;
   }
-  for (const slot of bridge.slotsFor(squadData)) {
-    makeSoldier(slot.dx, slot.dz, .05 * (slot.index - 2),
-      slot.recipe, slot.index);
+
+  function createSquadRenderer(unit,index) {
+    const root=new THREE.Group(),world=bridge.toWorld(unit);
+    root.position.set(world.x,0,world.z);
+    scene.add(root);
+    const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
+      controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
+    for(const slot of bridge.slotsFor(unit))
+      makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI:0)+.045*(slot.index-2),
+        slot.recipe,slot.index,slot.index);
+    const radius=unit.role==="officer"?.53:1.27;
+    const ring=shape(root,new THREE.RingGeometry(radius,radius+.043,32),
+      new THREE.MeshBasicMaterial({color:unit.faction==="red"?0xc5a68c:0xc4cfa9,
+        transparent:true,opacity:.73,side:THREE.DoubleSide,depthWrite:false}),0,.32,0);
+    ring.rotation.x=-Math.PI/2;
+    ring.castShadow=false;
+    ring.receiveShadow=false;
+    ring.visible=false;
+    squad.ring=ring;
+    const hitBox=shape(root,new THREE.BoxGeometry(unit.role==="officer"?1.2:3.1,
+      1.3,unit.role==="officer"?1.05:1.85),
+      new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false}),
+      0,.50,0);
+    hitBox.castShadow=false;
+    hitBox.receiveShadow=false;
+    hitBox.userData.squad=squad;
+    squad.hitBox=hitBox;
+    hitBoxes.push(hitBox);
+    squads.push(squad);
+    return squad;
   }
+  units.forEach(createSquadRenderer);
+  selectSquad(squads[0]);
 
   // The ground has subtle negative space; a few wartime props provide scale.
   function crate(x, z, size) {
@@ -581,36 +612,34 @@ function initialize(THREE) {
   const raycaster = new THREE.Raycaster();
   const tapNdc = new THREE.Vector2();
 
-  function tapGround(clientX, clientY) {
-    if (activeMovement) return;
-    const rect = canvas.getBoundingClientRect();
-    tapNdc.set(((clientX - rect.left) / rect.width) * 2 - 1,
-      1 - ((clientY - rect.top) / rect.height) * 2);
-    raycaster.setFromCamera(tapNdc, camera);
-    if (raycaster.intersectObject(squadHitBox, false).length) {
-      squadSelected = true;
-      selectedRing.visible = true;
+  function tapGround(clientX,clientY) {
+    const rect=canvas.getBoundingClientRect();
+    tapNdc.set(((clientX-rect.left)/rect.width)*2-1,
+      1-((clientY-rect.top)/rect.height)*2);
+    scene.updateMatrixWorld(true);
+    raycaster.setFromCamera(tapNdc,camera);
+    const picked=raycaster.intersectObjects(hitBoxes,false);
+    if(picked.length) {
+      selectSquad(picked[0].object.userData.squad);
       return;
     }
-    if (!squadSelected) return;
-    const hits = raycaster.intersectObject(ground, false);
-    if (!hits.length) return;
-    const point = hits[0].point;
-    const plan = squadRules.planMove({x:point.x,z:point.z}, "Advance");
-    if (!plan.legal) {
-      // The game rejects blocked or out-of-range commands; no fake movement.
-      return;
-    }
-    const start = {x:squadRoot.position.x,z:squadRoot.position.z};
-    const dx=plan.worldEnd.x-start.x, dz=plan.worldEnd.z-start.z;
-    const turn = motion.makeTurn(soldiers.map(soldier => soldier.figure.rotation.y),
-      motion.heading(start, plan.worldEnd));
-    activeMovement = {
-      plan, start, end:plan.worldEnd, elapsed:0, phase:"turn", turn,
-      travelDuration:Math.max(.55,Math.hypot(dx,dz)/.68)
-    };
-    selectedRing.visible = false;
-    selectedRing.userData.grounded = false;
+    if(!selectedSquad||activeMovement)return;
+    const hits=raycaster.intersectObject(ground,false);
+    if(!hits.length)return;
+    const point=hits[0].point,squad=selectedSquad;
+    const plan=squad.controller.planMove({x:point.x,z:point.z},"Advance");
+    if(!plan.legal)return; // Shared obstacle, distance and unit separation rules.
+    const start={x:squad.root.position.x,z:squad.root.position.z};
+    const end=plan.worldEnd,dx=end.x-start.x,dz=end.z-start.z;
+    const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
+      motion.heading(start,end));
+    const duration=Math.max(.55,Math.hypot(dx,dz)/.68);
+    activeMovement={squad,plan,start,end,phase:"turn",elapsed:0,turn,
+      travelDuration:duration,
+      finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+    squad.moving=true;
+    squad.ring.visible=false;
+    squad.ring.userData.grounded=false;
   }
   let lastPinchDistance = null;
   canvas.addEventListener("pointerdown", function (event) {
@@ -682,66 +711,77 @@ function initialize(THREE) {
     if (!running) return;
     requestAnimationFrame(render);
     const dt = Math.min(clock.getDelta(), .05);
-    const t = clock.elapsedTime;
-    let walking = false;
-    if (activeMovement) {
-      const m = activeMovement;
-      m.elapsed += dt;
-      if (m.phase === "turn") {
-        const fraction = Math.min(1, m.elapsed / m.turn.duration);
-        for (let i=0; i<soldiers.length; i++) {
-          // Individual facing pivots; the squad origin and its six slots stay put.
-          soldiers[i].figure.rotation.y = motion.headingAt(m.turn.turns[i], fraction);
-        }
-        if (fraction >= 1) {
-          m.phase = "travel";
-          m.elapsed = 0;
-        }
+    const t=clock.elapsedTime;
+    const moving=activeMovement;
+    let walking=false;
+    let centerProgress=0;
+    if(moving) {
+      const squad=moving.squad;
+      moving.elapsed+=dt;
+      if(moving.phase==="turn") {
+        const u=Math.min(1,moving.elapsed/moving.turn.duration);
+        for(let i=0;i<squad.soldiers.length;i++)
+          squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
+        if(u>=1) {moving.phase="travel";moving.elapsed=0;}
       } else {
-        walking = true;
-        const u = Math.min(1, m.elapsed / m.travelDuration);
-        squadRoot.position.set(
-          m.start.x + (m.end.x - m.start.x) * u,
+        walking=true;
+        centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        squad.root.position.set(
+          moving.start.x+(moving.end.x-moving.start.x)*centerProgress,
           0,
-          m.start.z + (m.end.z - m.start.z) * u
+          moving.start.z+(moving.end.z-moving.start.z)*centerProgress
         );
-        if (u >= 1) {
-          squadRules.commitMove(m.plan);
-          activeMovement = null;
-          selectedRing.visible = true;
+        if(moving.elapsed>=moving.finishTime) {
+          squad.root.position.set(moving.end.x,0,moving.end.z);
+          for(const soldier of squad.soldiers) {
+            soldier.figure.position.x=soldier.slotX;
+            soldier.figure.position.z=soldier.slotZ;
+          }
+          squad.controller.commitMove(moving.plan);
+          squad.moving=false;
+          squad.ring.visible=selectedSquad===squad;
+          squad.ring.userData.grounded=false;
+          activeMovement=null;
+          walking=false;
         }
       }
     }
-    // The squad origin NEVER rotates: each soldier has its own facing and
-    // walks along its original slot offset, avoiding a spinning formation.
-    for (const soldier of soldiers) {
-      const fx = squadRoot.position.x + soldier.figure.position.x;
-      const fz = squadRoot.position.z + soldier.figure.position.z;
-      if (walking || !soldier.grounded) {
-        // Bottom of the scaled cylindrical base, plus a minute visual clearance.
-        const baseBottom = (.02 - .11 / 2) * soldier.figure.scale.y;
-        soldier.figure.position.y = footingHeight(fx, fz) - baseBottom + .009;
-        soldier.grounded = !walking;
-      }
-      soldier.breathing.position.y = soldier.baseY;
-      soldier.breathing.rotation.z = 0;
-      for (const leg of soldier.legs) leg.mesh.rotation.x = leg.side * .08;
-      if (walking && !reducedMotion) {
-        const stride = Math.sin(t * 11.5 + soldier.phase);
-        soldier.breathing.position.y += Math.abs(stride) * .085;
-        soldier.breathing.rotation.x = -.07;
-        for (const leg of soldier.legs) leg.mesh.rotation.x += stride * .46 * leg.side;
-      } else {
-        soldier.breathing.rotation.x = 0;
-        if (!reducedMotion) {
-          soldier.breathing.position.y += Math.sin(t * 1.45 + soldier.phase) * .007;
-          soldier.breathing.rotation.z = Math.sin(t * .72 + soldier.phase) * .009;
+    for(const squad of squads) {
+      const isWalking=walking&&moving?.squad===squad;
+      for(const soldier of squad.soldiers) {
+        if(isWalking) {
+          const ownProgress=motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait);
+          const delta=ownProgress-centerProgress;
+          soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
+          soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
+        }
+        if(isWalking||!soldier.grounded) {
+          const fx=squad.root.position.x+soldier.figure.position.x;
+          const fz=squad.root.position.z+soldier.figure.position.z;
+          const baseBottom=(.02-.11/2)*MINIATURE_SCALE;
+          soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.009;
+          soldier.grounded=!isWalking;
+        }
+        soldier.breathing.position.y=soldier.baseY;
+        soldier.breathing.rotation.z=0;
+        for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+        if(isWalking&&!reducedMotion) {
+          const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
+          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob;
+          soldier.breathing.rotation.x=-.07;
+          for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
+        } else {
+          soldier.breathing.rotation.x=0;
+          if(!reducedMotion) {
+            soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
+            soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
+          }
         }
       }
-    }
-    if (selectedRing.visible && !selectedRing.userData.grounded) {
-      selectedRing.position.y = footingHeight(squadRoot.position.x, squadRoot.position.z) + .03;
-      selectedRing.userData.grounded = true;
+      if(squad.ring.visible&&!squad.ring.userData.grounded) {
+        squad.ring.position.y=footingHeight(squad.root.position.x,squad.root.position.z)+.03;
+        squad.ring.userData.grounded=true;
+      }
     }
     renderer.render(scene, camera);
   }
