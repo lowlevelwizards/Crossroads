@@ -390,28 +390,6 @@ function initialize(THREE) {
   }
   authoredTerrain.filter(e=>e.renderer==="wall").forEach(makeAuthoredWall);
 
-  // An old fence marks the cultivated field; posts and rails are true geometry.
-  function makeFence(x1, z1, x2, z2, posts) {
-    const dx = x2 - x1, dz = z2 - z1;
-    const length = Math.hypot(dx, dz);
-    const group = new THREE.Group();
-    group.position.set((x1 + x2) / 2, terrainY((x1 + x2) / 2, (z1 + z2) / 2), (z1 + z2) / 2);
-    group.rotation.y = -Math.atan2(dz, dx);
-    group.scale.set(1, .57, .78);
-    scene.add(group);
-    for (let i = 0; i <= posts; i++) {
-      const x = -length / 2 + i * length / posts;
-      block(group, .14, .93, .15, mat(0x6f5840), x, .49, 0);
-      const cap = shape(group, new THREE.ConeGeometry(.15, .16, 4), mat(0x715a40), x, 1.02, 0);
-      cap.rotation.y = Math.PI / 4;
-    }
-    for (const y of [.36, .70]) {
-      block(group, length, .105, .105, mat(0x937451), 0, y, 0);
-    }
-  }
-  makeFence(4.38, 5.65, 9.55, 5.25, 8);
-  makeFence(4.38, 5.65, 4.1, 3.18, 4);
-
   // Deeply faceted canopies keep trees recognizable as painted model trees.
   function makeTree(x, z, size, paletteIndex) {
     const group = new THREE.Group();
@@ -441,38 +419,77 @@ function initialize(THREE) {
       root.rotation.y = a;
     }
   }
-  makeTree(-8.45, -4.88, 1.1, 0);
-  makeTree(-9.14, 5.30, .85, 2);
-  makeTree(8.57, -4.65, 1.12, 3);
-  makeTree(6.68, -5.45, .78, 1);
-  makeTree(-1.02, -5.51, .74, 0);
-
-  function makeHedge(x, z, count, step, index) {
-    for (let i = 0; i < count; i++) {
-      const tx = x + i * step;
-      const g = shape(scene, new THREE.DodecahedronGeometry(.30 + (i % 3) * .05, 0), mat(leafPalette[(i + index) % leafPalette.length]), tx, terrainY(tx, z) + .30, z + Math.sin(i * 3.4) * .08);
-      g.scale.set(1.08, .83, .83);
+  // Woods share the authored terrain polygon/rect boundaries.
+  // Tree positions are deterministic per unique terrain id.
+  function seeded(id) {
+    let n=2166136261;
+    for(const c of String(id))n=Math.imul(n^c.charCodeAt(0),16777619);
+    return ()=>{
+      n=(Math.imul(n,1664525)+1013904223)>>>0;
+      return n/4294967296;
+    };
+  }
+  function makeWoods(entry) {
+    const rect=scenarioAdapter.boundsWorld(entry.visualRect);
+    const rand=seeded(entry.id);
+    const geo=new THREE.PlaneGeometry(rect.width,rect.depth,8,8);
+    geo.rotateX(-Math.PI/2);
+    const vertices=geo.attributes.position;
+    for(let i=0;i<vertices.count;i++){
+      const x=rect.x+vertices.getX(i),z=rect.z+vertices.getZ(i);
+      vertices.setY(i,terrainY(x,z)+.04);
+    }
+    geo.computeVertexNormals();
+    const floor=shape(scene,geo,mat(0x64774d),rect.x,0,rect.z);
+    floor.castShadow=false;
+    floor.userData.terrainId=entry.id;
+    walkableSurfaceMeshes.push(floor);
+    const count=Math.max(7,Math.min(18,Math.round(rect.width*rect.depth*.55)));
+    const spawns=Object.values(layout.forces).flatMap(a=>a)
+      .map(p=>bridge.toWorld({x:p.x,y:p.y}));
+    for(let i=0;i<count;i++){
+      let x=rect.x,z=rect.z;
+      for(let attempt=0;attempt<26;attempt++){
+        x=rect.x+(rand()-.5)*Math.max(.12,rect.width-.5);
+        z=rect.z+(rand()-.5)*Math.max(.12,rect.depth-.5);
+        if(spawns.every(p=>Math.hypot(p.x-x,p.z-z)>.65))break;
+      }
+      makeTree(x,z,.48+rand()*.34,i%leafPalette.length);
+    }
+    for(let i=0;i<count*2;i++){
+      const x=rect.x+(rand()-.5)*rect.width*.85;
+      const z=rect.z+(rand()-.5)*rect.depth*.85;
+      const shrub=shape(scene,new THREE.DodecahedronGeometry(.12+rand()*.13,0),
+        mat(leafPalette[(i+2)%leafPalette.length]),
+        x,terrainY(x,z)+.14,z);
+      shrub.scale.set(1,.72,1);
+      shrub.castShadow=false;
     }
   }
-  makeHedge(.08, -5.46, 9, .57, 2);
+  authoredTerrain.filter(e=>["woods","orchard"].includes(e.renderer)).forEach(makeWoods);
 
-  // Small wheat stalks in ordered rows: a deliberately cultivated patch.
-  const wheat = new THREE.InstancedMesh(new THREE.ConeGeometry(.037, .31, 4), mat(0xc4ad67), 252);
-  const stalk = new THREE.Object3D();
-  let wIndex = 0;
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 28; col++) {
-      const x = 5.0 + col * .146 + between(-.035, .035);
-      const z = 2.55 + row * .42 + between(-.06, .06);
-      stalk.position.set(x, terrainY(x, z) + .16, z);
-      stalk.rotation.set(between(-.15, .15), between(0, 6), between(-.12, .12));
-      stalk.scale.setScalar(between(.7, 1.25));
-      stalk.updateMatrix();
-      wheat.setMatrixAt(wIndex++, stalk.matrix);
+  // Reusable field crop renderer for any other authored scenario.
+  function makeField(entry) {
+    const rect=scenarioAdapter.boundsWorld(entry.visualRect);
+    const rows=Math.max(2,Math.round(rect.depth/.3));
+    const cols=Math.max(2,Math.round(rect.width/.2));
+    const stems=new THREE.InstancedMesh(new THREE.ConeGeometry(.035,.27,4),
+      mat(0xbda769),rows*cols);
+    const v=new THREE.Object3D();
+    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+      const x=rect.x+(col/(cols-1)-.5)*rect.width*.88;
+      const z=rect.z+(row/(rows-1)-.5)*rect.depth*.88;
+      v.position.set(x,terrainY(x,z)+.14,z);
+      v.rotation.y=((col*7+row*13)%9)*.21;
+      v.scale.setScalar(.8+((row*5+col*11)%7)*.045);
+      v.updateMatrix();
+      stems.setMatrixAt(row*cols+col,v.matrix);
     }
+    stems.instanceMatrix.needsUpdate=true;
+    stems.castShadow=false;
+    scene.add(stems);
   }
-  wheat.castShadow = false;
-  scene.add(wheat);
+  authoredTerrain.filter(e=>e.renderer==="field").forEach(makeField);
 
   // Four real Hold the Farm units, relocated onto this handmade tabletop.
   const units=bridge.createStudyUnits();
