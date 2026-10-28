@@ -7,7 +7,7 @@ const assert = require("assert");
 const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const editorHtml = read("editor.html");
-const indexHtml = read("index.html");
+const indexHtml = read("classic.html");
 const editorSource = read("src/editor/editor.js");
 const patchSource = read("src/presentation/terrain-patches.js");
 const buildInfo = read("data/build-info.js");

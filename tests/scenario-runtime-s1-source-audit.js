@@ -6,7 +6,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
-const index = read("index.html");
+const index = read("classic.html");
 const editor = read("editor.html");
 const engine = read("src/engine.js");
 const editorSource = read("src/editor/editor.js");

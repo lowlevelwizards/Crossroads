@@ -1,11 +1,14 @@
 # Crossroads — Living Tabletop, Study 01
 
-A non-playable 3D scene experiment in the Crossroads repository.
+A 3D movement-study scene in the Crossroads repository.
 
 ## Open
 
-Serve this repository as a static website (GitHub Pages or a local static
-server) and open **diorama.html**. The 2D game remains at **index.html**.
+On GitHub Pages, open **/** (the normal site homepage) and choose **PLAY**.
+The main menu launches **diorama.html** directly with no scenario selector.
+The old full 2D game is retained, unlinked, at **classic.html**, and the
+terrain editor remains unchanged at **editor.html**. No 2D scripts load
+behind the public homepage.
 Three.js is loaded as a pinned ESM module from jsDelivr, with an unpkg
 fallback; an internet connection is needed when first loading the scene.
 Requires a browser with WebGL support.
