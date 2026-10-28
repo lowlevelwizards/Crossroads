@@ -646,6 +646,30 @@ function initialize(THREE) {
   let activeMovement=null;
   let pendingTargetId=null;
   let lastTargetTap=0;
+  let pendingMovePoint=null;
+  let lastMoveTap=0;
+  const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:0xdac78b,transparent:true,opacity:.85,depthTest:false}));
+  movePreviewLine.visible=false;
+  movePreviewLine.renderOrder=13;
+  scene.add(movePreviewLine);
+  function clearMovePreview(){
+    pendingMovePoint=null;
+    movePreviewLine.visible=false;
+  }
+  function showMovePreview(plan) {
+    if(!selectedSquad||!plan.path?.length)return;
+    const from=selectedSquad.root.position;
+    const to=bridge.toWorld(plan.path[plan.path.length-1]);
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.Float32BufferAttribute([
+      from.x,terrainY(from.x,from.z)+.12,from.z,
+      to.x,terrainY(to.x,to.z)+.12,to.z
+    ],3));
+    movePreviewLine.geometry.dispose();
+    movePreviewLine.geometry=geo;
+    movePreviewLine.visible=true;
+  }
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
   const MINIATURE_SCALE=.37;
   const baseSampleRadius=.42*MINIATURE_SCALE;
@@ -810,6 +834,7 @@ function initialize(THREE) {
       if(!snapshot)return;
       if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target")
         pendingTargetId=null;
+      if(snapshot.phase!=="plan-movement")clearMovePreview();
       for(const stateUnit of snapshot.units || []) {
         const squad=squads.find(item=>item.unit.id===stateUnit.id);
         if(!squad)continue;
@@ -1010,7 +1035,30 @@ function initialize(THREE) {
       const groundHits=raycaster.intersectObject(ground,false);
       if(!groundHits.length)return;
       const position=bridge.toTable({x:groundHits[0].point.x,z:groundHits[0].point.z});
-      void battle.send(phase==="deployment"?"deploy-place":"move",{point:position});
+      if(phase==="deployment") {
+        void battle.send("deploy-place",{point:position});
+        return;
+      }
+      const analysis=battle.previewMove(position);
+      if(!analysis.legal) {
+        clearMovePreview();
+        battle.setHint(analysis.reason||"Movement blocked by game rules");
+        return;
+      }
+      const now=Date.now();
+      const repeat=pendingMovePoint&&
+        Math.hypot(pendingMovePoint.x-position.x,pendingMovePoint.y-position.y)<.65 &&
+        now-lastMoveTap<9000;
+      if(repeat) {
+        clearMovePreview();
+        void battle.send("move",{point:position});
+      } else {
+        pendingMovePoint=position;
+        lastMoveTap=now;
+        showMovePreview(analysis);
+        battle.setHint("Movement "+analysis.cost.toFixed(1)+
+          " / "+analysis.allowance+" inches — tap again to commit");
+      }
       return;
     }
     if(!selectedSquad||activeMovement)return;
