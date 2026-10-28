@@ -255,35 +255,31 @@ function initialize(THREE) {
   pebbles.castShadow = false;
   scene.add(pebbles);
 
-  // Shared world geometry is used both for visible objects and movement collision.
-  const studyGeometry = Object.freeze({
-    // This is a roughly nine-inch *model* farmhouse, not a full-size house
-    // projected into the gaming surface. The visible foundation and the
-    // impassable game footprint deliberately share the same scaled dimensions.
-    farm: { x:-4.18, z:-3.19, scale:.66, width:4.35*.66, depth:3.38*.66 },
-    wallDepth: .24,
-    wallSections: [
-      { x1:-9.55, x2:-5.45, z:-.82 },
-      { x1:-2.77, x2:-.85, z:-.82 }
-    ]
-  });
-
+  // The rules-normalized building footprint, not its loose 2D art rectangle,
+  // is the size of the physical solid. All transforms are derived from data.
   // Farmhouse with masonry, timber, inset windows, shutters and a true pitched roof.
-  function makeFarmhouse() {
-    const group = new THREE.Group();
-    group.position.set(studyGeometry.farm.x, terrainY(studyGeometry.farm.x, studyGeometry.farm.z), studyGeometry.farm.z);
-    group.scale.setScalar(studyGeometry.farm.scale);
+  function makeFarmhouse(entry) {
+    const rect=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const group=new THREE.Group();
+    group.position.set(rect.x,terrainY(rect.x,rect.z),rect.z);
+    group.scale.set(rect.width/4.35,.73,rect.depth/3.38);
+    group.rotation.y=-(entry.rotation||0)*Math.PI/180;
+    group.userData.terrainId=entry.id;
     scene.add(group);
+    const buildingRoof=entry.appearance?.includes("thatch")?
+      mat(0x8f845e):roofMat;
+    const buildingWall=entry.appearance?.includes("peach")?
+      mat(0xc9ae92):mat(0xe1cfab);
     block(group, 4.35, 0.25, 3.38, mat(0x8b8a77), 0, .14, 0);
-    block(group, 4.12, 1.96, 3.13, mat(0xe1cfab), 0, 1.12, 0);
+    block(group, 4.12, 1.96, 3.13, buildingWall, 0, 1.12, 0);
     block(group, 4.18, .30, 3.20, mat(0xb5a78a), 0, .34, 0);
     for (const x of [-1.4, -.46, .47, 1.45]) {
       block(group, .095, 1.85, .055, mat(0xc7b693), x, 1.19, 1.59);
     }
     const pitch = Math.atan2(1.00, 1.80);
-    const roofFront = block(group, 4.78, .18, 2.08, roofMat, 0, 2.52, .89);
+    const roofFront = block(group, 4.78, .18, 2.08, buildingRoof, 0, 2.52, .89);
     roofFront.rotation.x = pitch;
-    const roofBack = block(group, 4.78, .18, 2.08, roofMat, 0, 2.52, -.89);
+    const roofBack = block(group, 4.78, .18, 2.08, buildingRoof, 0, 2.52, -.89);
     roofBack.rotation.x = -pitch;
     block(group, 4.80, .17, .20, mat(0x55372d), 0, 3.02, 0);
     for (const x of [-2.16, 2.16]) {
@@ -323,7 +319,47 @@ function initialize(THREE) {
       log.rotation.z = Math.PI / 2;
     }
   }
-  makeFarmhouse();
+  function makeBarn(entry) {
+    const rect=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const group=new THREE.Group();
+    group.position.set(rect.x,terrainY(rect.x,rect.z),rect.z);
+    group.scale.set(rect.width/3.65,.78,rect.depth/2.65);
+    group.rotation.y=-(entry.rotation||0)*Math.PI/180;
+    group.userData.terrainId=entry.id;
+    scene.add(group);
+    const plank=mat(0x655e51),trim=mat(0x4c443c),roof=mat(0x464c48);
+    block(group,3.65,.20,2.65,mat(0x918b78),0,.09,0);
+    block(group,3.55,1.85,2.53,plank,0,1.02,0);
+    // Strong gable and crisp overlapping roof panels.
+    const left=block(group,3.98,.13,1.68,roof,0,2.30,.68);
+    const right=block(group,3.98,.13,1.68,roof,0,2.30,-.68);
+    const pitch=Math.atan2(.95,1.34);
+    left.rotation.x=pitch;
+    right.rotation.x=-pitch;
+    block(group,4,.14,.16,trim,0,2.77,0);
+    for(const x of [-1.58,1.58]) {
+      block(group,.16,1.92,.14,trim,x,1.02,1.31);
+      block(group,.16,1.92,.14,trim,x,1.02,-1.31);
+    }
+    for(const z of [-1.28,1.28]) {
+      for(const x of [-1.1,0,1.1])
+        block(group,.09,1.82,.07,trim,x,1.04,z);
+    }
+    // Paired barn doors and iron braces; visible and functionally readable.
+    for(const x of [-.53,.53]) {
+      block(group,.98,1.50,.09,mat(0x6c5744),x,.88,1.34);
+      block(group,.07,1.42,.11,trim,x+.34,.88,1.39);
+      const diagonal=block(group,.075,1.43,.12,trim,x,.88,1.40);
+      diagonal.rotation.z=x<0?-.48:.48;
+    }
+    block(group,.18,.12,.09,mat(0xaaa084),0,1.04,1.45);
+    for(const x of [-1.20,1.20])
+      block(group,.47,.56,.09,mat(0x343f41),x,1.36,-1.35);
+  }
+  for(const entry of authoredTerrain.filter(e=>e.renderer==="building")) {
+    if(entry.terrainId==="barn")makeBarn(entry);
+    else makeFarmhouse(entry);
+  }
 
   // Stage 3: built from canonical normalized wall footprints in game inches.
   function makeAuthoredWall(entry) {
