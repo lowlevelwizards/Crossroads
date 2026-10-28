@@ -4,7 +4,7 @@
   const hud=document.getElementById("battleControls");
   if(!frame||!hud)throw Error("Missing 3D battle coordinator frame/control surface");
   let session=null,latest=null,busy=false,warning="";
-  let signature="",lastError="";
+  let signature="",lastError="",hint="";
   const observers=new Set(),effects=new Set();
   function notify(state){
     latest=state;
@@ -42,7 +42,7 @@
     const title=selected?.name||"";
     const prefix="Round "+state.round+"/"+state.maxRounds+" · "+
       (state.faction ? state.faction.toUpperCase() : "Crossroads");
-    const note=warning ? " · "+warning : "";
+    const note=warning ? " · "+warning : hint ? " · "+hint : "";
     if(state.battleEnded){
       label.textContent=state.result?.message||"Battle complete";
       help.textContent="Final score: "+state.scores.blue+" – "+state.scores.red+note;
@@ -92,7 +92,7 @@
   }
   async function send(action,payload={}) {
     if(!session||busy)return {ok:false,reason:"Coordinator unavailable or busy"};
-    busy=true;warning="";signature="";
+    busy=true;warning="";hint="";signature="";
     if(latest)render(latest);
     try{
       const before=latest;
@@ -135,6 +135,11 @@
     },
     onAction(callback){
       effects.add(callback);return ()=>effects.delete(callback);
+    },
+    setHint(message){
+      hint=String(message||"").slice(0,180);
+      signature="";
+      if(latest)render(latest);
     },
     previewMove(point,waypoint){
       return session?.previewMove(point,waypoint)||{legal:false,reason:"Coordinator not ready"};
