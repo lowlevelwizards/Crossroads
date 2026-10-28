@@ -24,6 +24,7 @@ function initialize(THREE) {
   const bridge = window.CrossroadsDioramaBridge;
   const scenarioAdapter = window.Crossroads3DScenarioAdapter;
   const scaleSpec = window.Crossroads3DScale;
+  const battle = window.CrossroadsBattle3D ?? null;
   if(!scaleSpec)throw new Error("Shared miniature scale reference missing.");
   if(!scenarioAdapter)throw new Error("3D scenario adapter not loaded.");
   const requestedScenario=new URLSearchParams(window.location.search).get("scenario")||"hold_the_farm";
@@ -699,7 +700,45 @@ function initialize(THREE) {
     return squad;
   }
   units.forEach(createSquadRenderer);
-  selectSquad(squads[0]);
+  selectSquad(battle ? null : squads[0]);
+
+  // The original 2D coordinator owns state, rules, activation and dice.
+  // When this optional mode is present, the scene only projects snapshots
+  // to miniature positions/poses; it never commits logical unit mutations.
+  if(battle) {
+    function applyAuthoritativeSnapshot(snapshot) {
+      if(!snapshot)return;
+      for(const stateUnit of snapshot.units || []) {
+        const squad=squads.find(item=>item.unit.id===stateUnit.id);
+        if(!squad)continue;
+        const before={x:squad.root.position.x,z:squad.root.position.z};
+        Object.assign(squad.unit,stateUnit);
+        squad.soldiers.forEach((soldier,index)=>{
+          soldier.figure.visible=index<stateUnit.soldiers;
+          if(stateUnit.down) soldier.breathing.rotation.x=.37;
+        });
+        const end=bridge.toWorld(stateUnit);
+        const displacement=Math.hypot(end.x-before.x,end.z-before.z);
+        if(displacement>.025) {
+          if(!activeMovement) {
+            const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
+              motion.heading(before,end));
+            const duration=Math.max(.4,displacement/.8);
+            activeMovement={squad,plan:null,remote:true,start:before,end,phase:"turn",
+              elapsed:0,turn,travelDuration:duration,
+              finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+            squad.moving=true;
+          } else if(activeMovement.squad!==squad) {
+            squad.root.position.set(end.x,0,end.z);
+            squad.soldiers.forEach(s=>s.grounded=false);
+          }
+        }
+      }
+      const selected=squads.find(item=>item.unit.id===snapshot.selectedUnitId)||null;
+      if(selectedSquad!==selected)selectSquad(selected);
+    }
+    battle.subscribe(applyAuthoritativeSnapshot);
+  }
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
   // These don't resolve objective control; scoring remains owned by the engine.
@@ -837,7 +876,27 @@ function initialize(THREE) {
     raycaster.setFromCamera(tapNdc,camera);
     const picked=raycaster.intersectObjects(hitBoxes,false);
     if(picked.length) {
-      selectSquad(picked[0].object.userData.squad);
+      const pickedSquad=picked[0].object.userData.squad;
+      if(battle) {
+        const phase=battle.snapshot?.phase;
+        if(phase==="choose-target"||phase==="choose-assault-target")
+          void battle.send("target",{id:pickedSquad.unit.id});
+        else if(phase==="deployment")
+          void battle.send("deploy-select",{id:pickedSquad.unit.id});
+        else if(phase==="choose-unit"||phase==="choose-order")
+          void battle.send("select",{id:pickedSquad.unit.id});
+        return;
+      }
+      selectSquad(pickedSquad);
+      return;
+    }
+    if(battle) {
+      const phase=battle.snapshot?.phase;
+      if(phase!=="plan-movement"&&phase!=="deployment")return;
+      const groundHits=raycaster.intersectObject(ground,false);
+      if(!groundHits.length)return;
+      const position=bridge.toTable({x:groundHits[0].point.x,z:groundHits[0].point.z});
+      void battle.send(phase==="deployment"?"deploy-place":"move",{point:position});
       return;
     }
     if(!selectedSquad||activeMovement)return;
@@ -959,7 +1018,7 @@ function initialize(THREE) {
             soldier.figure.position.x=soldier.slotX;
             soldier.figure.position.z=soldier.slotZ;
           }
-          squad.controller.commitMove(moving.plan);
+          if(!moving.remote) squad.controller.commitMove(moving.plan);
           squad.moving=false;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
@@ -993,7 +1052,7 @@ function initialize(THREE) {
           soldier.breathing.rotation.x=-.07;
           for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
         } else {
-          soldier.breathing.rotation.x=0;
+          soldier.breathing.rotation.x=(battle&&squad.unit.down)?.32:0;
           if(!reducedMotion) {
             soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
             soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
