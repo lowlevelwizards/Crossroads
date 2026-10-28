@@ -384,9 +384,57 @@ function initialize(THREE) {
     for(const x of [-1.20,1.20])
       block(group,.47,.56,.09,mat(0x343f41),x,1.36,-1.35);
   }
+  function makeCompactBuilding(entry) {
+    const r=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const alongX=r.width>=r.depth;
+    const L=Math.max(r.width,r.depth),D=Math.min(r.width,r.depth);
+    const group=new THREE.Group();
+    group.position.set(r.x,terrainY(r.x,r.z),r.z);
+    group.rotation.y=(alongX?0:-Math.PI/2)-(entry.rotation||0)*Math.PI/180;
+    group.userData.terrainId=entry.id;
+    scene.add(group);
+    const church=entry.terrainId==="church",shed=entry.terrainId==="shed";
+    const eave=church?.90:shed?.48:.62;
+    const rise=church?.50:.33;
+    const walls=mat(church?0xc1b6a0:shed?0x7d6851:0xd9c9ae);
+    const roof=mat(shed?0x5a5045:entry.appearance?.includes("thatch")?0x8a8062:0xb0583c);
+    block(group,L,.085,D,mat(0x998e79),0,.04,0);
+    block(group,L-.08,eave-.06,D-.09,walls,0,eave/2+.06,0);
+    const pitch=Math.atan2(rise,D/2+.09);
+    const roofLength=Math.hypot(rise,D/2+.12);
+    for(const side of [-1,1]){
+      const panel=block(group,L+.12,.055,roofLength+.06,roof,
+        0,eave+rise/2,side*(D/2+.12)/2);
+      panel.rotation.x=side*pitch;
+    }
+    block(group,L+.12,.062,.065,mat(0x534236),0,eave+rise,0);
+    const doorWidth=Math.min(.28,L*.20);
+    block(group,doorWidth,Math.min(.49,eave*.85),.065,mat(0x74563b),
+      0,.26,D/2+.04);
+    const bays=Math.max(1,Math.floor(L/.65));
+    for(let i=0;i<bays;i++){
+      const x=-L/2+(i+.5)*L/bays;
+      if(Math.abs(x)<doorWidth*.78)continue;
+      const height=Math.min(.25,eave*.38);
+      for(const side of [-1,1]){
+        const z=side*(D/2+.04);
+        block(group,.20,height,.055,mat(0x586b70),x,eave*.60,z);
+        block(group,.025,height+.03,.07,mat(0xd4c6a8),x,eave*.60,z+side*.023);
+      }
+    }
+    if(church){
+      const at=-L*.29;
+      block(group,.55,1.25,.58,walls,at,1.03,0);
+      const cap=block(group,.72,.08,.72,roof,at,1.69,0);
+      cap.rotation.y=Math.PI/4;
+      block(group,.055,.38,.055,mat(0x796b54),at,1.92,0);
+      block(group,.21,.055,.055,mat(0x796b54),at,1.97,0);
+    }
+  }
   for(const entry of authoredTerrain.filter(e=>e.renderer==="building")) {
     if(entry.terrainId==="barn")makeBarn(entry);
-    else makeFarmhouse(entry);
+    else if(entry.terrainId==="long_farmhouse")makeFarmhouse(entry);
+    else makeCompactBuilding(entry);
   }
 
   // The 2.5-inch movement zone is deliberately NOT a 2.5-inch thick wall.
