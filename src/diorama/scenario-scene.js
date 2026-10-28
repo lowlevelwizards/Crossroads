@@ -325,30 +325,34 @@ function initialize(THREE) {
   }
   makeFarmhouse();
 
-  // A low stone wall with an unmistakable opening toward the farm gate.
-  function wallSection(x1, x2, z) {
-    const length = x2 - x1;
-    const courses = 3;
-    const unit = .27;
-    const count = Math.ceil(length / unit);
-    for (let c = 0; c < courses; c++) {
-      for (let i = 0; i < count; i++) {
-        const dx = x1 + ((i + 0.5) / count) * length + (c % 2 ? .07 : 0);
-        const y = terrainY(dx, z) + .07 + c * .13;
-        const stone = block(scene, length / count - .014, .13, .20, mat(stonePalette[(i + c * 2) % stonePalette.length]), dx, y, z);
-        stone.rotation.y = Math.sin(i * 1.9 + c) * .018;
+  // Stage 3: built from canonical normalized wall footprints in game inches.
+  function makeAuthoredWall(entry) {
+    const r=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const alongX=r.width>=r.depth;
+    const length=alongX?r.width:r.depth;
+    const width=alongX?r.depth:r.width;
+    const group=new THREE.Group();
+    group.position.set(r.x,terrainY(r.x,r.z),r.z);
+    group.rotation.y=(alongX?0:-Math.PI/2)-(entry.rotation||0)*Math.PI/180;
+    scene.add(group);
+    group.userData.terrainId=entry.id;
+    // The painted stone base depicts the FULL crossing-cost footprint.
+    block(group,length,.075,width,mat(0x988f7b),0,.03,0);
+    const count=Math.max(1,Math.ceil(length/.25));
+    const palette=stonePalette;
+    for(let course=0;course<3;course++){
+      for(let i=0;i<count;i++){
+        const x=-length/2+(i+.5)*length/count;
+        const stagger=course%2 ? length/count*.11 : 0;
+        const stone=block(group,length/count-.012,.135,Math.max(.20,width*.80),
+          mat(palette[(i+course*2)%palette.length]),
+          Math.min(length/2-.10,x+stagger),.125+course*.13,0);
+        stone.rotation.y=Math.sin(i*1.9+course)*.012;
       }
     }
-    for (let i = 0; i < count; i++) {
-      const x = x1 + ((i + .5) / count) * length;
-      block(scene, length / count - .01, .07, studyGeometry.wallDepth, mat(0xa6a18b), x, terrainY(x, z) + .43, z);
-    }
+    block(group,length,.075,Math.max(.23,width*.90),mat(0xb5ab97),0,.53,0);
   }
-  for (const wall of studyGeometry.wallSections) wallSection(wall.x1, wall.x2, wall.z);
-  for (const x of [-5.44, -2.77]) {
-    block(scene, .30, .58, .32, mat(0xa39c85), x, terrainY(x, -.82) + .30, -.82);
-    block(scene, .39, .10, .40, mat(0xbbb29a), x, terrainY(x, -.82) + .64, -.82);
-  }
+  authoredTerrain.filter(e=>e.renderer==="wall").forEach(makeAuthoredWall);
 
   // An old fence marks the cultivated field; posts and rails are true geometry.
   function makeFence(x1, z1, x2, z2, posts) {
