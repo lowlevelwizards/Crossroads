@@ -115,6 +115,25 @@
     return studyDeployment.map(({sourceId,worldStart}) => createSquad(worldStart,sourceId));
   }
 
+  function createScenarioUnits(sourceScenario=scenario) {
+    return ["blue","red"].flatMap(faction =>
+      (sourceScenario.forces?.[faction] || []).map(source => {
+        const template=types[source.unitType];
+        if(!template)throw new Error("Unknown scenario unit type "+source.unitType);
+        return {
+          id:source.id,type:source.unitType,role:template.role,
+          name:source.name||template.name,faction,
+          quality:source.quality||template.quality,
+          kitId:sourceScenario.factions[faction].kitId,
+          soldiers:template.soldiers,weapons:{...template.weapons},
+          x:source.x,y:source.y,
+          facing:faction==="red"?"left":"right",
+          pins:0,moved:false,order:null
+        };
+      })
+    );
+  }
+
   // Original formation slot percentages now refer to physical inches rather
   // than the CSS canvas. Six soldiers occupy a roughly 8x3-inch formation.
   function slotsFor(unit) {
@@ -156,7 +175,11 @@
   });
 
   function createMovementController(unit, terrainDefinitions, getLivingUnits = () => [unit]) {
-    const terrain = { instances: terrainDefinitions.map(terrainInstance) };
+    // Accept existing terrain-geometry normalized instances as-is.
+    // The old handmade study still passes its small mesh-derived footprints.
+    const terrain = { instances: terrainDefinitions.map(item =>
+      item.definition && item.rules && Number.isFinite(item.x) && Number.isFinite(item.y)
+        ? item : terrainInstance(item)) };
     const movement = movementFactory.create({
       rules: movementSettings,
       terrain,
@@ -208,6 +231,6 @@
 
   window.CrossroadsDioramaBridge = Object.freeze({
     table, toWorld, toTable, inBounds, terrainInstance, createSquad,
-    createStudyUnits, slotsFor, createMovementController
+    createStudyUnits, createScenarioUnits, slotsFor, createMovementController
   });
 })();
