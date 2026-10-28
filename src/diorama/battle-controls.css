@@ -72,3 +72,9 @@
  .battle-event-preview{min-height:23px}
 }
 @media (prefers-reduced-motion:reduce){.battle-order-die{animation:none}}
+
+.battle-objective-banner{
+  align-self:center;margin-top:6px;background:#343e33da;color:#d2c7a2;
+  border:1px solid #a99c7a55;border-radius:5px;font:750 10px system-ui,sans-serif;
+  letter-spacing:.035em;padding:5px 9px
+}
