@@ -734,6 +734,9 @@ function initialize(THREE) {
         squad.eligibleRing.material.opacity=eligible?.6:0;
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
+      squad.orderToken.visible=Boolean(u.order)&&!destroyed;
+      for(let i=0;i<squad.pinTokens.length;i++)
+        squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
       const m=squad.marker;
       if(!m)continue;
       const visible=selected||eligible||u.pins>0||Boolean(u.order)||destroyed;
@@ -771,24 +774,43 @@ function initialize(THREE) {
     visualEffects.push({mesh:particle,duration,age:0});
   }
   function showCombatAction(event) {
-    if(event.action!=="target"||!event.before?.selectedUnitId)return;
-    const shooter=squads.find(s=>s.unit.id===event.before.selectedUnitId);
+    if(!["target","reaction-fire"].includes(event.action))return;
+    const shooterId=event.action==="reaction-fire"?
+      event.before?.reaction?.ambusherId:event.before?.selectedUnitId;
+    if(!shooterId)return;
+    const shooter=unitLookup.get(shooterId);
     if(!shooter)return;
     const shooters=shooter.soldiers.filter(s=>s.figure.visible);
-    // Physical muzzle effects belong to 3D; outcomes belong to the engine.
-    for(const soldier of shooters.slice(0,6)){
+    // Role-specific pulses; hits and casualties always come from engine state.
+    for(let i=0;i<shooters.length;i++){
+      const soldier=shooters[i];
+      if(soldier.role==="crew"||soldier.role==="loader")continue;
+      soldier.recoil=soldier.role==="mmg"?.36:soldier.role==="smg"?.24:.17;
       const facing=soldier.figure.rotation.y;
       const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.31;
       const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.31;
-      spawnBriefFlash(x,soldier.figure.position.y+.54,z,0xffcb75,.057,.16);
+      const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
+      spawnBriefFlash(x,soldier.figure.position.y+.54,z,
+        0xffca78,mmg?.09:smg?.073:.055,mmg?.25:.15);
+      if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.59,z-.07,
+        0x9e9990,mmg?.13:.085,.46);
     }
     const after=event.after?.units||[],before=event.before?.units||[];
-    for(const target of after){
-      const prev=before.find(u=>u.id===target.id);
-      if(!prev||prev.soldiers<=target.soldiers)continue;
-      const hit=squads.find(u=>u.unit.id===target.id);
-      if(hit)spawnBriefFlash(hit.root.position.x,.35,hit.root.position.z,
-        0xc1b9a1,.19,.35);
+    for(const unit of after){
+      const previous=before.find(u=>u.id===unit.id);
+      if(!previous)continue;
+      const target=unitLookup.get(unit.id);
+      if(!target)continue;
+      if(unit.soldiers<previous.soldiers)
+        spawnBriefFlash(target.root.position.x,.38,target.root.position.z,
+          0xc2b8a1,.16,.42);
+      if(unit.pins>previous.pins)
+        spawnBriefFlash(target.root.position.x,.72,target.root.position.z,
+          0xd7b268,.11,.38);
+      if(previous.soldiers>0&&unit.soldiers===0)
+        for(let i=0;i<3;i++)
+          spawnBriefFlash(target.root.position.x+Math.sin(i*2.1)*.25,.15,
+            target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
     }
   }
   const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
@@ -956,7 +978,8 @@ function initialize(THREE) {
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
     squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
-      baseY:.78,grounded:false,gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
+      baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
+      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
     return figure;
   }
 
@@ -988,6 +1011,19 @@ function initialize(THREE) {
     eligibleRing.castShadow=false;
     eligibleRing.receiveShadow=false;
     squad.eligibleRing=eligibleRing;
+    // Physical markers remain on the board instead of becoming a large HUD.
+    // Order and pin count text is projected separately at low frequency.
+    const orderToken=block(root,.23,.23,.23,
+      mat(unit.faction==="red"?0x8f674b:0x66765a),radius+.28,.17,0);
+    orderToken.visible=false;
+    squad.orderToken=orderToken;
+    squad.pinTokens=[];
+    for(let i=0;i<5;i++){
+      const pin=shape(root,new THREE.CylinderGeometry(.105,.115,.045,10),
+        mat(0xc99c4d),radius+.30,.28+i*.048,-.33);
+      pin.visible=false;
+      squad.pinTokens.push(pin);
+    }
     const hitBox=shape(root,new THREE.BoxGeometry(unit.role==="officer"?1.2:3.1,
       1.3,unit.role==="officer"?1.05:1.85),
       new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false}),
@@ -1398,13 +1434,14 @@ function initialize(THREE) {
           soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
           soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
         }
-        if((isWalking&&((frameIndex+soldierIndex)%3===0||!soldier.grounded))||
-            !soldier.grounded) {
+        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
+            (!isWalking&&!soldier.grounded)) {
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
           const baseBottom=(.02-.11/2)*MINIATURE_SCALE;
           soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.016;
           soldier.grounded=!isWalking;
+          soldier.lastFootingFrame=frameIndex;
         }
         soldier.breathing.position.y=soldier.baseY;
         soldier.breathing.rotation.z=0;
@@ -1415,7 +1452,9 @@ function initialize(THREE) {
           soldier.breathing.rotation.x=-.07;
           for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
         } else {
-          soldier.breathing.rotation.x=(battle&&squad.unit.down)?.32:0;
+          soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
+          soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
+            soldier.recoil;
           if(!reducedMotion) {
             soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
             soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
