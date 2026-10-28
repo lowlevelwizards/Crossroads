@@ -546,6 +546,8 @@ function initialize(THREE) {
   const getLivingUnits=()=>units;
   let selectedSquad=null;
   let activeMovement=null;
+  let pendingTargetId=null;
+  let lastTargetTap=0;
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
   const MINIATURE_SCALE=.37;
   const baseSampleRadius=.42*MINIATURE_SCALE;
@@ -708,6 +710,8 @@ function initialize(THREE) {
   if(battle) {
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
+      if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target")
+        pendingTargetId=null;
       for(const stateUnit of snapshot.units || []) {
         const squad=squads.find(item=>item.unit.id===stateUnit.id);
         if(!squad)continue;
@@ -879,8 +883,20 @@ function initialize(THREE) {
       const pickedSquad=picked[0].object.userData.squad;
       if(battle) {
         const phase=battle.snapshot?.phase;
-        if(phase==="choose-target"||phase==="choose-assault-target")
-          void battle.send("target",{id:pickedSquad.unit.id});
+        if(phase==="choose-target"||phase==="choose-assault-target") {
+          const assessment=battle.previewTarget(pickedSquad.unit.id);
+          const now=Date.now();
+          if(assessment.legal&&pendingTargetId===pickedSquad.unit.id&&now-lastTargetTap<8000) {
+            pendingTargetId=null;
+            void battle.send("target",{id:pickedSquad.unit.id});
+          } else {
+            pendingTargetId=pickedSquad.unit.id;
+            lastTargetTap=now;
+            battle.setHint(assessment.legal
+              ? "Target legal — tap the same squad again to confirm"
+              : assessment.reason||"Target is obstructed");
+          }
+        }
         else if(phase==="deployment")
           void battle.send("deploy-select",{id:pickedSquad.unit.id});
         else if(phase==="choose-unit"||phase==="choose-order")
