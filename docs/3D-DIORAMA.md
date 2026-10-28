@@ -116,3 +116,24 @@ Each soldier independently turns before formation motion, has a subtly
 different walking pace (0.925–1.075x), delayed start, stride rhythm and bob,
 and settles back into its exact authored formation slot at the end of a move.
 These changes do not alter the legal 6-inch game movement distance.
+
+
+## Touch camera & organic movement — v0.3.1
+
+- One finger horizontally orbits around a freely movable camera target.
+- **Two fingers sliding together pan the tabletop** in any direction. Pinch
+  zoom and two-finger panning happen simultaneously, keeping the point under
+  the gesture's centroid anchored to the visible ground plane (Y = 0.20).
+  The gesture starts from its previous two touch coordinates, preventing jumps
+  when the second finger is first placed.
+- Maximum zoom is now **6.75×** the fit baseline (formerly 3.35×). Mouse
+  wheel zoom also anchors the tabletop beneath the cursor. Press 0/Home to
+  reset yaw, zoom **and** pan to center. Camera target motion is bounded to
+  the table plus a small border so the board is not lost.
+- Every soldier's cosmetic walking pace now varies within **±14%** of the
+  shared movement duration. Start delays, walking cycle and body bob have
+  slightly wider variation; turning finish fractions now span 0.66–1.0, so
+  soldiers pivot at more visibly distinct speeds before advancing.
+- These are presentation timings only; the live 6-inch Advance allowance,
+  unit separation, figure counts, positions, and formation convergence remain
+  unchanged. No new HUD elements were added.
