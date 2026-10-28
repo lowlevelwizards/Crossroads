@@ -1480,6 +1480,21 @@ function initialize(THREE) {
     }
     // Markers are cheap HTML chips, projected at 15fps rather than every frame.
     if(frameIndex%4===0)placeUnitMarkers();
+    if(frameIndex%12===0&&battle?.snapshot?.objectives){
+      // Objective tint follows the original scenario-runtime evaluator.
+      for(const marker of objectiveMarkers){
+        const authoritative=battle.snapshot.objectives.find(o=>
+          o.id===marker.userData.objectiveId);
+        const owner=authoritative?.state;
+        const color=owner==="blue"?0xb7d2a1:
+          owner==="red"?0xc89173:
+          owner==="contested"?0xe2a66c:0xd6be89;
+        if(marker.userData.previousOwner!==owner){
+          marker.material.color.setHex(color);
+          marker.userData.previousOwner=owner;
+        }
+      }
+    }
     renderer.render(scene, camera);
     if(perfEnabled){
       perfDuration+=performance.now()-frameBegin;

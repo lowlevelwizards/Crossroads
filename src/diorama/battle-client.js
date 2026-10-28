@@ -48,7 +48,8 @@
       phase:current.phase,round:current.round,bag:current.bagRemaining,
       faction:current.faction,chosen:current.selectedUnitId,
       deployment:current.deploymentUnitId,order:current.chosenOrder,
-      score:current.scores,end:current.battleEnded,units:current.units?.map(u=>
+      score:current.scores,end:current.battleEnded,
+      objectives:current.objectives,units:current.units?.map(u=>
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
       count:current.eventCount,hint,warning,busy,logOpen
@@ -66,6 +67,12 @@
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
     hud.append(ribbon);
+    const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
+    if(focusedObjective){
+      const label=node("div","battle-objective-banner",
+        "⚑  "+focusedObjective.label+" · "+String(focusedObjective.state).toUpperCase());
+      hud.append(label);
+    }
 
     const center=node("section","battle-center");
     const contextual=node("div","battle-heading");
@@ -179,6 +186,7 @@
       phase:state.phase,round:state.round,faction:state.faction,
       selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
       bag:state.bagRemaining,events:state.eventCount,result:state.result,
+      objectives:state.objectives,
       scores:state.scores,units:state.units?.map(u=>
         [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding])
     });

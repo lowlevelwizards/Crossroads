@@ -4217,6 +4217,10 @@
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
+          objectives:objectiveSnapshots().map(item=>({
+            id:item.objective?.id||"",label:item.objective?.label||"Objective",
+            state:item.state||"none"
+          })),
           eventCount:battleLogEntries.length,
           recentEvents:battleLogEntries.slice(-16).map((event,index)=>({
             id:battleLogEntries.length-Math.min(16,battleLogEntries.length)+index,
