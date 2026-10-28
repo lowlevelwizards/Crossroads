@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>Crossroads 3D physical scale</title>
+<style>body{background:#23312a;color:#eae0c5;font:14px/1.5 system-ui;padding:20px}</style>
+<h1>3D scale contract smoke</h1><pre id="out">Loading…</pre>
+<script src="../src/diorama/scale-spec.js"></script>
+<script>
+(() => {
+ const S=window.Crossroads3DScale,checks=[];
+ const test=(name,pass)=>checks.push([name,Boolean(pass)]);
+ const near=(a,b)=>Math.abs(a-b)<1e-5;
+ const house=S.houseDimensions({width:13.6*S.worldUnitsPerInch,
+   depth:3.76*S.worldUnitsPerInch},6);
+ const stone=S.wallDimensions({width:8,depth:2.5*S.worldUnitsPerInch});
+ test("Uses exact shared world-inches",near(S.inches(72),21.6));
+ test("Longhouse has six independent bay widths",house.bays===6&&near(house.bayWidth,4.08/6));
+ test("Longhouse roof rise positive",house.roofRise>.15);
+ test("Wall stone narrower than the actual rules footprint",stone.visibleThickness<stone.rulesWidth*.5);
+ test("Wall height less than heroic figure height",stone.height<S.model.infantryStandingHeight);
+ test("Walls are not modeled as huge solid slabs",stone.visibleThickness<.24);
+ const passes=checks.filter(row=>row[1]).length;
+ document.getElementById("out").textContent=checks.map(row=>(row[1]?"PASS ":"FAIL ")+row[0]).join("\n")
+   +"\n"+passes+"/"+checks.length+" passed";
+})();
+</script>

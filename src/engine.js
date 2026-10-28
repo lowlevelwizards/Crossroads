@@ -2271,8 +2271,10 @@
         unit.id,
         unit.facing
       );
-      await new Promise(requestAnimationFrame);
-      await new Promise(resolve => setTimeout(resolve, 65));
+      if(!window.CROSSROADS_3D_SESSION_HOST) {
+        await new Promise(requestAnimationFrame);
+        await new Promise(resolve => setTimeout(resolve, 65));
+      }
 
       await presentationEffects.playMovementPath(
         unit.id,
@@ -4200,6 +4202,135 @@
     // PUBLIC ENGINE API
     // Stable integration surface for diagnostics and future modular extraction.
     // =========================================================================
+    // The battle coordinator is the ONLY authority for gameplay commands.
+    // The 3D client is a presentation/input adapter, never a second rules engine.
+    // Do not return mutable unit objects from the read model.
+    const battleSession3D = Object.freeze({
+      snapshot() {
+        const selected=getUnit(selectedUnitId);
+        return {
+          scenarioId:activeScenarioId, phase, round,
+          maxRounds:RULES.maxRounds, scores:{...scores},
+          faction:currentFaction, selectedUnitId, chosenOrder,
+          bagRemaining:bag.length, battleEnded,
+          result:battleResult ? {
+            winner:battleResult.winner??null,
+            message:battleResult.message??"Battle complete"
+          } : null,
+          reaction:pendingReaction ? {
+            ambusherId:pendingReaction.ambusherId,
+            moverId:pendingMovement?.moverId??null
+          } : null,
+          deploymentFaction:phase==="deployment"?currentDeploymentFaction():null,
+          deploymentUnitId:phase==="deployment"?deploymentUnitId:null,
+          canCancel:Boolean(activationSnapshot)&&!transactionLockReason,
+          building:selected&&phase==="choose-order"&&buildingCommand(selected)?.enabled
+            ? {action:selected.inBuilding?"exit":"enter",
+              label:buildingCommand(selected).label} : null,
+          orders:selected&&phase==="choose-order"
+            ? ["Advance","Run","Fire","Ambush","Down","Rally","Assault"]
+              .map(order=>({order,...orderAvailability(selected,order)}))
+            : [],
+          units:units.map(unit=>({
+            id:unit.id,name:unit.name,type:unit.type,faction:unit.faction,
+            role:unit.role,quality:unit.quality,
+            x:unit.x,y:unit.y,facing:unit.facing,
+            soldiers:unit.soldiers,maxSoldiers:unit.maxSoldiers,
+            pins:unit.pins,down:unit.down,activated:unit.activated,
+            order:unit.order,ambush:unit.ambush,mmgDeployed:unit.mmgDeployed,
+            inBuilding:unit.inBuilding,outcome:unit.outcome,
+            weapons:{...unit.weapons}
+          }))
+        };
+      },
+      previewMove(point, waypoint=null) {
+        if(phase!=="plan-movement"||!selectedUnitId)
+          return {legal:false,kind:"phase",reason:"No movement order selected"};
+        const unit=getUnit(selectedUnitId);
+        if(!unit)return {legal:false,kind:"unit",reason:"No selected unit"};
+        if(!Number.isFinite(point?.x)||!Number.isFinite(point?.y))
+          return {legal:false,kind:"input",reason:"Invalid tabletop position"};
+        const target=clampPoint(point);
+        const path=waypoint?[unit,waypoint,target]:[unit,target];
+        let analysis=analyzeMovementPath(unit,path,chosenOrder,null);
+        if(!analysis.legal&&analysis.kind==="allowance"){
+          const fitted=fitMovementPathToAllowance(unit,path,chosenOrder,null);
+          if(fitted)return {legal:true,path:fitted.path.map(p=>({x:p.x,y:p.y})),
+            shortened:true,cost:fitted.analysis.cost,allowance:fitted.analysis.allowance};
+        }
+        return {legal:analysis.legal,kind:analysis.kind,
+          reason:analysis.reason??null,cost:analysis.cost,allowance:analysis.allowance,
+          path:analysis.legal?path.map(p=>({x:p.x,y:p.y})):null};
+      },
+      previewTarget(id) {
+        if(!["choose-target","choose-assault-target"].includes(phase))
+          return {legal:false,reason:"Choose a targeting order first"};
+        const unit=getUnit(selectedUnitId),target=getUnit(id);
+        if(!unit||!target||target.faction===unit.faction)
+          return {legal:false,reason:"Select an enemy unit"};
+        if(phase==="choose-assault-target"){
+          const a=analyzeAssault(unit,target);
+          return {legal:a.legal,reason:a.reason??null,distance:a.distance};
+        }
+        const a=analyzeShot(unit,target);
+        return {legal:Boolean(a.inRange&&!a.blocked),
+          reason:!a.inRange?"Out of range":a.blockReason??null,
+          distance:a.distance,inRange:a.inRange,blocked:a.blocked,
+          cover:a.cover??null};
+      },
+      async command(action,payload={}) {
+        const name=String(action||"");
+        if(name==="draw")drawDie();
+        else if(name==="select")selectUnit(String(payload.id||""));
+        else if(name==="order")await chooseOrder(String(payload.order||""));
+        else if(name==="move"){
+          const preview=this.previewMove(payload.point,payload.waypoint||null);
+          if(!preview.legal)return {ok:false,reason:preview.reason||"Movement blocked",snapshot:this.snapshot()};
+          const unit=getUnit(selectedUnitId);
+          const path=preview.path;
+          const analysis=analyzeMovementPath(unit,path,chosenOrder,null);
+          if(analysis.legal)beginMovement(unit,path,analysis);
+          else{
+            const fitted=fitMovementPathToAllowance(unit,path,chosenOrder,null);
+            if(!fitted)return {ok:false,reason:analysis.reason||"Not legal",snapshot:this.snapshot()};
+            beginMovement(unit,fitted.path,fitted.analysis);
+          }
+        }
+        else if(name==="target"){
+          if(phase==="choose-target")await chooseTarget(String(payload.id||""));
+          else if(phase==="choose-assault-target")chooseAssaultTarget(String(payload.id||""));
+        }
+        else if(name==="building"){
+          if(phase==="choose-order") {
+            const unit=getUnit(selectedUnitId);
+            const available=buildingCommand(unit);
+            if(!available?.enabled)return {ok:false,reason:available?.reason||"Building interaction not available",snapshot:this.snapshot()};
+            if(unit?.inBuilding)exitBuildingAction();
+            else enterBuildingAction();
+          }
+        }
+        else if(name==="finish-advance")finishAdvanceWithoutShooting();
+        else if(name==="cancel")handleCancelAction();
+        else if(name==="score-round")scoreRoundAndContinue();
+        else if(name==="reaction-fire")resolveAmbushFire();
+        else if(name==="reaction-hold")holdAmbushFire();
+        else if(name==="restart")restartBattle();
+        else if(name==="deploy-select") {
+          if(phase==="deployment"){
+            const candidate=getUnit(String(payload.id||""));
+            if(candidate&&candidate.faction===currentDeploymentFaction())deploymentUnitId=candidate.id;
+          }
+        }
+        else if(name==="deploy-place") {
+          if(phase==="deployment"&&Number.isFinite(payload.point?.x)&&Number.isFinite(payload.point?.y))
+            placeDeploymentUnit(payload.point);
+        }
+        else if(name==="confirm-deployment")startBattle();
+        else return {ok:false,reason:"Unknown battle action: "+name,snapshot:this.snapshot()};
+        return {ok:true,snapshot:this.snapshot()};
+      }
+    });
+
     const InfantryCore = Object.freeze({
       data: Object.freeze({ weapons: WEAPON_PROFILES, unitTypes: UNIT_TYPES, scenarios: SCENARIOS }),
       state: Object.freeze({
@@ -4213,7 +4344,8 @@
       geometry: Object.freeze({ distanceBetweenPoints, segmentRectClip, analyzeMovementPath, analyzeShot, analyzeAssault }),
       rules: Object.freeze({ attemptOrder, resolveShootingCore, resolveCloseCombat, beginMovement }),
       scenario: Object.freeze({ scenarios: SCENARIOS, applyScenarioDefinition, buildUnitsForActiveScenario, objectiveState, scoreRoundAndContinue }),
-      ui: Object.freeze({ renderUnits, setStatus, setPreview, addLog, previewMovementAt, previewDeploymentAt, orderAvailability })
+      ui: Object.freeze({ renderUnits, setStatus, setPreview, addLog, previewMovementAt, previewDeploymentAt, orderAvailability }),
+      session: battleSession3D
     });
     window.InfantryCore = InfantryCore;
 
