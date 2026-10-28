@@ -824,30 +824,50 @@ function initialize(THREE) {
             target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
     }
   }
-  const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
-    new THREE.LineDashedMaterial({
-      color:0xdac78b,transparent:true,opacity:.92,depthTest:false,
-      dashSize:.18,gapSize:.09
-    }));
+  // A physical, thick painted measuring strip—not a one-pixel WebGL line.
+  const movePreviewLine=new THREE.Group();
+  const rulerMaterial=new THREE.MeshBasicMaterial({
+    color:0xe7c16b,transparent:true,opacity:.95,depthTest:false
+  });
   movePreviewLine.visible=false;
   movePreviewLine.renderOrder=13;
   scene.add(movePreviewLine);
   function clearMovePreview(){
     pendingMovePoint=null;
     movePreviewLine.visible=false;
+    for(const child of [...movePreviewLine.children]){
+      movePreviewLine.remove(child);
+      child.geometry?.dispose();
+    }
   }
   function showMovePreview(plan) {
     if(!selectedSquad||!plan.path?.length)return;
+    clearMovePreview();
     const from=selectedSquad.root.position;
-    const to=bridge.toWorld(plan.path[plan.path.length-1]);
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute("position",new THREE.Float32BufferAttribute([
-      from.x,terrainY(from.x,from.z)+.12,from.z,
-      to.x,terrainY(to.x,to.z)+.12,to.z
-    ],3));
-    movePreviewLine.geometry.dispose();
-    movePreviewLine.geometry=geo;
-    movePreviewLine.computeLineDistances();
+    const checkpoints=[{x:from.x,z:from.z},...plan.path.slice(1).map(bridge.toWorld)];
+    for(let i=1;i<checkpoints.length;i++){
+      const a=checkpoints[i-1],b=checkpoints[i];
+      const fullLength=Math.hypot(b.x-a.x,b.z-a.z);
+      const segments=Math.max(1,Math.ceil(fullLength/.32));
+      for(let j=0;j<segments;j++){
+        const f0=j/segments,f1=(j+1)/segments;
+        const x0=a.x+(b.x-a.x)*f0,z0=a.z+(b.z-a.z)*f0;
+        const x1=a.x+(b.x-a.x)*f1,z1=a.z+(b.z-a.z)*f1;
+        const length=Math.hypot(x1-x0,z1-z0);
+        const midX=(x0+x1)/2,midZ=(z0+z1)/2;
+        const stripe=new THREE.Mesh(
+          new THREE.BoxGeometry(length+.008,.026,.115),rulerMaterial);
+        stripe.position.set(midX,terrainY(midX,midZ)+.065,midZ);
+        stripe.rotation.y=-Math.atan2(z1-z0,x1-x0);
+        stripe.renderOrder=14;
+        movePreviewLine.add(stripe);
+      }
+    }
+    const last=checkpoints[checkpoints.length-1];
+    const end=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.03,22),rulerMaterial);
+    end.position.set(last.x,terrainY(last.x,last.z)+.075,last.z);
+    end.renderOrder=14;
+    movePreviewLine.add(end);
     movePreviewLine.visible=true;
   }
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
@@ -890,6 +910,7 @@ function initialize(THREE) {
       squad.ring.userData.grounded=false;
     }
     if(next&&changed){
+      next.selectionPulse=1;
       cameraFocus={x:next.root.position.x,z:next.root.position.z};
       focusZoom=Math.max(zoom,1.50);
     }
@@ -1079,7 +1100,9 @@ function initialize(THREE) {
           if(!activeMovement) {
             const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
               motion.heading(before,end));
-            const duration=Math.max(.4,displacement/.8);
+            const run=stateUnit.order==="Run";
+            const duration=Math.max(run?.27:.40,
+              displacement/(run?1.42:.82));
             activeMovement={squad,plan:null,remote:true,start:before,end,phase:"turn",
               elapsed:0,turn,travelDuration:duration,
               finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
@@ -1434,8 +1457,10 @@ function initialize(THREE) {
           }
           if(!moving.remote) squad.controller.commitMove(moving.plan);
           squad.moving=false;
+          squad.orderToken.visible=Boolean(squad.unit.order)&&squad.unit.soldiers>0;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
+          for(const soldier of squad.soldiers) soldier.grounded=false;
           activeMovement=null;
           walking=false;
         }
@@ -1443,12 +1468,17 @@ function initialize(THREE) {
     }
     for(const squad of squads) {
       const isWalking=walking&&moving?.squad===squad;
-      if(isWalking&&cameraFocus===null&&selectedSquad===squad&&
-        !pointers.size){/* manual camera input always takes priority */}
+      if(squad.selectionPulse>0){
+        squad.selectionPulse=Math.max(0,squad.selectionPulse-dt*2.0);
+        const u=squad.selectionPulse;
+        squad.ring.scale.setScalar(1+Math.sin((1-u)*Math.PI)*.22);
+      }else if(squad.ring.scale.x!==1)squad.ring.scale.setScalar(1);
       for(let soldierIndex=0;soldierIndex<squad.soldiers.length;soldierIndex++){
         const soldier=squad.soldiers[soldierIndex];
+        const ownProgress=isWalking?
+          motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
+        const takingSteps=isWalking&&ownProgress<.999;
         if(isWalking) {
-          const ownProgress=motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait);
           const delta=ownProgress-centerProgress;
           soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
           soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
@@ -1465,19 +1495,19 @@ function initialize(THREE) {
         soldier.breathing.position.y=soldier.baseY;
         soldier.breathing.rotation.z=0;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
-        if(isWalking&&!reducedMotion) {
+        if(takingSteps&&!reducedMotion) {
           const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
-          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob;
-          soldier.breathing.rotation.x=-.07;
-          for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
+          const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
+          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob*easeStop;
+          soldier.breathing.rotation.x=-.07*easeStop;
+          for(const leg of soldier.legs)
+            leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
             soldier.recoil;
-          if(!reducedMotion) {
-            soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
-            soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
-          }
+          // Stationary painted miniatures hold a stable physical pose. No
+          // breathing/sway loop that looks like jogging in place.
         }
       }
       if(squad.ring.visible&&!squad.ring.userData.grounded) {
