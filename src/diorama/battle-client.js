@@ -1,6 +1,9 @@
 "use strict";
 (() => {
   const frame=document.getElementById("battleSessionFrame");
+  const requestedScenario=new URLSearchParams(window.location.search).get("scenario");
+  if(requestedScenario&&/^[a-z0-9_-]+$/.test(requestedScenario))
+    frame.src="classic-session.html?scenario="+encodeURIComponent(requestedScenario);
   const hud=document.getElementById("battleControls");
   if(!frame||!hud)throw Error("Missing 3D battle coordinator frame/control surface");
   let session=null,latest=null,busy=false,warning="";

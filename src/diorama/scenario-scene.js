@@ -534,6 +534,104 @@ function initialize(THREE) {
     scene.add(stems);
   }
   authoredTerrain.filter(e=>e.renderer==="field").forEach(makeField);
+  // Stage 14: the same authored linear and polygon definitions the existing
+  // terrain geometry module uses are also rendered physically, not flattened
+  // into the individual collision rectangles used by game rules.
+  function renderPolylineStrip(path, compiled, color, lift=.04, widthMultiplier=1) {
+    const samples=window.CrossroadsPathGeometry.samplePath(path,.48);
+    const vertices=[],indices=[];
+    for(let i=0;i<samples.length;i++){
+      const point=samples[i];
+      const width=window.CrossroadsLinearTerrain.widthAt(
+        compiled.definition,compiled.style,path,point.distance)*bridge.table.worldUnitsPerInch*widthMultiplier;
+      const center=bridge.toWorld(point);
+      for(const sign of [-1,1]){
+        const x=center.x+point.normal.x*width*sign/2;
+        const z=center.z+point.normal.y*width*sign/2;
+        vertices.push(x,terrainY(x,z)+lift,z);
+      }
+      if(i<samples.length-1){
+        const n=i*2;
+        indices.push(n,n+1,n+2,n+1,n+3,n+2);
+      }
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    const surface=shape(scene,geo,new THREE.MeshStandardMaterial({
+      color,roughness:1,side:THREE.DoubleSide
+    }),0,0,0);
+    surface.castShadow=false;
+    surface.userData.terrainId=compiled.definition.id;
+    walkableSurfaceMeshes.push(surface);
+  }
+  function renderAuthoredLinearTerrain(){
+    const linear=window.CrossroadsLinearTerrain;
+    const paths=window.CrossroadsPathGeometry;
+    if(!linear||!paths)return;
+    const compiled=linear.compileScenario(layout.scenario);
+    for(const item of compiled.paths){
+      const style=item.style,renderer=style.renderer;
+      if(["road","stream","ditch","rail","rail_crossing"].includes(renderer)){
+        const color=renderer==="road"?0xae9c74:
+          renderer==="stream"?0x697f7c:
+          renderer==="rail"?0x83796b:0x857e67;
+        renderPolylineStrip(item.path,item,color,.045,renderer==="rail"?.78:1);
+        if(renderer==="road")renderPolylineStrip(item.path,item,0xc0ad82,.055,.78);
+      }else if(["wall","fence","hedge"].includes(renderer)){
+        const steps=paths.samplePath(item.path,.70);
+        for(let i=1;i<steps.length;i++){
+          const from=bridge.toWorld(steps[i-1]);
+          const to=bridge.toWorld(steps[i]);
+          const dx=to.x-from.x,dz=to.z-from.z;
+          const distance=Math.hypot(dx,dz);
+          if(distance<.02)continue;
+          const centerX=(from.x+to.x)/2,centerZ=(from.z+to.z)/2;
+          const segment=new THREE.Group();
+          segment.position.set(centerX,terrainY(centerX,centerZ),centerZ);
+          segment.rotation.y=-Math.atan2(dz,dx);
+          scene.add(segment);
+          const wall=renderer==="wall",hedge=renderer==="hedge";
+          block(segment,distance,wall?.33:hedge?.34:.23,
+            wall?.18:hedge?.23:.07,
+            mat(wall?0xaaa18b:hedge?0x667852:0x806949),
+            0,wall?.17:hedge?.19:.28,0);
+          if(renderer==="fence")for(const x of [-distance/2,distance/2])
+            block(segment,.09,.50,.11,mat(0x6c513d),x,.26,0);
+        }
+      }
+    }
+  }
+  function renderAuthoredTerrainPatches(){
+    for(const patch of layout.auxiliary.filter(item=>item.sourceKind==="patch")){
+      if(!Array.isArray(patch.points)||patch.points.length<3)continue;
+      const shape2d=new THREE.Shape();
+      patch.points.forEach((point,i)=>{
+        const world=bridge.toWorld(point);
+        if(i===0)shape2d.moveTo(world.x,-world.z);
+        else shape2d.lineTo(world.x,-world.z);
+      });
+      shape2d.closePath();
+      const geo=new THREE.ShapeGeometry(shape2d);
+      geo.rotateX(-Math.PI/2);
+      const positions=geo.attributes.position;
+      for(let i=0;i<positions.count;i++)
+        positions.setY(i,terrainY(positions.getX(i),positions.getZ(i))+.035);
+      geo.computeVertexNormals();
+      const patchColor=patch.definition.family==="natural"?0x667b55:
+        patch.definition.family==="ground"?0xb1a276:0x80816d;
+      const mesh=shape(scene,geo,new THREE.MeshStandardMaterial({
+        color:patchColor,side:THREE.DoubleSide,roughness:1
+      }),0,0,0);
+      mesh.castShadow=false;
+      mesh.userData.terrainId=patch.id;
+      walkableSurfaceMeshes.push(mesh);
+    }
+  }
+  renderAuthoredLinearTerrain();
+  renderAuthoredTerrainPatches();
+
 
   // Stage 6: all real units load at their authored scenario coordinates.
   // No study-specific deployments or unit identities remain in this scene.
