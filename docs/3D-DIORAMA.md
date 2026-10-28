@@ -241,3 +241,55 @@ Known work for the next milestones: mobile animation hitch profiling,
 selection and camera focus, visible order dice and turn-draw presentation,
 fire/cover/pin/casualty state feedback, contextual status, and battle-end
 presentation. These were deliberately not bundled into the routing change.
+
+
+## Crossroads 3D v0.6.0 — Command & Clarity
+
+This is the default Play experience. `battle3d.html` still runs the
+authoritative `InfantryCore.session` behind a 3D presentation client; the
+earlier 3D scene remains available at `diorama.html`.
+
+### Presentation
+- A subtle faction-colored die appears during an active activation, with a
+  compact bag/dice count, Polish/German scores and round progress.
+- The selected squad has contextual identity/strength/pin status. Eligible
+  units receive a separate physical ring, and ordered/activated squads show
+  a small order token beside their bases.
+- Pins are represented by physically stacked basing tokens and a readable
+  count. Casualties and unit destruction are reflected in living soldier
+  counts, brief visual effects, and an event history derived from the
+  **original engine's actual battleLogEntries**, never fabricated rolls.
+- Distinct muzzle and recoil responses for rifles, SMGs and MMGs (with
+  crew/loaders excluded). Objective marker tint comes from the canonical
+  scenario-runtime evaluator.
+- The command overlay displays only legal orders and the current
+  action phase. Movement and shooting still require a reversible preview
+  and a second tap to confirm. Last-round scores, casualty and losses
+  summary are taken from the authoritative battle statistics.
+- A compact, collapsible log shows the 16 most recent actual engine messages,
+  including order failures, pins, Ambush and scenario-scoring events.
+
+### Camera and performance
+- The camera eases to a newly selected unit, optionally closes the framing
+  to 1.85×, and never resets the orbit angle. A manual pointer gesture,
+  wheel zoom or arrow-key orbit cancels auto-focus.
+- The hidden 2D coordinator skips expensive, invisible DOM miniature rendering
+  and log-node creation only when `CROSSROADS_3D_SESSION_HOST` is set; the
+  2D classic page remains unchanged.
+- Miniature height samples are cached in a bounded grid, sampled per walking
+  soldier no more than once every three rendered frames, and always refreshed
+  at arrival. Miniature labels are projected at 15 Hz rather than 60 Hz.
+- The 3D client polls the original coordinator at 250ms to capture delayed
+  reactions, but suppresses scene notifications and DOM rebuilds when the
+  relevant battle state has not changed.
+- `battle3d.html?perf3d=1` enables a 3-second moving performance summary
+  in the browser console (approximate frame cost, render calls, ground rays).
+
+### Fallbacks and caveats
+- `battle3d-v051.html` preserves the previous v0.5.1 battle interface and
+  scene scripts for A/B comparison (sharing the latest compatible engine
+  coordinator). `diorama.html` preserves the independent movement study,
+  while `classic.html` remains the complete 2D presentation.
+- Syntax, scenario-data, simulated host UI interaction and simulated WebGL
+  initialization checks were performed. **Real iOS WebGL frame pacing,
+  combat outcome timing and full-turn AAR still need on-device verification.**

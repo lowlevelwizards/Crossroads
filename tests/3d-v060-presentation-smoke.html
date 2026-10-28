@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8">
+<title>Crossroads 3D v0.6 presentation contract</title>
+<style>body{font:14px/1.5 system-ui;background:#23342d;color:#eee5d0;padding:20px}</style>
+<h1>Crossroads 3D v0.6 presentation smoke</h1>
+<pre id="report">Loading authoritative battle coordinator…</pre>
+<iframe id="session" title="Authoritative rules test" style="position:absolute;left:-11000px;top:-11000px;width:1024px;height:768px"
+ src="../classic-session.html?scenario=hold_the_farm&amp;v=0.6.0"></iframe>
+<script>
+document.querySelector("#session").addEventListener("load",async function(){
+  const items=[],pass=(n,ok)=>items.push([n,!!ok]);
+  try{
+    const host=this.contentWindow;
+    const api=host.InfantryCore?.session;
+    pass("Authoritative session available",Boolean(api?.snapshot&&api?.command));
+    const before=api.snapshot();
+    pass("8 real Hold the Farm units",before.units.length===8);
+    pass("Objective evaluator snapshot",Array.isArray(before.objectives));
+    pass("Real battle events exported",Array.isArray(before.recentEvents));
+    pass("Stats copied from rules engine",Boolean(before.statistics));
+    pass("Initial action is a draw",before.phase==="ready-to-draw");
+    await api.command("draw");
+    const after=api.snapshot();
+    pass("Draw uses real faction die",["blue","red"].includes(after.faction));
+    pass("Order die remaining reflects draw",after.bagRemaining<before.bagRemaining);
+    const unit=after.units.find(u=>u.faction===after.faction&&!u.activated);
+    await api.command("select",{id:unit.id});
+    const picked=api.snapshot();
+    pass("Unit selection is authoritative",picked.selectedUnitId===unit.id);
+    pass("Orders derive from original engine",picked.orders.some(o=>o.order==="Advance"));
+    await api.command("cancel");
+    pass("Cancel is reversible",api.snapshot().units.find(u=>u.id===unit.id).soldiers===unit.soldiers);
+  }catch(err){pass("Runtime exception: "+String(err.message||err),false)}
+  const count=items.filter(x=>x[1]).length;
+  document.querySelector("#report").textContent=items.map(x=>(x[1]?"PASS ":"FAIL ")+x[0])
+    .join("\n")+"\n\n"+count+"/"+items.length+" passed";
+});
+</script>

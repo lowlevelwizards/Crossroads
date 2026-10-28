@@ -1518,6 +1518,9 @@
     ]);
 
     function renderUnits(context = {}) {
+      // The hidden 2D session is a rules authority only. Rendering hundreds
+      // of DOM miniatures behind the WebGL canvas produced long task hitches.
+      if (window.CROSSROADS_3D_SESSION_HOST) return;
       renderGame(context);
     }
 
@@ -2685,6 +2688,7 @@
 
     function addLog(message, className = "") {
       battleLogEntries.push({ round, phase, message, className });
+      if (window.CROSSROADS_3D_SESSION_HOST) return;
       const entry = document.createElement("div");
       entry.className = `log-entry ${className}`.trim();
       entry.textContent = message;
@@ -4213,6 +4217,19 @@
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
+          objectives:objectiveSnapshots().map(item=>({
+            id:item.objective?.id||"",label:item.objective?.label||"Objective",
+            state:item.state||"none"
+          })),
+          eventCount:battleLogEntries.length,
+          recentEvents:battleLogEntries.slice(-16).map((event,index)=>({
+            id:battleLogEntries.length-Math.min(16,battleLogEntries.length)+index,
+            round:event.round,phase:event.phase,
+            message:event.message,className:event.className
+          })),
+          statistics:battleStats ? {
+            blue:{...battleStats.blue},red:{...battleStats.red}
+          }:null,
           result:battleResult ? {
             winner:battleResult.winner??null,
             message:battleResult.message??"Battle complete"
