@@ -13,7 +13,7 @@
       start,
       delta: shortestDelta(start, goal),
       // Each figure pivots at a slightly different pace; all finish before marching.
-      fraction: 0.76 + (index % 6) * 0.045
+      fraction: .66 + (((index * 5 + 2) % 7) / 6) * .34
     }));
     const longest = Math.max(0, ...turns.map(turn => Math.abs(turn.delta)));
     return Object.freeze({
@@ -33,10 +33,10 @@
     const n = unitIndex * 17 + soldierIndex * 7;
     const oscillation = Math.sin(n * 1.371 + 2.37);
     return Object.freeze({
-      pace: 1 + oscillation * .075, // 0.925–1.075× movement duration
-      delay: .025 + (.5 + .5 * Math.sin(n * 2.51 + .34)) * .105,
-      stride: 10.1 + (.5 + .5 * Math.sin(n * 1.74)) * 3.3,
-      bob: .065 + (.5 + .5 * Math.cos(n * 2.14)) * .033
+      pace: 1 + oscillation * .14, // 0.86–1.14× duration (visual only)
+      delay: .03 + (.5 + .5 * Math.sin(n * 2.51 + .34)) * .14,
+      stride: 9.3 + (.5 + .5 * Math.sin(n * 1.74)) * 5.1,
+      bob: .060 + (.5 + .5 * Math.cos(n * 2.14)) * .045
     });
   }
   function progressFor(elapsed, duration, gait) {

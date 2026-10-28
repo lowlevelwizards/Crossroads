@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Crossroads 3D touch camera smoke</title>
+<pre id="out">Checking…</pre>
+<script src="../src/diorama/study-gestures.js"></script>
+<script src="../src/diorama/study-motion.js"></script>
+<script>
+"use strict";
+(() => {
+  const gestures=window.CrossroadsDioramaGestures;
+  const motion=window.CrossroadsDioramaMotion;
+  const lines=[];
+  const eq=(a,b)=>Math.abs(a-b)<1e-8;
+  const check=(name,ok)=>lines.push((ok?"PASS ":"FAIL ")+name);
+  const pair=[{x:100,y:200},{x:200,y:200}];
+  const pan=gestures.twoFingerGesture(pair,[{x:130,y:250},{x:230,y:250}]);
+  check("Parallel 2 finger pan retains zoom",eq(pan.zoomFactor,1));
+  check("Parallel pan tracks both axes",eq(pan.nextCenter.x-pan.previousCenter.x,30)&&eq(pan.nextCenter.y-pan.previousCenter.y,50));
+  const pinch=gestures.twoFingerGesture(pair,[{x:75,y:200},{x:225,y:200}]);
+  check("Pinch zoom ratio",eq(pinch.zoomFactor,1.5));
+  check("Pinch center stays stationary",eq(pinch.previousCenter.x,pinch.nextCenter.x));
+  check("Invalid number of fingers rejected",gestures.twoFingerGesture(pair,[pair[0]])===null);
+  check("Ground target shift preserves cursor anchor",eq(gestures.targetShift({x:3,z:7},{x:1,z:9}).x,2));
+  const gaits=Array.from({length:6},(_,i)=>motion.gaitFor(1,i));
+  check("Walking variation bounded by 14 percent",gaits.every(g=>g.pace>=.86-1e-8&&g.pace<=1.14+1e-8));
+  check("Individual walking durations vary",new Set(gaits.map(g=>g.pace.toFixed(3))).size===6);
+  check("All arrive exactly at end",gaits.every(g=>motion.progressFor(motion.finishTime(1.5,gaits),1.5,g)===1));
+  const turn=motion.makeTurn([0,0,0,0,0,0],Math.PI/2);
+  check("Distinct turning speeds",new Set(turn.turns.map(t=>t.fraction)).size===6);
+  check("All turns finish correctly",turn.turns.every(t=>eq(motion.headingAt(t,1),Math.PI/2)));
+  const passes=lines.filter(line=>line.startsWith("PASS")).length;
+  document.getElementById("out").textContent=lines.join("\n")+"\n"+passes+"/"+lines.length+" passed";
+  if(passes!==lines.length)document.body.style.background="#633";
+})();
+</script>

@@ -44,7 +44,7 @@
   test("Other squads never move on unit commit",units.slice(1).every((u,i)=>u.x===before[i].x&&u.y===before[i].y));
   const gaits=Array.from({length:6},(_,i)=>motion.gaitFor(0,i));
   test("Slight unique soldier pacing",new Set(gaits.map(g=>g.pace.toFixed(4))).size>=5);
-  test("Walking variation stays within plus or minus 7.5%",gaits.every(g=>g.pace>=.925-1e-9&&g.pace<=1.075+1e-9));
+  test("Walking variation stays within plus or minus 14%",gaits.every(g=>g.pace>=.86-1e-9&&g.pace<=1.14+1e-9));
   const last=motion.finishTime(1.7,gaits);
   test("All walkers converge exactly at end",gaits.every(g=>motion.progressFor(last,1.7,g)===1));
   const turns=motion.makeTurn([-.5,-.1,.1,.3,.5,.7],2);
