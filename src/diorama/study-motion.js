@@ -26,5 +26,26 @@
     const eased = normalized * normalized * (3 - 2 * normalized);
     return turn.start + turn.delta * eased;
   }
-  window.CrossroadsDioramaMotion = Object.freeze({ heading, shortestDelta, makeTurn, headingAt });
+  // Subtle per-model differences, not a separate game speed stat.
+  // Each miniature follows the same authorized move, but has its own
+  // measured cadence and settles back into the exact authored slot.
+  function gaitFor(unitIndex, soldierIndex) {
+    const n = unitIndex * 17 + soldierIndex * 7;
+    const oscillation = Math.sin(n * 1.371 + 2.37);
+    return Object.freeze({
+      pace: 1 + oscillation * .075, // 0.925–1.075× movement duration
+      delay: .025 + (.5 + .5 * Math.sin(n * 2.51 + .34)) * .105,
+      stride: 10.1 + (.5 + .5 * Math.sin(n * 1.74)) * 3.3,
+      bob: .065 + (.5 + .5 * Math.cos(n * 2.14)) * .033
+    });
+  }
+  function progressFor(elapsed, duration, gait) {
+    return clamp((elapsed - gait.delay) / (duration * gait.pace), 0, 1);
+  }
+  function finishTime(duration, gaits) {
+    return Math.max(duration, ...gaits.map(gait => gait.delay + duration * gait.pace));
+  }
+  window.CrossroadsDioramaMotion = Object.freeze({
+    heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor, finishTime
+  });
 })();
