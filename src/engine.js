@@ -2271,8 +2271,10 @@
         unit.id,
         unit.facing
       );
-      await new Promise(requestAnimationFrame);
-      await new Promise(resolve => setTimeout(resolve, 65));
+      if(!window.CROSSROADS_3D_SESSION_HOST) {
+        await new Promise(requestAnimationFrame);
+        await new Promise(resolve => setTimeout(resolve, 65));
+      }
 
       await presentationEffects.playMovementPath(
         unit.id,
