@@ -50,7 +50,7 @@ assault.age=.12;
 assert(w.Crossroads3DAssaultMotion.individualDisplacement(assault,0)>0);
 assert.equal(w.Crossroads3DAssaultMotion.individualDisplacement(assault,7),0);
 const scene=read("src/diorama/scenario-scene.js");
-for(const x of ["coverSegments.push(", "coverPositions.arrange(", "resolveSquadFormation(",
+for(const x of ["coverSegments.push(", "formationLayout.resolve(", "resolveSquadFormation(",
  "squad.entrySequence", "buildingVisuals.at(", "garrisonFiringOutlet(", "showPhysicalDice(stage)",
  "orderTexture(u.order)", "animatePhysicalDice(dt)",
  "individualDisplacement?.(assault,soldierIndex)"])
