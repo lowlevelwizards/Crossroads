@@ -2188,6 +2188,7 @@ function initialize(THREE) {
       miniatureLab?.refreshIsolation?.();
     }
     battle.subscribe(applyAuthoritativeSnapshot);
+    window.Crossroads3DBenchmark?.mount(battle);
     battle.onCombatStage(showCombatStage);
   }
 
