@@ -206,6 +206,7 @@
     const round=node("div","battle-round",
       "ROUND "+current.round+" / "+current.maxRounds);
     const score=node("div","battle-score");
+    score.setAttribute("aria-label","Awarded objective points; pending points score at round end");
     score.append(
       node("span","battle-team-score blue","POL "+(current.scores?.blue??0)),
       node("span","battle-score-divider","·"),
@@ -214,6 +215,11 @@
     const dice=node("div","battle-die-bag",
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
+    if(current.phase==="round-complete"){
+      const pending=node("div","battle-objective-banner",
+        "POINTS PENDING · Score objectives to complete Round "+current.round);
+      pending.setAttribute("role","status");hud.append(pending);
+    }
     const sound=node("button","battle-audio-toggle",
       audioEnabled?"♪ ON":"♪ OFF");
     sound.type="button";
@@ -250,6 +256,15 @@
       const label=node("div","battle-objective-banner",
         "⚑  "+focusedObjective.label+" · "+String(focusedObjective.state).toUpperCase());
       hud.append(label);
+    }
+    if(current.phase==="round-complete"){
+      const controlled=(current.objectives||[]).filter(o=>
+        o.state==="blue"||o.state==="red");
+      const detail=node("div","battle-objective-banner",
+        controlled.length?controlled.map(o=>
+          o.label+": "+(o.state==="blue"?"POL":"GER")).join(" · "):
+          "No objectives currently controlled");
+      hud.append(detail);
     }
 
     const center=node("section","battle-center");
@@ -354,7 +369,7 @@
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
       if(current.canCancel)action(controls,"Cancel target","cancel",{},"battle-secondary");
     } else if(current.phase==="round-complete"){
-      action(controls,"CONTINUE TO NEXT ROUND","score-round",{},"battle-primary-action");
+      action(controls,"SCORE OBJECTIVES & CONTINUE","score-round",{},"battle-primary-action");
     } else if(current.phase==="ambush-reaction"){
       action(controls,"✦  Fire ambush","reaction-fire",{},"battle-primary-action");
       action(controls,"Hold fire","reaction-hold",{},"battle-secondary");

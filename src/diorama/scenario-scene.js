@@ -1571,10 +1571,21 @@ function initialize(THREE) {
       for(const a of [-.75,0,.75]){
         const foot=block(figure,.065,.45,.055,mat(0x343b36),
           Math.sin(a)*.26,.31,-.40+Math.cos(a)*.19);
-        foot.rotation.z=Math.sin(a)*.7;
-        foot.rotation.x=-.55;
+        foot.rotation.z=Math.sin(a)*.7;foot.rotation.x=-.55;
       }
+      block(breathing,.26,.24,.25,mat(0x665d45),-.28,-.19,-.53);
+      for(let n=0;n<7;n++)
+        block(breathing,.035,.075,.07,mat(0xb49c60),
+          -.15-n*.045,-.10-Math.sin(n/7*Math.PI)*.07,-.54);
+      block(figure,.24,.16,.26,mat(0x575744),-.34,.13,-.27);
     } else if(recipe.role==="crew") {
+      if(index===1){
+        block(figure,.29,.22,.34,mat(0x73664a),-.22,.24,-.34);
+        block(figure,.30,.035,.045,mat(0xa28a60),-.22,.36,-.34);
+      }else{
+        block(breathing,.26,.25,.18,mat(0x615442),-.28,-.22,.18);
+        block(breathing,.13,.17,.21,mat(0x343b36),-.24,-.15,-.51);
+      }
       block(breathing,.23,.18,.20,leather,-.20,-.25,.16);
       block(breathing,.19,.16,.16,mat(0x64604a),-.23,-.20,.25);
     } else if (recipe.role === "lmg") {
@@ -1616,7 +1627,11 @@ function initialize(THREE) {
       String(id)===String(building))):null;
     const value=formationLayout.resolve({
       origin:{x:world.x,z:world.z},
-      slots:squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
+      slots:squad.unit.type==="mmgTeam"?
+        squad.soldiers.map((s,i)=>[
+          {x:0,z:-.16},{x:-.39,z:.22},{x:.42,z:.23}
+        ][i]||{x:s.slotX,z:s.slotZ}):
+        squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
       living,
       segments:coverSegments,coverPositions,
       buildingBounds:roof?.bounds||null,threat,
@@ -2198,7 +2213,9 @@ function initialize(THREE) {
             x=at.x;z=at.z;
             soldier.entryStep=progress>0&&progress<1?Math.sin(progress*Math.PI):0;
           }else soldier.entryStep=0;
-          soldier.coverPose=slot?.cover?(slot.frontRow?.19:.32):0;
+          soldier.coverPose=squad.unit.type==="mmgTeam"?
+            (soldierIndex===0?.34:.23):
+            slot?.cover?(slot.frontRow?.19:.32):0;
           if(slot?.look&&!assault&&soldier.aimTarget==null&&soldier.recoil<.02){
             const at={x:squad.root.position.x+soldier.figure.position.x,
               z:squad.root.position.z+soldier.figure.position.z};
