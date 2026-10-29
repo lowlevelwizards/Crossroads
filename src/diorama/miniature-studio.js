@@ -278,6 +278,22 @@
     target.set(0,.84,-.10);radius=4.5;orthoHeight=2.55;
     cameraView("front");orbitPolar=1.21;applyCamera();
   }
+  const focusSelect=$("studioFocus");
+  const focusPresets={
+    full:{y:.84,z:0,radius:3.8,height:2.45,theta:Math.PI+.46},
+    face:{y:1.30,z:-.06,radius:2.15,height:1.15,theta:Math.PI+.32},
+    torso:{y:.89,z:-.09,radius:2.20,height:1.37,theta:Math.PI+.35},
+    weapon:{y:.59,z:-.28,radius:2.2,height:1.36,theta:Math.PI+.48},
+    boots:{y:.30,z:-.03,radius:2.2,height:1.25,theta:Math.PI+.27},
+    pack:{y:.86,z:.20,radius:2.25,height:1.50,theta:-.40}
+  };
+  focusSelect?.addEventListener("change",()=>{
+    const preset=focusPresets[focusSelect.value]||focusPresets.full;
+    target.set(0,preset.y,preset.z);
+    radius=preset.radius;orthoHeight=preset.height;
+    orbitTheta=preset.theta;orbitPolar=1.35;
+    resize();applyCamera();
+  });
   for(const button of viewButtons)
     button.addEventListener("click",()=>cameraView(button.dataset.view));
   projectionButton.addEventListener("click",()=>{
