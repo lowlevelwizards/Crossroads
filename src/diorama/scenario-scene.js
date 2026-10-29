@@ -1954,6 +1954,7 @@ function initialize(THREE) {
     const issueCoat=uniform.color.getHex();
     const issuePants=trousers.color.getHex();
     const issueHelmet=helmet.color.getHex();
+    const issueLeather=leather.color.getHex();
     // Headwear geometry sits above the head at .60+; the face remains.
     const headwear=breathing.children.filter(part=>part.position.y>=.60);
     const inspectRing=new THREE.Mesh(new THREE.RingGeometry(.46,.51,24),
@@ -1976,7 +1977,11 @@ function initialize(THREE) {
         scheme==="khaki"?0x9a8b62:issueCoat);
       trousers.color.setHex(scheme==="olive"?0x424f42:
         scheme==="khaki"?0x716345:issuePants);
-      helmet.color.setHex(scheme==="khaki"?0x777053:issueHelmet);
+      helmet.color.setHex(look.helmetTint==="dark"?0x3c4d42:
+        look.helmetTint==="dust"?0x918367:
+        scheme==="khaki"?0x777053:issueHelmet);
+      leather.color.setHex(look.leatherTint==="dark"?0x302b29:
+        look.leatherTint==="russet"?0x7e4c31:issueLeather);
       pack.visible=look.pack!=="off";
       for(const part of headwear)part.visible=look.helmet!=="off";
     };
@@ -2131,9 +2136,27 @@ function initialize(THREE) {
     look(id,index,appearance){
       unitLookup.get(id)?.soldiers[index]?.applyLook(appearance);
     },
+    pose(id,index,pose){
+      for(const s of squads)for(let i=0;i<s.soldiers.length;i++)
+        s.soldiers[i].labPose=s.unit.id===id&&i===index?pose:null;
+    },
+    isolate(id,index,on){
+      for(const s of squads){
+        s.root.visible=!on||s.unit.id===id;
+        for(let i=0;i<s.soldiers.length;i++)
+          s.soldiers[i].figure.visible=i<s.unit.soldiers&&
+            (!on||(s.unit.id===id&&i===index));
+      }
+    },
     close(){
-      for(const squad of squads)for(const soldier of squad.soldiers)
-        soldier.inspectRing.visible=false;
+      for(const s of squads){
+        s.root.visible=true;
+        for(let i=0;i<s.soldiers.length;i++){
+          const soldier=s.soldiers[i];
+          soldier.inspectRing.visible=false;soldier.labPose=null;
+          soldier.figure.visible=i<s.unit.soldiers;
+        }
+      }
     }
   });
 
@@ -2915,6 +2938,24 @@ function initialize(THREE) {
           }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
+        }
+        if(miniatureLab?.isOpen()&&!isWalking&&soldier.labPose){
+          if(soldier.labPose==="walk"){
+            const gait=motion.gaitPose(t*.75,.47,1,soldier.gait.phase,false);
+            soldier.breathing.position.y+=gait.bob*soldier.gait.bob;
+            for(const leg of soldier.legs){
+              leg.boot.position.y=.17+(leg.side===-1?gait.leftLift:gait.rightLift);
+              leg.boot.position.z=-.055+(leg.side===-1?gait.leftReach:gait.rightReach);
+            }
+          }else if(soldier.labPose==="down"){
+            soldier.breathing.position.y=soldier.baseY-.30;
+            soldier.breathing.rotation.x=-.64;
+          }else if(soldier.labPose==="aim"){
+            soldier.breathing.rotation.x=-.13;
+          }else if(soldier.labPose==="fire"){
+            soldier.breathing.rotation.x=-.13-Math.pow(Math.max(0,
+              Math.sin(t*10)),3)*.20;
+          }
         }
         if(soldierIK){
           for(const leg of soldier.legs){
