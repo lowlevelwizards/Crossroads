@@ -224,3 +224,12 @@
 @media(prefers-reduced-motion:reduce){
   .battle-combat-dice:not([hidden]) .battle-roll{animation:none}
 }
+
+/* 0.8.1: tactile, explicit route controls. */
+.battle-controls .battle-confirm-move{background:#f2cd77;color:#2b3027;
+  border:2px solid #fff0be;box-shadow:0 4px 0 #614e2d,0 2px 12px #f2d38459;
+  font-size:12px;min-height:44px}
+.battle-move-summary{background:#24382fea;color:#f1dca3;
+  border:1px solid #c5b2749c;border-radius:6px;font:800 10px/1.35 system-ui,sans-serif;
+  letter-spacing:.045em;padding:5px 10px;text-align:center;max-width:100%}
+@media(max-width:420px){.battle-controls .battle-confirm-move{position:sticky;left:0;z-index:2}}

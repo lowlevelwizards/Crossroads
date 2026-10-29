@@ -62,5 +62,5 @@
     "tests/3d-v080-living-infantry.test.js",
     "src/diorama/assault-motion.js"
   ],
-  "threeDCacheVersion": "0.8.0"
+  "threeDCacheVersion": "0.8.1"
 }
