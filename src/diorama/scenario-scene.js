@@ -34,6 +34,8 @@ function initialize(THREE) {
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
+  const coverPositions=window.Crossroads3DCoverPositions;
+  const tabletopDice=window.Crossroads3DTabletopDice;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
@@ -481,6 +483,9 @@ function initialize(THREE) {
     else makeCompactBuilding(entry);
   }
 
+  // Indexed physical cover edges, not the larger abstract collision regions.
+  // Only the miniatures use these; the original rules continue to own cover.
+  const coverSegments=[];
   // The 2.5-inch movement zone is deliberately NOT a 2.5-inch thick wall.
   // Preserve the invisible rules region for the live movement/cover modules;
   // draw genuinely narrow, hand-laid physical masonry at its centerline.
@@ -495,6 +500,11 @@ function initialize(THREE) {
     group.userData.rulesRect=entry.rulesRect;
     scene.add(group);
     const L=dims.length, thick=dims.visibleThickness, height=dims.height;
+    const direction=group.rotation.y;
+    const tangent={x:Math.cos(direction),z:-Math.sin(direction)};
+    coverSegments.push({id:entry.id,kind:"wall",
+      a:{x:r.x-tangent.x*L/2,z:r.z-tangent.z*L/2},
+      b:{x:r.x+tangent.x*L/2,z:r.z+tangent.z*L/2}});
     const courses=3;
     const stoneHeight=(height-.04)/courses;
     const stoneLength=.22;
@@ -680,6 +690,8 @@ function initialize(THREE) {
           const distance=Math.hypot(dx,dz);
           if(distance<.02)continue;
           const centerX=(from.x+to.x)/2,centerZ=(from.z+to.z)/2;
+          coverSegments.push({id:item.path.id||item.definition.id||renderer,
+            kind:renderer,a:{x:from.x,z:from.z},b:{x:to.x,z:to.z}});
           const segment=new THREE.Group();
           segment.position.set(centerX,terrainY(centerX,centerZ),centerZ);
           segment.rotation.y=-Math.atan2(dz,dx);
@@ -1474,11 +1486,30 @@ function initialize(THREE) {
     squad.garrisonCache={id,frame:frameIndex,slots};
     return slots[index]||null;
   }
+  function coverFormationSlot(squad,index){
+    if(!coverPositions||squad.unit.inBuilding||squad.moving)return null;
+    const cache=squad.coverCache,root=squad.root.position;
+    const nearEnemy=squads.filter(u=>u!==squad&&u.unit.faction!==squad.unit.faction&&
+      u.unit.soldiers>0).sort((a,b)=>
+        a.root.position.distanceToSquared(root)-b.root.position.distanceToSquared(root))[0];
+    const enemy=nearEnemy?{x:nearEnemy.root.position.x,z:nearEnemy.root.position.z}:null;
+    if(!cache||frameIndex-cache.frame>25||
+       Math.hypot(cache.x-root.x,cache.z-root.z)>.035||
+       (cache.enemyId||null)!==(nearEnemy?.unit.id||null)){
+      const slots=squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ}));
+      squad.coverCache={frame:frameIndex,x:root.x,z:root.z,
+        enemyId:nearEnemy?.unit.id,
+        positions:coverPositions.arrange({x:root.x,z:root.z},slots,
+          coverSegments,enemy,{maxSnap:1.04})};
+    }
+    return squad.coverCache.positions?.points[index]||null;
+  }
   function createSquadRenderer(unit,index) {
     const root=new THREE.Group(),world=bridge.toWorld(unit);
     root.position.set(world.x,0,world.z);
     scene.add(root);
     const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
+      coverCache:null,garrisonCache:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
     for(const slot of bridge.slotsFor(unit))
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
@@ -2015,9 +2046,18 @@ function initialize(THREE) {
           const assault=squad.assaultVisual;
           const displacement=assault&&assaultMotion?
             assaultMotion.displacement(assault)*(.82+(soldierIndex%3)*.13):0;
-          const slot=buildingFormationSlot(squad,soldierIndex);
+          const garrison=buildingFormationSlot(squad,soldierIndex);
+          const slot=garrison||coverFormationSlot(squad,soldierIndex);
           const x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
           const z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
+          soldier.coverPose=slot?.cover?(slot.frontRow?.19:.32):0;
+          if(slot?.look&&!assault&&soldier.aimTarget==null&&soldier.recoil<.02){
+            const at={x:squad.root.position.x+soldier.figure.position.x,
+              z:squad.root.position.z+soldier.figure.position.z};
+            const facing=motion.heading(at,slot.look);
+            soldier.figure.rotation.y+=motion.shortestDelta(soldier.figure.rotation.y,facing)*
+              Math.min(1,dt*2.9);
+          }
           const blend=slot?Math.min(1,dt*5):1;
           const shift=Math.hypot(x-soldier.figure.position.x,z-soldier.figure.position.z);
           soldier.figure.position.x+=(x-soldier.figure.position.x)*blend;
@@ -2031,6 +2071,7 @@ function initialize(THREE) {
           const lateral=squadMotion.lateralOffset(squad.index,soldierIndex,ownProgress,length);
           soldier.figure.position.x=soldier.slotX+dx*delta-dz/length*lateral;
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
+          soldier.coverPose=0;
         }
         if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
             (!isWalking&&!soldier.grounded)) {
@@ -2060,7 +2101,8 @@ function initialize(THREE) {
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           const crouch=(battle&&squad.unit.down)?.57:
-            (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0;
+            Math.max(soldier.coverPose||0,
+              (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
           soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
