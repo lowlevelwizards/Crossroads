@@ -219,7 +219,12 @@
     return figure;
   }
 
-    return makeSoldier;
+    // Retain the classic factory as an instant fallback and comparison target.
+    // Both builders share the authoritative unit recipe and presentation API.
+    const sculpted=window.Crossroads3DMiniatureV2?.create({THREE,miniatureScale,
+      mat,block,shape,wood,motion,miniatureLab,between});
+    return (...args)=>window.Crossroads3DForceClassicMiniature||!sculpted?
+      makeSoldier(...args):sculpted(...args);
   }
   window.Crossroads3DMiniatureModel=Object.freeze({create});
 })();

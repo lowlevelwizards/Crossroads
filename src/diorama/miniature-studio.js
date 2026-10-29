@@ -15,6 +15,10 @@
     if(loading)loading.textContent="Miniature studio dependencies missing.";
     return;
   }
+  // Comparison mode lives in the studio, never mutates combat rules.
+  const classicCheckbox=document.getElementById("studioClassicModel");
+  const silhouetteMode=document.getElementById("studioDisplayMode");
+  window.Crossroads3DForceClassicMiniature=false;
   const morphFields={
     headSize:$("studioHeadSize"),bodyWidth:$("studioBodyWidth"),
     packSize:$("studioPackSize"),bootSize:$("studioBootSize")
@@ -113,7 +117,7 @@
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
     new THREE.MeshBasicMaterial({color,depthTest:false}));
   const joints=[];
-  for(let i=0;i<6;i++){
+  for(let i=0;i<12;i++){
     const marker=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),
       jointMaterials[i%2]);
     marker.renderOrder=100;rigMarkers.add(marker);joints.push(marker);
@@ -131,7 +135,8 @@
   }
   const disposeActor=()=>{
     actorRoot.traverse(node=>{
-      node.geometry?.dispose?.();
+      // Shared sculpture geometry is reused by future soldier builds.
+      if(!node.userData?.sharedMiniatureGeometry)node.geometry?.dispose?.();
       if(node.material){
         const array=Array.isArray(node.material)?node.material:[node.material];
         for(const mat of array)if(mat!==sharedWood)mat.dispose?.();
@@ -157,6 +162,7 @@
       "  ·  "+(recipe.weaponProfile||"unarmed").replaceAll("-"," ");
   };
   const build=()=>{
+    window.Crossroads3DForceClassicMiniature=!!classicCheckbox?.checked;
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
     const index=Math.max(0,Math.min(unit.soldiers-1,Number(soldierSelect.value)||0));
     disposeActor();
@@ -166,6 +172,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
+    if(activeSoldier.modelVersion===2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
@@ -180,7 +187,14 @@
     elapsed=0;
     renderPose(0);
   };
-  const refreshSoldierList=()=>{
+  function applyDisplayMode(){
+    if(!activeSoldier||activeSoldier.modelVersion!==2)return;
+    const mode=silhouetteMode?.value||"equipped";
+    activeSoldier.setInspectionMode?.(mode);
+  }
+  classicCheckbox?.addEventListener("change",build);
+  silhouetteMode?.addEventListener("change",applyDisplayMode);
+    const refreshSoldierList=()=>{
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
     choices(soldierSelect,Array.from({length:unit.soldiers},(_,i)=>{
       const recipe=catalogue.soldier(unit.type,unit.kitId,i);
@@ -199,13 +213,14 @@
     select.addEventListener("change",()=>{
       const look={...readLook(),[name]:select.value};
       saveLook(look);activeSoldier?.applyLook(look);
+      applyDisplayMode();
     });
   }
   for(const [name,input] of Object.entries(morphFields)){
     input.addEventListener("input",()=>{
       const look=saveLook({...readLook(),[name]:Number(input.value)});
       $(input.dataset.output).textContent=Number(look[name]).toFixed(2)+"×";
-      activeSoldier?.applyLook(look);
+      activeSoldier?.applyLook(look);applyDisplayMode();
     });
   }
   $("studioClearPaint").addEventListener("click",()=>{
@@ -341,6 +356,43 @@
     if(soldier.setGunDeployed)
       soldier.setGunDeployed(poseSelect.value==="pack"?t<.9:
         poseSelect.value==="deploy"?t>=.9:true);
+    if(soldier.applyPose){
+      // The body falls independently of the fixed miniature base.
+      const isFall=poseSelect.value==="casualty";
+      soldier.figure.rotation.set(0,pose.yaw||0,0);
+      soldier.figure.position.set(0,0,0);
+      soldier.applyPose({...pose,
+        aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
+        recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
+        fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
+      if(flash)flash.visible=pose.flash;
+      // Project all rig pivots into studio world space, even during a fall.
+      // Six leg plus six arm markers identify the actual animated joints.
+      rigMarkers.position.set(0,0,0);
+      rigMarkers.rotation.set(0,0,0);
+      const markerAt=(parent,local)=>{
+        parent.updateWorldMatrix(true,false);
+        return parent.localToWorld(local.clone());
+      };
+      for(let i=0;i<soldier.legs.length;i++){
+        const leg=soldier.legs[i],side=leg.side;
+        const hip=new THREE.Vector3(side*.15,.60-pose.crouch*.18,0);
+        const knee=leg.mesh.position.clone().multiplyScalar(2).sub(hip);
+        joints[i*3].position.copy(markerAt(soldier.body,hip));
+        joints[i*3+1].position.copy(markerAt(soldier.body,knee));
+        joints[i*3+2].position.copy(markerAt(soldier.body,leg.boot.position));
+      }
+      for(let i=0;i<soldier.arms.length;i++){
+        const arm=soldier.arms[i],shoulder=arm.shoulder;
+        const elbow=arm.upper.position.clone().multiplyScalar(2).sub(shoulder);
+        joints[6+i*3].position.copy(markerAt(soldier.breathing,shoulder));
+        joints[7+i*3].position.copy(markerAt(soldier.breathing,elbow));
+        joints[8+i*3].position.copy(markerAt(soldier.breathing,arm.hand.position));
+      }
+      for(let i=6;i<12;i++)joints[i].visible=true;
+      return;
+    }
+    for(let i=6;i<12;i++)joints[i].visible=false;
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);

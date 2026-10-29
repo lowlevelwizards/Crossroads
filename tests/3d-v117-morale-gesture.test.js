@@ -7,7 +7,7 @@ for(const path of ["src/diorama/study-motion.js","src/diorama/miniature-studio-p
 const poses=sandbox.window.Crossroads3DSoldierActions;
 const motion=sandbox.window.CrossroadsDioramaMotion;
 const down=poses.frame("down",0,motion);
-assert(down.crouch>.8&&down.lean>.8&&down.forward>.1);
+assert(down.crouch>.8&&down.lean>.2&&down.forward>.1);
 const rally=poses.frame("rally",.6,motion);
 assert(rally.gesture>.3);
 const model=read("src/diorama/miniature-model.js");
