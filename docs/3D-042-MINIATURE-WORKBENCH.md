@@ -18,6 +18,9 @@ to 6–24 sides to encourage efficient geometry.
 Undo and redo operate per gesture. Auto-save creates a local **draft** in
 browser storage. SAVE DRAFT and EXPORT JSON provide explicit backup.
 IMPORT JSON validates the document before replacing the draft.
+The advanced GLB section exports the selected mesh and can display an imported
+GLB beside the soldier as a **reference**, without pretending it has editable
+contour metadata. The optional Three.js addons require network access.
 USE ON THIS DEVICE copies that part to a separate **approved** store; the
 shared live character factory resolves only that approved copy. This changes
 only the current browser/origin, not GitHub or other players. Reload the
