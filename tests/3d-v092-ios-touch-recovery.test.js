@@ -74,8 +74,8 @@ for(const token of ["pointerGuard.begin(event)","pointerGuard.move(event)",
   assert(scene.includes(token),"scene missing interruption recovery "+token);
 for(const page of ["battle3d.html","diorama.html","editor3d.html"]){
   const html=read(page);
-  assert(html.includes("pointer-recovery.js?v=0.9.3"),page+" not loaded");
-  assert(html.includes("scenario-scene.js?v=0.9.3"),page+" stale cache");
+  assert(html.includes("pointer-recovery.js?v=0.9.4"),page+" not loaded");
+  assert(html.includes("scenario-scene.js?v=0.9.4"),page+" stale cache");
 }
-assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.3");
+assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.4");
 console.log("PASS — iOS interrupted touch recovery, lone-finger orbit, real pinch, edge guards, lifecycle reset, page wiring");
