@@ -114,7 +114,9 @@
     "tests/3d-v117-morale-gesture.test.js",
     "tests/3d-v118-terrain-contact.test.js",
     "tests/3d-v119-battle-benchmark.test.js",
-    "tests/3d-v120-release-contract.test.js"
+    "tests/3d-v120-release-contract.test.js",
+    "src/diorama/miniature-v2.js",
+    "tests/3d-v121-sculpted-miniatures.test.js"
   ],
-  "threeDCacheVersion": "0.9.12"
+  "threeDCacheVersion": "0.9.20"
 }
