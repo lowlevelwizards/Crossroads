@@ -175,7 +175,13 @@
     if(!verts.length)return contourGeometry(THREE,doc);
     const g=new THREE.BufferGeometry();
     g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
-    g.computeVertexNormals();g.computeBoundingSphere();
+    // Non-indexed marching-tetrahedron meshes would otherwise shade each
+    // triangle as a flat facet. Field gradients give one smooth surface.
+    const normals=[];
+    for(let i=0;i<verts.length;i+=3)
+      normals.push(...gradient(verts.slice(i,i+3)));
+    g.setAttribute("normal",new THREE.Float32BufferAttribute(normals,3));
+    g.computeBoundingSphere();
     g.userData={sdfBaked:true,triangles};
     return g;
   }
