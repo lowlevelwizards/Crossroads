@@ -56,5 +56,5 @@ assert(picker.includes("actions.append(solo);"));
 const editor=read("src/diorama/editor3d-ui.js");
 for(const btn of ["Undo","Redo","Duplicate","Import","Snap"])
  assert(editor.includes("buttons."+btn));
-assert(read("army3d.html").includes("army-planner.js?v=0.9.4"));
+assert(read("army3d.html").includes("army-planner.js?v=s111h5"));
 console.log("PASS — distance gait, epoch reset, base scoring, six scenarios, solo, briefing, editor and army draft");
