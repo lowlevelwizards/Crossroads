@@ -743,6 +743,8 @@ function initialize(THREE) {
   const movementIntent=window.Crossroads3DMovementIntent.create();
   const movePlanner=window.Crossroads3DMovementIntent.createPlanner();
   let waypointArmed=false,stagedWaypoint=null,waypointDragId=null;
+  let waypointDragLast=0;
+  const quickMoveEnabled=new URLSearchParams(location.search).get("quickmove")==="1";
   const visualEffects=[];
   const delayedMuzzleBursts=[];
   const casualtyAnimations=[];
@@ -1218,6 +1220,7 @@ function initialize(THREE) {
     for(const child of [...movePreviewLine.children]){
       movePreviewLine.remove(child);
       child.geometry?.dispose();
+      if(child.material!==rulerMaterial)child.material?.dispose();
     }
   }
   function showMovePreview(plan) {
@@ -1245,10 +1248,23 @@ function initialize(THREE) {
       }
     }
     const last=checkpoints[checkpoints.length-1];
-    const end=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.03,22),rulerMaterial);
-    end.position.set(last.x,terrainY(last.x,last.z)+.075,last.z);
-    end.renderOrder=14;
-    movePreviewLine.add(end);
+    // A formation footprint makes the squad's destination legible on the table.
+    const radius=selectedSquad.unit.role==="officer"?.51:1.23;
+    const ring=new THREE.Mesh(new THREE.RingGeometry(radius,radius+.105,36),
+      new THREE.MeshBasicMaterial({color:0xf0d38a,transparent:true,opacity:.89,
+        depthTest:false,depthWrite:false,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;
+    ring.position.set(last.x,terrainY(last.x,last.z)+.083,last.z);
+    ring.renderOrder=14;movePreviewLine.add(ring);
+    for(const soldier of selectedSquad.soldiers){
+      if(!soldier.figure.visible)continue;
+      const x=last.x+soldier.slotX,z=last.z+soldier.slotZ;
+      const ghost=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.025,10),
+        new THREE.MeshBasicMaterial({color:0xf1dcac,transparent:true,opacity:.56,
+          depthTest:false,depthWrite:false}));
+      ghost.position.set(x,terrainY(x,z)+.09,z);
+      ghost.renderOrder=14;movePreviewLine.add(ghost);
+    }
     movePreviewLine.visible=true;
   }
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
@@ -1717,7 +1733,7 @@ function initialize(THREE) {
       if(waypointArmed){previewWaypoint(position);return;}
       // Double-tap remains an optional shortcut. Button confirmation is primary.
       const destination=movementIntent.consumeIfMatch(position,Date.now());
-      if(destination&&movePlanner.snapshot().destination){
+      if(quickMoveEnabled&&destination&&movePlanner.snapshot().destination){
         confirmMove();return;
       }
       previewMoveDestination(position);
@@ -1778,8 +1794,12 @@ function initialize(THREE) {
     if (tap && Math.hypot(event.clientX-tap.x,event.clientY-tap.y) > 9) tap.dragged=true;
     if(waypointDragId===event.pointerId){
       if(tap)tap.dragged=true;
-      const point=pointerToGroundPoint(event.clientX,event.clientY);
-      if(point)previewWaypoint(point);
+      const now=performance.now();
+      if(now-waypointDragLast>80){
+        waypointDragLast=now;
+        const point=pointerToGroundPoint(event.clientX,event.clientY);
+        if(point)previewWaypoint(point);
+      }
       return;
     }
     if (pointers.size === 1) {
