@@ -68,7 +68,7 @@ for(const page of ["battle3d.html","diorama.html","editor3d.html"]){
  assert(html.indexOf("formation-layout.js?v=0.9.4a")<
  html.indexOf("visual-anchor.js?v=0.9.4a"));
  assert(html.indexOf("visual-anchor.js?v=0.9.4a")<
- html.indexOf("scenario-scene.js?v=0.9.4a"));
+ html.indexOf("scenario-scene.js?v="+(page==="battle3d.html"?"0.9.9":"0.9.4a")));
 }
 assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,
  "0.9.4a");

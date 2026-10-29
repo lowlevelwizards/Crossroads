@@ -2855,7 +2855,8 @@ function initialize(THREE) {
               leg.mesh.rotation.x+=soldier.crouch*
                 (leg.side===-1?1.35:-1.15);
           }
-          soldier.breathing.rotation.x=soldier.crouch*.85-soldier.recoil;
+          // Lean into prone/Down cover rather than bending backward.
+          soldier.breathing.rotation.x=-soldier.crouch*.92-soldier.recoil;
           if(battle&&squad.unit.down){
             soldier.breathing.position.y-=soldier.crouch*.10;
             soldier.figure.rotation.z=0;
