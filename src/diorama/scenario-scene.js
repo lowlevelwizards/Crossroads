@@ -262,6 +262,23 @@ function initialize(THREE) {
   pebbles.castShadow = false;
   scene.add(pebbles);
 
+  const roofMaterials=[];
+  function registerRoof(entry,material){
+    roofMaterials.push({ids:[entry.id,entry.terrainId],material,occupied:false});
+  }
+  function updateBuildingRoofs(snapshot) {
+    const occupied=new Set((snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0)
+      .map(u=>String(u.inBuilding)));
+    for(const roof of roofMaterials){
+      const inside=roof.ids.some(id=>occupied.has(String(id)));
+      if(inside===roof.occupied)continue;
+      roof.occupied=inside;
+      roof.material.transparent=inside;
+      roof.material.opacity=inside?.22:1;
+      roof.material.depthWrite=!inside;
+      roof.material.needsUpdate=true;
+    }
+  }
   // Real longhouse: independent structural bays, NOT scaled model geometry.
   // The game rules footprint remains authoritative; every decorative piece
   // is constructed directly in physical world units from that footprint.
@@ -278,6 +295,7 @@ function initialize(THREE) {
     const wallMat=mat(entry.appearance?.includes("peach")?0xcdb39c:0xddd2b6);
     const masonry=mat(0xada28a),lintel=mat(0x988a70);
     const tiledRoof=mat(entry.appearance?.includes("thatch")?0x948866:0xb54f36);
+    registerRoof(entry,tiledRoof);
     const timber=mat(0x66503a),windowGlass=mat(0x687978),shutter=mat(0x61724f);
     const L=dim.length, D=dim.depth;
     const eave=dim.eaveHeight, rise=dim.roofRise;
@@ -360,6 +378,7 @@ function initialize(THREE) {
     group.userData.terrainId=entry.id;
     scene.add(group);
     const plank=mat(0x655e51),trim=mat(0x4c443c),roof=mat(0x464c48);
+    registerRoof(entry,roof);
     block(group,3.65,.20,2.65,mat(0x918b78),0,.09,0);
     block(group,3.55,1.85,2.53,plank,0,1.02,0);
     // Strong gable and crisp overlapping roof panels.
@@ -402,6 +421,7 @@ function initialize(THREE) {
     const rise=church?.50:.33;
     const walls=mat(church?0xc1b6a0:shed?0x7d6851:0xd9c9ae);
     const roof=mat(shed?0x5a5045:entry.appearance?.includes("thatch")?0x8a8062:0xb0583c);
+    registerRoof(entry,roof);
     block(group,L,.085,D,mat(0x998e79),0,.04,0);
     block(group,L-.08,eave-.06,D-.09,walls,0,eave/2+.06,0);
     const pitch=Math.atan2(rise,D/2+.09);
@@ -855,6 +875,35 @@ function initialize(THREE) {
     }
   }
   // A physical, thick painted measuring strip—not a one-pixel WebGL line.
+  const firePreview=new THREE.Group();
+  firePreview.visible=false;firePreview.renderOrder=14;scene.add(firePreview);
+  function clearFirePreview(){
+    firePreview.visible=false;
+    for(const m of [...firePreview.children]){
+      firePreview.remove(m);m.geometry.dispose();m.material.dispose();
+    }
+  }
+  function showFirePreview(squad,assessment){
+    clearFirePreview();
+    if(!selectedSquad)return;
+    const a=selectedSquad.root.position,b=squad.root.position;
+    const distance=Math.hypot(b.x-a.x,b.z-a.z);
+    const color=!assessment.legal?0xc37b65:
+      assessment.cover?.saveTarget!=null?0xd2ae64:0xe7c16b;
+    const material=new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.92,depthTest:false
+    });
+    const line=new THREE.Mesh(new THREE.BoxGeometry(distance,.026,.09),material);
+    const midX=(a.x+b.x)/2,midZ=(a.z+b.z)/2;
+    line.position.set(midX,Math.max(terrainY(a.x,a.z),terrainY(b.x,b.z))+.12,midZ);
+    line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+    line.renderOrder=14;firePreview.add(line);
+    const circle=new THREE.Mesh(new THREE.RingGeometry(.29,.41,28),material.clone());
+    circle.rotation.x=-Math.PI/2;
+    circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
+    circle.renderOrder=14;firePreview.add(circle);
+    firePreview.visible=true;
+  }
   const movePreviewLine=new THREE.Group();
   const rulerMaterial=new THREE.MeshBasicMaterial({
     color:0xe7c16b,transparent:true,opacity:.95,depthTest:false
@@ -1112,8 +1161,10 @@ function initialize(THREE) {
   if(battle) {
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
-      if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target")
+      if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
         pendingTargetId=null;
+        clearFirePreview();
+      }
       if(snapshot.phase!=="plan-movement")clearMovePreview();
       for(const stateUnit of snapshot.units || []) {
         const squad=unitLookup.get(stateUnit.id);
@@ -1146,6 +1197,7 @@ function initialize(THREE) {
       const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
       if(selectedSquad!==selected)selectSquad(selected);
       updateUnitPresentation(snapshot);
+      updateBuildingRoofs(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onCombatStage(showCombatStage);
@@ -1301,9 +1353,11 @@ function initialize(THREE) {
           const assessment=battle.previewTarget(pickedSquad.unit.id);
           const now=Date.now();
           if(assessment.legal&&pendingTargetId===pickedSquad.unit.id&&now-lastTargetTap<8000) {
+            clearFirePreview();
             pendingTargetId=null;
             void battle.send("target",{id:pickedSquad.unit.id});
           } else {
+            showFirePreview(pickedSquad,assessment);
             pendingTargetId=pickedSquad.unit.id;
             lastTargetTap=now;
             battle.setHint(assessment.legal
