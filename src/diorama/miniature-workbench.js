@@ -165,7 +165,7 @@
       if(!enabled)return;
       history?.commit();
       if(history)lib.put(history.get(),"draft");
-      enabled=false;drag=null;clearHandles();
+      enabled=false;drag=null;clearHandles();clearGLB();
       restoreVisuals();restoreOriginal();
       $("wbControls").hidden=true;
       $("wbToggle").textContent="EDIT SHAPE";
@@ -292,6 +292,63 @@
       }catch(error){setStatus("Import rejected: "+error.message)}
       e.target.value="";
     });
+    // Imported GLBs are external visual references, not editable contours.
+    let importedGLB=null;
+    function clearGLB(){
+      if(!importedGLB)return;
+      scene.remove(importedGLB);
+      importedGLB.traverse(node=>{
+        node.geometry?.dispose?.();
+        const mats=Array.isArray(node.material)?node.material:[node.material];
+        for(const mat of mats)mat?.dispose?.();
+      });
+      importedGLB=null;
+    }
+    $("wbExportGLB").addEventListener("click",async()=>{
+      if(!selectedMesh)return;
+      try{
+        setStatus("Exporting current part...");
+        const {GLTFExporter}=await import(
+          "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/exporters/GLTFExporter.js");
+        const mesh=new THREE.Mesh(selectedMesh.geometry.clone(),selectedMesh.material);
+        const binary=await new Promise((resolve,reject)=>
+          new GLTFExporter().parse(mesh,resolve,reject,{binary:true}));
+        mesh.geometry.dispose();
+        const url=URL.createObjectURL(new Blob([binary],
+          {type:"model/gltf-binary"}));
+        const a=document.createElement("a");a.href=url;
+        a.download="crossroads-"+part+".glb";a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+        setStatus("GLB exported. Keep JSON to retain contour controls.");
+      }catch(err){setStatus("GLB export unavailable: "+err.message)}
+    });
+    $("wbImportGLB").addEventListener("change",async e=>{
+      const file=e.target.files?.[0];if(!file)return;
+      try{
+        if(file.size>10_000_000)throw Error("GLB must be under 10 MB");
+        const {GLTFLoader}=await import(
+          "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js");
+        const buffer=await file.arrayBuffer();
+        const gltf=await new Promise((resolve,reject)=>
+          new GLTFLoader().parse(buffer,"",resolve,reject));
+        clearGLB();importedGLB=gltf.scene;
+        const size=new THREE.Box3().setFromObject(importedGLB)
+          .getSize(new THREE.Vector3());
+        const factor=Math.min(1.5,.75/Math.max(size.x,size.y,size.z,.001));
+        importedGLB.scale.setScalar(factor);
+        importedGLB.updateMatrixWorld(true);
+        const center=new THREE.Box3().setFromObject(importedGLB)
+          .getCenter(new THREE.Vector3());
+        importedGLB.position.add(new THREE.Vector3(.85,.95,0).sub(center));
+        scene.add(importedGLB);
+        setStatus("GLB reference shown beside soldier (not contour-editable).");
+      }catch(err){setStatus("GLB import failed: "+err.message)}
+      e.target.value="";
+    });
+    $("wbClearGLB").addEventListener("click",()=>{
+      clearGLB();setStatus("GLB reference cleared.");
+    });
+
     function ray(event){
       const rect=canvas.getBoundingClientRect();
       pointer.set((event.clientX-rect.left)/rect.width*2-1,
