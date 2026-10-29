@@ -14,7 +14,7 @@
     const scenario=scenarios[key];
     if(!scenario)throw new Error("Unknown Crossroads scenario: "+key);
     if(scenario.table.width!==bridge.table.width||scenario.table.height!==bridge.table.height)
-      throw new Error("3D scene requires the shared 72 x 48 inch board");
+      throw new Error("3D scenario/coordinate bridge tabletop dimensions disagree");
 
     const instances=geometry.setActiveScenario(scenario);
     const discrete=instances.filter(item=>item.sourceKind==="terrain");

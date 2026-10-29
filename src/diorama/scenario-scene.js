@@ -137,8 +137,8 @@ function initialize(THREE) {
   for (const x of [-(worldWidth + .15) / 2, (worldWidth + .15) / 2]) {
     block(scene, 0.09, 0.14, worldDepth + .15, mat(0x926847), x, -0.28, 0);
   }
-  for (const x of [-9.8, 9.8]) {
-    for (const z of [-6.65, 6.65]) {
+  for(const x of [-worldWidth/2+.99,worldWidth/2-.99]){
+    for(const z of [-worldDepth/2+.55,worldDepth/2-.55]){
       shape(scene, new THREE.CylinderGeometry(0.09, 0.09, 0.045, 8), mat(0xb19b76, 0.22), x, 0.09, z);
     }
   }
@@ -160,8 +160,8 @@ function initialize(THREE) {
   // Tonal field patches: no repeating photo texture, no noisy realism.
   const patchColors = [0x6b7c50, 0x87915d, 0x708052, 0x8e9565];
   for (let i = 0; i < 27; i++) {
-    const x = between(-9.4, 9.4);
-    const z = between(-6.5, 6.5);
+    const x=between(-worldWidth/2+.7,worldWidth/2-.7);
+    const z=between(-worldDepth/2+.6,worldDepth/2-.6);
     const patch = shape(scene, new THREE.CircleGeometry(1, 11), mat(patchColors[i % patchColors.length]), x, terrainY(x, z) + 0.028, z);
     patch.rotation.x = -Math.PI / 2;
     patch.scale.set(between(0.65, 2.4), between(0.48, 1.7), 1);
@@ -834,6 +834,17 @@ function initialize(THREE) {
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
     }
+    if(previewUnit&&!fireTag.hidden){
+      const pos=previewUnit.root.position;
+      const view=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.23,pos.z).project(camera);
+      const x=(view.x*.5+.5)*width,y=(-view.y*.5+.5)*height;
+      const visible=view.z>=-1&&view.z<=1&&x>30&&x<width-30&&y>40&&y<height-75;
+      fireTag.hidden=!visible;
+      if(visible){
+        fireTag.style.left=Math.max(88,Math.min(width-88,x)).toFixed(1)+"px";
+        fireTag.style.top=Math.max(45,Math.min(height-80,y)).toFixed(1)+"px";
+      }
+    }
   }
   function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
     if(visualEffects.length>=MAX_PARTICLES)return;
@@ -954,7 +965,13 @@ function initialize(THREE) {
   // A physical, thick painted measuring strip—not a one-pixel WebGL line.
   const firePreview=new THREE.Group();
   firePreview.visible=false;firePreview.renderOrder=14;scene.add(firePreview);
+  const fireTag=document.createElement("div");
+  fireTag.className="mini-fire-preview";
+  fireTag.hidden=true;
+  markerLayer.appendChild(fireTag);
+  let previewUnit=null;
   function clearFirePreview(){
+    previewUnit=null;fireTag.hidden=true;
     firePreview.visible=false;
     for(const m of [...firePreview.children]){
       firePreview.remove(m);m.geometry.dispose();m.material.dispose();
@@ -963,6 +980,18 @@ function initialize(THREE) {
   function showFirePreview(squad,assessment){
     clearFirePreview();
     if(!selectedSquad)return;
+    previewUnit=squad;
+    const groupInfo=(assessment.weapons||[]).map(g=>
+      (g.shots||0)+" "+(g.label||g.key||"shots")).join(" · ");
+    const distanceText=Number.isFinite(assessment.distance)?
+      assessment.distance.toFixed(1)+"″ · ":"";
+    fireTag.textContent=assessment.legal?
+      distanceText+(groupInfo||"LEGAL FIRE")+
+        (assessment.cover?.saveTarget!=null?
+          " · COVER "+assessment.cover.saveTarget+"+":" · OPEN"):
+      "BLOCKED · "+(assessment.reason||"No legal shot");
+    fireTag.classList.toggle("blocked",!assessment.legal);
+    fireTag.hidden=false;
     const a=selectedSquad.root.position,b=squad.root.position;
     const distance=Math.hypot(b.x-a.x,b.z-a.z);
     const color=!assessment.legal?0xc37b65:
@@ -970,11 +999,17 @@ function initialize(THREE) {
     const material=new THREE.MeshBasicMaterial({
       color,transparent:true,opacity:.92,depthTest:false
     });
-    const line=new THREE.Mesh(new THREE.BoxGeometry(distance,.026,.09),material);
-    const midX=(a.x+b.x)/2,midZ=(a.z+b.z)/2;
-    line.position.set(midX,Math.max(terrainY(a.x,a.z),terrainY(b.x,b.z))+.12,midZ);
-    line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
-    line.renderOrder=14;firePreview.add(line);
+    const count=assessment.legal?1:11;
+    for(let i=0;i<count;i++){
+      if(!assessment.legal&&i%2)continue;
+      const partLength=distance/count;
+      const mid=(i+.5)/count;
+      const x=a.x+(b.x-a.x)*mid,z=a.z+(b.z-a.z)*mid;
+      const line=new THREE.Mesh(new THREE.BoxGeometry(partLength,.026,.095),material.clone());
+      line.position.set(x,terrainY(x,z)+.13,z);
+      line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+      line.renderOrder=14;firePreview.add(line);
+    }
     const circle=new THREE.Mesh(new THREE.RingGeometry(.29,.41,28),material.clone());
     circle.rotation.x=-Math.PI/2;
     circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
@@ -1414,7 +1449,9 @@ function initialize(THREE) {
     viewportHeight = Math.max(1, Math.floor(bounds.height));
     const aspect = viewportWidth / viewportHeight;
     // On narrow screens, fit the full board rather than clip its wooden edges.
-    baseHeight = Math.max(20.3, 25.2 / Math.max(aspect, .28));
+    const diagonal=Math.hypot(worldWidth,worldDepth);
+    baseHeight=Math.max(diagonal*.80,
+      diagonal*1.00/Math.max(aspect,.28));
     renderer.setSize(viewportWidth, viewportHeight, false);
     updateCamera();
   }

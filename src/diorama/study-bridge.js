@@ -3,7 +3,10 @@
 // Crossroads 3D tabletop adapter. All coordinates in the game remain inches.
 // The Three.js scene is merely a projection of game positions onto the table.
 (() => {
-  const scenario = window.CROSSROADS_SCENARIOS?.hold_the_farm;
+  const requested=window.location?.search?
+    new URLSearchParams(window.location.search).get("scenario"):null;
+  const scenario=(requested&&window.CROSSROADS_SCENARIOS?.[requested])||
+    window.CROSSROADS_SCENARIOS?.hold_the_farm;
   const types = window.CROSSROADS_UNIT_TYPES;
   const formations = window.CROSSROADS_FORMATIONS?.formations;
   const miniatures = window.CrossroadsMiniaturePresentation;
@@ -18,9 +21,8 @@
     height: scenario.table.height,
     worldUnitsPerInch: 0.30
   });
-  if (table.width !== 72 || table.height !== 48) {
-    throw new Error("3D study requires the 72-by-48-inch Crossroads board.");
-  }
+  if(table.width<=0||table.height<=0)
+    throw new Error("Invalid Crossroads scenario tabletop dimensions.");
   const INCH = table.worldUnitsPerInch;
 
   function toWorld({ x, y }) {
