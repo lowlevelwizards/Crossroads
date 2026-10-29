@@ -18,6 +18,20 @@ assert(G.closestRange(a,enemy)<20,"range is base edges, not center");
 assert(G.friendlyFire(a,enemy,[a,other,enemy]).blocked,
 "direct fire cannot cross intervening friendly formation");
 assert(!G.friendlyFire(a,enemy,[a,enemy]).blocked);
+const fire=window.CrossroadsShootingRules.create({
+ rules:{baseHitTarget:4},weaponProfiles:{rifle:{shots:1,range:24}},
+ unitQuality:{regular:{shootingTargetModifier:0}},terrain:{instances:[]},
+ mmgRules:{arcDegrees:90},
+ distanceBetweenPoints:(p,q)=>Math.hypot(p.x-q.x,p.y-q.y),
+ segmentRectClip:()=>null,resolveShooterPoint:s=>s,
+ resolveTargetPoint:t=>({unit:t,point:t}),getTerrainInstance:()=>null,
+ getLivingUnits:()=>[a,other,enemy],
+ analyzeIncomingPins:()=>({pinsAfter:0,routed:false})
+});
+const unsafe=fire.analyzeShot(a,enemy);
+assert(unsafe.blocked&&unsafe.blockReason.includes("Friendly"),
+  "the authoritative shooting analyzer rejects friendly obstruction");
+assert(unsafe.distance<20,"shooting analysis measures closest model bases");
 const move=window.CrossroadsMovementRules.create({
   rules:{runDistance:12,advanceDistance:6,unitSeparation:3.4,
     buildingCollisionClearance:.55},

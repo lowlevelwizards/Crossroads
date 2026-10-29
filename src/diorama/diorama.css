@@ -67,6 +67,7 @@ button,a{-webkit-tap-highlight-color:transparent}
 .mini-fire-preview.blocked{border-color:#d98c76;color:#ffbeb0}
 .mini-fire-preview[hidden]{display:none}
 
+html,body{touch-action:manipulation}
 #dioramaCanvas,.stage{touch-action:none;-webkit-user-select:none;
   user-select:none;-webkit-touch-callout:none}
 .battle-controls button{touch-action:manipulation}

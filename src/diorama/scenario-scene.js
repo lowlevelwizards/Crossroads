@@ -1101,7 +1101,8 @@ function initialize(THREE) {
         squad.eligibleRing.material.opacity=eligible?.8:0;
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
-      if(squad.commandAura)squad.commandAura.visible=selected&&!destroyed;
+      if(squad.commandAura)squad.commandAura.visible=!destroyed&&(
+        selected||snapshot?.snap?.officerId===u.id);
       if(squad.eligibleRing&&squad.alertUntil>performance.now())
         squad.eligibleRing.visible=true;
       // Used dice appear only once the soldiers have finished moving.
@@ -1898,6 +1899,7 @@ function initialize(THREE) {
   // When this optional mode is present, the scene only projects snapshots
   // to miniature positions/poses; it never commits logical unit mutations.
   if(battle) {
+    let lastSnapSignal=null;
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
       if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
@@ -1976,6 +1978,18 @@ function initialize(THREE) {
       const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
       if(selectedSquad!==selected)selectSquad(selected);
       updateUnitPresentation(snapshot);
+      const signal=snapshot.snap?
+        snapshot.snap.officerId+":"+snapshot.snap.remaining:null;
+      if(signal&&signal!==lastSnapSignal){
+        const officer=unitLookup.get(snapshot.snap.officerId);
+        if(officer)spawnBriefFlash(officer.root.position.x,.75,
+          officer.root.position.z,0xe9c37b,.35,.83);
+        for(const id of snapshot.snap.eligibleIds||[]){
+          const squad=unitLookup.get(id);
+          if(squad)squad.alertUntil=performance.now()+1050;
+        }
+      }
+      lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
