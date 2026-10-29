@@ -383,7 +383,11 @@
         aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
         recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
-      if(flash)flash.visible=pose.flash;
+      if(flash){
+        // Muzzle moves with the sculpted weapon, including recoil and aims.
+        flash.position.copy(soldier.muzzleLocal);
+        flash.visible=pose.flash;
+      }
       // Project all rig pivots into studio world space, even during a fall.
       // Six leg plus six arm markers identify the actual animated joints.
       rigMarkers.position.set(0,0,0);
