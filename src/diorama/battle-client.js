@@ -7,8 +7,10 @@
   if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
   const scenario=new URLSearchParams(location.search).get("scenario");
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
-    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.1";
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.7.0";
   let session=null,state=null,busy=false,warning="",hint="",error="";
+  let aiController=null;
+  const soloMode=new URLSearchParams(location.search).get("solo")==="1";
   let logOpen=false,signature="",lastStateKey="";
   let toastExpires=0,lastEventCount=-1;
   const drawOverlay=document.createElement("div");
@@ -26,7 +28,94 @@
     if(drawRevealTimeout)clearTimeout(drawRevealTimeout);
     drawRevealTimeout=setTimeout(()=>drawOverlay.replaceChildren(),1100);
   }
-  const subscribers=new Set(),effects=new Set();
+  const subscribers=new Set(),effects=new Set(),combatEvents=new Set(),stageListeners=new Set();
+  let lastCombatId=0;
+  const director=window.Crossroads3DCombatPresentation.create(stage=>{
+    for(const callback of stageListeners)callback(stage);
+  });
+  let presentationRAF=null;
+  function tickPresentation(now){
+    presentationRAF=null;
+    const elapsed=tickPresentation.last?Math.min(.07,(now-tickPresentation.last)/1000):.016;
+    tickPresentation.last=now;
+    if(director.update(elapsed))presentationRAF=requestAnimationFrame(tickPresentation);
+    else tickPresentation.last=0;
+  }
+  function startPresentation(){
+    if(presentationRAF===null)
+      presentationRAF=requestAnimationFrame(tickPresentation);
+  }
+  function deliverCombat(snapshot){
+    if((snapshot.combatEventCount||0)<lastCombatId){
+      director.skip();
+      lastCombatId=0;
+      diceOverlay.hidden=true;
+    }
+    for(const event of snapshot.combatEvents||[]){
+      if(event.id<=lastCombatId)continue;
+      lastCombatId=event.id;
+      for(const callback of combatEvents)callback(event);
+      if(director.enqueue(event))startPresentation();
+    }
+  }
+  const diceOverlay=document.createElement("section");
+  diceOverlay.className="battle-combat-dice";
+  diceOverlay.setAttribute("aria-live","polite");
+  diceOverlay.hidden=true;
+  document.getElementById("stage")?.append(diceOverlay);
+  function pip(value,target,lowIsGood=false){
+    const success=Number.isFinite(target)&&
+      (lowIsGood?value<=target:value>=target);
+    return node("span","battle-roll "+(success?"good":"weak"),value);
+  }
+  function onDiceStage(stage){
+    if(stage.phase==="settle"){
+      diceOverlay.hidden=true;return;
+    }
+    if(stage.phase!=="dice")return;
+    const e=stage.event;
+    diceOverlay.replaceChildren();
+    diceOverlay.append(node("div","battle-dice-heading",
+      e.type==="shooting"?"SHOT RESOLUTION":
+      e.type==="assault"?"CLOSE ASSAULT":"ORDER TEST"));
+    function row(label,rolls,target,low=false){
+      if(!rolls?.length)return;
+      const line=node("div","battle-dice-row");
+      line.append(node("span","battle-dice-weapon",
+        label+(target!=null?" · "+target+(low?" or less":"+"):"")));
+      const values=node("div","battle-dice-rolls");
+      for(const value of rolls)values.append(pip(value,target,low));
+      line.append(values);diceOverlay.append(line);
+    }
+    if(e.type==="shooting"){
+      for(const group of e.groups||[])
+        row(group.weapon,group.rolls,group.hitTarget);
+      row("Damage",e.damageRolls,e.damageTarget);
+      if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
+      diceOverlay.append(node("div","battle-dice-result",
+        e.hits+" hits · "+e.saved+" saved · "+
+        e.casualties+" losses · +"+e.pinDelta+" Pin"));
+    }else if(e.type==="order-test"){
+      row(e.order,e.dice,e.target,true);
+      diceOverlay.append(node("div","battle-dice-result",
+        e.total+" / "+e.target+" · "+(e.passed?"PASSED":"FAILED")));
+    }else{
+      for(const round of e.rounds||[]){
+        row("Attacker R"+round.number,round.attackerRolls,null);
+        row("Defender R"+round.number,round.defenderRolls,null);
+      }
+      diceOverlay.append(node("div","battle-dice-result",
+        "Winner: "+e.winner));
+    }
+    diceOverlay.hidden=false;
+  }
+  stageListeners.add(onDiceStage);
+  const audio=window.Crossroads3DCombatAudio;
+  stageListeners.add(stage=>{
+    if(stage.type==="shooting"&&stage.phase==="fire")
+      audio?.playShooting(stage.event);
+  });
+  let audioEnabled=false;
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
   function node(tag,className,text) {
     const el=document.createElement(tag);
@@ -77,7 +166,8 @@
       objectives:current.objectives,units:current.units?.map(u=>
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
-      count:current.eventCount,hint,warning,busy,logOpen,showToast
+      count:current.eventCount,hint,warning,busy,logOpen,showToast,
+      audioEnabled
     });
     if(signature===fingerprint)return;
     signature=fingerprint;
@@ -95,6 +185,16 @@
     const dice=node("div","battle-die-bag",
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
+    const sound=node("button","battle-audio-toggle",
+      audioEnabled?"♪ ON":"♪ OFF");
+    sound.type="button";
+    sound.setAttribute("aria-label",audioEnabled?"Mute battle audio":"Enable battle audio");
+    sound.addEventListener("click",()=>{
+      audioEnabled=!audioEnabled;
+      audio?.setMuted(!audioEnabled);
+      signature="";render(state);
+    });
+    ribbon.append(sound);
     hud.append(ribbon);
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
@@ -107,7 +207,7 @@
     const contextual=node("div","battle-heading "+(current.faction||"neutral"));
     contextual.append(
       node("span","battle-eyebrow "+(current.faction||"neutral"),
-        factionText(current.faction)+"  ·  "+phaseLabel(current.phase)),
+        factionText(current.faction)+(soloMode&&current.faction==="red"?" · AI":"")+"  ·  "+phaseLabel(current.phase)),
       node("strong","battle-primary",chosen?.name||
         (current.phase==="ready-to-draw"?"Order dice in the bag":phaseLabel(current.phase)))
     );
@@ -212,6 +312,7 @@
   function accept(snapshot){
     if(!snapshot)return;
     state=snapshot;
+    deliverCombat(snapshot);
     const stateKey=JSON.stringify({
       phase:state.phase,round:state.round,faction:state.faction,
       selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
@@ -225,9 +326,13 @@
       for(const callback of subscribers)callback(state);
     }
     render(state);
+    if(aiController)aiController.observe(state);
   }
   async function send(actionName,payload={}){
     if(!session||busy)return {ok:false,reason:"Battle coordinator busy"};
+    // One of these commands is a genuine player gesture, so the audio
+    // context can be unlocked without browser autoplay workarounds.
+    if(audioEnabled)audio?.unlock();
     busy=true;warning="";hint="";signature="";render(state);
     try{
       const before=state;
@@ -269,6 +374,8 @@
       return ()=>subscribers.delete(callback);
     },
     onAction(callback){effects.add(callback);return ()=>effects.delete(callback)},
+    onCombatEvent(callback){combatEvents.add(callback);return ()=>combatEvents.delete(callback)},
+    onCombatStage(callback){stageListeners.add(callback);return ()=>stageListeners.delete(callback)},
     setHint(message){hint=String(message||"").slice(0,180);signature="";render(state)},
     previewMove(point,waypoint){
       return session?.previewMove(point,waypoint)||
@@ -280,6 +387,8 @@
     }
   });
   window.CrossroadsBattle3D=client;
+  if(soloMode&&window.Crossroads3DAIOpponent)
+    aiController=window.Crossroads3DAIOpponent.create(client);
   frame.addEventListener("load",()=>{
     if(!connect())hud.textContent="Could not initialize the shared battle coordinator";
   });

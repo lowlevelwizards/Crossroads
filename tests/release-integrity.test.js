@@ -144,6 +144,13 @@ const battleDoor = read("battle3d.html");
 assert(battleDoor.includes('id="battleSessionFrame"'), "Battle page must load its authoritative engine host");
 assert(battleDoor.includes("src/diorama/battle-client.js"), "Battle page must load the 3D battle client");
 assert(battleDoor.includes("src/diorama/scenario-scene.js"), "Battle page must load the 3D scene");
+assert(battleDoor.includes("src/diorama/combat-presentation.js"), "Battle must load the structured combat presentation");
+assertOrdered("battle3d.html", "src/diorama/combat-presentation.js", "src/diorama/battle-client.js");
+assertOrdered("battle3d.html", "src/diorama/ai-opponent.js", "src/diorama/battle-client.js");
+assert(read("scenarios3d.html").includes("CROSSROADS_SCENARIOS"), "3D scenario selection must read official scenario data");
+assert(read("src/engine.js").includes("combatEventCount:combatEventSequence"), "Authoritative engine must expose sequenced combat events");
+assert(read("src/rules/combat-runtime.js").includes('emitBattleEvent("shooting"'), "Pure combat runtime adapter must emit shooting events");
+
 assert(read("classic-session.html").includes("CROSSROADS_3D_SESSION_HOST=true"), "The battle's engine host must be configured");
 assert(read("diorama.html").includes("src/diorama/scenario-scene.js"), "Preserve the 3D scenic study as a fallback");
 assert(!frontDoor.includes("src/engine.js"), "Homepage must not load the old 2D engine");

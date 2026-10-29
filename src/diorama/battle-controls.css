@@ -176,3 +176,31 @@
 @media(prefers-reduced-motion:reduce){
   .battle-big-die,.battle-order-die{animation:none}
 }
+
+/* v0.7: small in-world combat dice results; no blocking modal. */
+.battle-combat-dice{
+  position:absolute;z-index:14;top:calc(74px + env(safe-area-inset-top));
+  left:50%;transform:translateX(-50%);
+  width:max-content;max-width:min(90vw,420px);
+  color:#f3e5c9;background:#26352aeb;border:1px solid #d0b986;
+  border-radius:8px;padding:9px 12px;pointer-events:none;
+  box-shadow:0 9px 28px #1118;font:700 11px/1.45 system-ui,sans-serif;
+}
+.battle-combat-dice[hidden]{display:none}
+.battle-dice-heading{text-align:center;letter-spacing:.13em;color:#e3bf78;
+  margin-bottom:5px;font-size:10px}
+.battle-dice-row{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin:4px 0}
+.battle-dice-weapon{max-width:150px;font-size:10px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.battle-dice-rolls{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
+.battle-roll{min-width:23px;min-height:23px;display:grid;place-items:center;
+  border:1px solid #bfb6a1;border-radius:4px;background:#59594e;
+  color:#f5ead6;font-weight:900}
+.battle-roll.good{background:#496f78;border-color:#95bfc6}
+.battle-dice-result{text-align:center;color:#e4c789;border-top:1px solid #ffffff30;
+  padding-top:5px;margin-top:7px}
+.battle-controls .battle-audio-toggle{font-size:10px;min-height:28px;
+  padding:3px 7px;border-color:#baa881;background:#394b42;color:#e9d6a7}
+
+.battle-solo-status{font:800 9px system-ui,sans-serif;color:#e4b797;background:#462f29b8;padding:6px;border-radius:5px}
