@@ -63,13 +63,14 @@ for(const marker of [
 ])assert(scene.includes(marker),"scene missing visual-alignment path "+marker);
 for(const page of ["battle3d.html","diorama.html","editor3d.html"]){
  const html=read(page);
- assert(html.includes("visual-anchor.js?v=0.9.4a"),
+ const version=page==="diorama.html"?"0.9.4a":"0.9.9";
+ assert(html.includes("visual-anchor.js?v="+version),
  page+" does not load visual anchor");
- assert(html.indexOf("formation-layout.js?v=0.9.4a")<
- html.indexOf("visual-anchor.js?v=0.9.4a"));
- assert(html.indexOf("visual-anchor.js?v=0.9.4a")<
- html.indexOf("scenario-scene.js?v="+(page==="battle3d.html"?"0.9.9":"0.9.4a")));
+ assert(html.indexOf("formation-layout.js?v="+version)<
+ html.indexOf("visual-anchor.js?v="+version));
+ assert(html.indexOf("visual-anchor.js?v="+version)<
+ html.indexOf("scenario-scene.js?v="+version));
 }
 assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,
- "0.9.4a");
+ "0.9.9");
 console.log("PASS — initial/replay cover positions, selected label, ring, eligibility halo, tap hitbox and camera share the living model footprint");

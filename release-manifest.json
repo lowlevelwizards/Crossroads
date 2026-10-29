@@ -85,5 +85,5 @@
     "src/diorama/visual-anchor.js",
     "tests/3d-v094a-visual-anchor.test.js"
   ],
-  "threeDCacheVersion": "0.9.4a"
+  "threeDCacheVersion": "0.9.9"
 }
