@@ -82,6 +82,6 @@ const d=presentWindow.Crossroads3DCombatPresentation.create(e=>stages.push(e.pha
 assert.equal(d.enqueue({id:1,type:"shooting"}),true);
 assert.equal(d.enqueue({id:1,type:"shooting"}),false);
 for(let n=0;n<120;n++)d.update(.05);
-assert.equal(stages.join(","),"aim,fire,dice,impact,settle");
+assert.equal(stages.join(","),"aim,fire,hit-dice,damage-dice,save-dice,impact,settle");
 assert.equal(d.active,false);
 console.log("PASS — authoritative combat event payload, morale dice and idempotent 3D timeline");

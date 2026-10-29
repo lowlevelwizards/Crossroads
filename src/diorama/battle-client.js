@@ -72,11 +72,14 @@
     if(stage.phase==="settle"){
       diceOverlay.hidden=true;return;
     }
-    if(!["dice","alert","score"].includes(stage.phase))return;
+    if(!["dice","hit-dice","damage-dice","save-dice","alert","score"].includes(stage.phase))return;
     const e=stage.event;
     diceOverlay.replaceChildren();
     diceOverlay.append(node("div","battle-dice-heading",
-      e.type==="shooting"?"SHOT RESOLUTION":
+      e.type==="shooting"?(
+        stage.phase==="hit-dice"?"HIT ROLLS":
+        stage.phase==="damage-dice"?"DAMAGE ROLLS":"COVER SAVES"
+      ):
       e.type==="assault"?"CLOSE ASSAULT":
       e.type==="ambush"?"AMBUSH REACTION":
       e.type==="round-score"?"OBJECTIVE SCORING":"ORDER TEST"));
@@ -97,13 +100,19 @@
       diceOverlay.append(node("div","battle-dice-result",
         "POL +"+e.blue+"  ·  GER +"+e.red));
     }else if(e.type==="shooting"){
-      for(const group of e.groups||[])
-        row(group.weapon,group.rolls,group.hitTarget);
-      row("Damage",e.damageRolls,e.damageTarget);
-      if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
-      diceOverlay.append(node("div","battle-dice-result",
-        e.hits+" hits · "+e.saved+" saved · "+
-        e.casualties+" losses · +"+e.pinDelta+" Pin"));
+      if(stage.phase==="hit-dice"){
+        for(const group of e.groups||[])row(group.weapon,group.rolls,group.hitTarget);
+        diceOverlay.append(node("div","battle-dice-result",e.hits+" hits"));
+      }else if(stage.phase==="damage-dice"){
+        row("Damage",e.damageRolls,e.damageTarget);
+        diceOverlay.append(node("div","battle-dice-result",
+          e.potentialCasualties+" potential casualties"));
+      }else if(stage.phase==="save-dice"){
+        if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
+        diceOverlay.append(node("div","battle-dice-result",
+          e.saved+" saved · "+e.casualties+" casualties · +"+
+          e.pinDelta+" Pin"+(e.pinDelta===1?"":"s")));
+      }
     }else if(e.type==="order-test"){
       row(e.order,e.dice,e.target,true);
       diceOverlay.append(node("div","battle-dice-result",

@@ -2,7 +2,8 @@
 /* Presentation-only event timeline. It never mutates game/rule state. */
 (() => {
   const SEQUENCES=Object.freeze({
-    shooting:[["aim",.28],["fire",.40],["dice",.90],["impact",.42],["settle",.12]],
+    shooting:[["aim",.32],["fire",.42],["hit-dice",.55],
+      ["damage-dice",.52],["save-dice",.52],["impact",.42],["settle",.12]],
     assault:[["charge",.35],["dice",.75],["impact",.48],["settle",.14]],
     "order-test":[["dice",.75],["impact",.32],["settle",.1]],
     ambush:[["alert",.48],["settle",.12]],
