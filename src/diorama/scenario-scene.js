@@ -758,7 +758,7 @@ function initialize(THREE) {
       depthWrite:false,side:THREE.DoubleSide});
     const mesh=shape(scene,geometry,material,x,y,z);
     mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=10;
-    visualEffects.push({mesh,duration,age:0,...extra});
+    visualEffects.push({mesh,duration,age:0,initialOpacity:material.opacity,...extra});
     return mesh;
   }
   function muzzleBurst(burst){
@@ -821,6 +821,21 @@ function initialize(THREE) {
   markerLayer.className="miniature-markers";
   markerLayer.setAttribute("aria-hidden","true");
   stage.appendChild(markerLayer);
+  const outcomeChip=document.createElement("div");
+  outcomeChip.className="mini-impact-outcome";outcomeChip.hidden=true;
+  markerLayer.appendChild(outcomeChip);
+  let outcomeTarget=null,outcomeUntil=0;
+  function showOutcome(target,event){
+    const parts=[];
+    if(event.saved>0)parts.push(event.saved+" COVER SAVED");
+    if(event.casualties>0)parts.push(event.casualties+" CASUALT"+(event.casualties===1?"Y":"IES"));
+    if(event.pinDelta>0)parts.push("+"+event.pinDelta+" PIN");
+    if(!parts.length&&event.hits>0)parts.push(event.hits+" HITS");
+    outcomeChip.textContent=parts.join(" · ");
+    outcomeChip.classList.toggle("casualty",Boolean(event.casualties));
+    outcomeChip.hidden=false;
+    outcomeTarget=target;outcomeUntil=performance.now()+1700;
+  }
   function markerPart(className){
     const item=document.createElement("span");
     item.className=className;
@@ -893,6 +908,20 @@ function initialize(THREE) {
       marker.hidden=false;marker.style.display="flex";
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
+    }
+    if(outcomeTarget){
+      const showing=performance.now()<outcomeUntil;
+      if(!showing){outcomeChip.hidden=true;outcomeTarget=null;}
+      else{
+        const pos=outcomeTarget.root.position;
+        const at=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.65,pos.z).project(camera);
+        const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
+        outcomeChip.hidden=!(at.z>=-1&&at.z<=1&&x>=12&&x<=width-12&&y>=32&&y<=height-60);
+        if(!outcomeChip.hidden){
+          outcomeChip.style.left=Math.max(90,Math.min(width-90,x)).toFixed(1)+"px";
+          outcomeChip.style.top=y.toFixed(1)+"px";
+        }
+      }
     }
     if(previewUnit){
       const pos=previewUnit.root.position;
