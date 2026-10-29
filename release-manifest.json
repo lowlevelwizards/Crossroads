@@ -74,7 +74,9 @@
     "tests/3d-v091-port-trust.test.js",
     "tests/3d-v091-scenarios.test.js",
     "src/rules/model-geometry.js",
-    "tests/3d-v093-rules-and-command.test.js"
+    "tests/3d-v093-rules-and-command.test.js",
+    "src/diorama/pointer-recovery.js",
+    "tests/3d-v092-ios-touch-recovery.test.js"
   ],
   "threeDCacheVersion": "0.9.3"
 }

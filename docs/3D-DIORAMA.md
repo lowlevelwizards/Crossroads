@@ -524,6 +524,25 @@ Garrison muzzle effects are projected to the nearest appropriate front facade wh
 - Manual iPhone/WebGL playtesting is required before merge; automated Node tests cannot establish visual quality or 60 FPS.
 
 
+## v0.9.2 — iOS interruption-safe camera gestures
+- The scene no longer assumes every pointerdown will receive a matching pointerup.
+  A new **primary touch** invalidates ghosts from the old iOS touch session;
+  native TouchEvent contacts reconcile active pointer IDs when Safari abandons
+  capture during home/app-switch swipes or browser interruptions.
+- Pointer cancellation, lost capture, window blur, pagehide, orientation change,
+  and document backgrounding all clear raw gesture state and interrupted
+  waypoint dragging without changing the camera orbit, focus, pan or zoom.
+  An interrupted waypoint drag never commits a waypoint on cancellation.
+- One finger returns to **orbit**, two real fingers perform **pinch + pan**.
+  Small touch-only start gutters near the system-screen edges reduce accidental
+  OS gestures; normal gestures that start inside the field are not clamped.
+  Page overscroll and text-selection interference are reduced through CSS.
+- Safari/PWA cannot programmatically disable the iOS home indicator or
+  app-switch gesture; this update is recovery and prevention, not OS override.
+- Added pure touch session regression tests for stale pointer releases,
+  reconciliation, fresh primary touch, real two-finger gestures, gesture
+  interruption and entrypoint cache wiring.
+
 ## v0.9.3 — Rules measurements, officer command, double-tap
 
 **Reference:** Bolt Action Third Edition; original infantry movement, shooting,
