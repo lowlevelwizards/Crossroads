@@ -14,8 +14,11 @@
     return {support,opposition,advantage:support-opposition};
   }
   function objectivePoint(s,faction) {
-    const objectives=(s.objectives||[]).filter(o=>Number.isFinite(o.x)&&Number.isFinite(o.y)
-      &&o.state!==faction);
+    const objectives=(s.objectives||[]).filter(o=>
+      Number.isFinite(o.x)&&Number.isFinite(o.y)&&
+      (o.type==="exit_unit"?o.faction===faction:o.state!==faction));
+    // In asymmetric exit scenarios, defend the line rather than marching
+    // the non-exiting army toward the attacker's own exit marker.
     return objectives.length?objectives:null;
   }
   function nearest(origin,things){

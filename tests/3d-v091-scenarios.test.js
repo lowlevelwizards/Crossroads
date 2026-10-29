@@ -27,4 +27,19 @@ assert(engine.includes('scenarioSession.dispatch("round_ended"'),
 assert(engine.includes("scores.blue += result.score.blue")&&
   engine.includes("scores.red += result.score.red"));
 assert(read("scenarios3d.html").includes("editor3d.html?scenario="));
+const e=read("src/engine.js");
+assert(e.includes("roundPoints:Number(item.objective?.roundPoints||0)"),
+  "3D snapshot must expose official scoring rate");
+assert(e.includes("finalPoints:Number(item.objective?.finalPoints||0)"),
+  "3D snapshot must expose final-only bonus");
+const aiWindow={};vm.runInNewContext(read("src/diorama/ai-tactics.js"),{window:aiWindow});
+const red={id:"r",x:66,y:20,faction:"red",soldiers:4,pins:0,activated:false};
+const blue={id:"b",x:12,y:20,faction:"blue",soldiers:5,pins:0,activated:false};
+const snap={table:{width:72,height:48},units:[red,blue],
+ objectives:[{id:"exit",x:0,y:24,type:"exit_unit",faction:"red",state:"none"}]};
+const ai=aiWindow.Crossroads3DAITactics;
+const best=ai.chooseMove(snap,red,p=>({legal:true,path:[red,p],cost:3,allowance:6}));
+assert(best&&best.x<red.x,"exiting faction advances toward exit");
+const defense=ai.chooseMove(snap,blue,p=>({legal:true,path:[blue,p],cost:3,allowance:6}));
+assert(defense&&defense.x>blue.x,"defending faction must not chase hostile exit marker");
 console.log("PASS — all four scenario terrain registrations, restored Mokra assets, round-end scoring authority and editor links");

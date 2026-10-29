@@ -260,10 +260,20 @@
     if(current.phase==="round-complete"){
       const controlled=(current.objectives||[]).filter(o=>
         o.state==="blue"||o.state==="red");
-      const detail=node("div","battle-objective-banner",
-        controlled.length?controlled.map(o=>
-          o.label+": "+(o.state==="blue"?"POL":"GER")).join(" · "):
-          "No objectives currently controlled");
+      const projected={blue:0,red:0};
+      for(const obj of controlled)
+        if(obj.type==="control_zone")
+          projected[obj.state]+=Number(obj.roundPoints||0);
+      const finalOnly=controlled.filter(o=>o.type==="control_zone"&&o.finalPoints>0)
+        .map(o=>o.label+" · "+o.finalPoints+" final VP");
+      const headline=(projected.blue||projected.red)?
+        "PENDING AT CHECKPOINT: POL +"+projected.blue+" · GER +"+projected.red:
+        finalOnly.length?
+          "FINAL CONTROL BONUS (not yet awarded): "+finalOnly.join(" · "):
+          controlled.length?
+            "OBJECTIVES HELD: "+controlled.map(o=>o.label).join(", "):
+            "NO OBJECTIVES CURRENTLY CLAIMED";
+      const detail=node("div","battle-objective-banner",headline);
       hud.append(detail);
     }
 
