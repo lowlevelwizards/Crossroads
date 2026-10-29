@@ -13,7 +13,7 @@
     if(context.state==="suspended")context.resume().catch(()=>{});
     return true;
   }
-  function playPulse(weapon="rifle",volume=.12) {
+  function playPulse(weapon="rifle",volume=.12,pan=0) {
     if(muted||!unlock()||context.state!=="running")return;
     const now=context.currentTime;
     const mmg=/mmg|machine/i.test(weapon),smg=/smg|submachine/i.test(weapon);
@@ -27,14 +27,23 @@
       tone.gain.setValueAtTime(.0001,when);
       tone.gain.exponentialRampToValueAtTime(Math.max(.004,volume*(mmg?.34:.6)),when+.004);
       tone.gain.exponentialRampToValueAtTime(.0001,when+.10);
-      osc.connect(tone);tone.connect(master);osc.start(when);osc.stop(when+.105);
+      osc.connect(tone);
+      if(typeof context.createStereoPanner==="function"){
+        const stereo=context.createStereoPanner();
+        stereo.pan.setValueAtTime(pan,when);
+        tone.connect(stereo);stereo.connect(master);
+      }else tone.connect(master);
+      osc.start(when);osc.stop(when+.105);
     }
   }
   const sound=Object.freeze({
     unlock,playShooting(event) {
       const groups=event?.groups||[];
+      const boardX=event?.shooterPosition?.x;
+      const pan=Number.isFinite(boardX)?
+        Math.max(-.65,Math.min(.65,(boardX-36)/36*.65)):0;
       for(const group of groups)playPulse(group.weapon||group.key||"rifle",
-        .12/Math.max(1,Math.sqrt(groups.length)));
+        .12/Math.max(1,Math.sqrt(groups.length)),pan);
     },
     setMuted(value){muted=Boolean(value);if(!muted)unlock();return muted},
     get muted(){return muted}

@@ -1386,9 +1386,14 @@ function initialize(THREE) {
             showFirePreview(pickedSquad,assessment);
             pendingTargetId=pickedSquad.unit.id;
             lastTargetTap=now;
+            const cover=assessment.cover?.saveTarget!=null
+              ? assessment.cover.label+" · "+assessment.cover.saveTarget+"+ save"
+              : "No cover save";
+            const range=Number.isFinite(assessment.distance)
+              ? assessment.distance.toFixed(1)+"″ · ":"";
             battle.setHint(assessment.legal
-              ? "Target legal — tap the same squad again to confirm"
-              : assessment.reason||"Target is obstructed");
+              ? range+cover+" · Tap same squad again to fire"
+              : assessment.reason||"Target obstructed");
           }
         }
         else if(phase==="deployment")

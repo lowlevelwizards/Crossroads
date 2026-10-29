@@ -71,6 +71,8 @@
     function fireEvent(shooter,target,trace,label,result,pinsBefore,casualties) {
       emitBattleEvent("shooting",{
         shooterId:shooter.id,targetId:target.id,
+        shooterPosition:{x:shooter.x,y:shooter.y},
+        targetPosition:{x:target.x,y:target.y},
         faction:shooter.faction,label,range:trace.distance,
         cover:trace.cover?.label??"No cover",blocked:Boolean(trace.blocked),
         groups:result.groups.map(g=>({
