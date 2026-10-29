@@ -64,6 +64,32 @@
     const checkElimination = requireFunction(dependencies, "checkElimination");
     const clearActivationSelection = requireFunction(dependencies, "clearActivationSelection");
     const rollDice = requireFunction(dependencies, "rollDice");
+    // Optional: the existing rules stay pure. This is a one-way adapter to
+    // the 3D presentation, never a second simulation or logging authority.
+    const emitBattleEvent = typeof dependencies.emitBattleEvent==="function"
+      ? dependencies.emitBattleEvent : () => {};
+    function fireEvent(shooter,target,trace,label,result,pinsBefore,casualties) {
+      emitBattleEvent("shooting",{
+        shooterId:shooter.id,targetId:target.id,
+        shooterPosition:{x:shooter.x,y:shooter.y},
+        targetPosition:{x:target.x,y:target.y},
+        faction:shooter.faction,label,range:trace.distance,
+        cover:trace.cover?.label??"No cover",blocked:Boolean(trace.blocked),
+        groups:result.groups.map(g=>({
+          key:g.key,weapon:g.profile?.label||g.key,models:g.models,
+          shots:g.shots,rolls:[...g.rolls],hitTarget:g.hitTarget,
+          hits:g.hits,modifiers:g.modifiers.map(m=>m.label)
+        })),
+        shots:result.totalShots,hits:result.totalHits,
+        pinDelta:result.pinDelta,pinsBefore,pinsAfter:target.pins,
+        damageTarget:result.damageTarget,damageRolls:[...result.damageRolls],
+        potentialCasualties:result.potentialCasualties,
+        coverSaveTarget:result.coverSaveTarget,saveRolls:[...result.saveRolls],
+        saved:result.saved,casualties,
+        routed:Boolean(result.routedByPins),
+        destroyed:target.soldiers<=0,remaining:target.soldiers
+      });
+    }
 
     const moraleRules = moraleModule.create({
       rules,
@@ -127,6 +153,13 @@
 
       lockActivationTransaction("dice rolled for the Order Test");
       recordOrderTest(unit, result.passed);
+      emitBattleEvent("order-test",{
+        unitId:unit.id,faction:unit.faction,order,
+        dice:[...result.dice],target:result.target,total:result.total,
+        passed:result.passed,pinsBefore:result.pinsBefore,
+        pinsAfter:result.passed?result.pinsAfterPass:result.pinsBefore,
+        officerBonus:analysis.officerBonus||0
+      });
 
       addLog(
         `${capitalize(unit.faction)} ${unit.name} (${qualityLabel(unit)}) ` +
@@ -164,6 +197,7 @@
       const label = options.label ?? "Shooting";
       lockActivationTransaction(`${label} dice rolled`);
 
+      const pinsBefore=target.pins;
       const result = shootingRules.resolveAttack({
         shooter,
         target,
@@ -225,6 +259,7 @@
             "Routed after reaching its Morale in Pins"
           );
           destroyUnit(target);
+          fireEvent(shooter,target,trace,label,result,pinsBefore,removed);
           addLog(
             `${capitalize(target.faction)} ${target.name} reaches its ` +
             "Morale in Pins and routes.",
@@ -279,6 +314,7 @@
         );
       }
 
+      fireEvent(shooter,target,trace,label,result,pinsBefore,casualties);
       renderUnits();
       return {
         destroyed: target.soldiers === 0,
@@ -432,6 +468,17 @@
         if (!checkElimination()) finishActivationState();
       }
 
+      emitBattleEvent("assault",{
+        attackerId:attacker.id,defenderId:defender.id,
+        winner:result.winner,buildingId:analysis?.buildingId??null,
+        rounds:result.rounds.map(r=>({
+          number:r.number,mode:r.mode,attackerRolls:[...r.attackerRolls],
+          defenderRolls:[...r.defenderRolls],
+          attackerKills:r.attackerKills,defenderKills:r.defenderKills,
+          defensivePosition:r.defensivePosition
+        })),
+        attackerRemaining:attacker.soldiers,defenderRemaining:defender.soldiers
+      });
       renderUnits();
       return result;
     }

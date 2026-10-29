@@ -262,6 +262,23 @@ function initialize(THREE) {
   pebbles.castShadow = false;
   scene.add(pebbles);
 
+  const roofMaterials=[];
+  function registerRoof(entry,material){
+    roofMaterials.push({ids:[entry.id,entry.terrainId],material,occupied:false});
+  }
+  function updateBuildingRoofs(snapshot) {
+    const occupied=new Set((snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0)
+      .map(u=>String(u.inBuilding)));
+    for(const roof of roofMaterials){
+      const inside=roof.ids.some(id=>occupied.has(String(id)));
+      if(inside===roof.occupied)continue;
+      roof.occupied=inside;
+      roof.material.transparent=inside;
+      roof.material.opacity=inside?.22:1;
+      roof.material.depthWrite=!inside;
+      roof.material.needsUpdate=true;
+    }
+  }
   // Real longhouse: independent structural bays, NOT scaled model geometry.
   // The game rules footprint remains authoritative; every decorative piece
   // is constructed directly in physical world units from that footprint.
@@ -278,6 +295,7 @@ function initialize(THREE) {
     const wallMat=mat(entry.appearance?.includes("peach")?0xcdb39c:0xddd2b6);
     const masonry=mat(0xada28a),lintel=mat(0x988a70);
     const tiledRoof=mat(entry.appearance?.includes("thatch")?0x948866:0xb54f36);
+    registerRoof(entry,tiledRoof);
     const timber=mat(0x66503a),windowGlass=mat(0x687978),shutter=mat(0x61724f);
     const L=dim.length, D=dim.depth;
     const eave=dim.eaveHeight, rise=dim.roofRise;
@@ -360,6 +378,7 @@ function initialize(THREE) {
     group.userData.terrainId=entry.id;
     scene.add(group);
     const plank=mat(0x655e51),trim=mat(0x4c443c),roof=mat(0x464c48);
+    registerRoof(entry,roof);
     block(group,3.65,.20,2.65,mat(0x918b78),0,.09,0);
     block(group,3.55,1.85,2.53,plank,0,1.02,0);
     // Strong gable and crisp overlapping roof panels.
@@ -402,6 +421,7 @@ function initialize(THREE) {
     const rise=church?.50:.33;
     const walls=mat(church?0xc1b6a0:shed?0x7d6851:0xd9c9ae);
     const roof=mat(shed?0x5a5045:entry.appearance?.includes("thatch")?0x8a8062:0xb0583c);
+    registerRoof(entry,roof);
     block(group,L,.085,D,mat(0x998e79),0,.04,0);
     block(group,L-.08,eave-.06,D-.09,walls,0,eave/2+.06,0);
     const pitch=Math.atan2(rise,D/2+.09);
@@ -701,6 +721,15 @@ function initialize(THREE) {
   let pendingMovePoint=null;
   let lastMoveTap=0;
   const visualEffects=[];
+  const casualtyAnimations=[];
+  function beginCasualtyRemovals(squad){
+    if(!squad)return;
+    for(const soldier of squad.soldiers) {
+      if(!soldier.pendingRemoval||soldier.casualtyAnimating)continue;
+      soldier.casualtyAnimating=true;
+      casualtyAnimations.push({soldier,elapsed:0,duration:.46});
+    }
+  }
   let frameIndex=0;
   const unitLookup=new Map();
   const markerLayer=document.createElement("div");
@@ -785,47 +814,108 @@ function initialize(THREE) {
     particle.castShadow=false;particle.receiveShadow=false;
     visualEffects.push({mesh:particle,duration,age:0});
   }
-  function showCombatAction(event) {
-    if(!["target","reaction-fire"].includes(event.action))return;
-    const shooterId=event.action==="reaction-fire"?
-      event.before?.reaction?.ambusherId:event.before?.selectedUnitId;
-    if(!shooterId)return;
-    const shooter=unitLookup.get(shooterId);
-    if(!shooter)return;
-    const shooters=shooter.soldiers.filter(s=>s.figure.visible);
-    // Role-specific pulses; hits and casualties always come from engine state.
-    for(let i=0;i<shooters.length;i++){
-      const soldier=shooters[i];
-      if(soldier.role==="crew"||soldier.role==="loader")continue;
-      soldier.recoil=soldier.role==="mmg"?.36:soldier.role==="smg"?.24:.17;
-      const facing=soldier.figure.rotation.y;
-      const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.31;
-      const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.31;
-      const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
-      spawnBriefFlash(x,soldier.figure.position.y+.54,z,
-        0xffca78,mmg?.09:smg?.073:.055,mmg?.25:.15);
-      if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.59,z-.07,
-        0x9e9990,mmg?.13:.085,.46);
+  // This director listens to ACTUAL resolved engine events. The old
+  // before/after guessed-effects callback is intentionally retired.
+  function showCombatStage(stage) {
+    const e=stage.event;
+    if(stage.type==="order-test"){
+      if(stage.phase==="impact"){
+        const u=unitLookup.get(e.unitId);
+        if(u)spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
+          e.passed?0xa4c49a:0xcf876f,.16,.35);
+      }
+      return;
     }
-    const after=event.after?.units||[],before=event.before?.units||[];
-    for(const unit of after){
-      const previous=before.find(u=>u.id===unit.id);
-      if(!previous)continue;
-      const target=unitLookup.get(unit.id);
-      if(!target)continue;
-      if(unit.soldiers<previous.soldiers)
-        spawnBriefFlash(target.root.position.x,.38,target.root.position.z,
-          0xc2b8a1,.16,.42);
-      if(unit.pins>previous.pins)
-        spawnBriefFlash(target.root.position.x,.72,target.root.position.z,
-          0xd7b268,.11,.38);
-      if(previous.soldiers>0&&unit.soldiers===0)
-        for(let i=0;i<3;i++)
-          spawnBriefFlash(target.root.position.x+Math.sin(i*2.1)*.25,.15,
-            target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
+    if(stage.type==="assault"){
+      if(stage.phase!=="impact")return;
+      beginCasualtyRemovals(unitLookup.get(e.attackerId));
+      beginCasualtyRemovals(unitLookup.get(e.defenderId));
+      for(const id of [e.attackerId,e.defenderId]){
+        const squad=unitLookup.get(id);
+        if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
+          0xc9b693,.26,.52);
+      }
+      return;
+    }
+    if(stage.type!=="shooting")return;
+    const shooter=unitLookup.get(e.shooterId);
+    const target=unitLookup.get(e.targetId);
+    if(stage.phase==="aim"&&shooter&&target){
+      const facing=motion.heading(
+        {x:shooter.root.position.x,z:shooter.root.position.z},
+        {x:target.root.position.x,z:target.root.position.z});
+      for(const soldier of shooter.soldiers)if(soldier.figure.visible)
+        soldier.figure.rotation.y=facing;
+      if(!pointers.size&&!cameraFocus){
+        // Quietly suggest attention without changing the board-centered pivot.
+        const x=(shooter.root.position.x+target.root.position.x)/2;
+        const z=(shooter.root.position.z+target.root.position.z)/2;
+        cameraFocus={x,z};
+        focusZoom=zoom;
+      }
+    }else if(stage.phase==="fire"&&shooter){
+      let fired=0;
+      const groupShots=(e.groups||[]).reduce((n,g)=>n+g.shots,0);
+      for(const soldier of shooter.soldiers){
+        if(!soldier.figure.visible||["crew","loader"].includes(soldier.role))continue;
+        if(fired>=Math.min(groupShots,shooter.soldiers.length))break;
+        fired++;
+        const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
+        soldier.recoil=mmg?.35:smg?.24:.16;
+        const facing=soldier.figure.rotation.y;
+        const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
+        const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
+        spawnBriefFlash(x,soldier.figure.position.y+.52,z,
+          0xffd186,mmg?.095:smg?.073:.052,mmg?.24:.15);
+        if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.57,z,
+          0xa09c91,.09,.40);
+      }
+    }else if(stage.phase==="impact"&&target){
+      beginCasualtyRemovals(target);
+      if(e.hits>0)
+        spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
+          e.saved>0?0x91a79b:0xc5b69a,.16,.40);
+      if(e.pinDelta>0)
+        spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
+          0xd4a75d,.12,.48);
+      if(e.casualties>0){
+        const amount=Math.min(e.casualties,6);
+        for(let i=0;i<amount;i++)
+          spawnBriefFlash(target.root.position.x+Math.sin(i*2.4)*.23,.20,
+            target.root.position.z+Math.cos(i*2.4)*.23,0x877563,.13,.55);
+      }
     }
   }
   // A physical, thick painted measuring strip—not a one-pixel WebGL line.
+  const firePreview=new THREE.Group();
+  firePreview.visible=false;firePreview.renderOrder=14;scene.add(firePreview);
+  function clearFirePreview(){
+    firePreview.visible=false;
+    for(const m of [...firePreview.children]){
+      firePreview.remove(m);m.geometry.dispose();m.material.dispose();
+    }
+  }
+  function showFirePreview(squad,assessment){
+    clearFirePreview();
+    if(!selectedSquad)return;
+    const a=selectedSquad.root.position,b=squad.root.position;
+    const distance=Math.hypot(b.x-a.x,b.z-a.z);
+    const color=!assessment.legal?0xc37b65:
+      assessment.cover?.saveTarget!=null?0xd2ae64:0xe7c16b;
+    const material=new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.92,depthTest:false
+    });
+    const line=new THREE.Mesh(new THREE.BoxGeometry(distance,.026,.09),material);
+    const midX=(a.x+b.x)/2,midZ=(a.z+b.z)/2;
+    line.position.set(midX,Math.max(terrainY(a.x,a.z),terrainY(b.x,b.z))+.12,midZ);
+    line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+    line.renderOrder=14;firePreview.add(line);
+    const circle=new THREE.Mesh(new THREE.RingGeometry(.29,.41,28),material.clone());
+    circle.rotation.x=-Math.PI/2;
+    circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
+    circle.renderOrder=14;firePreview.add(circle);
+    firePreview.visible=true;
+  }
   const movePreviewLine=new THREE.Group();
   const rulerMaterial=new THREE.MeshBasicMaterial({
     color:0xe7c16b,transparent:true,opacity:.95,depthTest:false
@@ -1083,16 +1173,32 @@ function initialize(THREE) {
   if(battle) {
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
-      if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target")
+      if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
         pendingTargetId=null;
+        clearFirePreview();
+      }
       if(snapshot.phase!=="plan-movement")clearMovePreview();
       for(const stateUnit of snapshot.units || []) {
         const squad=unitLookup.get(stateUnit.id);
         if(!squad)continue;
         const before={x:squad.root.position.x,z:squad.root.position.z};
         Object.assign(squad.unit,stateUnit);
+        const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
+          (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
+          (e.type==="assault"&&
+            (e.attackerId===stateUnit.id||e.defenderId===stateUnit.id)));
         squad.soldiers.forEach((soldier,index)=>{
-          soldier.figure.visible=index<stateUnit.soldiers;
+          const alive=index<stateUnit.soldiers;
+          if(alive){
+            soldier.pendingRemoval=false;
+            soldier.figure.visible=true;
+            soldier.figure.rotation.z=0;
+          } else if(hasUnshownCasualties&&soldier.figure.visible){
+            soldier.pendingRemoval=true;
+            soldier.pendingRemovalAt=performance.now();
+          } else if(!soldier.pendingRemoval){
+            soldier.figure.visible=false;
+          }
           if(stateUnit.down) soldier.breathing.rotation.x=.37;
         });
         const end=bridge.toWorld(stateUnit);
@@ -1117,9 +1223,10 @@ function initialize(THREE) {
       const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
       if(selectedSquad!==selected)selectSquad(selected);
       updateUnitPresentation(snapshot);
+      updateBuildingRoofs(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
-    battle.onAction(showCombatAction);
+    battle.onCombatStage(showCombatStage);
   }
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
@@ -1272,14 +1379,21 @@ function initialize(THREE) {
           const assessment=battle.previewTarget(pickedSquad.unit.id);
           const now=Date.now();
           if(assessment.legal&&pendingTargetId===pickedSquad.unit.id&&now-lastTargetTap<8000) {
+            clearFirePreview();
             pendingTargetId=null;
             void battle.send("target",{id:pickedSquad.unit.id});
           } else {
+            showFirePreview(pickedSquad,assessment);
             pendingTargetId=pickedSquad.unit.id;
             lastTargetTap=now;
+            const cover=assessment.cover?.saveTarget!=null
+              ? assessment.cover.label+" · "+assessment.cover.saveTarget+"+ save"
+              : "No cover save";
+            const range=Number.isFinite(assessment.distance)
+              ? assessment.distance.toFixed(1)+"″ · ":"";
             battle.setHint(assessment.legal
-              ? "Target legal — tap the same squad again to confirm"
-              : assessment.reason||"Target is obstructed");
+              ? range+cover+" · Tap same squad again to fire"
+              : assessment.reason||"Target obstructed");
           }
         }
         else if(phase==="deployment")
@@ -1506,8 +1620,10 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
-            soldier.recoil;
+          soldier.breathing.rotation.x=(
+            (battle&&squad.unit.down)?.36:
+            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0
+          )-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }
@@ -1517,6 +1633,25 @@ function initialize(THREE) {
         squad.ring.userData.grounded=true;
       }
     }
+    for(let i=casualtyAnimations.length-1;i>=0;i--){
+      const record=casualtyAnimations[i];
+      record.elapsed+=dt;
+      const u=Math.min(1,record.elapsed/record.duration);
+      record.soldier.figure.rotation.z=-u*1.2;
+      if(u>=1){
+        record.soldier.figure.visible=false;
+        record.soldier.figure.rotation.z=0;
+        record.soldier.pendingRemoval=false;
+        record.soldier.casualtyAnimating=false;
+        casualtyAnimations.splice(i,1);
+      }
+    }
+    for(const squad of squads)for(const soldier of squad.soldiers)
+      if(soldier.pendingRemoval&&!soldier.casualtyAnimating&&
+        performance.now()-(soldier.pendingRemovalAt||0)>2600){
+        soldier.figure.visible=false;
+        soldier.pendingRemoval=false;
+      }
     for(let i=visualEffects.length-1;i>=0;i--){
       const effect=visualEffects[i];
       effect.age+=dt;
