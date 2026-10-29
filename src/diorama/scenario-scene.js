@@ -986,11 +986,21 @@ function initialize(THREE) {
     if(stage.type==="assault"){
       const attacker=unitLookup.get(e.attackerId);
       if(stage.phase==="charge"&&attacker){
-        attacker.assaultCharge=.30;
+        attacker.assaultCharge=.42;
         const defender=unitLookup.get(e.defenderId);
-        if(defender&&assaultMotion)
+        if(defender&&assaultMotion){
           attacker.assaultVisual=assaultMotion.create(attacker.root.position,
             defender.root.position);
+          defender.suppressionImpulse=Math.max(defender.suppressionImpulse||0,.38);
+          const aimAttack=motion.heading(attacker.root.position,defender.root.position);
+          const aimDefense=motion.heading(defender.root.position,attacker.root.position);
+          attacker.soldiers.forEach((soldier,i)=>{
+            soldier.aimTarget=aimAttack;soldier.aimDelay=i*.045;
+          });
+          defender.soldiers.forEach((soldier,i)=>{
+            soldier.aimTarget=aimDefense;soldier.aimDelay=i*.038;
+          });
+        }
         spawnBriefFlash(attacker.root.position.x,.55,attacker.root.position.z,
           0xe3b36b,.19,.42);
       }
@@ -1003,8 +1013,22 @@ function initialize(THREE) {
           attacker.root.position,{defender:true});
       for(const id of [e.attackerId,e.defenderId]){
         const squad=unitLookup.get(id);
-        if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
-          0xc9b693,.26,.52);
+        if(squad){
+          spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
+            0xc9b693,.26,.52);
+          squad.soldiers.forEach((soldier,i)=>{
+            if(soldier.figure.visible&&i%2===0)soldier.hitShock=.36;
+          });
+        }
+      }
+      const winner=e.winner==="attacker"?attacker:
+        e.winner==="defender"?defender:null;
+      if(winner){
+        outcomeTarget=winner;
+        outcomeChip.textContent="ASSAULT WON · "+
+          (winner===attacker?e.attackerRemaining:e.defenderRemaining)+" SURVIVORS";
+        outcomeChip.classList.remove("casualty");
+        outcomeChip.hidden=false;outcomeUntil=performance.now()+1800;
       }
       return;
     }
@@ -2008,7 +2032,7 @@ function initialize(THREE) {
         soldier.breathing.position.y=soldier.baseY-
           (soldier.crouch||0)*.31;
         if(squad.assaultCharge>0&&!isWalking)
-          soldier.breathing.position.y+=Math.sin((.30-squad.assaultCharge)/.30*Math.PI)*.07;
+          soldier.breathing.position.y+=Math.sin((.42-squad.assaultCharge)/.42*Math.PI)*.07;
         soldier.hitShock=Math.max(0,(soldier.hitShock||0)-dt*1.7);
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
           Math.sin(soldierIndex*2.7+1)*.13+
