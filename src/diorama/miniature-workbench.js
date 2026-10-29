@@ -108,6 +108,11 @@
       $("wbBlendStrength").value=doc.blend.strength;
       $("wbBlendLabel").textContent=doc.blend.strength.toFixed(2);
       $("wbBlendOffset").value=doc.blend.primitive.center[1];
+      for(const [id,field,i] of [
+        ["wbBlendX","center",0],["wbBlendZ","center",2],
+        ["wbBlendRx","radius",0],["wbBlendRy","radius",1],
+        ["wbBlendRz","radius",2]
+      ])$(id).value=doc.blend.primitive[field][i].toFixed(3);
       $("wbMirror").textContent=doc.symmetry==="x"?"MIRROR ON":"MIRROR OFF";
       $("wbMirror").setAttribute("aria-pressed",String(doc.symmetry==="x"));
       $("wbUndo").disabled=!history.canUndo();
@@ -230,6 +235,15 @@
       ["wbBlendOffset",(doc,n)=>doc.blend.primitive.center[1]=n]
     ])$(id).addEventListener("change",e=>transact(doc=>{
       update(doc,Number(e.target.value));return doc;
+    }));
+    for(const [id,field,i] of [
+      ["wbBlendX","center",0],["wbBlendZ","center",2],
+      ["wbBlendRx","radius",0],["wbBlendRy","radius",1],
+      ["wbBlendRz","radius",2]
+    ])$(id).addEventListener("change",e=>transact(doc=>{
+      const n=Number(e.target.value);
+      if(!Number.isFinite(n))return doc;
+      doc.blend.primitive[field][i]=n;return doc;
     }));
     $("wbIsolate").addEventListener("click",()=>{
       mode=mode==="isolate"?"normal":"isolate";refreshVisuals();
