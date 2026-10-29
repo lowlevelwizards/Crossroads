@@ -242,3 +242,13 @@
   white-space:nowrap;text-shadow:0 1px 2px #0009;pointer-events:none}
 .mini-impact-outcome.casualty{background:#744a37ef;border-color:#f2be84;color:#ffe2b6}
 .mini-impact-outcome[hidden]{display:none}
+
+.battle-controls .battle-confirm-target{background:#e6b773;border:2px solid #f8d9a1;
+  color:#2a2b23;min-height:44px;position:sticky;left:0;z-index:2}
+.battle-draw-overlay{align-items:flex-end;justify-content:center;
+  padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+@media(max-height:610px){.battle-draw-overlay{padding-bottom:calc(82px + env(safe-area-inset-bottom))}}
+
+.battle-score{font-variant-numeric:tabular-nums}
+.battle-objective-banner[role="status"]{border:1px solid #e3bb78;
+  color:#ffe4ad;background:#4a3f2be9}

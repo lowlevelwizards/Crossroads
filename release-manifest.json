@@ -11,7 +11,8 @@
     "editor.html",
     "tests/startup-smoke.html",
     "battle3d.html",
-    "scenarios3d.html"
+    "scenarios3d.html",
+    "editor3d.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -65,7 +66,13 @@
     "src/diorama/cover-positions.js",
     "src/diorama/building-visuals.js",
     "src/diorama/tabletop-dice.js",
-    "tests/3d-v090-living-battlefield.test.js"
+    "tests/3d-v090-living-battlefield.test.js",
+    "src/diorama/formation-layout.js",
+    "editor3d.html",
+    "src/diorama/editor3d-ui.js",
+    "src/diorama/editor3d.css",
+    "tests/3d-v091-port-trust.test.js",
+    "tests/3d-v091-scenarios.test.js"
   ],
-  "threeDCacheVersion": "0.9.0"
+  "threeDCacheVersion": "0.9.1"
 }

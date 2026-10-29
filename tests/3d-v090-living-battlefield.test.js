@@ -50,7 +50,7 @@ assault.age=.12;
 assert(w.Crossroads3DAssaultMotion.individualDisplacement(assault,0)>0);
 assert.equal(w.Crossroads3DAssaultMotion.individualDisplacement(assault,7),0);
 const scene=read("src/diorama/scenario-scene.js");
-for(const x of ["coverSegments.push(", "coverPositions.arrange(", "coverFormationSlot(",
+for(const x of ["coverSegments.push(", "formationLayout.resolve(", "resolveSquadFormation(",
  "squad.entrySequence", "buildingVisuals.at(", "garrisonFiringOutlet(", "showPhysicalDice(stage)",
  "orderTexture(u.order)", "animatePhysicalDice(dt)",
  "individualDisplacement?.(assault,soldierIndex)"])
@@ -58,8 +58,8 @@ for(const x of ["coverSegments.push(", "coverPositions.arrange(", "coverFormatio
 for(const page of ["battle3d.html","diorama.html"]){
  const html=read(page);
  for(const script of ["cover-positions.js","building-visuals.js","tabletop-dice.js"])
-   assert(html.includes(script+"?v=0.9.0"),page+" must load "+script);
- assert(html.includes("scenario-scene.js?v=0.9.0"));
+   assert(html.includes(script+"?v=0.9.1"),page+" must load "+script);
+ assert(html.includes("scenario-scene.js?v=0.9.1"));
 }
-assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.0");
+assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.1");
 console.log("PASS — cover spacing, same-side stance, building door routes, engine dice mapping, individual assault and v0.9 wiring");

@@ -1,0 +1,72 @@
+"use strict";
+// A single deterministic model-position resolver for both preview and final pose.
+// Unit centers, movement legalities, and combat cohesion are engine-owned.
+(() => {
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+  function cohere(points,{maxNeighbor=.57,minBase=.29}={}){
+    const result=[];
+    for(const point of points){
+      let p={...point},near=null,best=Infinity;
+      for(const other of result){
+        const d=distance(p,other);
+        if(d<best){best=d;near=other}
+      }
+      if(near){
+        const dx=p.x-near.x,dz=p.z-near.z;
+        const d=Math.max(.0001,Math.hypot(dx,dz));
+        if(d>maxNeighbor){
+          const f=maxNeighbor/d;
+          p.x=near.x+dx*f;p.z=near.z+dz*f;
+        }else if(d<minBase){
+          const f=minBase/d;
+          p.x=near.x+dx*f;p.z=near.z+dz*f;
+        }
+      }
+      result.push(p);
+    }
+    return result;
+  }
+  function buildingSlots(origin,slots,bounds,threat){
+    const dx=threat?threat.x-bounds.x:1,dz=threat?threat.z-bounds.z:0;
+    const faceX=Math.abs(dx)>Math.abs(dz);
+    const width=Math.max(.35,(faceX?bounds.depth:bounds.width)-.58);
+    const cols=Math.max(1,Math.floor(width/.38)+1);
+    const arr=[];
+    for(let i=0;i<slots.length;i++){
+      const row=Math.floor(i/cols),count=Math.min(cols,slots.length-row*cols);
+      const along=(i%cols-(count-1)/2)*.38;
+      const depth=.28+row*.39;
+      const world=faceX?{
+        x:bounds.x+Math.sign(dx||1)*Math.max(.18,bounds.width/2-depth),
+        z:bounds.z+along
+      }:{
+        x:bounds.x+along,
+        z:bounds.z+Math.sign(dz||1)*Math.max(.18,bounds.depth/2-depth)
+      };
+      arr.push({x:world.x-origin.x,z:world.z-origin.z,
+        cover:true,frontRow:row===0,kind:"building",
+        look:threat||{x:world.x+Math.sign(dx||1),z:world.z+Math.sign(dz||1)}});
+    }
+    return arr;
+  }
+  function resolve({origin,slots,living,segments=[],coverPositions=null,
+     buildingBounds=null,threat=null,cohesion=.57}={}){
+    const count=Math.max(0,Math.min(slots?.length||0,
+      Number.isFinite(living)?Math.floor(living):slots?.length||0));
+    const originals=(slots||[]).slice(0,count)
+      .map(p=>({x:p.x,z:p.z,cover:false}));
+    let points=originals,source="open";
+    if(buildingBounds){
+      points=buildingSlots(origin,originals,buildingBounds,threat);
+      source="building";
+    }else if(coverPositions){
+      const cover=coverPositions.arrange(origin,originals,segments,threat,{
+        maxSnap:1.04,spacing:.38
+      });
+      if(cover){points=cover.points;source="cover"}
+    }
+    return Object.freeze({source,points:cohere(points,{maxNeighbor:cohesion})});
+  }
+  window.Crossroads3DFormationLayout=Object.freeze({resolve,cohere,buildingSlots});
+})();

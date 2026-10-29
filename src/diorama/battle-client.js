@@ -206,6 +206,7 @@
     const round=node("div","battle-round",
       "ROUND "+current.round+" / "+current.maxRounds);
     const score=node("div","battle-score");
+    score.setAttribute("aria-label","Awarded objective points; pending points score at round end");
     score.append(
       node("span","battle-team-score blue","POL "+(current.scores?.blue??0)),
       node("span","battle-score-divider","·"),
@@ -245,11 +246,35 @@
       ribbon.append(skip);
     }
     hud.append(ribbon);
+    if(current.phase==="round-complete"){
+      const pending=node("div","battle-objective-banner",
+        "ROUND CHECKPOINT · Continue to award eligible points for Round "+current.round);
+      pending.setAttribute("role","status");hud.append(pending);
+    }
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
       const label=node("div","battle-objective-banner",
         "⚑  "+focusedObjective.label+" · "+String(focusedObjective.state).toUpperCase());
       hud.append(label);
+    }
+    if(current.phase==="round-complete"){
+      const controlled=(current.objectives||[]).filter(o=>
+        o.state==="blue"||o.state==="red");
+      const projected={blue:0,red:0};
+      for(const obj of controlled)
+        if(obj.type==="control_zone")
+          projected[obj.state]+=Number(obj.roundPoints||0);
+      const finalOnly=controlled.filter(o=>o.type==="control_zone"&&o.finalPoints>0)
+        .map(o=>o.label+" · "+o.finalPoints+" final VP");
+      const headline=(projected.blue||projected.red)?
+        "PENDING AT CHECKPOINT: POL +"+projected.blue+" · GER +"+projected.red:
+        finalOnly.length?
+          "FINAL CONTROL BONUS (not yet awarded): "+finalOnly.join(" · "):
+          controlled.length?
+            "OBJECTIVES HELD: "+controlled.map(o=>o.label).join(", "):
+            "NO OBJECTIVES CURRENTLY CLAIMED";
+      const detail=node("div","battle-objective-banner",headline);
+      hud.append(detail);
     }
 
     const center=node("section","battle-center");
@@ -273,8 +298,8 @@
       "choose-unit":"Tap any glowing, eligible squad to activate it.",
       "choose-order":"Only legal orders are shown below.",
       "plan-movement":"Tap destination, then Confirm Move; add a waypoint to bend the route.",
-      "choose-target":"Tap an enemy to inspect the shot; tap again to fire.",
-      "choose-assault-target":"Tap the target twice to confirm the assault.",
+      "choose-target":"Tap an enemy, review its cover and shots, then Confirm Fire.",
+      "choose-assault-target":"Tap an enemy, then Confirm Assault.",
       "deployment":"Tap a unit, then choose its legal deployment point.",
       "ambush-reaction":"An enemy entered a prepared firing lane.",
       "round-complete":"Review the result before advancing.",
@@ -345,10 +370,16 @@
       reset.addEventListener("click",()=>tools?.reset?.());controls.append(reset);
       if(current.canCancel)action(controls,"Cancel order","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
+      const target=window.Crossroads3DTargetTools?.getState?.()||{};
+      const confirm=node("button","battle-action battle-primary-action battle-confirm-target",
+        current.phase==="choose-assault-target"?"✓ CONFIRM ASSAULT":"✓ CONFIRM FIRE");
+      confirm.type="button";confirm.disabled=busy||!target.legal;
+      confirm.addEventListener("click",()=>window.Crossroads3DTargetTools?.confirmTarget?.());
+      controls.append(confirm);
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
       if(current.canCancel)action(controls,"Cancel target","cancel",{},"battle-secondary");
     } else if(current.phase==="round-complete"){
-      action(controls,"CONTINUE TO NEXT ROUND","score-round",{},"battle-primary-action");
+      action(controls,"SCORE OBJECTIVES & CONTINUE","score-round",{},"battle-primary-action");
     } else if(current.phase==="ambush-reaction"){
       action(controls,"✦  Fire ambush","reaction-fire",{},"battle-primary-action");
       action(controls,"Hold fire","reaction-hold",{},"battle-secondary");

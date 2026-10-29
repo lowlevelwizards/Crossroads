@@ -509,3 +509,16 @@ melee and full tactical AI balance training remain future work. This must
 receive an iPhone acceptance pass before being considered finished in play.
 
 Garrison muzzle effects are projected to the nearest appropriate front facade when a unit fires, to keep flashes visible outside solid wall meshes; this changes no hit/range/cover rule. Defenders begin individual counter-contact during the assault dice phase.
+
+
+## v0.9.1 — Trust & interaction consolidation
+- One deterministic `formation-layout.js` now controls the ghost destination and final miniature placements, plus presentation-only nearest-neighbor reflow after losses. The 2D engine alone defines actual unit cohesion, movement legality and casualty results. Visual model spacing is capped to 1.85 tabletop inches between near neighbors, pending full-rulebook verification of precise edition wording.
+- Movement duration scales with world travel distance, Run versus Advance, and leg cycles follow the physical distance traveled. More vertical bounce and deceleration envelope.
+- Original 3D combat director waits for the active shooter's squad movement animation to complete before beginning its Advance fire event sequence. Existing authoritative dice and outcomes are not delayed.
+- Targeting receives a broad ring, explicit Confirm Fire/Assault action, and a fresh legality check immediately before submission; no double-tap guessing.
+- Per-weapon cosmetic shot scheduler no longer drops shots after twelve per weapon group; individual shot events now apply recoil on the shot's visual tick. Stronger selection pop and bottom-positioned order-die draw.
+- Objective scoreboard explicitly distinguishes awarded points from round-end pending scoring. The engine already grants round objective points at the Continue checkpoint; we do not prematurely count unawarded points.
+- MMG teams gain gunner/loader/assistant silhouettes, physical belt feed and boxes. Linear stone walls, fences, hedges and formerly missing Mokra foxholes, haystacks and woodpiles receive a first targeted 3D asset pass.
+- `editor3d.html` introduces a usable **visual draft** workbench: place, select, rotate, delete, browser-local save and JSON export. Exported assets must be incorporated in scenario data and validated before being used by the actual game rules; current draft objects are not authoritative gameplay geometry.
+- Solo AI still uses existing battle coordinator; regression probes cover objective decisions and risk tradeoffs. Full AI balance training, bespoke historical models for every unit type, comprehensive 3D terrain asset parity and direct-editor scenario persistence require further stages.
+- Manual iPhone/WebGL playtesting is required before merge; automated Node tests cannot establish visual quality or 60 FPS.

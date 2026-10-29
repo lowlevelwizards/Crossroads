@@ -4254,6 +4254,12 @@
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
             x:item.objective?.x??null,y:item.objective?.y??null,
             points:item.objective?.points??null,
+            type:item.objective?.type||"unknown",
+            faction:item.objective?.faction||null,
+            roundPoints:Number(item.objective?.roundPoints||0),
+            finalPoints:Number(item.objective?.finalPoints||0),
+            pointsPerUnit:Number(item.objective?.pointsPerUnit||0),
+            status:item.status||null,
             state:item.state||"none"
           })),
           combatEventCount:combatEventSequence,
