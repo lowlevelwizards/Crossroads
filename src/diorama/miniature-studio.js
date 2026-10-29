@@ -190,10 +190,7 @@
   function applyDisplayMode(){
     if(!activeSoldier||activeSoldier.modelVersion!==2)return;
     const mode=silhouetteMode?.value||"equipped";
-    if(activeSoldier.equipmentRoot)
-      activeSoldier.equipmentRoot.visible=mode==="equipped";
-    if(activeSoldier.uniformRoot)
-      activeSoldier.uniformRoot.visible=mode!=="body";
+    activeSoldier.setInspectionMode?.(mode);
   }
   classicCheckbox?.addEventListener("change",build);
   silhouetteMode?.addEventListener("change",applyDisplayMode);
@@ -216,13 +213,14 @@
     select.addEventListener("change",()=>{
       const look={...readLook(),[name]:select.value};
       saveLook(look);activeSoldier?.applyLook(look);
+      applyDisplayMode();
     });
   }
   for(const [name,input] of Object.entries(morphFields)){
     input.addEventListener("input",()=>{
       const look=saveLook({...readLook(),[name]:Number(input.value)});
       $(input.dataset.output).textContent=Number(look[name]).toFixed(2)+"×";
-      activeSoldier?.applyLook(look);
+      activeSoldier?.applyLook(look);applyDisplayMode();
     });
   }
   $("studioClearPaint").addEventListener("click",()=>{
