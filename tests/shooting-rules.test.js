@@ -304,6 +304,31 @@
     equal(shooting.analyzeShot(unit(), { x: 13, y: 0, down: true }).cover.saveTarget, 2);
   });
 
+  test("Point blank changes hit target for real attack resolution", () => {
+    terrain.instances=[];
+    shooting=makeRules();
+    const firer=unit({weapons:{rifle:1}});
+    const group=shooting.availableFireGroups(firer,5,false,true)[0];
+    equal(shooting.calculateGroupHitTarget(firer,group,false,5).hitTarget,2);
+    equal(shooting.calculateGroupHitTarget(firer,group,false,6.1).hitTarget,4);
+    const result=shooting.resolveAttack({shooter:firer,target:unit({id:"target",x:5}),
+      trace:shooting.analyzeShot(firer,unit({id:"target",x:5})),
+      rollDice:diceQueue([2],[1])});
+    equal(result.groups[0].hitTarget,2);
+  });
+
+  test("Point blank cancels Down bonus but preserves hedge protection", () => {
+    terrain.instances=[];shooting=makeRules();
+    equal(shooting.analyzeShot(unit(),{x:5,y:0,down:true}).cover.saveTarget,null);
+    terrain.instances=[{id:"hedge",x:2,y:-1,width:.5,height:2,
+      rules:{movement:"crossing",cover:"soft",save:5},
+      definition:{label:"hedge"}}];
+    shooting=makeRules();
+    const trace=shooting.analyzeShot(unit(),{x:3,y:0,down:true});
+    equal(trace.cover.saveTarget,5);
+    assert(trace.cover.label.startsWith("Soft cover"));
+  });
+
   test("Any hit inflicts exactly one Pin", () => {
     terrain.instances = [];
     shooting = makeRules();

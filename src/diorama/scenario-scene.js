@@ -33,6 +33,7 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const soldierIK=window.Crossroads3DSoldierIK;
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
@@ -42,6 +43,7 @@ function initialize(THREE) {
   if(!visualAnchor)throw new Error("3D visual formation anchor missing.");
   const tabletopDice=window.Crossroads3DTabletopDice;
   const buildingVisuals=window.Crossroads3DBuildingVisuals;
+  const garrisonWindows=window.Crossroads3DGarrisonWindows;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   const pointerRecovery = window.Crossroads3DPointerRecovery;
@@ -1124,7 +1126,7 @@ function initialize(THREE) {
         !destroyed&&!squad.moving;
       squad.orderFace.visible=squad.orderToken.visible;
       if(squad.arcIndicator)squad.arcIndicator.visible=selected&&!squad.moving&&
-        !destroyed&&!u.inBuilding&&(!snapshot||["choose-order","choose-target",
+        !destroyed&&!u.inBuilding&&u.mmgDeployed&&(!snapshot||["choose-order","choose-target",
         "choose-unit","ambush-reaction"].includes(snapshot.phase));
       if(squad.orderFace.userData.lastOrder!==u.order){
         squad.orderFace.material.map=orderTexture(u.order);
@@ -1219,6 +1221,10 @@ function initialize(THREE) {
     if(!b)return null;
     const point=new THREE.Vector3();
     soldier.figure.getWorldPosition(point);
+    const outlet=garrisonWindows?.outlet(b,point,enemyPosition);
+    if(outlet){
+      point.x=outlet.x;point.z=outlet.z;
+    }else{
     const dx=enemyPosition.x-b.x,dz=enemyPosition.z-b.z;
     if(Math.abs(dx)>Math.abs(dz)){
       point.x=b.x+Math.sign(dx||1)*(b.width/2+.055);
@@ -1226,6 +1232,7 @@ function initialize(THREE) {
     }else{
       point.x=clamp(point.x,b.x-b.width/2+.21,b.x+b.width/2-.21);
       point.z=b.z+Math.sign(dz||1)*(b.depth/2+.055);
+    }
     }
     point.y=terrainY(point.x,point.z)+.66;
     return point;
@@ -1751,7 +1758,10 @@ function initialize(THREE) {
       const wz=squad.root.position.z+gun.figure.position.z;
       squad.arcIndicator.position.set(gun.figure.position.x,
         footingHeight(wx,wz)+.07,gun.figure.position.z);
-      squad.arcIndicator.rotation.y=gun.figure.rotation.y;
+      squad.arcIndicator.rotation.y=
+        squad.unit.mmgDeployed&&Number.isFinite(squad.unit.mmgFacing)?
+          -Math.PI/2-squad.unit.mmgFacing*Math.PI/180:
+          gun.figure.rotation.y;
     }
     squad.hitBox.position.x=anchor.x;
     squad.hitBox.position.z=anchor.z;
@@ -1828,10 +1838,10 @@ function initialize(THREE) {
     const helmet=mat(german?0x53625b:0x677154);
     const legs = [];
     for (const side of [-1, 1]) {
-      const leg = block(figure, .15, .39, .19, trousers, side * .125, .34, 0);
-      leg.rotation.x = side * .08;
+      const leg = block(figure, .15, .255, .19, trousers, side * .125, .42, 0);
+      const shin=block(figure,.145,.255,.18,trousers,side*.125,.27,-.02);
       const boot=block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
-      legs.push({ mesh:leg, side, boot });
+      legs.push({ mesh:leg, shin, side, boot });
     }
     const breathing = new THREE.Group();
     breathing.position.set(0, .78, 0);
@@ -1944,6 +1954,7 @@ function initialize(THREE) {
     const issueCoat=uniform.color.getHex();
     const issuePants=trousers.color.getHex();
     const issueHelmet=helmet.color.getHex();
+    const issueLeather=leather.color.getHex();
     // Headwear geometry sits above the head at .60+; the face remains.
     const headwear=breathing.children.filter(part=>part.position.y>=.60);
     const inspectRing=new THREE.Mesh(new THREE.RingGeometry(.46,.51,24),
@@ -1952,13 +1963,25 @@ function initialize(THREE) {
     inspectRing.rotation.x=-Math.PI/2;inspectRing.position.y=.105;
     inspectRing.visible=false;figure.add(inspectRing);
     soldier.inspectRing=inspectRing;
+    const firingArc=new THREE.Group();squad.root.add(firingArc);
+    const wedge=shape(firingArc,new THREE.RingGeometry(.2,1.8,32,1,
+      Math.PI/6,Math.PI*2/3),new THREE.MeshBasicMaterial({
+        color:0xe3cf9e,transparent:true,opacity:.14,
+        depthWrite:false,depthTest:false,side:THREE.DoubleSide}),0,0,0);
+    wedge.rotation.x=-Math.PI/2;
+    firingArc.visible=false;
+    soldier.windowArc=firingArc;
     soldier.applyLook=(look={})=>{
       const scheme=look.uniform||"field";
       uniform.color.setHex(scheme==="olive"?0x50614c:
         scheme==="khaki"?0x9a8b62:issueCoat);
       trousers.color.setHex(scheme==="olive"?0x424f42:
         scheme==="khaki"?0x716345:issuePants);
-      helmet.color.setHex(scheme==="khaki"?0x777053:issueHelmet);
+      helmet.color.setHex(look.helmetTint==="dark"?0x3c4d42:
+        look.helmetTint==="dust"?0x918367:
+        scheme==="khaki"?0x777053:issueHelmet);
+      leather.color.setHex(look.leatherTint==="dark"?0x302b29:
+        look.leatherTint==="russet"?0x7e4c31:issueLeather);
       pack.visible=look.pack!=="off";
       for(const part of headwear)part.visible=look.helmet!=="off";
     };
@@ -2113,9 +2136,27 @@ function initialize(THREE) {
     look(id,index,appearance){
       unitLookup.get(id)?.soldiers[index]?.applyLook(appearance);
     },
+    pose(id,index,pose){
+      for(const s of squads)for(let i=0;i<s.soldiers.length;i++)
+        s.soldiers[i].labPose=s.unit.id===id&&i===index?pose:null;
+    },
+    isolate(id,index,on){
+      for(const s of squads){
+        s.root.visible=!on||s.unit.id===id;
+        for(let i=0;i<s.soldiers.length;i++)
+          s.soldiers[i].figure.visible=i<s.unit.soldiers&&
+            (!on||(s.unit.id===id&&i===index));
+      }
+    },
     close(){
-      for(const squad of squads)for(const soldier of squad.soldiers)
-        soldier.inspectRing.visible=false;
+      for(const s of squads){
+        s.root.visible=true;
+        for(let i=0;i<s.soldiers.length;i++){
+          const soldier=s.soldiers[i];
+          soldier.inspectRing.visible=false;soldier.labPose=null;
+          soldier.figure.visible=i<s.unit.soldiers;
+        }
+      }
     }
   });
 
@@ -2164,6 +2205,7 @@ function initialize(THREE) {
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
           leg.boot.position.y=.17;leg.boot.position.z=-.055;
+          leg.shin.rotation.x=0;leg.mesh.scale.y=1;leg.shin.scale.y=1;
         }
         });
       }
@@ -2222,7 +2264,7 @@ function initialize(THREE) {
           } else if(!soldier.pendingRemoval){
             soldier.figure.visible=false;
           }
-          if(stateUnit.down) soldier.breathing.rotation.x=.37;
+          if(stateUnit.down) soldier.breathing.rotation.x=-.62;
         });
         const end=bridge.toWorld(stateUnit);
         const displacement=Math.hypot(end.x-before.x,end.z-before.z);
@@ -2273,6 +2315,7 @@ function initialize(THREE) {
       lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
       updateObjectiveMarkers(snapshot);
+      miniatureLab?.refreshIsolation?.();
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onCombatStage(showCombatStage);
@@ -2764,6 +2807,12 @@ function initialize(THREE) {
             if(Math.abs(difference)<.014)soldier.aimTarget=null;
           }
         }
+        if(battle&&squad.unit.mmgDeployed&&soldierIndex===0&&!isWalking&&
+            Number.isFinite(squad.unit.mmgFacing)){
+          const facing=-Math.PI/2-squad.unit.mmgFacing*Math.PI/180;
+          soldier.figure.rotation.y+=motion.shortestDelta(soldier.figure.rotation.y,
+            facing)*Math.min(1,dt*8);
+        }
         const ownProgress=isWalking?moving.centerProgress:1;
         const takingSteps=isWalking&&moving.elapsed<moving.travelDuration;
         if(!isWalking){
@@ -2787,6 +2836,19 @@ function initialize(THREE) {
           soldier.coverPose=squad.unit.type==="mmgTeam"?
             (soldierIndex===0?.34:.23):
             slot?.cover?(slot.frontRow?.19:.32):0;
+          // The selected unit's occupied window shows the active firing facade.
+          if(soldier.windowArc){
+            soldier.windowArc.visible=Boolean(slot?.kind==="building"&&
+              selectedSquad===squad&&!squad.moving);
+            if(soldier.windowArc.visible){
+              const wx=squad.root.position.x+soldier.figure.position.x;
+              const wz=squad.root.position.z+soldier.figure.position.z;
+              soldier.windowArc.position.set(soldier.figure.position.x,
+                footingHeight(wx,wz)+.07,soldier.figure.position.z);
+              soldier.windowArc.rotation.y=motion.heading(
+                {x:wx,z:wz},slot.look);
+            }
+          }
           if(slot?.look&&!assault&&soldier.aimTarget==null&&soldier.recoil<.02){
             const at={x:squad.root.position.x+soldier.figure.position.x,
               z:squad.root.position.z+soldier.figure.position.z};
@@ -2801,6 +2863,7 @@ function initialize(THREE) {
           if(slot&&frameIndex%4===0&&shift>.015)soldier.grounded=false;
         }
         if(isWalking) {
+          if(soldier.windowArc)soldier.windowArc.visible=false;
           const delta=ownProgress-moving.centerProgress;
           const dx=moving.end.x-moving.start.x,dz=moving.end.z-moving.start.z;
           const length=Math.hypot(dx,dz)||1;
@@ -2808,6 +2871,10 @@ function initialize(THREE) {
           soldier.figure.position.x=soldier.slotX+dx*delta-dz/length*lateral;
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
+        }
+        if(soldier.crossingLift){
+          soldier.figure.position.y-=soldier.crossingLift;
+          soldier.crossingLift=0;
         }
         if(isWalking||!soldier.grounded){
           const fx=squad.root.position.x+soldier.figure.position.x;
@@ -2818,6 +2885,14 @@ function initialize(THREE) {
             (isWalking?Math.min(1,dt*19):1);
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
+        }
+        if(isWalking&&soldierIK&&!reducedMotion){
+          const lift=soldierIK.crossingLift({
+            x:squad.root.position.x+soldier.figure.position.x,
+            z:squad.root.position.z+soldier.figure.position.z
+          },moving.start,moving.end,coverSegments);
+          soldier.figure.position.y+=lift;
+          soldier.crossingLift=lift;
         }
         soldier.breathing.position.y=soldier.baseY-
           (soldier.crouch||0)*.31+(soldier.entryStep||0)*.025;
@@ -2830,6 +2905,7 @@ function initialize(THREE) {
         for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
           leg.boot.position.y=.17;leg.boot.position.z=-.055;
+          leg.shin.rotation.x=0;leg.mesh.scale.y=1;leg.shin.scale.y=1;
         }
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
@@ -2863,6 +2939,40 @@ function initialize(THREE) {
           }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
+        }
+        if(miniatureLab?.isOpen()&&!isWalking&&soldier.labPose){
+          if(soldier.labPose==="walk"){
+            const gait=motion.gaitPose(t*.75,.47,1,soldier.gait.phase,false);
+            soldier.breathing.position.y+=gait.bob*soldier.gait.bob;
+            for(const leg of soldier.legs){
+              leg.boot.position.y=.17+(leg.side===-1?gait.leftLift:gait.rightLift);
+              leg.boot.position.z=-.055+(leg.side===-1?gait.leftReach:gait.rightReach);
+            }
+          }else if(soldier.labPose==="down"){
+            soldier.breathing.position.y=soldier.baseY-.30;
+            soldier.breathing.rotation.x=-.64;
+          }else if(soldier.labPose==="aim"){
+            soldier.breathing.rotation.x=-.13;
+          }else if(soldier.labPose==="fire"){
+            soldier.breathing.rotation.x=-.13-Math.pow(Math.max(0,
+              Math.sin(t*10)),3)*.20;
+          }
+        }
+        if(soldierIK){
+          for(const leg of soldier.legs){
+            const solved=soldierIK.solve({
+              hipY:.54-(soldier.crouch||0)*.20,
+              footY:leg.boot.position.y+.07,
+              footZ:leg.boot.position.z,
+              upper:.255,lower:.255
+            });
+            for(const [part,segment] of [[leg.mesh,solved.thigh],[leg.shin,solved.shin]]){
+              part.position.y=segment.y;
+              part.position.z=segment.z;
+              part.rotation.x=segment.rotation;
+              part.scale.y=segment.length/.255;
+            }
+          }
         }
       }
       if(!isWalking&&frameIndex%18===0&&squad.orderToken.visible){

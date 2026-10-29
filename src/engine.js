@@ -4336,6 +4336,12 @@
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
+          // Public, authored terrain footprints only: deterministic tactical
+          // cover evaluation; no enemy intelligence or invented path legality.
+          terrain:(TERRAIN.instances||[]).map(item=>({
+            x:item.x,y:item.y,width:item.width,height:item.height,
+            cover:item.rules?.cover||null,movement:item.rules?.movement||"open"
+          })),
           snap:snapSelection?{
             officerId:snapSelection.officerId,remaining:snapSelection.remaining,
             eligibleIds:snapEligible().map(u=>u.id)
@@ -4398,6 +4404,7 @@
             soldiers:unit.soldiers,maxSoldiers:unit.maxSoldiers,
             pins:unit.pins,down:unit.down,activated:unit.activated,
             order:unit.order,ambush:unit.ambush,mmgDeployed:unit.mmgDeployed,
+            mmgFacing:unit.mmgFacing,
             inBuilding:unit.inBuilding,outcome:unit.outcome,
             commandBonus:commandBonus(unit),
             commandSource:commandSupport(unit)?.id||null,
@@ -4439,12 +4446,16 @@
           chosenOrder==="Advance",true).map(group=>({
           label:group.profile?.label||group.key,
           models:group.models,shots:group.shots,
-          hitTarget:group.hitTarget??null,
-          modifiers:(group.modifiers||[]).map(m=>m.label)
+          hitTarget:combatRuntime.shootingRules.calculateGroupHitTarget(
+            unit,group,chosenOrder==="Advance",a.distance).hitTarget,
+          modifiers:combatRuntime.shootingRules.calculateGroupHitTarget(
+            unit,group,chosenOrder==="Advance",a.distance).modifiers.map(m=>m.label)
         }));
-        return {legal:Boolean(a.inRange&&!a.blocked),
-          reason:!a.inRange?"Out of range":a.blockReason??null,
+        return {legal:Boolean(a.inRange&&!a.blocked&&weapons.length),
+          reason:!a.inRange?"Out of range":a.blockReason||
+            (!weapons.length?"No weapon can fire on this order":null),
           distance:a.distance,inRange:a.inRange,blocked:a.blocked,
+          insideArc:a.insideArc,mmgFacing:unit.mmgFacing??null,
           cover:a.cover??null,weapons};
       },
       async command(action,payload={}) {
@@ -4474,6 +4485,14 @@
         else if(name==="target"){
           if(phase==="choose-target")await chooseTarget(String(payload.id||""));
           else if(phase==="choose-assault-target")chooseAssaultTarget(String(payload.id||""));
+        }
+        else if(name==="rotate-mmg"){
+          const unit=getUnit(selectedUnitId);
+          const delta=Number(payload.delta);
+          if(phase!=="choose-order"||!unit||!isMMGTeam(unit)||
+             !unit.mmgDeployed||!Number.isFinite(delta)||Math.abs(delta)!==45)
+            return {ok:false,reason:"No legal MMG traverse",snapshot:this.snapshot()};
+          rotateMMGFacing(unit,delta);
         }
         else if(name==="building"){
           if(phase==="choose-order") {

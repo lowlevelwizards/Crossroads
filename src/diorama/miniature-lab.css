@@ -19,5 +19,8 @@
   padding:7px 10px;min-height:33px;font-weight:800}
 .miniature-lab button:focus-visible,.miniature-lab-toggle:focus-visible{
   outline:3px solid #f3d78a;outline-offset:2px}
+.mini-lab-checkbox{display:flex!important;gap:9px;align-items:center;
+  padding:5px 0}
+.mini-lab-checkbox input{width:18px;height:18px;accent-color:#cdb880}
 @media(max-height:550px){.miniature-lab{top:15px;max-height:calc(100dvh - 30px)}
   .miniature-lab-toggle{top:6px;right:calc(310px + env(safe-area-inset-right))}}

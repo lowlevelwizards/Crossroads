@@ -5,6 +5,7 @@
   let store={};
   try{store=JSON.parse(localStorage.getItem(key)||"{}")||{}}catch(_){store={}}
   let adapter=null,opened=false,unitId=null,index=0;
+  let isolated=false,previewPose="idle";
   const stage=document.getElementById("stage");
   if(!stage)return;
   const toggle=document.createElement("button");
@@ -33,7 +34,12 @@
     select.addEventListener("change",()=>changed(select.value));
     wrap.append(select);panel.append(wrap);
   }
-  function focus(){if(adapter&&unitId)adapter.focus(unitId,index)}
+  function focus(){
+    if(!adapter||!unitId)return;
+    adapter.focus(unitId,index);
+    adapter.isolate?.(unitId,index,isolated);
+    adapter.pose?.(unitId,index,previewPose);
+  }
   function render(){
     panel.replaceChildren();
     if(!adapter){panel.append(element("p","Preparing miniatures…"));return}
@@ -60,13 +66,29 @@
     const fields=[
       ["uniform","Uniform",[["field","Field issue"],["olive","Olive drab"],["khaki","Khaki"]]],
       ["helmet","Headwear",[["on","Equipped"],["off","Removed"]]],
-      ["pack","Field pack",[["on","Equipped"],["off","Removed"]]]
+      ["pack","Field pack",[["on","Equipped"],["off","Removed"]]],
+      ["helmetTint","Helmet finish",[["issue","Issue paint"],["dark","Dark green"],["dust","Dusty tan"]]],
+      ["leatherTint","Boots / leather",[["issue","Issue leather"],["dark","Blackened"],["russet","Russet"]]]
     ];
     for(const [name,label,entries] of fields)
       dropdown(label,entries,appearance[name]||(name==="uniform"?"field":"on"),value=>{
         const look={...readLook(unitId,index),[name]:value};
         store[slot(unitId,index)]=look;save();adapter.look(unitId,index,look);
       });
+    dropdown("Inspection pose",[
+      ["idle","Standing"],["walk","Walking"],["down","Down / prone"],["aim","Aiming"],
+      ["fire","Firing"]],previewPose,value=>{
+      previewPose=value;adapter.pose?.(unitId,index,value);
+    });
+    const isolateLabel=element("label","Isolate selected miniature");
+    isolateLabel.className="mini-lab-checkbox";
+    const isolateBox=element("input");
+    isolateBox.type="checkbox";isolateBox.checked=isolated;
+    isolateBox.addEventListener("change",()=>{
+      isolated=isolateBox.checked;
+      adapter.isolate?.(unitId,index,isolated);
+    });
+    isolateLabel.prepend(isolateBox);panel.append(isolateLabel);
     const reset=element("button","Reset appearance");
     reset.type="button";reset.className="mini-lab-reset";
     reset.addEventListener("click",()=>{
@@ -79,11 +101,16 @@
     opened=Boolean(value);panel.hidden=!opened;
     toggle.setAttribute("aria-expanded",String(opened));
     toggle.textContent=opened?"✕ CLOSE LAB":"✦ MINIATURE LAB";
-    if(opened){render();focus()}else adapter?.close();
+    if(opened){render();focus()}else {
+      isolated=false;previewPose="idle";adapter?.close();
+    }
   }
   toggle.addEventListener("click",()=>setOpen(!opened));
   window.Crossroads3DMiniatureLab=Object.freeze({
     readLook,isOpen:()=>opened,
+    refreshIsolation(){
+      if(opened&&isolated&&adapter&&unitId)adapter.isolate?.(unitId,index,true);
+    },
     focusUnit(id){unitId=id;index=0;render();focus()},
     attach(handlers){
       adapter=handlers;render();

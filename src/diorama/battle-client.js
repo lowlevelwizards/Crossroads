@@ -7,7 +7,7 @@
   if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
   const scenario=new URLSearchParams(location.search).get("scenario");
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
-    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.7.2";
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.9.10";
   let session=null,state=null,busy=false,warning="",hint="",error="";
   let aiController=null;
   const soloMode=new URLSearchParams(location.search).get("solo")==="1";
@@ -244,7 +244,8 @@
       deployment:current.deploymentUnitId,order:current.chosenOrder,
       score:current.scores,snap:current.snap,end:current.battleEnded,
       objectives:current.objectives,units:current.units?.map(u=>
-        [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
+        [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding,
+           u.mmgFacing,u.mmgDeployed]),
       available:current.orders,building:current.building,reaction:current.reaction,
       count:current.eventCount,hint,warning,busy,logOpen,showToast,
       audioEnabled,fastPresentation
@@ -511,7 +512,8 @@
       bag:state.bagRemaining,events:state.eventCount,result:state.result,
       objectives:state.objectives,battleEpoch:state.battleEpoch,
       scores:state.scores,units:state.units?.map(u=>
-        [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding])
+        [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding,
+          u.mmgFacing,u.mmgDeployed])
     });
     if(lastStateKey!==stateKey){
       lastStateKey=stateKey;

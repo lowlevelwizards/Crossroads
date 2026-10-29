@@ -37,4 +37,4 @@ for(const script of ["src/diorama/study-motion.js","src/diorama/shot-explanation
   "src/diorama/miniature-lab.js","src/diorama/scenario-scene.js"])
   assert(html.includes(script),"Missing entry script "+script);
 assert(html.indexOf("miniature-lab.js")<html.indexOf("scenario-scene.js"));
-console.log("PASS — 3D v0.9.5–0.9.9 preview gait, legal shot detail, support AI and lab integration");
+console.log("PASS — 3D v0.9.5–0.9.10 preview gait, legal shot detail, support AI and lab integration");

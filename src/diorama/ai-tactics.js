@@ -36,7 +36,9 @@
         const balance=forceBalance(u,allies,enemies);
         return (obj?Math.max(0,22-dist(u,obj))*1.8:0)+
           (enemy?Math.max(0,18-dist(u,enemy))*.6:0)+
-          (u.pins>=2?-8:0)+(u.role==="officer"?4:0)+
+          (u.pins>=2?-8:0)+(u.role==="officer"?
+          4+allies.filter(v=>v.id!==u.id&&!v.activated&&v.pins>=1&&
+            dist(v,u)<=6).length*3:0)+
           (balance.advantage>0?2:0)+(u.down?-3:0);
       };
       return value(b)-value(a)||a.id.localeCompare(b.id);
@@ -56,8 +58,11 @@
     if(unit.pins>=2&&has("Rally"))return "Rally";
     if(unit.soldiers<=2&&balance.advantage<-3&&
       !visible.length&&has("Down"))return "Down";
-    // Weapon teams holding a lane can prepare an ambush rather than rush.
+    // A packed fixed weapon must establish itself before it can shoot.
+    // The real coordinator's Fire order owns deployment and dice.
     const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
+    if(supportWeapon&&!unit.mmgDeployed&&unit.weapons?.mmg&&has("Fire")&&
+       (visible.length||holding))return "Fire";
     if(supportWeapon&&holding&&has("Ambush"))return "Ambush";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
       return "Fire";
@@ -67,6 +72,18 @@
     if(has("Ambush")&&enemy.some(u=>dist(u,unit)<22))return "Ambush";
     if(has("Down"))return "Down";
     return legal[0]||null;
+  }
+  function mmgRotation(unit,enemies){
+    if(!unit?.mmgDeployed||!Number.isFinite(unit.mmgFacing))return 0;
+    const candidates=(enemies||[]).filter(u=>u.soldiers>0&&dist(u,unit)<36);
+    const nearestTarget=nearest(unit,candidates);
+    if(!nearestTarget)return 0;
+    const bearing=((Math.atan2(nearestTarget.y-unit.y,
+      nearestTarget.x-unit.x)*180/Math.PI)%360+360)%360;
+    const difference=((bearing-unit.mmgFacing+540)%360)-180;
+    // Rotate only when no longer inside the engine's 90-degree sector.
+    if(Math.abs(difference)<=44)return 0;
+    return difference>0?45:-45;
   }
   function chooseTarget(s,unit,previewTarget) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
@@ -83,12 +100,47 @@
     return evaluated.sort((a,b)=>value(b)-value(a)||
       a.unit.id.localeCompare(b.unit.id))[0]?.unit||null;
   }
+  function defensiveCover(point,terrain=[],enemies=[]){
+    let benefit=0;
+    for(const entry of terrain||[]){
+      if(!entry?.cover)continue;
+      const x=Number(entry.x),y=Number(entry.y),
+        w=Number(entry.width),h=Number(entry.height);
+      if(![x,y,w,h].every(Number.isFinite))continue;
+      const inside=point.x>=x&&point.x<=x+w&&
+        point.y>=y&&point.y<=y+h;
+      if(entry.movement!=="crossing"){
+        if(inside)benefit=Math.max(benefit,entry.cover==="hard"?6:3);
+        continue;
+      }
+      // Walls/hedges only help if the defender is near the obstacle
+      // and a nearby opponent is on its far side.
+      if(!enemies?.length)continue;
+      const cx=x+w/2,cy=y+h/2;
+      const horizontal=w>=h;
+      const offset=horizontal?point.y-cy:point.x-cx;
+      const along=horizontal?point.x:point.y;
+      const start=horizontal?x:y,end=start+(horizontal?w:h);
+      if(along<start-.6||along>end+.6||Math.abs(offset)>3.5)continue;
+      if(enemies.some(enemy=>{
+        const opposite=horizontal?enemy.y-cy:enemy.x-cx;
+        return opposite*offset<0&&Math.abs(opposite)>.2;
+      }))benefit=Math.max(benefit,entry.cover==="hard"?5:2.5);
+    }
+    return benefit;
+  }
   function chooseMove(s,unit,previewMove) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     const objective=nearest(unit,objectivePoint(s,unit.faction));
     const enemy=nearest(unit,enemies);
     const board=s.table||{width:72,height:48};
-    const target=objective||enemy||{x:board.width/2,y:board.height/2};
+    const friendly=s.units.filter(u=>u.faction===unit.faction&&
+      u.id!==unit.id&&u.soldiers>0);
+    // Officers move toward pinned units to extend real 6-inch command support.
+    // The legal preview decides where they may actually finish.
+    const pinnedAlly=unit.role==="officer"?nearest(unit,friendly.filter(u=>
+      u.pins>0&&!u.activated&&dist(u,unit)>5.5)):null;
+    const target=pinnedAlly||objective||enemy||{x:board.width/2,y:board.height/2};
     const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
     const theta=Math.atan2(target.y-unit.y,target.x-unit.x);
     const options=[];
@@ -115,15 +167,25 @@
         const support=Math.max(0,Math.min(3,balance.advantage*.25));
         const objectiveRange=objective?dist(endpoint,objective):Infinity;
         const objectiveHold=objectiveRange<2.7?4:0;
+        const coverBenefit=defensiveCover(endpoint,s.terrain,enemies)*
+          ((unit.pins||0)>0||unit.soldiers<=3?1.9:1.15);
+        const exposed=enemies.filter(e=>dist(e,endpoint)<18).length;
+        const exposurePenalty=Math.min(6,exposed*1.1)*
+          (coverBenefit>2?.36:1);
         // Legal previews remain authoritative for every candidate endpoint.
         const supportPenalty=supportWeapon?
           Math.max(0,step-3)*1.3+(enemyDist<5?4:0):0;
         const retreatPenalty=enemyDist<4&&unit.pins>=2?6:0;
+        const commandBenefit=pinnedAlly&&dist(endpoint,pinnedAlly)<=6?
+          8:0;
+        const crowdPenalty=pinnedAlly&&dist(endpoint,pinnedAlly)<1.5?
+          8:0;
         // An actual legal preview supplies all path costs. Never guess cover or LOS.
         const efficiency=Number.isFinite(preview.cost)?
           -Math.max(0,preview.cost-step)*.15:0;
         const score=progress*4+(objective?4:0)+objectiveHold+
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
+          commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score});
       }
@@ -131,6 +193,7 @@
     return options.sort((a,b)=>b.score-a.score)[0]?.point||null;
   }
   window.Crossroads3DAITactics=Object.freeze({
-    chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance
+    chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
+    defensiveCover
   });
 })();
