@@ -7,9 +7,17 @@
   });
   function create({THREE,miniatureScale=1,mat,shape,motion}) {
     const Y=new THREE.Vector3(0,1,0);
-    const sphere=new THREE.SphereGeometry(1,16,12);
+    // Geometry reuse is crucial for multi-squad iPhone battles. Each factory
+    // caches shared vertex buffers, while every actor owns its transform.
+    const geometryCache=new Map();
+    const cached=(key,build)=>{
+      if(!geometryCache.has(key))geometryCache.set(key,build());
+      return geometryCache.get(key);
+    };
+    const sphere=cached("unitSphere",()=>new THREE.SphereGeometry(1,16,12));
     const smoothCylinder=(a,b,h,segments=16)=>
-      new THREE.CylinderGeometry(a,b,h,segments);
+      cached(["cyl",a,b,h,segments].join(":"),()=>
+        new THREE.CylinderGeometry(a,b,h,segments));
     const ellipsoid=(parent,material,xyz,scale)=>{
       const mesh=new THREE.Mesh(sphere,material);
       mesh.position.set(...xyz);mesh.scale.set(...scale);
@@ -18,12 +26,16 @@
       return mesh;
     };
     const box=(parent,material,size,pos)=>{
-      const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),material);
+      const geom=cached("box:"+size.join(":"),()=>
+        new THREE.BoxGeometry(...size));
+      const mesh=new THREE.Mesh(geom,material);
+      mesh.userData.sharedMiniatureGeometry=true;
       mesh.position.set(...pos);mesh.castShadow=true;parent.add(mesh);
       return mesh;
     };
     const cylinder=(parent,material,r1,r2,height,pos,radial=16)=>{
       const mesh=new THREE.Mesh(smoothCylinder(r1,r2,height,radial),material);
+      mesh.userData.sharedMiniatureGeometry=true;
       mesh.position.set(...pos);mesh.castShadow=true;parent.add(mesh);
       return mesh;
     };
@@ -65,7 +77,9 @@
       ellipsoid(breathing,uniform,[0,-.18,.025],[.29,.09,.225]);
       cylinder(breathing,uniform,.15,.18,.10,[0,.335,-.018],14);
       const headGroup=new THREE.Group();
-      headGroup.position.set(0,.39,-.01);breathing.add(headGroup);
+      headGroup.position.set(0,.39,-.01);
+      headGroup.rotation.z=(index%3-1)*.026;
+      breathing.add(headGroup);
       ellipsoid(headGroup,face,[0,.12,-.02],[.22,.235,.19]);
       ellipsoid(headGroup,face,[0,.035,-.172],[.075,.07,.04]); // nose
       for(const side of [-1,1]){
@@ -79,8 +93,10 @@
         helmetParts.push(ellipsoid(headGroup,uniform,[0,.385,0],[.235,.085,.215]));
         helmetParts.push(box(headGroup,dark,[.47,.025,.24],[0,.265,-.14]));
       }else{
-        const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,16,
-          0,Math.PI*2,0,Math.PI/2),helmetMat);
+        const dome=cached("helmet-dome",()=>new THREE.SphereGeometry(1,32,16,
+          0,Math.PI*2,0,Math.PI/2));
+        const shell=new THREE.Mesh(dome,helmetMat);
+        shell.userData.sharedMiniatureGeometry=true;
         shell.scale.set(german?.267:.245,.258,german?.285:.253);
         shell.position.set(0,.265,0);headGroup.add(shell);shell.castShadow=true;
         helmetParts.push(shell);
@@ -139,6 +155,17 @@
         [.12,.16,.095]);
       const extraPack=ellipsoid(packGroup,canvas,[-.19,-.18,.08],
         [.11,.11,.12]);
+      // Specialist silhouettes stay distinct while sharing one body rig.
+      if(officer){
+        box(equipmentRoot,leather,[.21,.23,.085],[.30,-.12,.08]);
+      }else if(role==="lmg"||role==="loader"){
+        for(let n=0;n<3;n++)
+          box(equipmentRoot,canvas,[.11,.19,.075],
+            [-.25,-.17+n*.12,.12]);
+      }else if(role==="crew"||role==="mmg"){
+        box(equipmentRoot,dark,[.27,.18,.24],[-.29,-.20,.19]);
+        box(equipmentRoot,leather,[.29,.045,.25],[-.29,-.08,.19]);
+      }
       // Weapon group is physically coherent. Muzzle and both grip targets
       // are descendants of the same transform.
       const weapon=new THREE.Group();
@@ -152,6 +179,14 @@
         gunParts.push(box(weapon,dark,[.20,.18,.30],[0,0,-.15]));
         const muzzle=cylinder(weapon,dark,.037,.045,.65,[0,.035,-.52],12);
         muzzle.rotation.x=Math.PI/2;gunParts.push(muzzle);
+        const tripod=new THREE.Group();
+        body.add(tripod);gunParts.push(tripod);
+        cylinder(tripod,dark,.033,.033,.30,[0,.21,-.51],10);
+        for(const side of [-1,0,1]){
+          const foot=cylinder(tripod,dark,.022,.024,.49,
+            [side*.14,.22,-.54],10);
+          foot.rotation.z=side*.6;foot.rotation.x=-.3;
+        }
       }else{
         // Stock narrows into the receiver, barrel runs forward (-Z).
         ellipsoid(weapon,wood,[0,-.04,.13],
@@ -257,8 +292,10 @@
         breathing.rotation.x=-(pose.lean||0)*(1-eased*.65);
         breathing.rotation.z=(pose.roll||0)*(1-eased);
         headGroup.rotation.x=(pose.headDuck||crouch*.12);
-        weapon.rotation.x=pose.aim?-.12:0;
+        weapon.rotation.x=(pose.aim?-.12:0)+
+          (pose.reload?Math.sin(pose.reload*Math.PI)*.30:0);
         weapon.rotation.y=.38+(pose.aim?-.23:0);
+        weapon.rotation.z=-.13-eased*.35;
         weapon.position.z=-.305-(pose.recoil||0)*.055;
         for(const leg of legs){
           const side=leg.side;
