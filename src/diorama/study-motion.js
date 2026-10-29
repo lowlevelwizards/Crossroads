@@ -43,14 +43,26 @@
     return clamp((elapsed - gait.delay) / (duration * gait.pace), 0, 1);
   }
   function travelDuration(distance,run=false){
-    const speed=run?2.55:1.73;
-    return clamp(distance/Math.max(.25,speed),.29,2.15);
+    const speed=run?2.05:1.38;
+    return clamp(distance/Math.max(.25,speed),.35,3.25);
+  }
+  // Distance-driven footfall: one cycle per physical stride, independent of FPS.
+  function stepPhase(distanceTravelled, strideLength=.55, offset=0){
+    return distanceTravelled / Math.max(.1,strideLength) * Math.PI * 2 + offset;
+  }
+  function travelProgress(elapsed,duration){
+    const t=clamp(elapsed/Math.max(.001,duration),0,1);
+    // Short acceleration and braking shoulders; nearly constant velocity.
+    const shoulder=.09;
+    if(t<shoulder)return t*t/(2*shoulder*(1-shoulder));
+    if(t>1-shoulder)return 1-(1-t)*(1-t)/(2*shoulder*(1-shoulder));
+    return (t-shoulder/2)/(1-shoulder);
   }
   function finishTime(duration, gaits) {
     return Math.max(duration, ...gaits.map(gait => gait.delay + duration * gait.pace));
   }
   window.CrossroadsDioramaMotion = Object.freeze({
     heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor,
-    travelDuration,finishTime
+    travelDuration,travelProgress,stepPhase,finishTime
   });
 })();
