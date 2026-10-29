@@ -28,6 +28,7 @@ const tests = [
   "3d-v110-miniature-studio.test.js",
   "3d-v111-miniature-profiles.test.js",
   "3d-v112-soldier-actions.test.js",
+  "3d-v113-inspection.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",

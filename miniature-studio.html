@@ -50,6 +50,9 @@
           <label for="studioSpeed">SPEED <output id="studioSpeedValue">1×</output></label>
         </div>
         <input type="range" id="studioSpeed" min=".25" max="2" step=".25" value="1">
+        <label for="studioTimeline">Animation timeline
+          <output id="studioTimelineValue">0.00s</output></label>
+        <input type="range" id="studioTimeline" min="0" max="1000" step="1" value="0">
         <p class="field-note">Animations loop in place for inspection; they do not issue battle orders.</p>
       </section>
       <section class="studio-section">
@@ -58,6 +61,8 @@
           <button type="button" id="studioProjection" aria-pressed="false">ORTHOGRAPHIC</button>
           <button type="button" id="studioReset">RESET VIEW</button>
         </div>
+        <label class="studio-check"><input id="studioShowJoints" type="checkbox"> Show joints &amp; rig guides</label>
+        <label class="studio-check"><input id="studioWireframe" type="checkbox"> Wireframe surfaces</label>
         <p class="field-note">One finger or left drag: orbit. Two fingers or right drag: pan. Pinch or wheel: zoom. Front, side, rear and top presets work in either projection.</p>
       </section>
       <section class="studio-section">

@@ -109,6 +109,26 @@
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
+  const rigMarkers=new THREE.Group();scene.add(rigMarkers);
+  const jointMaterials=[0x486f66,0x8b6e51].map(color=>
+    new THREE.MeshBasicMaterial({color,depthTest:false}));
+  const joints=[];
+  for(let i=0;i<6;i++){
+    const marker=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),
+      jointMaterials[i%2]);
+    marker.renderOrder=100;rigMarkers.add(marker);joints.push(marker);
+  }
+  rigMarkers.visible=false;
+  function refreshWireframe(){
+    if(!activeFigure)return;
+    const checked=$("studioWireframe").checked;
+    activeFigure.traverse(mesh=>{
+      if(!mesh.isMesh)return;
+      if(mesh.material&&typeof mesh.material.wireframe==="boolean"){
+        mesh.material.wireframe=checked;
+      }
+    });
+  }
   const disposeActor=()=>{
     actorRoot.traverse(node=>{
       node.geometry?.dispose?.();
@@ -155,6 +175,7 @@
     flash.position.copy(muzzle);
     activeSoldier.breathing.add(flash);flash.visible=false;
     updateRecipe(recipe);
+    refreshWireframe();
     elapsed=0;
     renderPose(0);
   };
@@ -302,6 +323,16 @@
   resize();resetView();
 
   let elapsed=0,playing=true,playSpeed=1;
+  const timeline=$("studioTimeline"),timelineValue=$("studioTimelineValue");
+  function syncTimeline(){
+    const duration=poses.duration(poseSelect.value);
+    timeline.value=Math.round((elapsed%duration)/duration*1000);
+    timelineValue.textContent=elapsed.toFixed(2)+"s";
+  }
+  $("studioShowJoints").addEventListener("change",()=>{
+    rigMarkers.visible=$("studioShowJoints").checked;
+  });
+  $("studioWireframe").addEventListener("change",refreshWireframe);
   function renderPose(t){
     const soldier=activeSoldier;
     if(!soldier)return;
@@ -325,16 +356,29 @@
         mesh.rotation.set(segment.rotation,0,0);
         mesh.scale.set(1,segment.length/.255,1);
       }
+      const base=side<0?0:3;
+      joints[base].position.set(side*.125,solved.hip.y,solved.hip.z);
+      joints[base+1].position.set(side*.125,solved.knee.y,solved.knee.z);
+      joints[base+2].position.set(side*.125,solved.ankle.y,solved.ankle.z);
     }
     if(flash)flash.visible=pose.flash;
+    rigMarkers.position.copy(figure.position);
+    rigMarkers.rotation.copy(figure.rotation);
   }
-  poseSelect.addEventListener("change",()=>{elapsed=0;renderPose(0)});
+  poseSelect.addEventListener("change",()=>{elapsed=0;renderPose(0);syncTimeline()});
+  timeline.addEventListener("input",()=>{
+    elapsed=Number(timeline.value)/1000*poses.duration(poseSelect.value);
+    playing=false;
+    playButton.textContent="▶ PLAY";
+    playButton.setAttribute("aria-pressed","false");
+    renderPose(elapsed);syncTimeline();
+  });
   playButton.addEventListener("click",()=>{
     playing=!playing;
     playButton.textContent=playing?"❚❚ PAUSE":"▶ PLAY";
     playButton.setAttribute("aria-pressed",String(playing));
   });
-  $("studioReplay").addEventListener("click",()=>{elapsed=0;renderPose(0)});
+  $("studioReplay").addEventListener("click",()=>{elapsed=0;renderPose(0);syncTimeline()});
   speed.addEventListener("input",()=>{
     playSpeed=Number(speed.value)||1;
     $("studioSpeedValue").textContent=playSpeed.toFixed(2).replace(/\.?0+$/,"")+"×";
@@ -348,6 +392,7 @@
     last=now;
     if(playing)elapsed+=dt*playSpeed;
     renderPose(elapsed);
+    if(playing)syncTimeline();
     renderer.render(scene,currentCamera);
     requestAnimationFrame(animate);
   }
