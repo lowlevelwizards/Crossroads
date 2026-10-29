@@ -507,3 +507,5 @@ Window locations and facade approach points are illustrative, not AI-driven
 per-figure navigation or geometric door colliders. Multi-round individual
 melee and full tactical AI balance training remain future work. This must
 receive an iPhone acceptance pass before being considered finished in play.
+
+Garrison muzzle effects are projected to the nearest appropriate front facade when a unit fires, to keep flashes visible outside solid wall meshes; this changes no hit/range/cover rule. Defenders begin individual counter-contact during the assault dice phase.

@@ -51,7 +51,7 @@ assert(w.Crossroads3DAssaultMotion.individualDisplacement(assault,0)>0);
 assert.equal(w.Crossroads3DAssaultMotion.individualDisplacement(assault,7),0);
 const scene=read("src/diorama/scenario-scene.js");
 for(const x of ["coverSegments.push(", "coverPositions.arrange(", "coverFormationSlot(",
- "squad.entrySequence", "buildingVisuals.at(", "showPhysicalDice(stage)",
+ "squad.entrySequence", "buildingVisuals.at(", "garrisonFiringOutlet(", "showPhysicalDice(stage)",
  "orderTexture(u.order)", "animatePhysicalDice(dt)",
  "individualDisplacement?.(assault,soldierIndex)"])
  assert(scene.includes(x),"3D scene missing "+x);
