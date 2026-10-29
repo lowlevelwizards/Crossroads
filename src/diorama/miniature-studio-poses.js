@@ -3,7 +3,8 @@
 // as live Crossroads soldiers. Looping preview; no battle state.
 (() => {
   const ACTIONS=Object.freeze([
-    ["idle","Standing / idle"],["aim","Aiming"],["fire","Shooting"],
+    ["reference","Standing / unarmed"],["tpose","T-pose / unarmed"],
+    ["idle","Standing / equipped"],["aim","Aiming"],["fire","Shooting"],
     ["reload","Reloading"],["walk","Walking"],["run","Running"],
     ["turn","Turning / pivot"],["down","Down / low profile"],
     ["ambush","Ambush / ready"],["cover","In cover"],
