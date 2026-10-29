@@ -140,6 +140,7 @@
       audio?.playShooting(stage.event);
   });
   let audioEnabled=false;
+  let fastPresentation=false;
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
   function node(tag,className,text) {
     const el=document.createElement(tag);
@@ -191,7 +192,7 @@
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
       count:current.eventCount,hint,warning,busy,logOpen,showToast,
-      audioEnabled
+      audioEnabled,fastPresentation
     });
     if(signature===fingerprint)return;
     signature=fingerprint;
@@ -219,6 +220,26 @@
       signature="";render(state);
     });
     ribbon.append(sound);
+    const speed=node("button","battle-audio-toggle",
+      fastPresentation?"» FAST":"▶ NORMAL");
+    speed.type="button";
+    speed.setAttribute("aria-label","Toggle animation speed");
+    speed.addEventListener("click",()=>{
+      fastPresentation=!fastPresentation;
+      director.setSpeed(fastPresentation?2.8:1);
+      signature="";render(state);
+    });
+    ribbon.append(speed);
+    if(director.active){
+      const skip=node("button","battle-audio-toggle","SKIP");
+      skip.type="button";
+      skip.setAttribute("aria-label","Skip combat animations");
+      skip.addEventListener("click",()=>{
+        director.skip();diceOverlay.hidden=true;
+        signature="";render(state);
+      });
+      ribbon.append(skip);
+    }
     hud.append(ribbon);
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
@@ -396,6 +417,8 @@
   }
   const client=Object.freeze({
     get snapshot(){return state},
+    skipPresentation(){director.skip();diceOverlay.hidden=true;},
+    setPresentationSpeed(value){director.setSpeed(value);},
     get ready(){return Boolean(session)},
     get error(){return error},
     send,subscribe(callback){

@@ -32,6 +32,7 @@ function initialize(THREE) {
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
   const squadMotion=window.Crossroads3DSquadMotion;
+  const weaponPresentation=window.Crossroads3DWeaponPresentation;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
@@ -921,33 +922,27 @@ function initialize(THREE) {
       }
     }else if(stage.phase==="fire"&&shooter){
       const groups=e.groups||[];
-      let fired=0;
-      for(const group of groups){
-        const matches=shooter.soldiers.filter(soldier=>soldier.figure.visible&&
-          !["crew","loader"].includes(soldier.role));
-        const gun=/mmg|mg34|machine/i.test(group.weapon||group.key||""),
-          smg=/smg|submachine|mp40/i.test(group.weapon||group.key||"");
-        const shots=Math.min(group.shots||0,12);
-        for(let shot=0;shot<shots;shot++){
-          const soldier=matches[(fired+shot)%Math.max(1,matches.length)];
-          if(!soldier)break;
-          soldier.recoil=gun?.34:smg?.23:.16;
-          const facing=soldier.figure.rotation.y;
-          const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
-          const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
-          scheduleFire(x,soldier.figure.position.y+.52,z,gun||smg,
-            fired+shot);
-        }
-        fired+=shots;
+      const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
+        ({role:s.role,visible:s.figure.visible})))||[];
+      for(const shot of firing){
+        const soldier=shooter.soldiers[shot.soldierIndex];
+        soldier.recoil=Math.max(soldier.recoil,shot.recoil);
+        const facing=soldier.figure.rotation.y;
+        const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
+        const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
+        scheduleFire(x,soldier.figure.position.y+.52,z,shot.heavy,
+          shot.delay/.052);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
       if(e.hits>0)
         spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
           e.saved>0?0x91a79b:0xc5b69a,.16,.40);
-      if(e.pinDelta>0)
+      if(e.pinDelta>0){
+        target.suppressionImpulse=.85;
         spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
           0xd4a75d,.12,.48);
+      }
       if(e.casualties>0){
         const amount=Math.min(e.casualties,6);
         for(let i=0;i<amount;i++)
@@ -1191,7 +1186,7 @@ function initialize(THREE) {
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
     squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
       baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
-      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
+      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z,crouch:0});
     return figure;
   }
 
@@ -1694,6 +1689,8 @@ function initialize(THREE) {
         squad.eligibleRing.visible=false;
       }
       if(squad.assaultCharge>0)squad.assaultCharge=Math.max(0,squad.assaultCharge-dt);
+      if(squad.suppressionImpulse>0)
+        squad.suppressionImpulse=Math.max(0,squad.suppressionImpulse-dt*2);
       if(squad.selectionPulse>0){
         squad.selectionPulse=Math.max(0,squad.selectionPulse-dt*2.0);
         const u=squad.selectionPulse;
@@ -1732,7 +1729,8 @@ function initialize(THREE) {
         soldier.breathing.position.y=soldier.baseY;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.30-squad.assaultCharge)/.30*Math.PI)*.07;
-        soldier.breathing.rotation.z=0;
+        soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
+          Math.sin(soldierIndex*2.7+1)*.13;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
         if(takingSteps&&!reducedMotion) {
           const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
@@ -1743,10 +1741,10 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          soldier.breathing.rotation.x=(
-            (battle&&squad.unit.down)?.36:
-            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0
-          )-soldier.recoil;
+          const crouch=(battle&&squad.unit.down)?.36:
+            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0;
+          soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
+          soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }
