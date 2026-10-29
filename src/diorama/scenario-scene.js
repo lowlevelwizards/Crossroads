@@ -2264,7 +2264,7 @@ function initialize(THREE) {
           } else if(!soldier.pendingRemoval){
             soldier.figure.visible=false;
           }
-          if(stateUnit.down) soldier.breathing.rotation.x=.37;
+          if(stateUnit.down) soldier.breathing.rotation.x=-.62;
         });
         const end=bridge.toWorld(stateUnit);
         const displacement=Math.hypot(end.x-before.x,end.z-before.z);
@@ -2315,6 +2315,7 @@ function initialize(THREE) {
       lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
       updateObjectiveMarkers(snapshot);
+      miniatureLab?.refreshIsolation?.();
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onCombatStage(showCombatStage);

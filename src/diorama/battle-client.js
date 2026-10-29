@@ -244,7 +244,8 @@
       deployment:current.deploymentUnitId,order:current.chosenOrder,
       score:current.scores,snap:current.snap,end:current.battleEnded,
       objectives:current.objectives,units:current.units?.map(u=>
-        [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
+        [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding,
+           u.mmgFacing,u.mmgDeployed]),
       available:current.orders,building:current.building,reaction:current.reaction,
       count:current.eventCount,hint,warning,busy,logOpen,showToast,
       audioEnabled,fastPresentation
@@ -511,7 +512,8 @@
       bag:state.bagRemaining,events:state.eventCount,result:state.result,
       objectives:state.objectives,battleEpoch:state.battleEpoch,
       scores:state.scores,units:state.units?.map(u=>
-        [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding])
+        [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding,
+          u.mmgFacing,u.mmgDeployed])
     });
     if(lastStateKey!==stateKey){
       lastStateKey=stateKey;

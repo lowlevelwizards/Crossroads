@@ -9,6 +9,9 @@ for(const file of ["src/rules/shooting.js","src/engine.js","src/diorama/study-mo
  const source=fs.readFileSync(path.join(root,file),"utf8");
  assert.doesNotThrow(()=>new vm.Script(source,{filename:file}),file+" must parse");
 }
+const client=fs.readFileSync(path.join(root,"src/diorama/battle-client.js"),"utf8");
+assert(client.includes("u.mmgFacing,u.mmgDeployed"),
+  "deployed gun facing must invalidate the 3D snapshot signature");
 const html=fs.readFileSync(path.join(root,"battle3d.html"),"utf8");
 assert(html.includes("classic-session.html?scenario=hold_the_farm&amp;v=0.9.10"));
 const classic=fs.readFileSync(path.join(root,"classic-session.html"),"utf8");

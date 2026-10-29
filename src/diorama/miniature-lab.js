@@ -108,6 +108,9 @@
   toggle.addEventListener("click",()=>setOpen(!opened));
   window.Crossroads3DMiniatureLab=Object.freeze({
     readLook,isOpen:()=>opened,
+    refreshIsolation(){
+      if(opened&&isolated&&adapter&&unitId)adapter.isolate?.(unitId,index,true);
+    },
     focusUnit(id){unitId=id;index=0;render();focus()},
     attach(handlers){
       adapter=handlers;render();
