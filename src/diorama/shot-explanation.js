@@ -9,7 +9,8 @@
     for(const group of a.weapons||[]){
       const label=group.label||group.key||"weapon";
       const toHit=Number.isFinite(group.hitTarget)?" · hits "+group.hitTarget+"+":"";
-      rows.push((group.shots||0)+" "+label+toHit);
+      const modifiers=(group.modifiers||[]).length?" ("+group.modifiers.join(", ")+")":"";
+      rows.push((group.shots||0)+" "+label+toHit+modifiers);
     }
     if(a.cover?.label)rows.push(a.cover.label);
     if(a.cover?.saveTarget!=null)rows.push("cover save "+a.cover.saveTarget+"+");

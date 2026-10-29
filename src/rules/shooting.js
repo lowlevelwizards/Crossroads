@@ -128,14 +128,15 @@
         : 0;
     }
 
-    function determineLineCover(shooter, target) {
+    function determineLineCover(shooter, target, distance=Infinity) {
       const sources = [];
       let saveTarget = null;
       let label = "No cover";
       const instances = Array.isArray(terrain.instances) ? terrain.instances : [];
 
       for (const woods of instances.filter(
-        instance => instance.rules?.cover === "soft"
+        instance => instance.rules?.cover === "soft" &&
+          instance.rules?.movement !== "crossing"
       )) {
         if (segmentTerrainClip(shooter, target, woods) === null) continue;
         const terrainSave = woods.rules?.save ?? 5;
@@ -162,12 +163,12 @@
           );
           if (saveTarget === null || terrainSave < saveTarget) {
             saveTarget = terrainSave;
-            label = `Hard cover from ${wall.definition?.label ?? "wall"}`;
+            label = `${wall.rules?.cover === "soft" ? "Soft" : "Hard"} cover from ${wall.definition?.label ?? "wall"}`;
           }
         }
       }
 
-      if (target.down) {
+      if (target.down && distance > (rules.pointBlankRange ?? 6)+0.001) {
         if (saveTarget === null) {
           saveTarget = 5;
           label = "Down in the open";
@@ -238,15 +239,21 @@
 
       let cover = blocked
         ? Object.freeze({ label: "No shot", saveTarget: null, sources: Object.freeze([]) })
-        : determineLineCover(shooterPoint, targetAimPoint);
+        : determineLineCover(shooterPoint,{
+          ...targetAimPoint,down:Boolean(targetUnit?.down||targetPoint?.down)
+        },distance);
 
       if (!blocked && targetBuildingId) {
         const occupiedBuilding = getTerrainInstance(targetBuildingId);
         const label = occupiedBuilding?.definition?.label ?? "building";
+        const down=Boolean(targetUnit?.down||targetPoint?.down) &&
+          distance > (rules.pointBlankRange??6)+0.001;
+        const save=occupiedBuilding?.rules?.save??3;
         cover = Object.freeze({
-          label: `Hard cover inside ${label}`,
-          saveTarget: occupiedBuilding?.rules?.save ?? 3,
-          sources: Object.freeze([`target occupies the ${label}`])
+          label: `Hard cover inside ${label}`+(down?" + Down":""),
+          saveTarget:down?Math.max(2,save-2):save,
+          sources: Object.freeze([`target occupies the ${label}`,
+            ...(down?["Down improves cover"]:[])])
         });
       }
 
@@ -264,9 +271,13 @@
       });
     }
 
-    function calculateGroupHitTarget(shooter, group, movingPenalty = false) {
+    function calculateGroupHitTarget(shooter, group, movingPenalty = false, distance=Infinity) {
       let hitTarget = rules.baseHitTarget;
       const modifiers = [];
+      if(distance <= (rules.pointBlankRange ?? 6)+0.001){
+        hitTarget-=2;
+        modifiers.push(Object.freeze({code:"point-blank",label:"point-blank range",value:-2}));
+      }
       const qualityShotModifier = qualityProfile(shooter).shootingTargetModifier;
 
       if (qualityShotModifier !== 0) {
@@ -349,7 +360,8 @@
         const hitAnalysis = calculateGroupHitTarget(
           shooter,
           group,
-          movingPenalty
+          movingPenalty,
+          trace.distance
         );
         const rolls = Object.freeze([...rollDice(group.shots)]);
         const hits = hitAnalysis.hitTarget > 6

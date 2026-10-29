@@ -4398,6 +4398,7 @@
             soldiers:unit.soldiers,maxSoldiers:unit.maxSoldiers,
             pins:unit.pins,down:unit.down,activated:unit.activated,
             order:unit.order,ambush:unit.ambush,mmgDeployed:unit.mmgDeployed,
+            mmgFacing:unit.mmgFacing,
             inBuilding:unit.inBuilding,outcome:unit.outcome,
             commandBonus:commandBonus(unit),
             commandSource:commandSupport(unit)?.id||null,
@@ -4439,12 +4440,16 @@
           chosenOrder==="Advance",true).map(group=>({
           label:group.profile?.label||group.key,
           models:group.models,shots:group.shots,
-          hitTarget:group.hitTarget??null,
-          modifiers:(group.modifiers||[]).map(m=>m.label)
+          hitTarget:combatRuntime.shootingRules.calculateGroupHitTarget(
+            unit,group,chosenOrder==="Advance",a.distance).hitTarget,
+          modifiers:combatRuntime.shootingRules.calculateGroupHitTarget(
+            unit,group,chosenOrder==="Advance",a.distance).modifiers.map(m=>m.label)
         }));
-        return {legal:Boolean(a.inRange&&!a.blocked),
-          reason:!a.inRange?"Out of range":a.blockReason??null,
+        return {legal:Boolean(a.inRange&&!a.blocked&&weapons.length),
+          reason:!a.inRange?"Out of range":a.blockReason||
+            (!weapons.length?"No weapon can fire on this order":null),
           distance:a.distance,inRange:a.inRange,blocked:a.blocked,
+          insideArc:a.insideArc,mmgFacing:unit.mmgFacing??null,
           cover:a.cover??null,weapons};
       },
       async command(action,payload={}) {
