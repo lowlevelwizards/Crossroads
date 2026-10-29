@@ -76,9 +76,11 @@
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();
   scene.background=new THREE.Color(0xe9ecea);
-  const hemisphere=new THREE.HemisphereLight(0xffffff,0xbfc3c0,2.2);
+  // Balanced, directional studio light reveals sculpted seams without
+  // washing matte wool and canvas completely flat.
+  const hemisphere=new THREE.HemisphereLight(0xffffff,0xbfc3c0,1.25);
   scene.add(hemisphere);
-  const key=new THREE.DirectionalLight(0xffffff,2.2);
+  const key=new THREE.DirectionalLight(0xffffff,2.4);
   key.position.set(-3,7,-5);
   key.castShadow=true;
   key.shadow.mapSize.set(1024,1024);
@@ -86,7 +88,7 @@
   key.shadow.camera.top=4;key.shadow.camera.bottom=-4;
   key.shadow.normalBias=.012;
   scene.add(key);
-  const fill=new THREE.DirectionalLight(0xffffff,.8);
+  const fill=new THREE.DirectionalLight(0xffffff,.65);
   fill.position.set(4,3,6);scene.add(fill);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,50),
     new THREE.MeshStandardMaterial({color:0xe9ecea,roughness:1}));
@@ -172,7 +174,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
-    if(activeSoldier.modelVersion===2)applyDisplayMode();
+    if(activeSoldier.modelVersion>=2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
@@ -188,7 +190,7 @@
     renderPose(0);
   };
   function applyDisplayMode(){
-    if(!activeSoldier||activeSoldier.modelVersion!==2)return;
+    if(!activeSoldier||activeSoldier.modelVersion<2)return;
     const mode=silhouetteMode?.value||"equipped";
     activeSoldier.setInspectionMode?.(mode);
   }
@@ -361,7 +363,7 @@
       const isFall=poseSelect.value==="casualty";
       soldier.figure.rotation.set(0,pose.yaw||0,0);
       soldier.figure.position.set(0,0,0);
-      soldier.applyPose({...pose,
+      soldier.applyPose({...pose,action:poseSelect.value,
         aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
         recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
