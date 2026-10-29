@@ -18,7 +18,7 @@ for(const term of [
   "const equipmentRoot=new THREE.Group()","const helmetParts=[]",
   "soldier.applyPose=","soldier.applyProfile=","soldier.updateMuzzle=",
   "soldier.setGunDeployed=","Crossroads3DSoldierIK",
-  "const right=toTorso(gripRight)","const left=toTorso(gripLeft)"
+  "const right=toTorso(gripRight)","left=toTorso(gripLeft)"
 ])assert(v2.includes(term),"Missing sculpted miniature feature: "+term);
 assert(model.includes("Crossroads3DMiniatureV2?.create"));
 assert(model.includes("Crossroads3DForceClassicMiniature"));
