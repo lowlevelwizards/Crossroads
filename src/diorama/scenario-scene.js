@@ -36,6 +36,8 @@ function initialize(THREE) {
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
+  const visualAnchor=window.Crossroads3DVisualAnchor;
+  if(!visualAnchor)throw new Error("3D visual formation anchor missing.");
   const tabletopDice=window.Crossroads3DTabletopDice;
   const buildingVisuals=window.Crossroads3DBuildingVisuals;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
@@ -1155,8 +1157,9 @@ function initialize(THREE) {
         zoom>=1.12&&(!state||["choose-order","plan-movement",
           "choose-target","choose-assault-target","deployment"].includes(state.phase));
       if(!show){marker.hidden=true;marker.style.display="none";continue}
-      const ground=terrainY(squad.root.position.x,squad.root.position.z);
-      const at=new THREE.Vector3(squad.root.position.x,ground+.92,squad.root.position.z);
+      const center=squadVisualWorld(squad);
+      const ground=terrainY(center.x,center.z);
+      const at=new THREE.Vector3(center.x,ground+.92,center.z);
       at.project(camera);
       const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
       if(at.z<-1||at.z>1||x<20||x>width-20||y<30||y>height-30){
@@ -1170,7 +1173,7 @@ function initialize(THREE) {
       const showing=performance.now()<outcomeUntil;
       if(!showing){outcomeChip.hidden=true;outcomeTarget=null;}
       else{
-        const pos=outcomeTarget.root.position;
+        const pos=squadVisualWorld(outcomeTarget);
         const at=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.65,pos.z).project(camera);
         const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
         outcomeChip.hidden=!(at.z>=-1&&at.z<=1&&x>=12&&x<=width-12&&y>=32&&y<=height-60);
@@ -1181,7 +1184,7 @@ function initialize(THREE) {
       }
     }
     if(previewUnit){
-      const pos=previewUnit.root.position;
+      const pos=squadVisualWorld(previewUnit);
       const view=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.23,pos.z).project(camera);
       const x=(view.x*.5+.5)*width,y=(-view.y*.5+.5)*height;
       const visible=view.z>=-1&&view.z<=1&&x>30&&x<width-30&&y>40&&y<height-75;
@@ -1712,6 +1715,70 @@ function initialize(THREE) {
   // Use ?perf3d=1 to inspect draw cost and ground-ray count in the console.
   const perfEnabled=new URLSearchParams(location.search).get("perf3d")==="1";
   let perfStart=performance.now(),perfFrames=0,perfDuration=0;
+  function squadVisualWorld(squad){
+    const anchor=squad?.visualAnchor||{x:0,z:0};
+    return visualAnchor.toWorld(squad.root.position,anchor);
+  }
+  function syncSquadVisualAnchor(squad){
+    // The authoritative unit center is never moved. Selection and picking
+    // instead follow the actual visible miniature bases.
+    const anchor=visualAnchor.resolve(squad.soldiers,squad.unit.soldiers,{
+      minRadius:squad.unit.role==="officer"?.50:.58,margin:.31
+    });
+    const prior=squad.visualAnchor;
+    squad.visualAnchor=anchor;
+    const changed=!prior||
+      Math.hypot(prior.x-anchor.x,prior.z-anchor.z)>.025;
+    const center=squadVisualWorld(squad);
+    const height=changed||!Number.isFinite(squad.visualAnchorHeight)?
+      footingHeight(center.x,center.z)+.035:squad.visualAnchorHeight;
+    squad.visualAnchorHeight=height;
+    const scale=anchor.radius/squad.ringBaseRadius;
+    const pulse=squad.selectionPulse>0?
+      1+Math.sin((1-squad.selectionPulse)*Math.PI)*.17:1;
+    squad.ring.position.set(anchor.x,height,anchor.z);
+    squad.ring.scale.setScalar(scale*pulse);
+    squad.ring.userData.grounded=true;
+    squad.eligibleRing.position.set(anchor.x,height+.01,anchor.z);
+    squad.eligibleRing.scale.setScalar(
+      (anchor.radius+.16)/(squad.ringBaseRadius+.18));
+    squad.hitBox.position.x=anchor.x;
+    squad.hitBox.position.z=anchor.z;
+    const side=Math.max(1.12,anchor.radius*2+.35);
+    squad.hitBox.scale.x=side/squad.hitBoxBaseWidth;
+    squad.hitBox.scale.z=side/squad.hitBoxBaseDepth;
+    // Keep the physical dice beside the painted figures rather than
+    // beside an empty origin from which the soldiers reformed.
+    const tokenX=anchor.x+anchor.radius+.36;
+    squad.orderToken.position.x=tokenX;
+    squad.orderToken.position.z=anchor.z-.23;
+    squad.orderFace.position.x=tokenX;
+    squad.orderFace.position.z=anchor.z-.23;
+    for(const pin of squad.pinTokens){
+      pin.position.x=anchor.x+anchor.radius+.46;
+      pin.position.z=anchor.z+.40;
+    }
+  }
+  function snapSquadToFormation(squad){
+    // Initial and replay poses are the settled formation. Never animate
+    // a cosmetic spawn from the unit center to a nearby wall or foxhole.
+    squad.formationCache=null;
+    const resolved=resolveSquadFormation(squad,squad.root.position,false);
+    for(let i=0;i<squad.soldiers.length;i++){
+      const soldier=squad.soldiers[i];
+      const point=resolved.points[i];
+      if(!point||i>=squad.unit.soldiers)continue;
+      soldier.figure.position.x=point.x;
+      soldier.figure.position.z=point.z;
+      const wx=squad.root.position.x+point.x;
+      const wz=squad.root.position.z+point.z;
+      soldier.figure.position.y=footingHeight(wx,wz)-
+        (.02-.11/2)*MINIATURE_SCALE+.016;
+      soldier.grounded=true;
+    }
+    squad.formationCache=null;
+    syncSquadVisualAnchor(squad);
+  }
   function selectSquad(next) {
     const changed=selectedSquad!==next;
     selectedSquad=next;
@@ -1721,7 +1788,7 @@ function initialize(THREE) {
     }
     if(next&&changed){
       next.selectionPulse=1;
-      cameraFocus={x:next.root.position.x,z:next.root.position.z};
+      cameraFocus=squadVisualWorld(next);
       focusZoom=Math.max(zoom,1.50);
     }
     if(battle)updateUnitPresentation(battle.snapshot);
@@ -1919,6 +1986,7 @@ function initialize(THREE) {
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
     const radius=unit.role==="officer"?.53:1.27;
+    squad.ringBaseRadius=radius;
     if(unit.role==="officer"){
       const r=6*bridge.table.worldUnitsPerInch;
       const aura=shape(root,new THREE.RingGeometry(r-.04,r,72),
@@ -1975,6 +2043,8 @@ function initialize(THREE) {
     hitBox.receiveShadow=false;
     hitBox.userData.squad=squad;
     squad.hitBox=hitBox;
+    squad.hitBoxBaseWidth=unit.role==="officer"?1.2:3.1;
+    squad.hitBoxBaseDepth=unit.role==="officer"?1.05:1.85;
     hitBoxes.push(hitBox);
     squads.push(squad);
     unitLookup.set(unit.id,squad);
@@ -1982,6 +2052,7 @@ function initialize(THREE) {
     return squad;
   }
   units.forEach(createSquadRenderer);
+  for(const squad of squads)snapSquadToFormation(squad);
   selectSquad(battle ? null : squads[0]);
 
   // The original 2D coordinator owns state, rules, activation and dice.
@@ -2029,6 +2100,7 @@ function initialize(THREE) {
           for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
         });
       }
+      for(const squad of squads)snapSquadToFormation(squad);
       selectSquad(null);
       cameraFocus={x:0,z:0};focusZoom=1;
       stage.classList.remove("battle-resetting");
@@ -2603,11 +2675,8 @@ function initialize(THREE) {
       }
       if(squad.suppressionImpulse>0)
         squad.suppressionImpulse=Math.max(0,squad.suppressionImpulse-dt*2);
-      if(squad.selectionPulse>0){
+      if(squad.selectionPulse>0)
         squad.selectionPulse=Math.max(0,squad.selectionPulse-dt*2.0);
-        const u=squad.selectionPulse;
-        squad.ring.scale.setScalar(1+Math.sin((1-u)*Math.PI)*.22);
-      }else if(squad.ring.scale.x!==1)squad.ring.scale.setScalar(1);
       for(let soldierIndex=0;soldierIndex<squad.soldiers.length;soldierIndex++){
         const soldier=squad.soldiers[soldierIndex];
         const selection=squad.selectionPulse||0;
@@ -2725,10 +2794,9 @@ function initialize(THREE) {
         squad.orderToken.position.y=footingHeight(x,z)+.145;
         squad.orderFace.position.y=squad.orderToken.position.y+.125;
       }
-      if(squad.ring.visible&&!squad.ring.userData.grounded) {
-        squad.ring.position.y=footingHeight(squad.root.position.x,squad.root.position.z)+.03;
-        squad.ring.userData.grounded=true;
-      }
+      // The anchored ring, eligible halo, tap hitbox and nameplate must
+      // always describe the same rendered figures, even after cover reflow.
+      syncSquadVisualAnchor(squad);
     }
     for(let i=delayedMuzzleBursts.length-1;i>=0;i--){
       const burst=delayedMuzzleBursts[i];
