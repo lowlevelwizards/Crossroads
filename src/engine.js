@@ -4336,6 +4336,12 @@
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
+          // Public, authored terrain footprints only: deterministic tactical
+          // cover evaluation; no enemy intelligence or invented path legality.
+          terrain:(TERRAIN.instances||[]).map(item=>({
+            x:item.x,y:item.y,width:item.width,height:item.height,
+            cover:item.rules?.cover||null,movement:item.rules?.movement||"open"
+          })),
           snap:snapSelection?{
             officerId:snapSelection.officerId,remaining:snapSelection.remaining,
             eligibleIds:snapEligible().map(u=>u.id)

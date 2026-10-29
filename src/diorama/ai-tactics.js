@@ -100,6 +100,35 @@
     return evaluated.sort((a,b)=>value(b)-value(a)||
       a.unit.id.localeCompare(b.unit.id))[0]?.unit||null;
   }
+  function defensiveCover(point,terrain=[],enemies=[]){
+    let benefit=0;
+    for(const entry of terrain||[]){
+      if(!entry?.cover)continue;
+      const x=Number(entry.x),y=Number(entry.y),
+        w=Number(entry.width),h=Number(entry.height);
+      if(![x,y,w,h].every(Number.isFinite))continue;
+      const inside=point.x>=x&&point.x<=x+w&&
+        point.y>=y&&point.y<=y+h;
+      if(entry.movement!=="crossing"){
+        if(inside)benefit=Math.max(benefit,entry.cover==="hard"?6:3);
+        continue;
+      }
+      // Walls/hedges only help if the defender is near the obstacle
+      // and a nearby opponent is on its far side.
+      if(!enemies?.length)continue;
+      const cx=x+w/2,cy=y+h/2;
+      const horizontal=w>=h;
+      const offset=horizontal?point.y-cy:point.x-cx;
+      const along=horizontal?point.x:point.y;
+      const start=horizontal?x:y,end=start+(horizontal?w:h);
+      if(along<start-.6||along>end+.6||Math.abs(offset)>3.5)continue;
+      if(enemies.some(enemy=>{
+        const opposite=horizontal?enemy.y-cy:enemy.x-cx;
+        return opposite*offset<0&&Math.abs(opposite)>.2;
+      }))benefit=Math.max(benefit,entry.cover==="hard"?5:2.5);
+    }
+    return benefit;
+  }
   function chooseMove(s,unit,previewMove) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     const objective=nearest(unit,objectivePoint(s,unit.faction));
@@ -138,6 +167,11 @@
         const support=Math.max(0,Math.min(3,balance.advantage*.25));
         const objectiveRange=objective?dist(endpoint,objective):Infinity;
         const objectiveHold=objectiveRange<2.7?4:0;
+        const coverBenefit=defensiveCover(endpoint,s.terrain,enemies)*
+          ((unit.pins||0)>0||unit.soldiers<=3?1.9:1.15);
+        const exposed=enemies.filter(e=>dist(e,endpoint)<18).length;
+        const exposurePenalty=Math.min(6,exposed*1.1)*
+          (coverBenefit>2?.36:1);
         // Legal previews remain authoritative for every candidate endpoint.
         const supportPenalty=supportWeapon?
           Math.max(0,step-3)*1.3+(enemyDist<5?4:0):0;
@@ -151,7 +185,7 @@
           -Math.max(0,preview.cost-step)*.15:0;
         const score=progress*4+(objective?4:0)+objectiveHold+
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
-          commandBenefit-crowdPenalty+
+          commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score});
       }
@@ -159,6 +193,7 @@
     return options.sort((a,b)=>b.score-a.score)[0]?.point||null;
   }
   window.Crossroads3DAITactics=Object.freeze({
-    chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation
+    chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
+    defensiveCover
   });
 })();
