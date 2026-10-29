@@ -9,6 +9,8 @@
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
     frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.1";
   let session=null,state=null,busy=false,warning="",hint="",error="";
+  let aiController=null;
+  const soloMode=new URLSearchParams(location.search).get("solo")==="1";
   let logOpen=false,signature="",lastStateKey="";
   let toastExpires=0,lastEventCount=-1;
   const drawOverlay=document.createElement("div");
@@ -180,6 +182,7 @@
       signature="";render(state);
     });
     ribbon.append(sound);
+    if(soloMode)ribbon.append(node("span","battle-solo-status","SOLO · GER AI"));
     hud.append(ribbon);
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
@@ -311,6 +314,7 @@
       for(const callback of subscribers)callback(state);
     }
     render(state);
+    if(aiController)aiController.observe(state);
   }
   async function send(actionName,payload={}){
     if(!session||busy)return {ok:false,reason:"Battle coordinator busy"};
@@ -371,6 +375,8 @@
     }
   });
   window.CrossroadsBattle3D=client;
+  if(soloMode&&window.Crossroads3DAIOpponent)
+    aiController=window.Crossroads3DAIOpponent.create(client);
   frame.addEventListener("load",()=>{
     if(!connect())hud.textContent="Could not initialize the shared battle coordinator";
   });
