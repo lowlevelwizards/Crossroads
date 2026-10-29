@@ -96,6 +96,11 @@
     try{return stored?validate(stored):clone(defaults[id])}
     catch(_){return clone(defaults[id])}
   }
+  function approved(id){
+    const record=readAll(KEY_APPROVED)[id];
+    if(!record)return null;
+    try{return validate(record)}catch(_){return null}
+  }
   function put(doc,kind="draft"){
     const shape=validate(doc);
     const key=kind==="approved"?KEY_APPROVED:KEY_DRAFT;
@@ -115,7 +120,7 @@
     return validate(JSON.parse(text));
   }
   window.Crossroads3DShapeLibrary=Object.freeze({
-    ids,defaults,clone,validate,resolve,put,clear,exportDocument,
+    ids,defaults,clone,validate,resolve,approved,put,clear,exportDocument,
     importDocument,KEY_DRAFT,KEY_APPROVED
   });
 })();
