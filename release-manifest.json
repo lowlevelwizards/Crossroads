@@ -13,7 +13,8 @@
     "battle3d.html",
     "scenarios3d.html",
     "editor3d.html",
-    "army3d.html"
+    "army3d.html",
+    "miniature-studio.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -90,7 +91,14 @@
     "tests/3d-v101-officer-and-guns.test.js",
     "tests/3d-v102-soldier-ik.test.js",
     "tests/3d-v103-miniature-lab.test.js",
-    "tests/3d-v104-tactical-cover.test.js"
+    "tests/3d-v104-tactical-cover.test.js",
+    "miniature-studio.html",
+    "src/diorama/miniature-model.js",
+    "src/diorama/miniature-studio.js",
+    "src/diorama/miniature-studio.css",
+    "src/diorama/miniature-studio-data.js",
+    "src/diorama/miniature-studio-poses.js",
+    "tests/3d-v110-miniature-studio.test.js"
   ],
-  "threeDCacheVersion": "0.9.10"
+  "threeDCacheVersion": "0.9.11"
 }
