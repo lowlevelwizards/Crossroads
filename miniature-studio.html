@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#e9e9e6">
+  <meta name="description" content="Inspect every Crossroads tabletop miniature, pose, and animation in a neutral 3D studio.">
+  <title>Crossroads — Miniature Lab</title>
+  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.11">
+</head>
+<body>
+  <main class="studio">
+    <header class="studio-header">
+      <div class="brand"><span class="eyebrow">CROSSROADS / MODEL WORKSHOP</span>
+        <h1>MINIATURE LAB</h1></div>
+      <nav aria-label="Return to game">
+        <a href="./index.html">MENU</a><a href="./battle3d.html">BATTLE</a>
+      </nav>
+    </header>
+    <div class="studio-stage" id="studioStage">
+      <canvas id="studioCanvas" aria-label="Miniature in a gray studio. Drag to orbit, pinch or wheel to zoom, two fingers or right-drag to pan."></canvas>
+      <div id="studioLoading" role="status" class="studio-loading">Preparing miniature…</div>
+      <div class="view-dock" role="group" aria-label="Camera viewpoints">
+        <button type="button" data-view="front">FRONT</button>
+        <button type="button" data-view="right">RIGHT</button>
+        <button type="button" data-view="back">BACK</button>
+        <button type="button" data-view="left">LEFT</button>
+        <button type="button" data-view="top">TOP</button>
+      </div>
+      <p class="gesture-hint">DRAG ORBIT <span>·</span> PINCH ZOOM <span>·</span> TWO FINGERS PAN</p>
+    </div>
+    <aside class="studio-panel" aria-label="Miniature controls">
+      <section class="studio-section">
+        <h2>01 / MODEL</h2>
+        <label for="studioKit">Faction / kit</label>
+        <select id="studioKit"></select>
+        <label for="studioUnit">Unit type</label>
+        <select id="studioUnit"></select>
+        <label for="studioSoldier">Individual soldier</label>
+        <select id="studioSoldier"></select>
+        <div id="studioRecipe" class="studio-meta" aria-live="polite">—</div>
+      </section>
+      <section class="studio-section">
+        <h2>02 / ANIMATION</h2>
+        <label for="studioPose">Pose or action</label>
+        <select id="studioPose"></select>
+        <div class="playbar">
+          <button type="button" id="studioPlay" aria-pressed="true">❚❚ PAUSE</button>
+          <button type="button" id="studioReplay">↺ REPLAY</button>
+          <label for="studioSpeed">SPEED <output id="studioSpeedValue">1×</output></label>
+        </div>
+        <input type="range" id="studioSpeed" min=".25" max="2" step=".25" value="1">
+        <p class="field-note">Animations loop in place for inspection; they do not issue battle orders.</p>
+      </section>
+      <section class="studio-section">
+        <h2>03 / CAMERA</h2>
+        <div class="button-pair">
+          <button type="button" id="studioProjection" aria-pressed="false">ORTHOGRAPHIC</button>
+          <button type="button" id="studioReset">RESET VIEW</button>
+        </div>
+        <p class="field-note">One finger or left drag: orbit. Two fingers or right drag: pan. Pinch or wheel: zoom. Front, side, rear and top presets work in either projection.</p>
+      </section>
+      <details class="studio-section">
+        <summary>04 / APPEARANCE</summary>
+        <label for="studioUniform">Uniform</label>
+        <select id="studioUniform"><option value="field">Field issue</option><option value="olive">Olive drab</option><option value="khaki">Khaki</option></select>
+        <label for="studioHeadwear">Headwear</label>
+        <select id="studioHeadwear"><option value="on">Equipped</option><option value="off">Removed</option></select>
+        <label for="studioPack">Field pack</label>
+        <select id="studioPack"><option value="on">Equipped</option><option value="off">Removed</option></select>
+        <label for="studioHelmetTint">Helmet finish</label>
+        <select id="studioHelmetTint"><option value="issue">Issue paint</option><option value="dark">Dark green</option><option value="dust">Dusty tan</option></select>
+        <label for="studioLeatherTint">Boots / leather</label>
+        <select id="studioLeatherTint"><option value="issue">Issue leather</option><option value="dark">Blackened</option><option value="russet">Russet</option></select>
+        <button type="button" id="studioClearPaint">RESET APPEARANCE</button>
+      </details>
+    </aside>
+  </main>
+  <script src="data/unit-types.js?v=0.9.11"></script>
+  <script src="data/faction-kits.js?v=0.9.11"></script>
+  <script src="src/presentation/miniatures.js?v=0.9.11"></script>
+  <script src="src/diorama/study-motion.js?v=0.9.11"></script>
+  <script src="src/diorama/soldier-ik.js?v=0.9.11"></script>
+  <script src="src/diorama/miniature-model.js?v=0.9.11"></script>
+  <script src="src/diorama/miniature-studio-data.js?v=0.9.11"></script>
+  <script src="src/diorama/miniature-studio-poses.js?v=0.9.11"></script>
+  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.11"></script>
+</body>
+</html>
