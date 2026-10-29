@@ -35,6 +35,7 @@ function initialize(THREE) {
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
+  const formationLayout=window.Crossroads3DFormationLayout;
   const tabletopDice=window.Crossroads3DTabletopDice;
   const buildingVisuals=window.Crossroads3DBuildingVisuals;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
@@ -1402,9 +1403,10 @@ function initialize(THREE) {
     ring.rotation.x=-Math.PI/2;
     ring.position.set(last.x,terrainY(last.x,last.z)+.083,last.z);
     ring.renderOrder=14;movePreviewLine.add(ring);
-    for(const soldier of selectedSquad.soldiers){
-      if(!soldier.figure.visible)continue;
-      const x=last.x+soldier.slotX,z=last.z+soldier.slotZ;
+    const predicted=resolveSquadFormation(selectedSquad,last,false);
+    for(let i=0;i<predicted.points.length;i++){
+      const slot=predicted.points[i];
+      const x=last.x+slot.x,z=last.z+slot.z;
       const ghost=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.025,10),
         new THREE.MeshBasicMaterial({color:0xf1dcac,transparent:true,opacity:.56,
           depthTest:false,depthWrite:false}));
@@ -1560,78 +1562,47 @@ function initialize(THREE) {
     return figure;
   }
 
-  function buildingFormationSlot(squad,index){
-    const id=squad.unit.inBuilding;
-    if(!id){squad.garrisonCache=null;return null}
-    // Keep DOM/Three frame cost flat even with many soldiers in houses.
-    if(squad.garrisonCache?.id===id&&frameIndex-squad.garrisonCache.frame<18)
-      return squad.garrisonCache.slots[index]||null;
-    const roof=roofMaterials.find(roof=>roof.ids.some(key=>
-      String(key)===String(id)));
-    const bounds=roof?.bounds,root=squad.root.position;
-    if(!bounds||Math.hypot(bounds.x-root.x,bounds.z-root.z)>2.7){
-      squad.garrisonCache=null;return null;
+  // Shared output is used by both the ghost preview and settled soldiers.
+  function resolveSquadFormation(squad,world,allowCache=true){
+    if(!formationLayout)return {points:squad.soldiers.map(s=>
+      ({x:s.slotX,z:s.slotZ})),source:"open"};
+    const cache=squad.formationCache;
+    const living=squad.unit.soldiers;
+    if(allowCache&&cache&&frameIndex-cache.frame<20&&cache.living===living&&
+       cache.building===(squad.unit.inBuilding||null)&&
+       Math.hypot(cache.x-world.x,cache.z-world.z)<.025)
+      return cache.value;
+    let nearest=null,best=Infinity;
+    for(const other of squads){
+      if(other===squad||other.unit.faction===squad.unit.faction||
+          other.unit.soldiers<=0)continue;
+      const d=other.root.position.distanceToSquared(new THREE.Vector3(world.x,0,world.z));
+      if(d<best){best=d;nearest=other}
     }
-    const enemies=squads.filter(s=>s.unit.faction!==squad.unit.faction&&
-      s.unit.soldiers>0);
-    let enemy=null,best=Infinity;
-    for(const opponent of enemies){
-      const d=opponent.root.position.distanceToSquared(root);
-      if(d<best){best=d;enemy=opponent}
-    }
-    const dx=enemy?enemy.root.position.x-bounds.x:
-      (squad.unit.faction==="red"?-1:1);
-    const dz=enemy?enemy.root.position.z-bounds.z:0;
-    const slots=squad.soldiers.map((_,soldierIndex)=>{
-      const alongX=Math.abs(dx)<=Math.abs(dz);
-      const usable=Math.max(.34,(alongX?bounds.width:bounds.depth)-.55);
-      const perRow=Math.max(1,Math.floor(usable/.37)+1);
-      const row=Math.floor(soldierIndex/perRow);
-      const column=soldierIndex%perRow;
-      const cols=Math.min(perRow,squad.soldiers.length-row*perRow);
-      const along=(column-(cols-1)/2)*.37;
-      const inward=.24+row*.35;
-      const look=enemy?{x:enemy.root.position.x,z:enemy.root.position.z}:null;
-      if(!alongX)return {
-        x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-inward)-root.x,
-        z:bounds.z+along-root.z,look
-      };
-      return {
-        x:bounds.x+along-root.x,
-        z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-inward)-root.z,
-        look
-      };
+    const threat=nearest?{x:nearest.root.position.x,z:nearest.root.position.z}:null;
+    const building=squad.unit.inBuilding;
+    const roof=building?roofMaterials.find(r=>r.ids.some(id=>
+      String(id)===String(building))):null;
+    const value=formationLayout.resolve({
+      origin:{x:world.x,z:world.z},
+      slots:squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
+      living,
+      segments:coverSegments,coverPositions,
+      buildingBounds:roof?.bounds||null,threat,
+      cohesion:bridge.table.worldUnitsPerInch*1.85
     });
-    squad.garrisonCache={id,frame:frameIndex,slots};
-    return slots[index]||null;
-  }
-  function coverFormationSlot(squad,index){
-    if(!coverPositions||squad.unit.inBuilding||squad.moving)return null;
-    const cache=squad.coverCache,root=squad.root.position;
-    if(!cache||frameIndex-cache.frame>25||
-       Math.hypot(cache.x-root.x,cache.z-root.z)>.035){
-      let nearEnemy=null,best=Infinity;
-      for(const enemy of squads){
-        if(enemy===squad||enemy.unit.faction===squad.unit.faction||
-          enemy.unit.soldiers<=0)continue;
-        const distance=enemy.root.position.distanceToSquared(root);
-        if(distance<best){best=distance;nearEnemy=enemy}
-      }
-      const enemy=nearEnemy?
-        {x:nearEnemy.root.position.x,z:nearEnemy.root.position.z}:null;
-      const slots=squad.soldiers.map(sol=>({x:sol.slotX,z:sol.slotZ}));
-      squad.coverCache={frame:frameIndex,x:root.x,z:root.z,
-        positions:coverPositions.arrange({x:root.x,z:root.z},slots,
-          coverSegments,enemy,{maxSnap:1.04})};
-    }
-    return squad.coverCache.positions?.points[index]||null;
+    if(allowCache)squad.formationCache={
+      frame:frameIndex,x:world.x,z:world.z,living,
+      building:building||null,value
+    };
+    return value;
   }
   function createSquadRenderer(unit,index) {
     const root=new THREE.Group(),world=bridge.toWorld(unit);
     root.position.set(world.x,0,world.z);
     scene.add(root);
     const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
-      coverCache:null,garrisonCache:null,entrySequence:null,
+      coverCache:null,garrisonCache:null,formationCache:null,entrySequence:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
     for(const slot of bridge.slotsFor(unit))
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
@@ -1718,6 +1689,9 @@ function initialize(THREE) {
             door:{x:door.x-before.x,z:door.z-before.z},
             from:squad.soldiers.map(sol=>({x:sol.figure.position.x,z:sol.figure.position.z}))}:null;
         }
+        if(squad.unit.soldiers!==stateUnit.soldiers||
+           previousBuilding!==(stateUnit.inBuilding||null))
+          squad.formationCache=null;
         Object.assign(squad.unit,stateUnit);
         const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
           (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
@@ -2131,10 +2105,9 @@ function initialize(THREE) {
         );
         if(squadMotion.movementFinished(moving)){
           squad.root.position.set(moving.end.x,0,moving.end.z);
-          for(const soldier of squad.soldiers){
-            soldier.figure.position.x=soldier.slotX;
-            soldier.figure.position.z=soldier.slotZ;
-          }
+          // Preserve the last walking poses until the shared formation
+          // resolver settles every survivor onto the previewed footprints.
+          squad.formationCache=null;
           if(!moving.remote&&moving.plan)squad.controller.commitMove(moving.plan);
           squad.moving=false;
           squad.orderToken.visible=Boolean(squad.unit.order)&&
@@ -2191,8 +2164,8 @@ function initialize(THREE) {
           const displacement=assault&&assaultMotion?
             (assaultMotion.individualDisplacement?.(assault,soldierIndex) ??
               assaultMotion.displacement(assault)):0;
-          const garrison=buildingFormationSlot(squad,soldierIndex);
-          const slot=garrison||coverFormationSlot(squad,soldierIndex);
+          const formation=resolveSquadFormation(squad,squad.root.position);
+          const slot=formation.points[soldierIndex]||null;
           let x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
           let z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
           const entry=squad.entrySequence;
@@ -2212,11 +2185,11 @@ function initialize(THREE) {
             soldier.figure.rotation.y+=motion.shortestDelta(soldier.figure.rotation.y,facing)*
               Math.min(1,dt*2.9);
           }
-          const blend=entry?1:slot?Math.min(1,dt*5):1;
+          const blend=entry?1:slot?Math.min(1,dt*6.5):1;
           const shift=Math.hypot(x-soldier.figure.position.x,z-soldier.figure.position.z);
           soldier.figure.position.x+=(x-soldier.figure.position.x)*blend;
           soldier.figure.position.z+=(z-soldier.figure.position.z)*blend;
-          if(slot&&frameIndex%4===0&&shift>.026)soldier.grounded=false;
+          if(slot&&frameIndex%4===0&&shift>.015)soldier.grounded=false;
         }
         if(isWalking) {
           const delta=ownProgress-moving.centerProgress;
