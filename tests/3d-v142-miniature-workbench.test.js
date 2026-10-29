@@ -106,6 +106,7 @@ for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"]){
     html.indexOf("miniature-model.js"),"shape library must precede factory usage");
 }
 for(const id of ["wbPart","wbToggle","wbBlend","wbBlendStrength",
+  "wbExportGLB","wbImportGLB","wbClearGLB","wbBlendRx","wbBlendRy","wbBlendRz",
   "wbImport","wbExport","wbUndo","wbRedo","wbPublish"]){
   assert(read("miniature-studio.html").includes('id="'+id+'"'));
 }
