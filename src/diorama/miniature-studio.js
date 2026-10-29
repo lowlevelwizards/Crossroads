@@ -46,7 +46,8 @@
     catalogue.kits()[0].id;
   unitSelect.value=catalogue.units().find(x=>x.id==="rifleSquad")?.id||
     catalogue.units()[0].id;
-  poseSelect.value="idle";
+  // Start with a clean proportion check instead of a combat-ready stance.
+  poseSelect.value="reference";
   const profiles=window.Crossroads3DMiniatureProfiles;
   if(!profiles)throw Error("Shared miniature profiles are required");
   const readLook=()=>profiles.read(kitSelect.value,unitSelect.value,

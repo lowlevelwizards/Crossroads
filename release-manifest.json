@@ -122,5 +122,5 @@
     "src/diorama/miniature-heroic-character.js",
     "tests/3d-v131-sculpted-roster.test.js"
   ],
-  "threeDCacheVersion": "0.9.31"
+  "threeDCacheVersion": "0.9.32"
 }

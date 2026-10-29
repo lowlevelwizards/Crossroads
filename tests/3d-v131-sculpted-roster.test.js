@@ -81,7 +81,26 @@ for(const faction of ["poland","germany"]){
       "miniature base is separate from animated body");
     assert.equal(s.torso.geometry.attributes.position.itemSize,3);
     assert(s.torso.geometry.index.length>30);
-    s.applyPose({action:"walk",leftLift:.13,rightReach:.11,lean:.12});
+    // The primary inspection poses must expose the real proportions.
+    s.applyPose({action:"reference"});
+    assert.equal(s.weapon.visible,false,
+      "unarmed neutral pose hides carried weapon");
+    assert.equal(s.equipmentRoot.visible,false,
+      "unarmed reference avoids gear obscuring the silhouette");
+    assert(Math.abs(s.breathing.position.y-.90)<.001,
+      "standing torso must be vertically extended, not compressed");
+    assert(s.legs.every(leg=>leg.mesh.position.y>.55),
+      "standing knees remain beneath extended hips");
+    s.applyPose({action:"tpose"});
+    assert(s.arms[0].hand.position.x<-.5&&
+      s.arms[1].hand.position.x>.5,
+      "T pose extends both arms away from the torso");
+    assert(Math.abs(s.arms[0].hand.position.y-.210)<.001,
+      "T pose hands are at shoulder level");
+    s.applyPose({action:"idle"});
+    assert.equal(s.equipmentRoot.visible,true,
+      "battle-ready idle restores field kit");
+        s.applyPose({action:"walk",leftLift:.13,rightReach:.11,lean:.12});
     s.applyPose({action:"kneel",crouch:.69,aim:true});
     s.applyPose({action:"down",crouch:.84,lean:.24,forward:.08});
     s.applyPose({action:"casualty",fall:1});
@@ -131,8 +150,15 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.31"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.32"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }
+// Pose actions are declared once and lab-specific poses do not mutate rules.
+const poseSrc=read("src/diorama/miniature-studio-poses.js");
+const poseContext={window:{}};
+vm.runInNewContext(poseSrc,poseContext);
+const poseNames=poseContext.window.Crossroads3DSoldierActions.ACTIONS.map(a=>a[0]);
+assert(poseNames.includes("reference")&&poseNames.includes("tpose"));
+assert.equal(poseContext.window.Crossroads3DSoldierActions.frame("tpose",0,{}).crouch,0);
 console.log("PASS — sculpted soldier variants, geometry, stances, held weapons, equipment and stable base");

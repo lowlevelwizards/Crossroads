@@ -43,7 +43,7 @@
       S.mesh(base,S.cached("base-top",()=>new THREE.CylinderGeometry(.347,.347,.015,24)),
         mat.helmet,[0,.094,0]);
       const body=new THREE.Group();figure.add(body);
-      const breathing=new THREE.Group();breathing.position.y=.77;body.add(breathing);
+      const breathing=new THREE.Group();breathing.position.y=.90;body.add(breathing);
       // Anatomical mannequin visible only during proportion inspection.
       const anatomy=new THREE.Group();breathing.add(anatomy);anatomy.visible=false;
       S.soft(anatomy,mat.skin,[0,.04,0],[.245,.29,.187]);
@@ -246,7 +246,7 @@
       const soldier={figure,base,body,breathing,legs,arms,headGroup,weapon,
         torso,uniformGroup,uniformParts,equipmentRoot,packGroup,inspectRing,
         windowArc:firingArc,role,modelVersion:3,phase:0,recoil:0,crouch:0,
-        baseY:.77,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
+        baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
       squad.soldiers.push(soldier);
       let gesture=0;
@@ -329,19 +329,31 @@
         const pose={...poseDefaults,...raw},action=pose.action||"idle";
         const down=action==="down",cover=action==="cover",
           kneel=action==="kneel";
+        // Inspection poses are strictly cosmetic and never invoked by battle.
+        const reference=action==="reference"||action==="tpose";
+        const tpose=action==="tpose";
         const fall=clamp(pose.fall||0,0,1),eased=fall*fall*(3-2*fall);
         const crouch=clamp(pose.crouch||0,0,1);
         const moving=["walk","run","assault","enter","exit"].includes(action);
         const compact=clamp(crouch*.14,0,.15);
         // The hips travel backward and downward during crouching, not merely
         // the torso sinking through both kneecaps.
-        breathing.position.set((down?.017:0),.77-compact+
-          (pose.bob||0),-(pose.forward||0)+(crouch*.042));
-        breathing.rotation.set(-(pose.lean||0)*.62,0,
-          (pose.roll||0)*(1-eased));
-        headGroup.rotation.x=(pose.headDuck||0)+crouch*.065;
-        headGroup.rotation.z=((index%3)-1)*.033*(1-eased);
+        breathing.position.set((down?.017:0),.90-compact-
+          crouch*.075+(pose.bob||0),
+          reference?0:-(pose.forward||0)+(crouch*.042));
+        breathing.rotation.set(reference?0:-(pose.lean||0)*.62,0,
+          reference?0:(pose.roll||0)*(1-eased));
+        headGroup.rotation.x=reference?0:(pose.headDuck||0)+crouch*.065;
+        headGroup.rotation.z=reference?0:((index%3)-1)*.033*(1-eased);
         headGroup.rotation.y=action==="turn"?.16:0;
+        // A clean model reference must not contain the weapon or dangling
+        // field kit. Restore each when leaving the reference action.
+        const showKit=!reference&&
+          (soldier.inspectionMode==="equipped"||
+           soldier.inspectionMode==="silhouette");
+        equipmentRoot.visible=showKit;
+        armaments.weapon.visible=showKit&&!armaments.isDeployed();
+        armaments.mount.visible=showKit&&armaments.isDeployed();
         const fallAngle=eased*1.23;
         body.rotation.set(-eased*.14,0,-fallAngle);
         body.position.set(.08*eased,-.015*eased,0);
@@ -369,11 +381,21 @@
           foot.rotation.set(0,side*(crouch*.11)+
             (!moving&&action==="idle"?(index%3-1)*.07:0),0);
           const solver=window.Crossroads3DSoldierIK;
-          const hipY=.586-crouch*.102;
+          const upright=(reference||action==="idle"||action==="aim"||
+            action==="ambush")&&crouch<.04&&lift<.01;
+          const hipY=.715-crouch*.21;
           const k=solver?.solve({hipY,hipZ:crouch*.035,
             footY:foot.position.y+.091,footZ:foot.position.z,
             upper:.275,lower:.26});
-          if(k){
+          if(upright){
+            // Long, almost vertical reference legs, with distinct knees.
+            // The previous resting hip height (.586) made every soldier squat.
+            const hip=v(side*.146,.715,.010);
+            const knee=v(side*.150,.466,-.014);
+            const ankle=v(side*.145,.265,-.045);
+            S.segment(leg.mesh,hip,knee);
+            S.segment(leg.shin,knee,ankle);
+          }else if(k){
             const hip=v(side*.146,k.hip.y,k.hip.z);
             const knee=v(side*.146,k.knee.y,k.knee.z);
             const ankle=v(side*.145,k.ankle.y,k.ankle.z);
@@ -386,20 +408,28 @@
         // the weapon is held in actual contact with both hands.
         for(const arm of arms){
           const side=arm.side,shoulder=arm.shoulder;
-          const wrist=(side===1?right:left).clone();
-          if(gesture>0&&side===1)
+          const wrist=reference?
+            (tpose?v(side*.594,.210,-.015):
+              v(side*.294,-.282,-.010)):
+            (side===1?right:left).clone();
+          if(gesture>0&&!reference&&side===1)
             wrist.set(.35,.24+gesture*.30,-.18);
-          if(role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)
+          if(!reference&&role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)
             wrist.set(-.22,-.22,-.12);
           const direction=wrist.clone().sub(shoulder),distance=direction.length();
-          const elbow=shoulder.clone().lerp(wrist,.47);
-          const pole=v(side*.18,-.13,pose.aim?.06:.11);
-          elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
+          const elbow=reference?
+            (tpose?v(side*.421,.210,-.015):
+              v(side*.314,-.050,-.004)):
+            shoulder.clone().lerp(wrist,.47);
+          if(!reference){
+            const pole=v(side*.18,-.13,pose.aim?.06:.11);
+            elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
+          }
           // More natural compact arm bend, no straight blocky L-pose.
           S.segment(arm.upper,shoulder,elbow);
           S.segment(arm.lower,elbow,wrist);
           arm.hand.position.copy(wrist);
-          arm.hand.rotation.y=side*(pose.aim?.11:.23);
+          arm.hand.rotation.y=reference?0:side*(pose.aim?.11:.23);
         }
         soldier.updateMuzzle();
       };
