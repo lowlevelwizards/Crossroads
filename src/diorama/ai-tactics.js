@@ -56,6 +56,9 @@
     if(unit.pins>=2&&has("Rally"))return "Rally";
     if(unit.soldiers<=2&&balance.advantage<-3&&
       !visible.length&&has("Down"))return "Down";
+    // Weapon teams holding a lane can prepare an ambush rather than rush.
+    const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
+    if(supportWeapon&&holding&&has("Ambush"))return "Ambush";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
       return "Fire";
     if(holding&&has("Ambush"))return "Ambush";
@@ -86,6 +89,7 @@
     const enemy=nearest(unit,enemies);
     const board=s.table||{width:72,height:48};
     const target=objective||enemy||{x:board.width/2,y:board.height/2};
+    const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
     const theta=Math.atan2(target.y-unit.y,target.x-unit.x);
     const options=[];
     for(const angle of [0,.32,-.32,.7,-.7,1.08,-1.08,1.6,-1.6,Math.PI]){
@@ -111,11 +115,15 @@
         const support=Math.max(0,Math.min(3,balance.advantage*.25));
         const objectiveRange=objective?dist(endpoint,objective):Infinity;
         const objectiveHold=objectiveRange<2.7?4:0;
+        // Legal previews remain authoritative for every candidate endpoint.
+        const supportPenalty=supportWeapon?
+          Math.max(0,step-3)*1.3+(enemyDist<5?4:0):0;
+        const retreatPenalty=enemyDist<4&&unit.pins>=2?6:0;
         // An actual legal preview supplies all path costs. Never guess cover or LOS.
         const efficiency=Number.isFinite(preview.cost)?
           -Math.max(0,preview.cost-step)*.15:0;
         const score=progress*4+(objective?4:0)+objectiveHold+
-          threat+outnumbered+support+efficiency+
+          threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score});
       }

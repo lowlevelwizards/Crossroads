@@ -34,9 +34,9 @@
     const oscillation = Math.sin(n * 1.371 + 2.37);
     return Object.freeze({
       pace:1,delay:0,
-      stepLength:.36+oscillation*.025,
+      stepLength:.48+oscillation*.035,
       phase:Math.sin(n*2.51)*.24,
-      bob:.032+(.5+.5*Math.cos(n*2.14))*.011
+      bob:.052+(.5+.5*Math.cos(n*2.14))*.014
     });
   }
   // Brief ramp-up and braking; the middle 80% moves at steady speed.
@@ -56,16 +56,23 @@
     if(u<b)return 1/normal;
     return ((1-u)/(1-b))/normal;
   }
-  function gaitPose(travelled,stepLength,speedRatio,phase=0){
-    const angle=travelled/Math.max(.22,stepLength)*Math.PI*2+phase;
+  // Each leg alternates between a stable stance and a lifted swing.
+  // Distance-driven phase means a motionless miniature never jogs in place.
+  function gaitPose(travelled,stepLength,speedRatio,phase=0,run=false){
+    const angle=travelled/Math.max(.28,stepLength*(run?1.16:1))*Math.PI*2+phase;
     const drive=clamp(speedRatio,0,1);
-    return {legs:Math.sin(angle)*.62*drive,
-      bob:(1-Math.cos(angle*2))*.5*drive,
-      lean:drive*.065};
+    const swing=Math.sin(angle);
+    const lift=(v)=>Math.pow(Math.max(0,v),1.3)*(run?.18:.105)*drive;
+    return {legs:swing*(run?.74:.56)*drive,
+      leftLift:lift(swing),rightLift:lift(-swing),
+      leftReach:swing*(run?.11:.075)*drive,
+      rightReach:-swing*(run?.11:.075)*drive,
+      bob:(1-Math.cos(angle*2))*.5*drive*(run?1.35:1),
+      lean:drive*(run?.15:.075)};
   }
   function progressFor(elapsed,duration){return travelProgress(elapsed,duration)}
   function travelDuration(distance,run=false){
-    const speed=run?1.65:1.07;
+    const speed=run?1.95:1.19;
     return clamp(distance/Math.max(.25,speed),.39,5.0);
   }
   function finishTime(duration){return duration}
