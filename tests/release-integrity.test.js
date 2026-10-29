@@ -148,7 +148,9 @@ assert(battleDoor.includes("src/diorama/combat-presentation.js"), "Battle must l
 assert(battleDoor.includes("src/diorama/movement-intent.js"), "The 3D battle must load its movement confirmation state");
 assertOrdered("battle3d.html", "src/diorama/movement-intent.js", "src/diorama/scenario-scene.js");
 assertOrdered("battle3d.html", "src/diorama/combat-presentation.js", "src/diorama/battle-client.js");
+assertOrdered("battle3d.html", "src/diorama/ai-tactics.js", "src/diorama/ai-opponent.js");
 assertOrdered("battle3d.html", "src/diorama/ai-opponent.js", "src/diorama/battle-client.js");
+assert(read("src/diorama/ai-tactics.js").includes("chooseMove"), "Solo must load deterministic legal movement evaluation");
 assert(read("scenarios3d.html").includes("CROSSROADS_SCENARIOS"), "3D scenario selection must read official scenario data");
 assert(read("src/engine.js").includes("combatEventCount:combatEventSequence"), "Authoritative engine must expose sequenced combat events");
 assert(read("src/rules/combat-runtime.js").includes('emitBattleEvent("shooting"'), "Pure combat runtime adapter must emit shooting events");
