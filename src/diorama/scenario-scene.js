@@ -759,6 +759,77 @@ function initialize(THREE) {
   const visualEffects=[];
   const delayedMuzzleBursts=[];
   const casualtyAnimations=[];
+  const physicalDice={tray:null,items:[],elapsed:0};
+  const orderTextures=new Map();
+  function orderTexture(order){
+    const label={Advance:"A",Run:"R",Fire:"F",Ambush:"!",Down:"D",
+      Rally:"+",Assault:"X"}[order]||"◆";
+    if(orderTextures.has(label))return orderTextures.get(label);
+    const image=document.createElement("canvas");image.width=64;image.height=64;
+    const c=image.getContext("2d");
+    c.fillStyle="#f6e4bd";c.font="900 49px system-ui,sans-serif";
+    c.textAlign="center";c.textBaseline="middle";
+    c.fillText(label,32,33);
+    const texture=new THREE.CanvasTexture(image);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    orderTextures.set(label,texture);
+    return texture;
+  }
+  function clearPhysicalDice(){
+    if(physicalDice.tray){
+      scene.remove(physicalDice.tray);
+      physicalDice.tray.geometry.dispose();
+      physicalDice.tray=null;
+    }
+    for(const die of physicalDice.items){
+      scene.remove(die.group);
+      die.group.traverse(obj=>obj.geometry?.dispose());
+    }
+    physicalDice.items.length=0;physicalDice.elapsed=0;
+  }
+  function showPhysicalDice(stage){
+    if(stage.phase==="settle"){clearPhysicalDice();return}
+    const numbers=tabletopDice?.valuesFor(stage.event,stage.phase,7)||[];
+    if(!numbers.length)return;
+    clearPhysicalDice();
+    const event=stage.event;
+    const focus=unitLookup.get(event.targetId||event.defenderId||event.unitId)||
+      unitLookup.get(event.shooterId||event.attackerId);
+    const root=focus?.root.position||{x:0,z:0};
+    const px=clamp(root.x+1.9,-worldWidth/2+1.3,worldWidth/2-1.3);
+    const pz=clamp(root.z+1.4,-worldDepth/2+.8,worldDepth/2-.8);
+    const ground=terrainY(px,pz)+.1;
+    physicalDice.tray=shape(scene,new THREE.BoxGeometry(2.05,.075,1.05),
+      mat(0x5e4c37),px,ground,pz);
+    physicalDice.tray.castShadow=false;
+    for(let i=0;i<numbers.length;i++){
+      const die=new THREE.Group();
+      const x=px+((i%4)-1.5)*.40;
+      const z=pz+(Math.floor(i/4)-.5)*.40;
+      die.position.set(x,ground+.17,z);scene.add(die);
+      shape(die,new THREE.BoxGeometry(.255,.255,.255),
+        mat(0xe8ddba),0,0,0);
+      for(const dot of tabletopDice.pips(numbers[i]))
+        shape(die,new THREE.CylinderGeometry(.018,.018,.004,9),
+          mat(0x3a4038),dot.x*.070,.129,dot.y*.070);
+      physicalDice.items.push({group:die,base:ground+.17,
+        index:i,age:0});
+    }
+  }
+  function animatePhysicalDice(dt){
+    if(!physicalDice.items.length)return;
+    physicalDice.elapsed+=dt;
+    for(const item of physicalDice.items){
+      item.age+=dt;
+      const u=Math.min(1,item.age/.42);
+      const k=(1-u);
+      item.group.position.y=item.base+k*k*.28;
+      item.group.rotation.x=k*k*(item.index%2?-2.2:2.6);
+      item.group.rotation.z=k*k*(item.index%3?-1.7:1.9);
+      item.group.rotation.y=k*k*(item.index+1)*.8;
+    }
+    if(physicalDice.elapsed>2.3)clearPhysicalDice();
+  }
   // Small shared visual budgets protect mobile WebGL when a whole squad fires.
   const MAX_PARTICLES=84;
   function scheduleFire(origin,target,role="rifle",index=0){
@@ -881,6 +952,12 @@ function initialize(THREE) {
       // Used dice appear only once the soldiers have finished moving.
       squad.orderToken.visible=Boolean(u.order)&&Boolean(u.activated)&&
         !destroyed&&!squad.moving;
+      squad.orderFace.visible=squad.orderToken.visible;
+      if(squad.orderFace.userData.lastOrder!==u.order){
+        squad.orderFace.material.map=orderTexture(u.order);
+        squad.orderFace.material.needsUpdate=true;
+        squad.orderFace.userData.lastOrder=u.order;
+      }
       for(let i=0;i<squad.pinTokens.length;i++)
         squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
       const m=squad.marker;
@@ -958,6 +1035,7 @@ function initialize(THREE) {
   // This director listens to ACTUAL resolved engine events. The old
   // before/after guessed-effects callback is intentionally retired.
   function showCombatStage(stage) {
+    showPhysicalDice(stage);
     const e=stage.event;
     if(stage.type==="ambush"){
       const squad=unitLookup.get(e.ambusherId);
@@ -1538,15 +1616,20 @@ function initialize(THREE) {
     squad.eligibleRing=eligibleRing;
     // Physical markers remain on the board instead of becoming a large HUD.
     // Order and pin count text is projected separately at low frequency.
-    const orderToken=block(root,.22,.17,.22,
-      mat(unit.faction==="red"?0xa5614d:0x598c99),radius+.18,.18,-.05);
-    orderToken.rotation.y=Math.PI/4;
+    const orderToken=block(root,.265,.235,.265,
+      mat(unit.faction==="red"?0xa5614d:0x598c99),radius+.40,.20,-.23);
     orderToken.visible=false;
     squad.orderToken=orderToken;
+    const orderFace=shape(root,new THREE.PlaneGeometry(.213,.213),
+      new THREE.MeshBasicMaterial({map:orderTexture(unit.order),
+        transparent:true,side:THREE.DoubleSide}),
+      radius+.40,.323,-.23);
+    orderFace.rotation.x=-Math.PI/2;
+    orderFace.visible=false;squad.orderFace=orderFace;
     squad.pinTokens=[];
     for(let i=0;i<5;i++){
-      const pin=shape(root,new THREE.CylinderGeometry(.105,.115,.045,10),
-        mat(0xc99c4d),radius+.30,.28+i*.048,-.33);
+      const pin=shape(root,new THREE.CylinderGeometry(.105,.112,.050,10),
+        mat(0xc99c4d),radius+.48,.17+i*.053,.40);
       pin.visible=false;
       squad.pinTokens.push(pin);
     }
@@ -2013,6 +2096,7 @@ function initialize(THREE) {
           squad.moving=false;
           squad.orderToken.visible=Boolean(squad.unit.order)&&
             Boolean(squad.unit.activated)&&squad.unit.soldiers>0;
+          squad.orderFace.visible=squad.orderToken.visible;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
           for(const soldier of squad.soldiers)soldier.grounded=false;
@@ -2141,6 +2225,12 @@ function initialize(THREE) {
           // breathing/sway loop that looks like jogging in place.
         }
       }
+      if(!isWalking&&frameIndex%18===0&&squad.orderToken.visible){
+        const x=squad.root.position.x+squad.orderToken.position.x;
+        const z=squad.root.position.z+squad.orderToken.position.z;
+        squad.orderToken.position.y=footingHeight(x,z)+.145;
+        squad.orderFace.position.y=squad.orderToken.position.y+.125;
+      }
       if(squad.ring.visible&&!squad.ring.userData.grounded) {
         squad.ring.position.y=footingHeight(squad.root.position.x,squad.root.position.z)+.03;
         squad.ring.userData.grounded=true;
@@ -2192,6 +2282,7 @@ function initialize(THREE) {
         visualEffects.splice(i,1);
       }
     }
+    animatePhysicalDice(dt);
     // One label max: keep synchronized with camera and soldiers at 60fps.
     placeUnitMarkers();
     if(frameIndex%12===0&&battle?.snapshot?.objectives){
