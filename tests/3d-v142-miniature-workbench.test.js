@@ -88,6 +88,8 @@ assert(bake.userData.sdfBaked);
 assert(bake.userData.triangles>10);
 assert(bake.userData.triangles<48001);
 assert(bake.attributes.position.array.every(Number.isFinite));
+assert(bake.attributes.normal.array.every(Number.isFinite));
+assert.equal(bake.attributes.normal.array.length,bake.attributes.position.array.length);
 assert.equal(bake.attributes.position.array.length%9,0);
 assert(geometry.make(THREE,torso,{published:true})===
   geometry.make(THREE,torso,{published:true}),
