@@ -1820,6 +1820,10 @@
     }
 
     function handleCancelAction() {
+      if(snapSelection&&phase==="choose-unit"){
+        releaseUnusedSnap();finishActivationStateAfterSnap();
+        return;
+      }
       if (backToOrdersFromFire()) return;
       cancelAndReselect();
     }
@@ -2629,6 +2633,8 @@
       drawnDie.textContent="Officer · Snap to Action";
       drawnDie.className="drawn-die "+currentFaction;
       drawButton.disabled=true;
+      cancelButton.disabled=false;
+      cancelButton.textContent="End Officer Orders";
       setStatus("OFFICER COMMAND · Choose a nearby friendly unit for a bonus order.",
         snapSelection.remaining+" reserved order die/dice · within "+RULES.commandRadius+
         "″ of the commander · normal Order Tests still apply.");
@@ -2684,6 +2690,8 @@
     }
 
     function finishActivationStateAfterSnap(){
+      cancelButton.disabled=true;
+      cancelButton.textContent="Cancel";
       phase="ready-to-draw";currentFaction=null;selectedUnitId=null;
       chosenOrder=null;drawButton.disabled=false;
       if(!bag.length||!livingUnits().some(u=>!u.activated))endRound();
