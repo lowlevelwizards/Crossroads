@@ -21,6 +21,9 @@
 .battle-hint,.battle-unit-status{font-size:11px;line-height:1.45}
 .battle-unit-status{color:#ded0a9}
 .battle-hint{color:#f1e6cb}
+.battle-fire-breakdown{max-width:min(520px,95vw);padding:7px 10px;
+  background:#202a24e8;border:1px solid #c2b08b77;border-radius:6px;
+  font-size:11px;line-height:1.45;text-align:center;color:#f1dcae}
 .battle-order-die{width:49px;height:49px;background:#536b55;border:2px solid #d3c29e;
   border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   box-shadow:0 3px 0 #29382e,0 7px 18px #1117;transform:rotate(-5deg);

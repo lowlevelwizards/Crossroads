@@ -25,6 +25,8 @@ function initialize(THREE) {
   const scenarioAdapter = window.Crossroads3DScenarioAdapter;
   const scaleSpec = window.Crossroads3DScale;
   const battle = window.CrossroadsBattle3D ?? null;
+  const shotExplanation=window.Crossroads3DShotExplanation;
+  const miniatureLab=window.Crossroads3DMiniatureLab;
   if(!scaleSpec)throw new Error("Shared miniature scale reference missing.");
   if(!scenarioAdapter)throw new Error("3D scenario adapter not loaded.");
   const requestedScenario=new URLSearchParams(window.location.search).get("scenario")||"hold_the_farm";
@@ -1121,6 +1123,9 @@ function initialize(THREE) {
       squad.orderToken.visible=Boolean(u.order)&&Boolean(u.activated)&&
         !destroyed&&!squad.moving;
       squad.orderFace.visible=squad.orderToken.visible;
+      if(squad.arcIndicator)squad.arcIndicator.visible=selected&&!squad.moving&&
+        !destroyed&&!u.inBuilding&&(!snapshot||["choose-order","choose-target",
+        "choose-unit","ambush-reaction"].includes(snapshot.phase));
       if(squad.orderFace.userData.lastOrder!==u.order){
         squad.orderFace.material.map=orderTexture(u.order);
         squad.orderFace.material.needsUpdate=true;
@@ -1425,15 +1430,9 @@ function initialize(THREE) {
     if(!selectedSquad)return;
     previewUnit=squad;
     pendingTargetId=squad.unit.id;pendingTargetAssessment=assessment;
-    const groupInfo=(assessment.weapons||[]).map(g=>
-      (g.shots||0)+" "+(g.label||g.key||"shots")).join(" · ");
-    const distanceText=Number.isFinite(assessment.distance)?
-      assessment.distance.toFixed(1)+"″ · ":"";
-    fireTag.textContent=assessment.legal?
-      distanceText+(groupInfo||"LEGAL FIRE")+
-        (assessment.cover?.saveTarget!=null?
-          " · COVER "+assessment.cover.saveTarget+"+":" · OPEN"):
-      "BLOCKED · "+(assessment.reason||"No legal shot");
+    fireTag.textContent=shotExplanation?
+      shotExplanation.summarize(assessment):
+      (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot"));
     fireTag.classList.toggle("blocked",!assessment.legal);
     fireTag.hidden=false;
     const a=selectedSquad.root.position,b=squad.root.position;
@@ -1479,7 +1478,8 @@ function initialize(THREE) {
     return true;
   }
   window.Crossroads3DTargetTools=Object.freeze({
-    getState(){return {id:pendingTargetId,legal:Boolean(pendingTargetAssessment?.legal)}},
+    getState(){return {id:pendingTargetId,legal:Boolean(pendingTargetAssessment?.legal),
+      details:pendingTargetAssessment&&shotExplanation?.describe(pendingTargetAssessment)}},
     confirmTarget,reset:clearFirePreview
   });
   const movePreviewLine=new THREE.Group();
@@ -1745,6 +1745,14 @@ function initialize(THREE) {
     squad.eligibleRing.position.set(anchor.x,height+.01,anchor.z);
     squad.eligibleRing.scale.setScalar(
       (anchor.radius+.16)/(squad.ringBaseRadius+.18));
+    if(squad.arcIndicator&&squad.soldiers[0]){
+      const gun=squad.soldiers[0];
+      const wx=squad.root.position.x+gun.figure.position.x;
+      const wz=squad.root.position.z+gun.figure.position.z;
+      squad.arcIndicator.position.set(gun.figure.position.x,
+        footingHeight(wx,wz)+.07,gun.figure.position.z);
+      squad.arcIndicator.rotation.y=gun.figure.rotation.y;
+    }
     squad.hitBox.position.x=anchor.x;
     squad.hitBox.position.z=anchor.z;
     const side=Math.max(1.12,anchor.radius*2+.35);
@@ -1822,15 +1830,15 @@ function initialize(THREE) {
     for (const side of [-1, 1]) {
       const leg = block(figure, .15, .39, .19, trousers, side * .125, .34, 0);
       leg.rotation.x = side * .08;
-      legs.push({ mesh:leg, side });
-      block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
+      const boot=block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
+      legs.push({ mesh:leg, side, boot });
     }
     const breathing = new THREE.Group();
     breathing.position.set(0, .78, 0);
     figure.add(breathing);
     block(breathing, .47, .56, .30, uniform, 0, 0, 0);
     block(breathing, .48, .10, .32, leather, 0, -.20, 0);
-    block(breathing, .34, .37, .19, mat(0x665e43), 0, -.025, .235);
+    const pack=block(breathing, .34, .37, .19, mat(0x665e43), 0, -.025, .235);
     for (const side of [-1, 1]) {
       block(breathing, .11, .38, .07, leather, side * .17, .02, -.169).rotation.z = -side * .21;
     }
@@ -1932,6 +1940,29 @@ function initialize(THREE) {
       muzzleLocal:new THREE.Vector3(.08,-.105,muzzleZ),
       baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
       gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z,crouch:0});
+    const soldier=squad.soldiers[squad.soldiers.length-1];
+    const issueCoat=uniform.color.getHex();
+    const issuePants=trousers.color.getHex();
+    const issueHelmet=helmet.color.getHex();
+    // Headwear geometry sits above the head at .60+; the face remains.
+    const headwear=breathing.children.filter(part=>part.position.y>=.60);
+    const inspectRing=new THREE.Mesh(new THREE.RingGeometry(.46,.51,24),
+      new THREE.MeshBasicMaterial({color:0xf5d37f,transparent:true,opacity:.85,
+        side:THREE.DoubleSide,depthWrite:false,depthTest:false}));
+    inspectRing.rotation.x=-Math.PI/2;inspectRing.position.y=.105;
+    inspectRing.visible=false;figure.add(inspectRing);
+    soldier.inspectRing=inspectRing;
+    soldier.applyLook=(look={})=>{
+      const scheme=look.uniform||"field";
+      uniform.color.setHex(scheme==="olive"?0x50614c:
+        scheme==="khaki"?0x9a8b62:issueCoat);
+      trousers.color.setHex(scheme==="olive"?0x424f42:
+        scheme==="khaki"?0x716345:issuePants);
+      helmet.color.setHex(scheme==="khaki"?0x777053:issueHelmet);
+      pack.visible=look.pack!=="off";
+      for(const part of headwear)part.visible=look.helmet!=="off";
+    };
+    soldier.applyLook(miniatureLab?.readLook(squad.unit.id,index)||{});
     return figure;
   }
 
@@ -2019,6 +2050,16 @@ function initialize(THREE) {
     eligibleRing.castShadow=false;
     eligibleRing.receiveShadow=false;
     squad.eligibleRing=eligibleRing;
+    // Cosmetic 90 degree guide only: InfantryCore owns all firing legality.
+    if(unit.type==="mmgTeam"||unit.role==="support"){
+      const sector=new THREE.Group();root.add(sector);
+      const fan=shape(sector,new THREE.RingGeometry(.57,4.6,48,1,
+        Math.PI/4,Math.PI/2),new THREE.MeshBasicMaterial({
+          color:0xdcc287,transparent:true,opacity:.12,side:THREE.DoubleSide,
+          depthWrite:false,depthTest:false}),0,0,0);
+      fan.rotation.x=-Math.PI/2;fan.renderOrder=5;
+      sector.visible=false;squad.arcIndicator=sector;
+    }
     // Physical markers remain on the board instead of becoming a large HUD.
     // Order and pin count text is projected separately at low frequency.
     const orderToken=block(root,.265,.235,.265,
@@ -2057,6 +2098,26 @@ function initialize(THREE) {
   units.forEach(createSquadRenderer);
   for(const squad of squads)snapSquadToFormation(squad);
   selectSquad(battle ? null : squads[0]);
+  miniatureLab?.attach({
+    list:()=>squads.map(s=>({id:s.unit.id,name:s.unit.name,count:s.soldiers.length})),
+    focus(id,index){
+      const squad=unitLookup.get(id);if(!squad)return;
+      selectSquad(squad);
+      for(const s of squads)for(let i=0;i<s.soldiers.length;i++)
+        s.soldiers[i].inspectRing.visible=s===squad&&i===index;
+      const soldier=squad.soldiers[index]||squad.soldiers[0];
+      cameraFocus={x:squad.root.position.x+soldier.figure.position.x,
+        z:squad.root.position.z+soldier.figure.position.z};
+      focusZoom=Math.max(zoom,3.2);
+    },
+    look(id,index,appearance){
+      unitLookup.get(id)?.soldiers[index]?.applyLook(appearance);
+    },
+    close(){
+      for(const squad of squads)for(const soldier of squad.soldiers)
+        soldier.inspectRing.visible=false;
+    }
+  });
 
   // The original 2D coordinator owns state, rules, activation and dice.
   // When this optional mode is present, the scene only projects snapshots
@@ -2100,7 +2161,10 @@ function initialize(THREE) {
           soldier.hitShock=0;soldier.recoil=0;
           soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
           soldier.aimTarget=null;soldier.grounded=false;
-          for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+          for(const leg of soldier.legs){
+          leg.mesh.rotation.x=leg.side*.08;
+          leg.boot.position.y=.17;leg.boot.position.z=-.055;
+        }
         });
       }
       for(const squad of squads)snapSquadToFormation(squad);
@@ -2185,7 +2249,7 @@ function initialize(THREE) {
             const duration=motion.travelDuration(displacement,run);
             activeMovements.set(squad.unit.id,{
               squad,plan:null,remote:true,start:before,end,phase:"turn",
-              elapsed:0,turn,travelDuration:duration,centerProgress:0,
+              elapsed:0,turn,run,travelDuration:duration,centerProgress:0,
               finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))
             });
             squad.moving=true;
@@ -2193,7 +2257,7 @@ function initialize(THREE) {
         }
       }
       const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
-      if(selectedSquad!==selected)selectSquad(selected);
+      if(!miniatureLab?.isOpen()&&selectedSquad!==selected)selectSquad(selected);
       updateUnitPresentation(snapshot);
       const signal=snapshot.snap?
         snapshot.snap.officerId+":"+snapshot.snap.remaining:null;
@@ -2410,6 +2474,9 @@ function initialize(THREE) {
     const picked=raycaster.intersectObjects(hitBoxes,false);
     if(picked.length) {
       const pickedSquad=picked[0].object.userData.squad;
+      if(miniatureLab?.isOpen()){
+        miniatureLab.focusUnit(pickedSquad.unit.id);return;
+      }
       if(battle) {
         const phase=battle.snapshot?.phase;
         if(phase==="choose-target"||phase==="choose-assault-target") {
@@ -2760,17 +2827,23 @@ function initialize(THREE) {
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
           Math.sin(soldierIndex*2.7+1)*.13+
           soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
-        for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+        for(const leg of soldier.legs){
+          leg.mesh.rotation.x=leg.side*.08;
+          leg.boot.position.y=.17;leg.boot.position.z=-.055;
+        }
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
             moving.end.z-moving.start.z);
           const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
           const pose=motion.gaitPose(totalDistance*ownProgress,
-            soldier.gait.stepLength,speed/1.2,soldier.gait.phase);
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
           soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
           soldier.breathing.rotation.x=-pose.lean;
-          for(const leg of soldier.legs)
+          for(const leg of soldier.legs){
             leg.mesh.rotation.x+=pose.legs*leg.side;
+            leg.boot.position.y=.17+(leg.side===-1?pose.leftLift:pose.rightLift);
+            leg.boot.position.z=-.055+(leg.side===-1?pose.leftReach:pose.rightReach);
+          }
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           const crouch=(battle&&squad.unit.down)?.69:
@@ -2782,7 +2855,8 @@ function initialize(THREE) {
               leg.mesh.rotation.x+=soldier.crouch*
                 (leg.side===-1?1.35:-1.15);
           }
-          soldier.breathing.rotation.x=soldier.crouch*.85-soldier.recoil;
+          // Lean into prone/Down cover rather than bending backward.
+          soldier.breathing.rotation.x=-soldier.crouch*.92-soldier.recoil;
           if(battle&&squad.unit.down){
             soldier.breathing.position.y-=soldier.crouch*.10;
             soldier.figure.rotation.z=0;

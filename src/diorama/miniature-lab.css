@@ -1,0 +1,23 @@
+.miniature-lab-toggle{position:absolute;z-index:16;right:max(12px,env(safe-area-inset-right));
+  top:calc(49px + env(safe-area-inset-top));border:1px solid #dfc891;
+  background:#25352be6;color:#f5e4bf;padding:8px 10px;border-radius:7px;
+  font:800 11px system-ui,sans-serif;letter-spacing:.04em;touch-action:manipulation}
+.miniature-lab{position:absolute;z-index:17;top:calc(91px + env(safe-area-inset-top));
+  right:max(12px,env(safe-area-inset-right));width:min(300px,calc(100% - 24px));
+  max-height:min(62dvh,520px);overflow:auto;overscroll-behavior:contain;
+  background:#243128f2;color:#f2e5ca;border:1px solid #a89776;
+  box-shadow:0 10px 38px #0a100da8;border-radius:10px;padding:12px;
+  font:12px system-ui,sans-serif}
+.miniature-lab[hidden]{display:none}
+.mini-lab-heading{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;letter-spacing:.08em}
+.miniature-lab p{color:#cbbc9d;font-size:11px;line-height:1.45;margin:7px 0}
+.miniature-lab label{display:block;margin:9px 0;font-weight:700}
+.miniature-lab select{display:block;width:100%;margin-top:4px;border-radius:5px;
+  background:#e9dec8;color:#293428;border:0;min-height:38px;padding:7px;font:inherit}
+.miniature-lab button{background:#d5bc8e;color:#28342a;border:0;border-radius:5px;
+  padding:7px 10px;min-height:33px;font-weight:800}
+.miniature-lab button:focus-visible,.miniature-lab-toggle:focus-visible{
+  outline:3px solid #f3d78a;outline-offset:2px}
+@media(max-height:550px){.miniature-lab{top:15px;max-height:calc(100dvh - 30px)}
+  .miniature-lab-toggle{top:6px;right:calc(310px + env(safe-area-inset-right))}}

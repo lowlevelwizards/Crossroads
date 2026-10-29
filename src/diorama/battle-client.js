@@ -454,6 +454,7 @@
       if(current.canCancel)action(controls,"Cancel order","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
       const target=window.Crossroads3DTargetTools?.getState?.()||{};
+      if(target.details)center.append(node("div","battle-fire-breakdown",target.details));
       const confirm=node("button","battle-action battle-primary-action battle-confirm-target",
         current.phase==="choose-assault-target"?"✓ CONFIRM ASSAULT":"✓ CONFIRM FIRE");
       confirm.type="button";confirm.disabled=busy||!target.legal;
