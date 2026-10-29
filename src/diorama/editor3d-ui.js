@@ -19,7 +19,8 @@
  body.append(type);
  const bar=el("div");bar.className="editor3d-actions";body.append(bar);
  const buttons={};
- for(const label of ["Place","Select","Rotate","Delete","Save","Export"]){
+ for(const label of ["Place","Select","Rotate","Duplicate","Delete",
+   "Undo","Redo","Snap","Save","Import","Export"]){
    const btn=el("button",label);btn.type="button";bar.append(btn);
    buttons[label]=btn;
  }
@@ -29,6 +30,15 @@
  const output=el("textarea");output.readOnly=true;output.hidden=true;
  output.setAttribute("aria-label","Exported scenario terrain records");body.append(output);
  let mode="Place",items=[],selected=null,serial=1;
+ let undo=[],redo=[],snap=0;
+ const clone=()=>items.map(x=>({...x}));
+ function checkpoint(){undo.push(clone());if(undo.length>60)undo.shift();redo=[]}
+ function restore(data){
+   items=data.map(x=>({...x}));selected=null;
+   serial=items.reduce((n,x)=>Math.max(n,
+     Number(String(x.id).replace("draft-",""))||0),0)+1;
+   paint();
+ }
  const update=()=>{
    list.replaceChildren();
    for(const item of items){
@@ -47,11 +57,15 @@
    scene.clear();for(const item of items)scene.place(item);update();
  };
  function place(world){
+   checkpoint();
    const [id,,width,height]=types.find(t=>t[0]===type.value)||types[0];
    const table=bridge.toTable(world),size=bridge.table;
    const clamp=(v,max)=>Math.min(max-.3,Math.max(.3,v));
    const entry={id:"draft-"+serial++,terrainId:id,
-     x:clamp(table.x-width/2,size.width-width),y:clamp(table.y-height/2,size.height-height),
+     x:clamp(snap?Math.round((table.x-width/2)/snap)*snap:table.x-width/2,
+       size.width-width),
+     y:clamp(snap?Math.round((table.y-height/2)/snap)*snap:table.y-height/2,
+       size.height-height),
      width,height,rotation:0};
    items.push(entry);selected=entry.id;
    window.Crossroads3DEditorBridge?.place(entry);
@@ -73,13 +87,55 @@
  buttons.Rotate.addEventListener("click",()=>{
    const item=items.find(item=>item.id===selected);
    if(!item)return hint.textContent="Select an object first";
-   item.rotation=((item.rotation||0)+15)%360;
+   checkpoint();item.rotation=((item.rotation||0)+15)%360;
    window.Crossroads3DEditorBridge?.place(item);update();
  });
  buttons.Delete.addEventListener("click",()=>{
    if(!selected)return hint.textContent="Select an object first";
+   checkpoint();
    window.Crossroads3DEditorBridge?.remove(selected);
    items=items.filter(item=>item.id!==selected);selected=null;update();
+ });
+ buttons.Duplicate.addEventListener("click",()=>{
+   const src=items.find(x=>x.id===selected);
+   if(!src)return hint.textContent="Select an object first";
+   checkpoint();
+   const duplicate={...src,id:"draft-"+serial++,
+     x:Math.min(bridge.table.width-src.width-.3,src.x+1.5),
+     y:Math.min(bridge.table.height-src.height-.3,src.y+1.5)};
+   items.push(duplicate);selected=duplicate.id;
+   window.Crossroads3DEditorBridge?.place(duplicate);update();
+ });
+ buttons.Undo.addEventListener("click",()=>{
+   if(!undo.length)return hint.textContent="Nothing to undo";
+   redo.push(clone());restore(undo.pop());
+   hint.textContent="Undid last terrain change";
+ });
+ buttons.Redo.addEventListener("click",()=>{
+   if(!redo.length)return hint.textContent="Nothing to redo";
+   undo.push(clone());restore(redo.pop());
+   hint.textContent="Redid terrain change";
+ });
+ buttons.Snap.addEventListener("click",()=>{
+   snap=snap===0?1:snap===1?.5:0;
+   buttons.Snap.textContent="Grid "+(snap?snap+"″":"Off");
+   hint.textContent="New placements snap to "+(snap?snap+" inch grid":"free position");
+ });
+ buttons.Import.addEventListener("click",()=>{
+   const answer=prompt("Paste a Crossroads terrain draft JSON export");
+   if(!answer)return;
+   try{
+     const parsed=JSON.parse(answer),incoming=parsed.terrain;
+     if(!Array.isArray(incoming)||incoming.length>250)
+       throw Error("Must contain up to 250 terrain records");
+     const valid=incoming.every(item=>item&&
+       types.some(t=>t[0]===item.terrainId)&&
+       ["x","y","width","height"].every(k=>Number.isFinite(item[k]))&&
+       item.width>0&&item.height>0);
+     if(!valid)throw Error("Unrecognized terrain type or coordinates");
+     checkpoint();restore(incoming);
+     hint.textContent="Imported "+items.length+" draft terrain objects";
+   }catch(error){hint.textContent="Import rejected: "+error.message}
  });
  buttons.Save.addEventListener("click",()=>{
    try{localStorage.setItem(key,JSON.stringify(items));hint.textContent="Saved in this browser"}

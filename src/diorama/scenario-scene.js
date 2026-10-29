@@ -1064,6 +1064,13 @@ function initialize(THREE) {
   outcomeChip.className="mini-impact-outcome";outcomeChip.hidden=true;
   markerLayer.appendChild(outcomeChip);
   let outcomeTarget=null,outcomeUntil=0;
+  function showStatus(target,message,color="neutral",duration=1650){
+    if(!target)return;
+    outcomeTarget=target;
+    outcomeChip.textContent=message;
+    outcomeChip.className="mini-impact-outcome status-"+color;
+    outcomeChip.hidden=false;outcomeUntil=performance.now()+duration;
+  }
   function showOutcome(target,event){
     const parts=[];
     if(event.saved>0)parts.push(event.saved+" COVER SAVED");
@@ -1071,6 +1078,7 @@ function initialize(THREE) {
     if(event.pinDelta>0)parts.push("+"+event.pinDelta+" PIN");
     if(!parts.length&&event.hits>0)parts.push(event.hits+" HITS");
     outcomeChip.textContent=parts.join(" · ");
+    outcomeChip.className="mini-impact-outcome";
     outcomeChip.classList.toggle("casualty",Boolean(event.casualties));
     outcomeChip.hidden=false;
     outcomeTarget=target;outcomeUntil=performance.now()+1700;
@@ -1241,16 +1249,32 @@ function initialize(THREE) {
     if(stage.type==="rally"){
       if(stage.phase==="recover"){
         const recovering=unitLookup.get(e.unitId);
-        if(recovering)spawnBriefFlash(recovering.root.position.x,.64,
-          recovering.root.position.z,0xa8cf9e,.24,.64);
+        if(recovering){
+          spawnBriefFlash(recovering.root.position.x,.64,
+            recovering.root.position.z,0xa8cf9e,.30,.70);
+          showStatus(recovering,"RALLY · "+(e.removedPins||0)+
+            " PINS REMOVED","rally");
+          recovering.soldiers.forEach(sol=>{
+            sol.crouch=0;sol.hitShock=0;
+          });
+        }
       }
       return;
     }
     if(stage.type==="order-test"){
       if(stage.phase==="impact"){
         const u=unitLookup.get(e.unitId);
-        if(u)spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
-          e.passed?0xa4c49a:0xcf876f,.16,.35);
+        if(u){
+          spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
+            e.passed?0xa4c49a:0xcf876f,e.passed?.22:.36,.60);
+          showStatus(u,e.passed?
+            "ORDER PASSED · "+e.total+"/"+e.target:
+            "ORDER FAILED · DOWN",""+(e.passed?"rally":"failed"),2000);
+          if(!e.passed){
+            u.suppressionImpulse=1;
+            u.soldiers.forEach(sol=>sol.hitShock=.5);
+          }
+        }
       }
       return;
     }
@@ -1804,6 +1828,33 @@ function initialize(THREE) {
     } else if (recipe.role === "loader") {
       block(breathing, .22, .17, .12, leather, -.20, -.19, .16);
     }
+    // Differentiation starts with silhouettes and equipment, not labels:
+    // NCOs carry dispatch cases and rank tabs; weapon specialists carry
+    // role-appropriate ammunition and hardware.
+    if(index===0&&!officer&&recipe.role!=="mmg"&&recipe.role!=="crew"){
+      block(breathing,.22,.085,.035,mat(0xc8b476),.02,.16,-.17);
+      block(breathing,.14,.18,.23,leather,-.31,-.23,.20);
+    }
+    if(recipe.role==="rifle"){
+      block(breathing,.32,.16,.13,mat(0x796b50),.18,-.24,.22);
+      for(const n of [-1,0,1])
+        block(breathing,.055,.10,.055,mat(0xb9a16d),
+          -.29+n*.085,-.29,.02);
+    }else if(recipe.role==="smg"){
+      for(const n of [-1,0,1])
+        block(breathing,.095,.22,.065,mat(0x4e5245),
+          -.27+n*.13,-.25,.12);
+      block(breathing,.10,.07,.07,metal,.09,-.21,-.63);
+    }else if(recipe.role==="lmg"){
+      block(breathing,.27,.30,.14,mat(0x5b5747),-.24,-.23,.24);
+      for(const side of [-1,1])
+        block(breathing,.03,.27,.04,metal,.08+side*.10,-.29,-1.13)
+          .rotation.z=side*.28;
+    }else if(officer){
+      block(breathing,.24,.30,.13,leather,.28,-.12,.23);
+      block(breathing,.09,.22,.13,mat(0xb7ab82),-.24,-.05,-.18);
+      block(breathing,.26,.06,.12,mat(0x3c473b),.15,.11,.24);
+    }
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
     const muzzleZ=recipe.role==="mmg"?-1.305:center-length*.5;
@@ -1936,10 +1987,63 @@ function initialize(THREE) {
   // The original 2D coordinator owns state, rules, activation and dice.
   // When this optional mode is present, the scene only projects snapshots
   // to miniature positions/poses; it never commits logical unit mutations.
+  const objectiveMarkers=[];
   if(battle) {
-    let lastSnapSignal=null;
+    let lastSnapSignal=null,seenBattleEpoch=null;
+    function resetBattlePresentation(snapshot){
+      // Restart is not a Run/Advance. Tear down transient state and
+      // reconstruct every surviving model from the authoritative snapshot.
+      activeMovements.clear();
+      delayedMuzzleBursts.length=0;
+      casualtyAnimations.length=0;
+      for(const e of visualEffects){
+        scene.remove(e.mesh);
+        e.mesh.geometry?.dispose();e.mesh.material?.dispose();
+      }
+      visualEffects.length=0;
+      clearPhysicalDice();
+      clearWaypoint();clearFirePreview();clearMovePreview();
+      outcomeChip.hidden=true;outcomeTarget=null;outcomeUntil=0;
+      lastSnapSignal=null;
+      for(const squad of squads){
+        const state=snapshot.units.find(u=>u.id===squad.unit.id);
+        if(!state)continue;
+        Object.assign(squad.unit,state);
+        const dest=bridge.toWorld(state);
+        squad.root.position.set(dest.x,0,dest.z);
+        squad.moving=false;squad.entrySequence=null;squad.assaultVisual=null;
+        squad.assaultCharge=0;squad.suppressionImpulse=0;
+        squad.formationCache=null;squad.lastMoveConstraints=null;
+        squad.selectionPulse=0;squad.alertUntil=0;
+        squad.soldiers.forEach((soldier,i)=>{
+          soldier.figure.visible=i<state.soldiers;
+          soldier.figure.position.set(soldier.slotX,0,soldier.slotZ);
+          soldier.figure.rotation.set(0,
+            (state.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(i-2),0);
+          soldier.figure.scale.setScalar(MINIATURE_SCALE);
+          soldier.breathing.rotation.set(0,0,0);
+          soldier.crouch=0;soldier.coverPose=0;
+          soldier.hitShock=0;soldier.recoil=0;
+          soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
+          soldier.aimTarget=null;soldier.grounded=false;
+          for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+        });
+      }
+      selectSquad(null);
+      cameraFocus={x:0,z:0};focusZoom=1;
+      stage.classList.remove("battle-resetting");
+      // A single-frame board wipe prevents backwards interpolation while
+      // the initial footprints settle to the original cover formation.
+      stage.classList.add("battle-resetting");
+      requestAnimationFrame(()=>stage.classList.remove("battle-resetting"));
+    }
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
+      if(seenBattleEpoch===null)seenBattleEpoch=snapshot.battleEpoch??0;
+      else if((snapshot.battleEpoch??0)!==seenBattleEpoch){
+        seenBattleEpoch=snapshot.battleEpoch??0;
+        resetBattlePresentation(snapshot);
+      }
       if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
         pendingTargetId=null;
         clearFirePreview();
@@ -2029,6 +2133,7 @@ function initialize(THREE) {
       }
       lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
+      updateObjectiveMarkers(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onCombatStage(showCombatStage);
@@ -2036,9 +2141,13 @@ function initialize(THREE) {
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
   // These don't resolve objective control; scoring remains owned by the engine.
-  const objectiveMarkers=[];
-  for(const objective of layout.objectives) {
-    if(!Number.isFinite(objective.x)||!Number.isFinite(objective.y))continue;
+  const markerPoints=layout.objectives.flatMap(objective=>
+    Array.isArray(objective.points)&&objective.points.length?
+      objective.points.map(point=>({...point,parentId:objective.id})):
+      [objective]);
+  for(const objective of markerPoints) {
+    if(objective.showMarker===false||!Number.isFinite(objective.x)||
+       !Number.isFinite(objective.y))continue;
     const at=bridge.toWorld(objective);
     const radius=Math.max(.22,(objective.radius||1)*bridge.table.worldUnitsPerInch);
     const y=footingHeight(at.x,at.z)+.035;
@@ -2046,18 +2155,36 @@ function initialize(THREE) {
       new THREE.MeshBasicMaterial({color:0xd6be89,transparent:true,opacity:.48,
         depthWrite:false,side:THREE.DoubleSide}),at.x,y,at.z);
     marker.rotation.x=-Math.PI/2;
-    marker.castShadow=false;
-    marker.receiveShadow=false;
+    marker.castShadow=false;marker.receiveShadow=false;
     marker.userData.objectiveId=objective.id;
+    marker.userData.parentObjectiveId=objective.parentId||objective.id;
     objectiveMarkers.push(marker);
-    // Small flag pin reads as a practical miniature objective marker.
     const pole=shape(scene,new THREE.CylinderGeometry(.017,.019,.58,7),
       mat(0x948571),at.x,y+.29,at.z);
     pole.castShadow=false;
     const flag=block(scene,.30,.14,.025,mat(0xb49b72),
       at.x+.15,y+.47,at.z);
     flag.castShadow=false;
+    marker.userData.flag=flag;
   }
+  function updateObjectiveMarkers(snapshot){
+    for(const marker of objectiveMarkers){
+      const objective=(snapshot?.objectives||[]).find(o=>
+        o.id===marker.userData.parentObjectiveId);
+      const point=objective?.points?.find?.(p=>p.id===marker.userData.objectiveId);
+      const state=point?.state||objective?.state||"none";
+      const color=state==="blue"?0x72c5da:
+        state==="red"?0xd89475:state==="contested"?0xf1ca6a:0xd6be89;
+      if(marker.userData.lastState!==state){
+        marker.userData.lastState=state;
+        marker.material.color.setHex(color);
+        marker.userData.flag?.material?.color.setHex(color);
+        marker.material.opacity=state==="none"?.48:.90;
+      }
+    }
+  }
+
+  if(battle)updateObjectiveMarkers(battle.snapshot);
 
   // Optional comparison overlay for mapping/debug only; normal players
   // see neither panels nor rectangles. Enable with ?debugTerrain=1.
@@ -2432,7 +2559,7 @@ function initialize(THREE) {
           squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
         if(u>=1){moving.phase="travel";moving.elapsed=0;}
       }else{
-        moving.centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        moving.centerProgress=motion.travelProgress(moving.elapsed,moving.travelDuration);
         squad.root.position.set(
           moving.start.x+(moving.end.x-moving.start.x)*moving.centerProgress,
           0,
@@ -2498,9 +2625,8 @@ function initialize(THREE) {
             if(Math.abs(difference)<.014)soldier.aimTarget=null;
           }
         }
-        const ownProgress=isWalking?
-          motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
-        const takingSteps=isWalking&&ownProgress<.999;
+        const ownProgress=isWalking?moving.centerProgress:1;
+        const takingSteps=isWalking&&moving.elapsed<moving.travelDuration;
         if(!isWalking){
           const assault=squad.assaultVisual;
           const displacement=assault&&assaultMotion?
@@ -2544,12 +2670,13 @@ function initialize(THREE) {
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
         }
-        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
-            (!isWalking&&!soldier.grounded)) {
+        if(isWalking||!soldier.grounded){
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
           const baseBottom=(.02-.11/2)*MINIATURE_SCALE;
-          soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.016;
+          const nextHeight=footingHeight(fx,fz)-baseBottom+.016;
+          soldier.figure.position.y+=(nextHeight-soldier.figure.position.y)*
+            (isWalking?Math.min(1,dt*19):1);
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
         }
@@ -2565,18 +2692,16 @@ function initialize(THREE) {
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
             moving.end.z-moving.start.z);
-          const stride=Math.sin(ownProgress*totalDistance*15.5+
-            soldier.phase*.45);
-          const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
-          const settle=Math.min(1,ownProgress/.12,(1-ownProgress)/.14);
-          soldier.breathing.position.y+=Math.abs(stride)*
-            (soldier.gait.bob*1.5)*Math.max(0,settle)*easeStop;
-          soldier.breathing.rotation.x=-.11*easeStop;
+          const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
+          const pose=motion.gaitPose(totalDistance*ownProgress,
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase);
+          soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
+          soldier.breathing.rotation.x=-pose.lean;
           for(const leg of soldier.legs)
-            leg.mesh.rotation.x+=stride*.68*leg.side*easeStop;
+            leg.mesh.rotation.x+=pose.legs*leg.side;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          const crouch=(battle&&squad.unit.down)?.57:
+          const crouch=(battle&&squad.unit.down)?.69:
             Math.max(soldier.coverPose||0,
               (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
@@ -2585,7 +2710,11 @@ function initialize(THREE) {
               leg.mesh.rotation.x+=soldier.crouch*
                 (leg.side===-1?1.35:-1.15);
           }
-          soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
+          soldier.breathing.rotation.x=soldier.crouch*.85-soldier.recoil;
+          if(battle&&squad.unit.down){
+            soldier.breathing.position.y-=soldier.crouch*.10;
+            soldier.figure.rotation.z=0;
+          }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }

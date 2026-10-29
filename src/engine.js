@@ -263,6 +263,7 @@
     let units = [];
     let round = 1;
     let scores = { blue: 0, red: 0 };
+    let battleEpoch=0; // Discrete 3D reconstruction boundary; never animate backward.
     let bag = [];
     let snapSelection = null;
     let currentFaction = null;
@@ -3496,6 +3497,8 @@
     }
 
     function restartBattle() {
+      battleEpoch++;
+      snapSelection=null;
       activeScenarioId = document.getElementById("scenarioSelect")?.value ?? activeScenarioId;
       activeScenario = SCENARIOS[activeScenarioId];
       applyScenarioDefinition();
@@ -4329,7 +4332,7 @@
       snapshot() {
         const selected=getUnit(selectedUnitId);
         return {
-          scenarioId:activeScenarioId, phase, round,
+          scenarioId:activeScenarioId, phase, round,battleEpoch,
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
@@ -4340,7 +4343,11 @@
           objectives:objectiveSnapshots().map(item=>({
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
             x:item.objective?.x??null,y:item.objective?.y??null,
-            points:item.objective?.points??null,
+            points:item.points??item.objective?.points??null,
+            controlled:item.controlled??null,
+            present:item.present??null,
+            roundScoring:item.objective?.roundScoring??null,
+            finalScoring:item.objective?.finalScoring??null,
             type:item.objective?.type||"unknown",
             faction:item.objective?.faction||null,
             roundPoints:Number(item.objective?.roundPoints||0),
@@ -4369,6 +4376,12 @@
             moverId:pendingMovement?.moverId??null
           } : null,
           deploymentFaction:phase==="deployment"?currentDeploymentFaction():null,
+          deployment:phase==="deployment"?{
+            faction:currentDeploymentFaction(),
+            zones:activeScenario.deployment.zones,
+            valid:deploymentIsValidForFaction(currentDeploymentFaction()),
+            selectedId:deploymentUnitId
+          }:null,
           deploymentUnitId:phase==="deployment"?deploymentUnitId:null,
           canCancel:Boolean(activationSnapshot)&&!transactionLockReason,
           building:selected&&phase==="choose-order"&&buildingCommand(selected)?.enabled

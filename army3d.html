@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crossroads — Army Planner Alpha</title>
+<style>
+:root{font-family:system-ui,sans-serif;background:#1b2824;color:#f1e6ce}
+*{box-sizing:border-box}body{margin:0;padding:clamp(15px,3vw,30px);
+max-width:900px;margin-inline:auto}
+a{color:#ddc58c}h1{font:normal clamp(26px,5vw,39px) Georgia,serif;color:#edcd8c;margin:.3em 0}
+h2{font-size:13px;letter-spacing:.12em}p{line-height:1.5}
+small,.sub{color:#bfb6a2}main{display:grid;grid-template-columns:1fr 1.5fr;gap:16px}
+section{background:#27352e;border:1px solid #8e8770;border-radius:10px;padding:15px}
+input,select,button,textarea{font:inherit;padding:10px;border-radius:6px;border:1px solid #aa9f80}
+input,select,textarea{background:#182720;color:#f0e5c9;width:100%;margin:4px 0 10px}
+button{background:#dac08b;color:#222e27;font-weight:800;min-height:42px;
+touch-action:manipulation;cursor:pointer}button.secondary{background:#4c6051;color:#fff1db}
+.row{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}article{border-top:1px solid #ffffff24;padding:10px 0}
+article strong{display:block}article small{display:block;margin:5px 0}
+button:focus-visible{outline:3px solid #f6d891;outline-offset:2px}
+#feedback{color:#ebd08a;font-size:12px;min-height:18px}
+@media(max-width:700px){main{grid-template-columns:1fr}}
+</style></head><body>
+<a href="./scenarios3d.html">← Scenarios</a><h1>Army Planner · Alpha</h1>
+<p class="sub">Build and save draft WWII force rosters using the four unit types
+currently simulated in Crossroads. Point costs, historical selectors and
+book-specific upgrades are deliberately <strong>not</strong> claimed as
+Third Edition-validated until official reference data is licensed/verified.
+Drafts do not change an active battle yet.</p>
+<main><section><h2>FORCE DETAILS</h2>
+<label>Force name<input id="forceName" maxlength="80" value="My platoon"></label>
+<label>Faction<select id="faction"><option value="blue">Poland</option>
+<option value="red">Germany</option></select></label>
+<label>Unit type<select id="unitType"></select></label>
+<label>Experience<select id="quality"><option value="inexperienced">Inexperienced</option>
+<option value="regular" selected>Regular</option><option value="veteran">Veteran</option></select></label>
+<div class="row"><button id="add">Add unit</button><button class="secondary" id="save">Save locally</button></div>
+<div class="row"><button class="secondary" id="export">Export JSON</button>
+<button class="secondary" id="import">Import JSON</button></div>
+<p id="feedback" role="status"></p>
+<textarea id="output" rows="9" aria-label="Exported army data" hidden readonly></textarea>
+</section><section><h2>FORCE ROSTER</h2><p id="count"></p><div id="units"></div></section></main>
+<script src="data/unit-types.js?v=s111h5"></script>
+<script src="src/army/army-planner.js?v=s111h5"></script>
+<script>
+"use strict";
+(()=>{
+const get=id=>document.getElementById(id);
+const types=window.CROSSROADS_UNIT_TYPES,api=window.CrossroadsArmyDraft;
+const select=get("unitType");
+for(const [id,t] of Object.entries(types)){
+ const option=document.createElement("option");option.value=id;
+ option.textContent=t.name+" · "+t.soldiers+" miniatures";select.append(option);
+}
+let roster={schemaVersion:1,faction:"blue",name:"My platoon",units:[]},next=1;
+const text=(node,label)=>{node.textContent=label;return node};
+function refresh(){
+ get("count").textContent=roster.units.length+" units · "+
+   roster.units.reduce((n,u)=>n+(types[u.unitType]?.soldiers||0),0)+
+   " miniatures · draft list (point cost not calculated)";
+ const root=get("units");root.replaceChildren();
+ for(const [index,u] of roster.units.entries()){
+   const t=types[u.unitType],a=document.createElement("article");
+   const title=document.createElement("strong");
+   title.textContent=(u.name||t.name)+" · "+u.quality;a.append(title);
+   const detail=document.createElement("small");
+   detail.textContent=t.soldiers+" miniatures · "+
+     Object.entries(t.weapons).map(([k,n])=>n+" "+k).join(" · ");
+   a.append(detail);
+   const edit=document.createElement("button");
+   edit.className="secondary";edit.textContent="Remove";
+   edit.addEventListener("click",()=>{roster.units.splice(index,1);refresh()});
+   a.append(edit);root.append(a);
+ }
+}
+get("add").addEventListener("click",()=>{
+ const unitType=select.value;
+ roster.units.push({id:"unit-"+next++,unitType,quality:get("quality").value,
+   name:types[unitType].name+" "+next});
+ refresh();get("feedback").textContent="Unit added";
+});
+function sync(){roster.faction=get("faction").value;
+ roster.name=get("forceName").value.trim()||"My platoon"}
+get("save").addEventListener("click",()=>{
+ sync();try{localStorage.setItem("crossroads-army-draft-v1",JSON.stringify(roster));
+ get("feedback").textContent="Saved in this browser"}
+ catch(e){get("feedback").textContent="Local storage unavailable"}
+});
+get("export").addEventListener("click",()=>{
+ sync();get("output").hidden=false;
+ get("output").value=JSON.stringify(roster,null,2);
+ get("output").focus();get("output").select();
+ get("feedback").textContent="Draft exported; book-accurate list validation not yet included";
+});
+get("import").addEventListener("click",()=>{
+ const source=prompt("Paste Crossroads army draft JSON");
+ if(!source)return;
+ try{roster=api.load(source,types);
+ get("faction").value=roster.faction;get("forceName").value=roster.name;
+ next=roster.units.length+1;refresh();get("feedback").textContent="Draft imported"}
+ catch(e){get("feedback").textContent="Import rejected: "+e.message}
+});
+try{const saved=localStorage.getItem("crossroads-army-draft-v1");
+ if(saved){roster=api.load(saved,types);get("faction").value=roster.faction;
+ get("forceName").value=roster.name;next=roster.units.length+1}}
+catch(e){get("feedback").textContent="Previous draft could not be loaded"}
+refresh();
+})();
+</script>
+</body></html>

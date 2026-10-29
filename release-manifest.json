@@ -4,7 +4,7 @@
   "baseVersion": "S1.1.0",
   "codename": "Viewport & Interaction Reliability",
   "releaseType": "standalone",
-  "cacheVersion": "s111h4",
+  "cacheVersion": "s111h5",
   "entryPoints": [
     "index.html",
     "classic.html",
@@ -12,7 +12,8 @@
     "tests/startup-smoke.html",
     "battle3d.html",
     "scenarios3d.html",
-    "editor3d.html"
+    "editor3d.html",
+    "army3d.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -76,7 +77,11 @@
     "src/rules/model-geometry.js",
     "tests/3d-v093-rules-and-command.test.js",
     "src/diorama/pointer-recovery.js",
-    "tests/3d-v092-ios-touch-recovery.test.js"
+    "tests/3d-v092-ios-touch-recovery.test.js",
+    "army3d.html",
+    "src/army/army-planner.js",
+    "tests/3d-v094-physicality-and-solo.test.js",
+    "tests/3d-v094-scenario-validation.test.js"
   ],
-  "threeDCacheVersion": "0.9.3"
+  "threeDCacheVersion": "0.9.4"
 }

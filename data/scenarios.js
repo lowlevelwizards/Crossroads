@@ -221,10 +221,60 @@ const terrainLibrary = Object.freeze({
   forces:Object.freeze({blue:freezeList([{id:"blue-rifle",unitType:"rifleSquad",quality:"regular",x:68,y:34}]),red:freezeList([{id:"red-rifle",unitType:"rifleSquad",quality:"regular",x:68,y:44}])})
 });
 
+// Declarative variants use the existing objective runtime and terrain
+// catalogue. No new scenario-ID branches in the battle coordinator.
+const meetingEngagement=Object.freeze({
+  ...takeTheCrossroads,
+  id:"meeting_engagement",title:"Meeting Engagement — Mill Road",
+  description:"Two patrol columns converge on a crossroads. Capture the road junction and northern copse; hold both against counterattacks.",
+  rounds:5,
+  deployment:Object.freeze({mode:"fixed",order:Object.freeze([]),
+    zones:Object.freeze({blue:zone(0,18,0,48,"Polish approach"),
+      red:zone(54,72,0,48,"German approach")})}),
+  terrain:freezeList([
+    ...takeTheCrossroads.terrain,
+    {id:"mill-hedge",terrainId:"hedge",x:28,y:10,width:13,height:2.5},
+    {id:"mill-fence",terrainId:"fence_wood",x:47,y:28,width:9,height:2.5}
+  ]),
+  objectives:freezeList([
+    {id:"mill-junction",type:"control_zone",x:36,y:24,radius:3.5,
+      label:"Mill Junction",roundPoints:1,finalPoints:0},
+    {id:"north-copse",type:"control_zone",x:35,y:11,radius:3,
+      label:"Northern Approach",roundPoints:1,finalPoints:0}
+  ]),
+  forces:Object.freeze({
+    blue:freezeList(takeTheCrossroads.forces.blue.map((u,i)=>({
+      ...u,id:"meeting-"+u.id,x:7+(i%2)*3,y:7+i*8
+    }))),
+    red:freezeList(takeTheCrossroads.forces.red.map((u,i)=>({
+      ...u,id:"meeting-"+u.id,x:62+(i%2)*3,y:7+i*8
+    })))
+  })
+});
+const villageHoldout=Object.freeze({
+  ...holdTheFarm,
+  id:"village_holdout",title:"Village Holdout",
+  description:"A Polish rearguard must defend the village square against an advancing German assault. Control at the final whistle matters more than early occupation.",
+  rounds:5,
+  terrain:freezeList([
+    ...holdTheFarm.terrain,
+    {id:"village-houses",terrainId:"small_cottage",x:29,y:34,width:8,height:6},
+    {id:"village-barricade",terrainId:"wall",x:32,y:28,width:11,height:2.2}
+  ]),
+  objectives:freezeList([
+    {id:"village-square",type:"control_zone",x:37,y:24,radius:4,
+      label:"Village Square",roundPoints:0,finalPoints:3},
+    {id:"west-approach",type:"control_zone",x:27,y:24,radius:3,
+      label:"Western Approach",roundPoints:1,finalPoints:0}
+  ])
+});
+
 window.CROSSROADS_SCENARIOS = Object.freeze({
   take_the_crossroads: takeTheCrossroads,
   hold_the_farm: holdTheFarm,
   breakthrough,
   mokra,
+  meeting_engagement:meetingEngagement,
+  village_holdout:villageHoldout,
   terrain_library: terrainLibrary
 });

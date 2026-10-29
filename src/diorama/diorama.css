@@ -79,3 +79,6 @@ html,body,.experience,.stage{overscroll-behavior:none;
 #dioramaCanvas{overscroll-behavior:none;-webkit-user-select:none;
   user-select:none;-webkit-touch-callout:none}
 input,textarea,select{-webkit-user-select:text;user-select:text}
+
+/* The game reset is a discrete tabletop reconstruction, not a reverse move. */
+.stage.battle-resetting canvas{visibility:hidden}

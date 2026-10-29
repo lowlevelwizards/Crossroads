@@ -33,24 +33,44 @@
     const n = unitIndex * 17 + soldierIndex * 7;
     const oscillation = Math.sin(n * 1.371 + 2.37);
     return Object.freeze({
-      pace: 1 + oscillation * .14, // 0.86–1.14× duration (visual only)
-      delay: .03 + (.5 + .5 * Math.sin(n * 2.51 + .34)) * .14,
-      stride: 5.7 + (.5 + .5 * Math.sin(n * 1.74)) * 3.6,
-      bob: .084 + (.5 + .5 * Math.cos(n * 2.14)) * .054
+      pace:1,delay:0,
+      stepLength:.36+oscillation*.025,
+      phase:Math.sin(n*2.51)*.24,
+      bob:.032+(.5+.5*Math.cos(n*2.14))*.011
     });
   }
-  function progressFor(elapsed, duration, gait) {
-    return clamp((elapsed - gait.delay) / (duration * gait.pace), 0, 1);
+  // Brief ramp-up and braking; the middle 80% moves at steady speed.
+  // This integral drives every model's translation, feet and bounce.
+  function travelProgress(elapsed,duration){
+    const u=clamp(elapsed/Math.max(.001,duration),0,1);
+    const a=.095,b=.88,normal=1-(a+(1-b))/2;
+    if(u<a)return u*u/(2*a*normal);
+    if(u<b)return (u-a/2)/normal;
+    const v=1-u;
+    return 1-v*v/(2*(1-b)*normal);
   }
+  function travelVelocity(elapsed,duration){
+    const u=clamp(elapsed/Math.max(.001,duration),0,1);
+    const a=.095,b=.88,normal=1-(a+(1-b))/2;
+    if(u<a)return (u/a)/normal;
+    if(u<b)return 1/normal;
+    return ((1-u)/(1-b))/normal;
+  }
+  function gaitPose(travelled,stepLength,speedRatio,phase=0){
+    const angle=travelled/Math.max(.22,stepLength)*Math.PI*2+phase;
+    const drive=clamp(speedRatio,0,1);
+    return {legs:Math.sin(angle)*.62*drive,
+      bob:(1-Math.cos(angle*2))*.5*drive,
+      lean:drive*.065};
+  }
+  function progressFor(elapsed,duration){return travelProgress(elapsed,duration)}
   function travelDuration(distance,run=false){
-    const speed=run?2.55:1.73;
-    return clamp(distance/Math.max(.25,speed),.29,2.15);
+    const speed=run?1.65:1.07;
+    return clamp(distance/Math.max(.25,speed),.39,5.0);
   }
-  function finishTime(duration, gaits) {
-    return Math.max(duration, ...gaits.map(gait => gait.delay + duration * gait.pace));
-  }
+  function finishTime(duration){return duration}
   window.CrossroadsDioramaMotion = Object.freeze({
     heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor,
-    travelDuration,finishTime
+    travelDuration,finishTime,travelProgress,travelVelocity,gaitPose
   });
 })();
