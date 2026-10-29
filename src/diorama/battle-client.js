@@ -215,11 +215,6 @@
     const dice=node("div","battle-die-bag",
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
-    if(current.phase==="round-complete"){
-      const pending=node("div","battle-objective-banner",
-        "POINTS PENDING · Score objectives to complete Round "+current.round);
-      pending.setAttribute("role","status");hud.append(pending);
-    }
     const sound=node("button","battle-audio-toggle",
       audioEnabled?"♪ ON":"♪ OFF");
     sound.type="button";
@@ -251,6 +246,11 @@
       ribbon.append(skip);
     }
     hud.append(ribbon);
+    if(current.phase==="round-complete"){
+      const pending=node("div","battle-objective-banner",
+        "POINTS PENDING · Score objectives to complete Round "+current.round);
+      pending.setAttribute("role","status");hud.append(pending);
+    }
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
       const label=node("div","battle-objective-banner",

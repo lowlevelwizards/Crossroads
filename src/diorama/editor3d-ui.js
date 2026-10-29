@@ -4,7 +4,7 @@
  const panel=document.getElementById("terrainEditorPanel");
  if(!panel)return;
  const types=[["wall","Stone wall",14,2.5],["hedge","Hedge",12,2.5],
-  ["fence","Fence",10,2.5],["road_straight","Road",18,4.32],
+  ["fence_wood","Fence",10,2.5],["road_straight","Road",18,4.32],
   ["woods","Woods",12,9],["medium_cottage","Cottage",11,8],
   ["barn","Barn",12,8],["field_wheat","Field",12,8]];
  const scenario=new URLSearchParams(location.search).get("scenario")||"hold_the_farm";

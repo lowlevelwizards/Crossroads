@@ -162,7 +162,7 @@ function initialize(THREE) {
   const editorDraftMeshes=new Map();
   const editorDraftStyle={
     wall:{color:0xb4a58e,height:.36},hedge:{color:0x5e7e52,height:.52},
-    fence:{color:0x79654d,height:.45},road_straight:{color:0xb0a17e,height:.042},
+    fence_wood:{color:0x79654d,height:.45},road_straight:{color:0xb0a17e,height:.042},
     woods:{color:0x607a51,height:.50},medium_cottage:{color:0xc2aa8d,height:1.42},
     barn:{color:0x76664f,height:1.35},field_wheat:{color:0xb6a06b,height:.10}
   };
