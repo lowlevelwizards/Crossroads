@@ -44,7 +44,17 @@ assert.strictEqual(geometry.facingFromScreenDelta(1, -20, "left"), "up");
 assert.strictEqual(geometry.facingFromScreenDelta(0.1, 0.1, "left"), "left");
 
 const effects = fs.readFileSync(path.join(root, "src/presentation/effects.js"), "utf8");
-assert(effects.includes("facingFromScreenDelta"), "movement presentation must derive facing from measured screen displacement");
-assert(effects.includes("-inverse.x") && effects.includes("-inverse.y"), "measured movement must use actual end-minus-start screen direction");
+const engine = fs.readFileSync(path.join(root, "src/engine.js"), "utf8");
+// The original coordinator now owns per-segment facing calculation. The visual
+// player applies its authoritative result; it must not rederive a different one.
+assert(engine.includes("tableVectorToScreenVector(") &&
+  engine.includes("cardinalFacingFromVector(") && engine.includes("facings.push("),
+  "engine movement must derive facing from the measured screen movement vector");
+assert(effects.includes("options.facings?.[index - 1]") &&
+  effects.includes("applyFacing(root, facing)"),
+  "presentation must apply the coordinator's segment-facing decisions");
+assert(effects.includes("localMovementInverse(from, to)") &&
+  effects.includes("from.x - to.x") && effects.includes("from.y - to.y"),
+  "visual movement must derive actual start-minus-end screen displacement");
 
 console.log("PASS — units occupy a terrain-safe presentation band and movement facing follows actual screen displacement.");
