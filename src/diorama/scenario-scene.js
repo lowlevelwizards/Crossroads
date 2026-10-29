@@ -25,6 +25,7 @@ function initialize(THREE) {
   const scenarioAdapter = window.Crossroads3DScenarioAdapter;
   const scaleSpec = window.Crossroads3DScale;
   const battle = window.CrossroadsBattle3D ?? null;
+  const shotExplanation=window.Crossroads3DShotExplanation;
   if(!scaleSpec)throw new Error("Shared miniature scale reference missing.");
   if(!scenarioAdapter)throw new Error("3D scenario adapter not loaded.");
   const requestedScenario=new URLSearchParams(window.location.search).get("scenario")||"hold_the_farm";
@@ -1425,15 +1426,9 @@ function initialize(THREE) {
     if(!selectedSquad)return;
     previewUnit=squad;
     pendingTargetId=squad.unit.id;pendingTargetAssessment=assessment;
-    const groupInfo=(assessment.weapons||[]).map(g=>
-      (g.shots||0)+" "+(g.label||g.key||"shots")).join(" · ");
-    const distanceText=Number.isFinite(assessment.distance)?
-      assessment.distance.toFixed(1)+"″ · ":"";
-    fireTag.textContent=assessment.legal?
-      distanceText+(groupInfo||"LEGAL FIRE")+
-        (assessment.cover?.saveTarget!=null?
-          " · COVER "+assessment.cover.saveTarget+"+":" · OPEN"):
-      "BLOCKED · "+(assessment.reason||"No legal shot");
+    fireTag.textContent=shotExplanation?
+      shotExplanation.summarize(assessment):
+      (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot"));
     fireTag.classList.toggle("blocked",!assessment.legal);
     fireTag.hidden=false;
     const a=selectedSquad.root.position,b=squad.root.position;
@@ -1479,7 +1474,8 @@ function initialize(THREE) {
     return true;
   }
   window.Crossroads3DTargetTools=Object.freeze({
-    getState(){return {id:pendingTargetId,legal:Boolean(pendingTargetAssessment?.legal)}},
+    getState(){return {id:pendingTargetId,legal:Boolean(pendingTargetAssessment?.legal),
+      details:pendingTargetAssessment&&shotExplanation?.describe(pendingTargetAssessment)}},
     confirmTarget,reset:clearFirePreview
   });
   const movePreviewLine=new THREE.Group();
@@ -1822,8 +1818,8 @@ function initialize(THREE) {
     for (const side of [-1, 1]) {
       const leg = block(figure, .15, .39, .19, trousers, side * .125, .34, 0);
       leg.rotation.x = side * .08;
-      legs.push({ mesh:leg, side });
-      block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
+      const boot=block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
+      legs.push({ mesh:leg, side, boot });
     }
     const breathing = new THREE.Group();
     breathing.position.set(0, .78, 0);
@@ -2100,7 +2096,10 @@ function initialize(THREE) {
           soldier.hitShock=0;soldier.recoil=0;
           soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
           soldier.aimTarget=null;soldier.grounded=false;
-          for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+          for(const leg of soldier.legs){
+          leg.mesh.rotation.x=leg.side*.08;
+          leg.boot.position.y=.17;leg.boot.position.z=-.055;
+        }
         });
       }
       for(const squad of squads)snapSquadToFormation(squad);
@@ -2185,7 +2184,7 @@ function initialize(THREE) {
             const duration=motion.travelDuration(displacement,run);
             activeMovements.set(squad.unit.id,{
               squad,plan:null,remote:true,start:before,end,phase:"turn",
-              elapsed:0,turn,travelDuration:duration,centerProgress:0,
+              elapsed:0,turn,run,travelDuration:duration,centerProgress:0,
               finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))
             });
             squad.moving=true;
@@ -2760,17 +2759,23 @@ function initialize(THREE) {
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
           Math.sin(soldierIndex*2.7+1)*.13+
           soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
-        for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+        for(const leg of soldier.legs){
+          leg.mesh.rotation.x=leg.side*.08;
+          leg.boot.position.y=.17;leg.boot.position.z=-.055;
+        }
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
             moving.end.z-moving.start.z);
           const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
           const pose=motion.gaitPose(totalDistance*ownProgress,
-            soldier.gait.stepLength,speed/1.2,soldier.gait.phase);
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
           soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
           soldier.breathing.rotation.x=-pose.lean;
-          for(const leg of soldier.legs)
+          for(const leg of soldier.legs){
             leg.mesh.rotation.x+=pose.legs*leg.side;
+            leg.boot.position.y=.17+(leg.side===-1?pose.leftLift:pose.rightLift);
+            leg.boot.position.z=-.055+(leg.side===-1?pose.leftReach:pose.rightReach);
+          }
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           const crouch=(battle&&squad.unit.down)?.69:
