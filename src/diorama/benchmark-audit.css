@@ -1,0 +1,10 @@
+.benchmark-audit{position:absolute;z-index:14;bottom:12px;right:10px;
+  color:#f0e4c9;font:11px system-ui,sans-serif;max-width:280px}
+.benchmark-audit button{background:#293630e8;color:#f3e7ce;border:1px solid #b7ae91;
+  border-radius:6px;padding:7px 10px;font-size:10px;font-weight:800}
+.benchmark-audit>div{background:#293630ef;max-height:60dvh;overflow:auto;
+  padding:10px;border:1px solid #c1b59e;border-radius:7px}
+.benchmark-audit>div[hidden]{display:none}
+.benchmark-audit p{margin:0 0 8px;font-weight:700}
+.benchmark-audit div div{padding:4px 0;border-bottom:1px solid #ffffff23}
+.benchmark-audit .done{color:#afdeb2}.benchmark-audit .pending{color:#d3c6ae}

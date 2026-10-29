@@ -70,6 +70,28 @@
       bob:(1-Math.cos(angle*2))*.5*drive*(run?1.35:1),
       lean:drive*(run?.15:.075)};
   }
+  // The stance boot's rearward travel cancels the miniature's forward
+  // translation until toe-off; distance-driven and stationary when stopped.
+  function plantedGait(travelled,stepLength,speedRatio=1,phase=0,run=false){
+    const cycle=Math.max(.28,stepLength*(run?1.14:1));
+    const duty=run?.53:.61;
+    const reach=cycle*duty;
+    const base=((travelled/cycle+phase/(Math.PI*2))%1+1)%1;
+    const drive=clamp(speedRatio,0,1);
+    function foot(time){
+      const u=((time%1)+1)%1;
+      if(u<duty)return {reach:-reach/2+u/duty*reach,lift:0,planted:true};
+      const swing=(u-duty)/(1-duty),ease=swing*swing*(3-2*swing);
+      return {reach:reach/2-ease*reach,
+        lift:Math.sin(swing*Math.PI)*(run?.20:.12)*drive,planted:false};
+    }
+    const left=foot(base),right=foot(base+.5);
+    return Object.freeze({
+      leftReach:left.reach*drive,rightReach:right.reach*drive,
+      leftLift:left.lift,rightLift:right.lift,
+      leftPlanted:left.planted,rightPlanted:right.planted,phase:base
+    });
+  }
   function progressFor(elapsed,duration){return travelProgress(elapsed,duration)}
   function travelDuration(distance,run=false){
     const speed=run?1.95:1.19;
@@ -78,6 +100,6 @@
   function finishTime(duration){return duration}
   window.CrossroadsDioramaMotion = Object.freeze({
     heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor,
-    travelDuration,finishTime,travelProgress,travelVelocity,gaitPose
+    travelDuration,finishTime,travelProgress,travelVelocity,gaitPose,plantedGait
   });
 })();

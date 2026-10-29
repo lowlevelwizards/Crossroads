@@ -1,0 +1,10 @@
+.ai-inspector{position:absolute;left:10px;bottom:12px;z-index:14;
+max-width:min(340px,calc(100vw - 20px));font:11px system-ui,sans-serif;
+color:#dce6dc;pointer-events:auto}
+.ai-inspector-toggle{border:1px solid #bbc8aa;background:#27372ee8;
+padding:7px 10px;color:#e5ead7;border-radius:7px;font-size:10px;font-weight:800}
+.ai-inspector-list{max-height:35dvh;overflow:auto;background:#223128ef;
+border:1px solid #8b998d;border-radius:7px;padding:8px}
+.ai-inspector-list div{border-bottom:1px solid #75857755;padding:6px 0}
+.ai-inspector-list p{color:#c3cfb9;margin:4px 0}
+.ai-inspector-list[hidden]{display:none}

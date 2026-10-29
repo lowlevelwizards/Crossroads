@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#e9e9e6">
   <meta name="description" content="Inspect every Crossroads tabletop miniature, pose, and animation in a neutral 3D studio.">
   <title>Crossroads — Miniature Lab</title>
-  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.11">
+  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.12">
 </head>
 <body>
   <main class="studio">
@@ -50,6 +50,9 @@
           <label for="studioSpeed">SPEED <output id="studioSpeedValue">1×</output></label>
         </div>
         <input type="range" id="studioSpeed" min=".25" max="2" step=".25" value="1">
+        <label for="studioTimeline">Animation timeline
+          <output id="studioTimelineValue">0.00s</output></label>
+        <input type="range" id="studioTimeline" min="0" max="1000" step="1" value="0">
         <p class="field-note">Animations loop in place for inspection; they do not issue battle orders.</p>
       </section>
       <section class="studio-section">
@@ -58,10 +61,24 @@
           <button type="button" id="studioProjection" aria-pressed="false">ORTHOGRAPHIC</button>
           <button type="button" id="studioReset">RESET VIEW</button>
         </div>
+        <label class="studio-check"><input id="studioShowJoints" type="checkbox"> Show joints &amp; rig guides</label>
+        <label class="studio-check"><input id="studioWireframe" type="checkbox"> Wireframe surfaces</label>
         <p class="field-note">One finger or left drag: orbit. Two fingers or right drag: pan. Pinch or wheel: zoom. Front, side, rear and top presets work in either projection.</p>
       </section>
+      <section class="studio-section">
+        <h2>04 / PROPORTIONS</h2>
+        <p class="field-note">Adjust the shared model. Saved shapes appear on the same miniature in battles.</p>
+        <label for="studioHeadSize">Head size <output id="headSizeValue">1.00×</output></label>
+        <input type="range" id="studioHeadSize" data-output="headSizeValue" min=".76" max="1.25" step=".01" value="1">
+        <label for="studioBodyWidth">Torso width <output id="bodyWidthValue">1.00×</output></label>
+        <input type="range" id="studioBodyWidth" data-output="bodyWidthValue" min=".78" max="1.28" step=".01" value="1">
+        <label for="studioPackSize">Pack size <output id="packSizeValue">1.00×</output></label>
+        <input type="range" id="studioPackSize" data-output="packSizeValue" min=".6" max="1.45" step=".01" value="1">
+        <label for="studioBootSize">Boot size <output id="bootSizeValue">1.00×</output></label>
+        <input type="range" id="studioBootSize" data-output="bootSizeValue" min=".8" max="1.25" step=".01" value="1">
+      </section>
       <details class="studio-section">
-        <summary>04 / APPEARANCE</summary>
+        <summary>05 / APPEARANCE</summary>
         <label for="studioUniform">Uniform</label>
         <select id="studioUniform"><option value="field">Field issue</option><option value="olive">Olive drab</option><option value="khaki">Khaki</option></select>
         <label for="studioHeadwear">Headwear</label>
@@ -76,14 +93,15 @@
       </details>
     </aside>
   </main>
-  <script src="data/unit-types.js?v=0.9.11"></script>
-  <script src="data/faction-kits.js?v=0.9.11"></script>
-  <script src="src/presentation/miniatures.js?v=0.9.11"></script>
-  <script src="src/diorama/study-motion.js?v=0.9.11"></script>
-  <script src="src/diorama/soldier-ik.js?v=0.9.11"></script>
-  <script src="src/diorama/miniature-model.js?v=0.9.11"></script>
-  <script src="src/diorama/miniature-studio-data.js?v=0.9.11"></script>
-  <script src="src/diorama/miniature-studio-poses.js?v=0.9.11"></script>
-  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.11"></script>
+  <script src="data/unit-types.js?v=0.9.12"></script>
+  <script src="data/faction-kits.js?v=0.9.12"></script>
+  <script src="src/presentation/miniatures.js?v=0.9.12"></script>
+  <script src="src/diorama/study-motion.js?v=0.9.12"></script>
+  <script src="src/diorama/soldier-ik.js?v=0.9.12"></script>
+  <script src="src/diorama/miniature-profiles.js?v=0.9.12"></script>
+  <script src="src/diorama/miniature-model.js?v=0.9.12"></script>
+  <script src="src/diorama/miniature-studio-data.js?v=0.9.12"></script>
+  <script src="src/diorama/miniature-studio-poses.js?v=0.9.12"></script>
+  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.12"></script>
 </body>
 </html>

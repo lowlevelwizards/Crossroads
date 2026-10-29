@@ -4,6 +4,10 @@
 (() => {
   function create(client,{delayMs=360}={}) {
     const tactical=window.Crossroads3DAITactics;
+    const trace=(stage,unit,choice,details="")=>
+      window.Crossroads3DAIInspector?.record({
+        stage,unit:unit?.name||unit?.id||"AI",choice,details
+      });
     let scheduled=false,acting=false,disposed=false;
     const failed={fire:new Set(),move:new Set()};
     let lastRound=null;
@@ -63,7 +67,11 @@
       }
       if(s.phase==="choose-unit"){
         const candidate=tactical.chooseUnit(s,"red");
-        if(candidate)await command("select",{id:candidate.id});
+        if(candidate){
+          trace("ACTIVATION",candidate,"Selected",
+            "Objective, command radius and local force balance");
+          await command("select",{id:candidate.id});
+        }
         else if(s.snap)await command("end-snap");
         return;
       }
@@ -72,31 +80,58 @@
       if(s.phase==="choose-order"){
         const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
         const turn=tactical.mmgRotation?.(unit,enemies)||0;
-        if(turn&&await command("rotate-mmg",{delta:turn}))return;
+        if(turn&&await command("rotate-mmg",{delta:turn})){
+          trace("SUPPORT",unit,"MMG traverse "+(turn>0?"+":"")+turn+"°",
+            "Turn toward eligible targets while deployed");return;
+        }
         // A nearby empty building can become a strong defensive firing nest.
         // Occupancy and entry range are validated by InfantryCore.
         if(s.building?.action==="enter"&&unit.role!=="support"&&
           (s.objectives||[]).some(o=>Number.isFinite(o.x)&&
             Math.hypot(o.x-unit.x,o.y-unit.y)<8)&&
           enemies.some(e=>Math.hypot(e.x-unit.x,e.y-unit.y)<20)){
-          if(await command("building"))return;
+          if(await command("building")){
+            trace("BUILDING",unit,"Enter garrison",
+              "Nearby objective and enemy pressure");return;
+          }
         }
         const legal=(s.orders||[]).filter(o=>o.available).map(o=>o.order);
         const selected=tactical.chooseOrder(s,unit,legal,id=>client.previewTarget(id),failed);
-        if(selected)await command("order",{order:selected});
+        if(selected){
+          trace("ORDER",unit,selected,(unit.pins||0)>=2?"Suppressed: rally":
+            unit.role==="support"?"Support weapon: establish or hold firing lane":
+            "Objectives, weapon range, exposure and force balance");
+          await command("order",{order:selected});
+        }
       } else if(s.phase==="plan-movement"){
-        const point=tactical.chooseMove(s,unit,p=>client.previewMove(p));
-        if(point&&await command("move",{point}))return;
+        const decision=tactical.chooseMove(s,unit,p=>client.previewMove(p),true);
+        const point=decision.point;
+        if(point&&await command("move",{point})){
+          const best=decision.candidates?.[0];
+          trace("MOVE",unit,"To "+point.x.toFixed(1)+", "+point.y.toFixed(1),
+            best?"Score "+best.score.toFixed(1)+" · progress "+
+              best.progress.toFixed(1)+" · cover "+best.cover.toFixed(1)+
+              " · exposure "+best.exposure.toFixed(1):"Legal move");
+          return;
+        }
         failed.move.add(unit.id);
         await command("cancel");
       } else if(s.phase==="choose-target"){
         const target=tactical.chooseTarget(s,unit,id=>client.previewTarget(id));
-        if(target&&await command("target",{id:target.id}))return;
+        if(target&&await command("target",{id:target.id})){
+          trace("FIRE",unit,target.name||target.id,
+            "Coordinator confirms legal firing line, weapon range and cover");
+          return;
+        }
         if(s.chosenOrder==="Advance")await command("finish-advance");
         else{failed.fire.add(unit.id);await command("cancel")}
       } else if(s.phase==="choose-assault-target"){
         const target=tactical.chooseTarget(s,unit,id=>client.previewTarget(id));
-        if(target&&await command("target",{id:target.id}))return;
+        if(target&&await command("target",{id:target.id})){
+          trace("FIRE",unit,target.name||target.id,
+            "Coordinator confirms legal firing line, weapon range and cover");
+          return;
+        }
         await command("cancel");
       }
     }

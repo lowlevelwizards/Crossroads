@@ -33,7 +33,15 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const soldierActions=window.Crossroads3DSoldierActions;
   const soldierIK=window.Crossroads3DSoldierIK;
+  const terrainContact=window.Crossroads3DTerrainContact;
+  const roughRegions=authoredTerrain.filter(e=>e.rules?.movement==="rough")
+    .map(e=>{
+      const b=scenarioAdapter.boundsWorld(e.rulesRect);
+      return {...b,difficulty:Math.max(.4,Math.min(1.8,
+        e.rules?.movementMultiplier||1.5))};
+    });
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
@@ -346,6 +354,19 @@ function initialize(THREE) {
   scene.add(pebbles);
 
   const roofMaterials=[];
+  const physicalWindowSockets=new Map();
+  function registerWindow(entry,group,x,y,z,side){
+    group.updateMatrixWorld(true);
+    const inside=group.localToWorld(new THREE.Vector3(x,y,z-side*.14));
+    const muzzle=group.localToWorld(new THREE.Vector3(x,y,z+side*.14));
+    const normal=new THREE.Vector3(0,0,side).transformDirection(group.matrixWorld);
+    const collection=physicalWindowSockets.get(entry.id)||[];
+    collection.push({x:inside.x,z:inside.z,y:inside.y,
+      outlet:{x:muzzle.x,z:muzzle.z,y:muzzle.y},
+      normal:{x:normal.x,z:normal.z}});
+    physicalWindowSockets.set(entry.id,collection);
+    if(entry.terrainId)physicalWindowSockets.set(entry.terrainId,collection);
+  }
   function registerRoof(entry,material){
     const r=scenarioAdapter.boundsWorld(entry.rulesRect);
     const token=new THREE.Mesh(new THREE.RingGeometry(.21,.28,26),
@@ -459,6 +480,7 @@ function initialize(THREE) {
             block(group,.085,height+.04,.048,shutter,x+shutterSide*(width/2+.075),
               centerY,z+side*.043);
           block(group,width+.11,.041,.13,masonry,x,centerY-height/2-.043,z+side*.055);
+          registerWindow(entry,group,x,centerY,z,side);
         }
       }
     }
@@ -543,6 +565,7 @@ function initialize(THREE) {
         const z=side*(D/2+.04);
         block(group,.20,height,.055,mat(0x586b70),x,eave*.60,z);
         block(group,.025,height+.03,.07,mat(0xd4c6a8),x,eave*.60,z+side*.023);
+        registerWindow(entry,group,x,eave*.60,z,side);
       }
     }
     if(church){
@@ -1221,7 +1244,8 @@ function initialize(THREE) {
     if(!b)return null;
     const point=new THREE.Vector3();
     soldier.figure.getWorldPosition(point);
-    const outlet=garrisonWindows?.outlet(b,point,enemyPosition);
+    const sockets=physicalWindowSockets.get(id);
+    const outlet=garrisonWindows?.outlet(b,point,enemyPosition,sockets);
     if(outlet){
       point.x=outlet.x;point.z=outlet.z;
     }else{
@@ -1234,7 +1258,7 @@ function initialize(THREE) {
       point.z=b.z+Math.sign(dz||1)*(b.depth/2+.055);
     }
     }
-    point.y=terrainY(point.x,point.z)+.66;
+    point.y=Number.isFinite(outlet?.y)?outlet.y:terrainY(point.x,point.z)+.66;
     return point;
   }
   function showCombatStage(stage) {
@@ -1853,7 +1877,8 @@ function initialize(THREE) {
         squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
       living,
       segments:coverSegments,coverPositions,
-      buildingBounds:roof?.bounds||null,threat,
+      buildingBounds:roof?.bounds||null,
+      buildingWindows:building?physicalWindowSockets.get(building)||null:null,threat,
       cohesion:bridge.table.worldUnitsPerInch*1.85,move
     });
     if(allowCache)squad.formationCache={
@@ -2016,6 +2041,9 @@ function initialize(THREE) {
         const state=snapshot.units.find(u=>u.id===squad.unit.id);
         if(!state)continue;
         Object.assign(squad.unit,state);
+        squad.gunTransition=null;
+        for(const soldier of squad.soldiers)
+          soldier.setGunDeployed?.(Boolean(squad.unit.mmgDeployed));
         const dest=bridge.toWorld(state);
         squad.root.position.set(dest.x,0,dest.z);
         squad.moving=false;squad.entrySequence=null;squad.assaultVisual=null;
@@ -2078,7 +2106,17 @@ function initialize(THREE) {
         if(squad.unit.soldiers!==stateUnit.soldiers||
            previousBuilding!==(stateUnit.inBuilding||null))
           squad.formationCache=null;
+        const wasDeployed=Boolean(squad.unit.mmgDeployed);
         Object.assign(squad.unit,stateUnit);
+        if(squad.unit.type==="mmgTeam"&&
+          wasDeployed!==Boolean(squad.unit.mmgDeployed)){
+          squad.gunTransition={
+            elapsed:0,duration:1.0,
+            mode:squad.unit.mmgDeployed?"deploy":"pack"
+          };
+        }
+        for(const soldier of squad.soldiers)
+          soldier.setGunDeployed?.(Boolean(squad.unit.mmgDeployed));
         const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
           (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
           (e.type==="assault"&&
@@ -2136,6 +2174,7 @@ function initialize(THREE) {
         snapshot.snap.officerId+":"+snapshot.snap.remaining:null;
       if(signal&&signal!==lastSnapSignal){
         const officer=unitLookup.get(snapshot.snap.officerId);
+        if(officer)officer.commandGestureUntil=performance.now()+1100;
         if(officer)spawnBriefFlash(officer.root.position.x,.75,
           officer.root.position.z,0xe9c37b,.35,.83);
         for(const id of snapshot.snap.eligibleIds||[]){
@@ -2149,6 +2188,7 @@ function initialize(THREE) {
       miniatureLab?.refreshIsolation?.();
     }
     battle.subscribe(applyAuthoritativeSnapshot);
+    window.Crossroads3DBenchmark?.mount(battle);
     battle.onCombatStage(showCombatStage);
   }
 
@@ -2727,9 +2767,14 @@ function initialize(THREE) {
         }
         soldier.breathing.position.y=soldier.baseY-
           (soldier.crouch||0)*.31+(soldier.entryStep||0)*.025;
+        soldier.breathing.position.z=0;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.42-squad.assaultCharge)/.42*Math.PI)*.07;
         soldier.hitShock=Math.max(0,(soldier.hitShock||0)-dt*1.7);
+        const commanding=squad.commandGestureUntil?
+          Math.max(0,(squad.commandGestureUntil-performance.now())/1100):0;
+        soldier.applyGesture?.(squad.unit.role==="officer"?
+          Math.sin((1-commanding)*Math.PI)*commanding:0);
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
           Math.sin(soldierIndex*2.7+1)*.13+
           soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
@@ -2744,18 +2789,34 @@ function initialize(THREE) {
           const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
           const pose=motion.gaitPose(totalDistance*ownProgress,
             soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
-          soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
+          const feet=motion.plantedGait(totalDistance*ownProgress,
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
+          const texture=terrainContact?.contact({
+            x:squad.root.position.x+soldier.figure.position.x,
+            z:squad.root.position.z+soldier.figure.position.z
+          },roughRegions,feet,moving.run);
+          soldier.breathing.position.y+=pose.bob*soldier.gait.bob*
+            (texture?.bobScale||1);
           soldier.breathing.rotation.x=-pose.lean;
+          soldier.breathing.rotation.z=(texture?.sway||0)*
+            Math.sin(totalDistance*7+soldierIndex);
           for(const leg of soldier.legs){
             leg.mesh.rotation.x+=pose.legs*leg.side;
-            leg.boot.position.y=.17+(leg.side===-1?pose.leftLift:pose.rightLift);
-            leg.boot.position.z=-.055+(leg.side===-1?pose.leftReach:pose.rightReach);
+            leg.boot.position.y=.17+(leg.side===-1?
+              feet.leftLift+(texture?.leftLift||0):
+              feet.rightLift+(texture?.rightLift||0));
+            leg.boot.position.z=-.055+(leg.side===-1?feet.leftReach:feet.rightReach);
           }
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          const crouch=(battle&&squad.unit.down)?.69:
+          const action=squad.unit.down?"down":
+            squad.unit.pins>0?"pinned":squad.unit.mmgDeployed?"ambush":"idle";
+          const sharedPose=soldierActions?.frame(action,t+soldierIndex*.08,motion);
+          soldier.breathing.position.z=-(sharedPose?.forward||0);
+          const crouch=battle&&squad.unit.down?(sharedPose?.crouch??.69):
             Math.max(soldier.coverPose||0,
-              (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
+              (battle&&squad.unit.pins)?Math.min(.39,
+                sharedPose?.crouch??squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
           if(!soldier.casualtyAnimating){
             for(const leg of soldier.legs)
@@ -2763,10 +2824,14 @@ function initialize(THREE) {
                 (leg.side===-1?1.35:-1.15);
           }
           // Lean into prone/Down cover rather than bending backward.
-          soldier.breathing.rotation.x=-soldier.crouch*.92-soldier.recoil;
+          soldier.breathing.rotation.x=-Math.max(soldier.crouch*.92,
+            sharedPose?.lean||0)-soldier.recoil;
           if(battle&&squad.unit.down){
             soldier.breathing.position.y-=soldier.crouch*.10;
             soldier.figure.rotation.z=0;
+          }else if(squad.unit.pins>0&&!soldier.casualtyAnimating){
+            soldier.breathing.rotation.z=(sharedPose?.roll||0)*
+              Math.min(1,squad.unit.pins/3);
           }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
@@ -2788,6 +2853,13 @@ function initialize(THREE) {
             soldier.breathing.rotation.x=-.13-Math.pow(Math.max(0,
               Math.sin(t*10)),3)*.20;
           }
+        }
+        if(squad.gunTransition&&!isWalking&&soldierActions){
+          const transition=squad.gunTransition;
+          const t=transition.elapsed;
+          const gunPose=soldierActions.frame(transition.mode,t,motion);
+          soldier.breathing.rotation.x=-gunPose.lean;
+          soldier.breathing.position.y=soldier.baseY-gunPose.crouch*.31;
         }
         if(soldierIK){
           for(const leg of soldier.legs){
@@ -2839,6 +2911,11 @@ function initialize(THREE) {
         record.soldier.casualtyAnimating=false;
         casualtyAnimations.splice(i,1);
       }
+    }
+    for(const squad of squads)if(squad.gunTransition){
+      squad.gunTransition.elapsed+=dt;
+      if(squad.gunTransition.elapsed>=squad.gunTransition.duration)
+        squad.gunTransition=null;
     }
     for(const squad of squads)for(const soldier of squad.soldiers)
       if(soldier.pendingRemoval&&!soldier.casualtyAnimating&&

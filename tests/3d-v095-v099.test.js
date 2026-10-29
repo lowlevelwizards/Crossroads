@@ -30,7 +30,7 @@ assert.equal(ai.chooseOrder(snapshot,mmg,["Ambush","Advance","Fire"],()=>null,
   {fire:new Set(),move:new Set()}),"Ambush");
 const scene=read("src/diorama/scenario-scene.js");
 for(const marker of ["miniatureLab?.attach(","shotExplanation.summarize",
-  "pose.leftLift","squad.arcIndicator","Crossroads3DMiniatureModel?.create"])
+  "feet.leftLift","squad.arcIndicator","Crossroads3DMiniatureModel?.create"])
   assert(scene.includes(marker),marker+" not wired into 3D scene");
 const html=read("battle3d.html");
 for(const script of ["src/diorama/study-motion.js","src/diorama/shot-explanation.js",
@@ -38,4 +38,4 @@ for(const script of ["src/diorama/study-motion.js","src/diorama/shot-explanation
   assert(html.includes(script),"Missing entry script "+script);
 assert(html.indexOf("miniature-model.js")<html.indexOf("scenario-scene.js"));
 assert(!html.includes("miniature-lab.js"),"The lab must not load inside battles");
-console.log("PASS — 3D v0.9.5–0.9.11 preview gait, legal shot detail, support AI and lab integration");
+console.log("PASS — 3D v0.9.5–0.9.12 preview gait, legal shot detail, support AI and lab integration");

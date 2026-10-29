@@ -15,6 +15,10 @@
     if(loading)loading.textContent="Miniature studio dependencies missing.";
     return;
   }
+  const morphFields={
+    headSize:$("studioHeadSize"),bodyWidth:$("studioBodyWidth"),
+    packSize:$("studioPackSize"),bootSize:$("studioBootSize")
+  };
   const fields={
     uniform:$("studioUniform"),helmet:$("studioHeadwear"),
     pack:$("studioPack"),helmetTint:$("studioHelmetTint"),
@@ -39,15 +43,12 @@
   unitSelect.value=catalogue.units().find(x=>x.id==="rifleSquad")?.id||
     catalogue.units()[0].id;
   poseSelect.value="idle";
-  const storageKey="crossroads-3d-miniature-studio-paint-v1";
-  let paint={};
-  try{paint=JSON.parse(localStorage.getItem(storageKey)||"{}")||{}}catch(_){}
-  const selectionKey=()=>[kitSelect.value,unitSelect.value,soldierSelect.value].join(":");
-  const readLook=()=>({...paint[selectionKey()]});
-  const saveLook=look=>{
-    paint[selectionKey()]=look;
-    try{localStorage.setItem(storageKey,JSON.stringify(paint))}catch(_){}
-  };
+  const profiles=window.Crossroads3DMiniatureProfiles;
+  if(!profiles)throw Error("Shared miniature profiles are required");
+  const readLook=()=>profiles.read(kitSelect.value,unitSelect.value,
+    Number(soldierSelect.value)||0);
+  const saveLook=look=>profiles.write(kitSelect.value,unitSelect.value,
+    Number(soldierSelect.value)||0,look);
   let THREE;
   try{
     try{THREE=await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js")}
@@ -108,6 +109,26 @@
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
+  const rigMarkers=new THREE.Group();scene.add(rigMarkers);
+  const jointMaterials=[0x486f66,0x8b6e51].map(color=>
+    new THREE.MeshBasicMaterial({color,depthTest:false}));
+  const joints=[];
+  for(let i=0;i<6;i++){
+    const marker=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),
+      jointMaterials[i%2]);
+    marker.renderOrder=100;rigMarkers.add(marker);joints.push(marker);
+  }
+  rigMarkers.visible=false;
+  function refreshWireframe(){
+    if(!activeFigure)return;
+    const checked=$("studioWireframe").checked;
+    activeFigure.traverse(mesh=>{
+      if(!mesh.isMesh)return;
+      if(mesh.material&&typeof mesh.material.wireframe==="boolean"){
+        mesh.material.wireframe=checked;
+      }
+    });
+  }
   const disposeActor=()=>{
     actorRoot.traverse(node=>{
       node.geometry?.dispose?.();
@@ -123,6 +144,10 @@
     for(const [name,select] of Object.entries(fields))
       select.value=look[name]||((name==="uniform")?"field":
         (name==="helmetTint"||name==="leatherTint")?"issue":"on");
+    for(const [name,input] of Object.entries(morphFields)){
+      input.value=look[name]||1;
+      $(input.dataset.output).textContent=Number(input.value).toFixed(2)+"×";
+    }
   };
   const updateRecipe=recipe=>{
     const role=recipe.role==="mmg"?"MMG gunner":recipe.role==="crew"?"Support crew":
@@ -141,6 +166,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
+    activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
     activeSoldier.windowArc.visible=false;
@@ -150,6 +176,7 @@
     flash.position.copy(muzzle);
     activeSoldier.breathing.add(flash);flash.visible=false;
     updateRecipe(recipe);
+    refreshWireframe();
     elapsed=0;
     renderPose(0);
   };
@@ -174,10 +201,16 @@
       saveLook(look);activeSoldier?.applyLook(look);
     });
   }
+  for(const [name,input] of Object.entries(morphFields)){
+    input.addEventListener("input",()=>{
+      const look=saveLook({...readLook(),[name]:Number(input.value)});
+      $(input.dataset.output).textContent=Number(look[name]).toFixed(2)+"×";
+      activeSoldier?.applyLook(look);
+    });
+  }
   $("studioClearPaint").addEventListener("click",()=>{
-    delete paint[selectionKey()];
-    try{localStorage.setItem(storageKey,JSON.stringify(paint))}catch(_){}
-    refreshPaintInputs();activeSoldier?.applyLook({});
+    profiles.reset(kitSelect.value,unitSelect.value,Number(soldierSelect.value)||0);
+    refreshPaintInputs();activeSoldier?.applyLook(readLook());
   });
 
   const perspective=new THREE.PerspectiveCamera(34,1,.03,100);
@@ -291,15 +324,29 @@
   resize();resetView();
 
   let elapsed=0,playing=true,playSpeed=1;
+  const timeline=$("studioTimeline"),timelineValue=$("studioTimelineValue");
+  function syncTimeline(){
+    const duration=poses.duration(poseSelect.value);
+    timeline.value=Math.round((elapsed%duration)/duration*1000);
+    timelineValue.textContent=elapsed.toFixed(2)+"s";
+  }
+  $("studioShowJoints").addEventListener("change",()=>{
+    rigMarkers.visible=$("studioShowJoints").checked;
+  });
+  $("studioWireframe").addEventListener("change",refreshWireframe);
   function renderPose(t){
     const soldier=activeSoldier;
     if(!soldier)return;
     const pose=poses.frame(poseSelect.value,t,motion);
+    if(soldier.setGunDeployed)
+      soldier.setGunDeployed(poseSelect.value==="pack"?t<.9:
+        poseSelect.value==="deploy"?t>=.9:true);
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);
-    torso.position.set(0,soldier.baseY-pose.crouch*.31+pose.bob,0);
+    torso.position.set(0,soldier.baseY-pose.crouch*.31+pose.bob,-pose.forward);
     torso.rotation.set(-pose.lean,0,0);
+    soldier.applyGesture?.(pose.gesture);
     for(const leg of soldier.legs){
       const side=leg.side;
       const lift=side<0?pose.leftLift:pose.rightLift;
@@ -314,16 +361,29 @@
         mesh.rotation.set(segment.rotation,0,0);
         mesh.scale.set(1,segment.length/.255,1);
       }
+      const base=side<0?0:3;
+      joints[base].position.set(side*.125,solved.hip.y,solved.hip.z);
+      joints[base+1].position.set(side*.125,solved.knee.y,solved.knee.z);
+      joints[base+2].position.set(side*.125,solved.ankle.y,solved.ankle.z);
     }
     if(flash)flash.visible=pose.flash;
+    rigMarkers.position.copy(figure.position);
+    rigMarkers.rotation.copy(figure.rotation);
   }
-  poseSelect.addEventListener("change",()=>{elapsed=0;renderPose(0)});
+  poseSelect.addEventListener("change",()=>{elapsed=0;renderPose(0);syncTimeline()});
+  timeline.addEventListener("input",()=>{
+    elapsed=Number(timeline.value)/1000*poses.duration(poseSelect.value);
+    playing=false;
+    playButton.textContent="▶ PLAY";
+    playButton.setAttribute("aria-pressed","false");
+    renderPose(elapsed);syncTimeline();
+  });
   playButton.addEventListener("click",()=>{
     playing=!playing;
     playButton.textContent=playing?"❚❚ PAUSE":"▶ PLAY";
     playButton.setAttribute("aria-pressed",String(playing));
   });
-  $("studioReplay").addEventListener("click",()=>{elapsed=0;renderPose(0)});
+  $("studioReplay").addEventListener("click",()=>{elapsed=0;renderPose(0);syncTimeline()});
   speed.addEventListener("input",()=>{
     playSpeed=Number(speed.value)||1;
     $("studioSpeedValue").textContent=playSpeed.toFixed(2).replace(/\.?0+$/,"")+"×";
@@ -337,6 +397,7 @@
     last=now;
     if(playing)elapsed+=dt*playSpeed;
     renderPose(elapsed);
+    if(playing)syncTimeline();
     renderer.render(scene,currentCamera);
     requestAnimationFrame(animate);
   }
