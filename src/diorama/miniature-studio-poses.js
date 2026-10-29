@@ -43,7 +43,7 @@
     }
     if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){
-      state.crouch=.84;state.lean=.24;state.forward=.08;
+      state.crouch=.84;state.lean=.24;state.forward=.12;
       state.headDuck=.14;
     }
     if(pose==="cover")state.crouch=.42,state.lean=.16;
