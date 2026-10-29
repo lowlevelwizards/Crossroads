@@ -263,6 +263,7 @@
     let units = [];
     let round = 1;
     let scores = { blue: 0, red: 0 };
+    let battleEpoch=0; // Discrete 3D reconstruction boundary; never animate backward.
     let bag = [];
     let snapSelection = null;
     let currentFaction = null;
@@ -3496,6 +3497,8 @@
     }
 
     function restartBattle() {
+      battleEpoch++;
+      snapSelection=null;
       activeScenarioId = document.getElementById("scenarioSelect")?.value ?? activeScenarioId;
       activeScenario = SCENARIOS[activeScenarioId];
       applyScenarioDefinition();
@@ -4329,7 +4332,7 @@
       snapshot() {
         const selected=getUnit(selectedUnitId);
         return {
-          scenarioId:activeScenarioId, phase, round,
+          scenarioId:activeScenarioId, phase, round,battleEpoch,
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,

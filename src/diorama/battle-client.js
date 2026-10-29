@@ -420,7 +420,7 @@
     state=snapshot;
     deliverCombat(snapshot);
     const stateKey=JSON.stringify({
-      phase:state.phase,round:state.round,faction:state.faction,
+      phase:state.phase,round:state.round,battleEpoch:state.battleEpoch,faction:state.faction,
       selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
       bag:state.bagRemaining,events:state.eventCount,result:state.result,
       objectives:state.objectives,

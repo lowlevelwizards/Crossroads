@@ -1937,9 +1937,60 @@ function initialize(THREE) {
   // When this optional mode is present, the scene only projects snapshots
   // to miniature positions/poses; it never commits logical unit mutations.
   if(battle) {
-    let lastSnapSignal=null;
+    let lastSnapSignal=null,seenBattleEpoch=null;
+    function resetBattlePresentation(snapshot){
+      // Restart is not a Run/Advance. Tear down transient state and
+      // reconstruct every surviving model from the authoritative snapshot.
+      activeMovements.clear();
+      delayedMuzzleBursts.length=0;
+      casualtyAnimations.length=0;
+      for(const e of visualEffects){
+        scene.remove(e.mesh);
+        e.mesh.geometry?.dispose();e.mesh.material?.dispose();
+      }
+      visualEffects.length=0;
+      clearPhysicalDice();
+      clearWaypoint();clearFirePreview();clearMovePreview();
+      outcomeChip.hidden=true;outcomeTarget=null;outcomeUntil=0;
+      lastSnapSignal=null;
+      for(const squad of squads){
+        const state=snapshot.units.find(u=>u.id===squad.unit.id);
+        if(!state)continue;
+        Object.assign(squad.unit,state);
+        const dest=bridge.toWorld(state);
+        squad.root.position.set(dest.x,0,dest.z);
+        squad.moving=false;squad.entrySequence=null;squad.assaultVisual=null;
+        squad.assaultCharge=0;squad.suppressionImpulse=0;
+        squad.formationCache=null;squad.lastMoveConstraints=null;
+        squad.selectionPulse=0;squad.alertUntil=0;
+        squad.soldiers.forEach((soldier,i)=>{
+          soldier.figure.visible=i<state.soldiers;
+          soldier.figure.position.set(soldier.slotX,0,soldier.slotZ);
+          soldier.figure.rotation.set(0,
+            (state.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(i-2),0);
+          soldier.figure.scale.setScalar(MINIATURE_SCALE);
+          soldier.breathing.rotation.set(0,0,0);
+          soldier.crouch=0;soldier.coverPose=0;
+          soldier.hitShock=0;soldier.recoil=0;
+          soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
+          soldier.aimTarget=null;soldier.grounded=false;
+          for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
+        });
+      }
+      selectSquad(null);
+      stage.classList.remove("battle-resetting");
+      // A single-frame board wipe prevents backwards interpolation while
+      // the initial footprints settle to the original cover formation.
+      stage.classList.add("battle-resetting");
+      requestAnimationFrame(()=>stage.classList.remove("battle-resetting"));
+    }
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
+      if(seenBattleEpoch===null)seenBattleEpoch=snapshot.battleEpoch??0;
+      else if((snapshot.battleEpoch??0)!==seenBattleEpoch){
+        seenBattleEpoch=snapshot.battleEpoch??0;
+        resetBattlePresentation(snapshot);
+      }
       if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
         pendingTargetId=null;
         clearFirePreview();
