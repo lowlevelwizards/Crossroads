@@ -11,7 +11,10 @@ const woods={x:4,y:2,width:3,height:2,cover:"soft",movement:"rough"};
 assert.equal(tactical.defensiveCover({x:6,y:2},[wall],[enemy]),5);
 assert.equal(tactical.defensiveCover({x:6,y:5},[wall],[enemy]),0);
 assert.equal(tactical.defensiveCover({x:5,y:3},[woods],[]),3);
-assert.equal(tactical.defensiveCover({x:2,y:3},[hedge],[enemy]),0);
+// The enemy is across this hedge from the defender: soft cover applies.
+assert.equal(tactical.defensiveCover({x:2,y:3},[hedge],[enemy]),2.5);
+// On the same side as the enemy the hedge provides no protection.
+assert.equal(tactical.defensiveCover({x:2,y:5},[hedge],[enemy]),0);
 const source=read("src/engine.js");
 assert(source.includes("terrain:(TERRAIN.instances||[]).map("));
 assert(!source.includes("hiddenEnemyPositions"));
