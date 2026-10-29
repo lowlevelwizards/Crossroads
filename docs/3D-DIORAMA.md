@@ -522,3 +522,41 @@ Garrison muzzle effects are projected to the nearest appropriate front facade wh
 - `editor3d.html` introduces a usable **visual draft** workbench: place, select, rotate, delete, browser-local save and JSON export. Exported assets must be incorporated in scenario data and validated before being used by the actual game rules; current draft objects are not authoritative gameplay geometry.
 - Solo AI still uses existing battle coordinator; regression probes cover objective decisions and risk tradeoffs. Full AI balance training, bespoke historical models for every unit type, comprehensive 3D terrain asset parity and direct-editor scenario persistence require further stages.
 - Manual iPhone/WebGL playtesting is required before merge; automated Node tests cannot establish visual quality or 60 FPS.
+
+
+## v0.9.3 — Rules measurements, officer command, double-tap
+
+**Reference:** Bolt Action Third Edition; original infantry movement, shooting,
+1-inch friendly gap and formation are model-base measurements, not logical
+unit-center measurements. The 2026 Warlord FAQ clarifies that artillery gun
+range is a separate special case measured to the *gun center*, and that
+commanders in reserve/first wave cannot use Snap to Action.
+
+- Shared inch-based model geometry is loaded in both the 2D authoritative
+  session and 3D views. Range uses nearest base edges. Direct fire is denied
+  conservatively if any shooting model has no friendly-safe target lane; the
+  current roster has direct small arms only. Friendly units are allowed to
+  interpenetrate during infantry movement, with a strict 1-inch end gap
+  between different units' model-base edges.
+- The 3D formation solver caps each miniature from its actual preceding
+  position, plus any forward shuffle against remaining movement budget.
+  Movement previews and final visual positions use the same constraints.
+  This is not a per-model rules-pathfinding simulation.
+- A Third Edition platoon commander adds +2 Morale within 6 inches (including
+  its own unit) and may reserve up to two available **real** order dice
+  after a successful non-Down order for nearby ready non-officer units.
+  Snapped units make their normal Order Tests. A player can end optional
+  command orders early in both the 2D and 3D interfaces; unused dice return
+  to the bag. 3D selected commanders show a command-radius ring and
+  available commanded squads pulse.
+- Safari double-tap zoom is suppressed on the tabletop, but page-level
+  accessibility zoom elsewhere remains available. PR #20 independently
+  repairs stale iOS pointer state after an OS edge-swipe interruption.
+
+**Remaining fidelity gap:** The engine stores one logical unit center plus
+deterministic formation footprints rather than individually saved soldier
+world poses. Scenery-aware presentation adjustments and casualties are still
+cosmetic. Exact per-soldier firing allocation, each soldier's independent
+terrain/LOS measurement, building/vehicle exceptions, and fully authoritative
+physical placements are follow-on work; the current safe-fire policy may
+reject some shots where only a subset of soldiers could fire legally.
