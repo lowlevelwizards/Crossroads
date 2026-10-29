@@ -71,11 +71,19 @@
       const breathing=new THREE.Group();breathing.position.y=.76;body.add(breathing);
       const pelvis=ellipsoid(breathing,trousers,[0,-.22,.005],[.27,.19,.21]);
       const torso=ellipsoid(breathing,uniform,[0,.055,0],[.31,.33,.23]);
-      ellipsoid(breathing,uniform,[0,.28,-.02],[.23,.09,.19]); // shoulder yoke
-      cylinder(breathing,leather,.245,.235,.07,[0,-.205,0],14); // belt
+      const yoke=ellipsoid(breathing,uniform,[0,.28,-.02],[.23,.09,.19]);
+      const belt=cylinder(breathing,leather,.245,.235,.07,[0,-.205,0],14);
       // jacket hem and collar are separate, intentionally readable shapes.
-      ellipsoid(breathing,uniform,[0,-.18,.025],[.29,.09,.225]);
-      cylinder(breathing,uniform,.15,.18,.10,[0,.335,-.018],14);
+      const jacketHem=ellipsoid(breathing,uniform,[0,-.18,.025],
+        [.29,.09,.225]);
+      const collar=cylinder(breathing,uniform,.15,.18,.10,
+        [0,.335,-.018],14);
+      // A genuine un-dressed silhouette study, rather than a palette toggle.
+      // Hidden in battle; selectable only in the independent model workshop.
+      const anatomy=new THREE.Group();breathing.add(anatomy);anatomy.visible=false;
+      ellipsoid(anatomy,face,[0,.07,0],[.26,.31,.195]);
+      ellipsoid(anatomy,face,[0,-.20,0],[.22,.18,.19]);
+      const uniformMeshes=[pelvis,torso,yoke,belt,jacketHem,collar];
       const headGroup=new THREE.Group();
       headGroup.position.set(0,.39,-.01);
       headGroup.rotation.z=(index%3-1)*.026;
@@ -254,7 +262,27 @@
           leg.boot.scale.set((p.bootSize||1)*.133,.125,(p.bootSize||1)*.19);
         soldier.profile=p;
       };
-      soldier.applyLook=(look={})=>{
+      soldier.inspectionMode="equipped";
+      soldier.setInspectionMode=(mode="equipped")=>{
+        soldier.inspectionMode=mode;
+        const bodyOnly=mode==="body",equipped=mode==="equipped";
+        anatomy.visible=bodyOnly;
+        for(const part of uniformMeshes)part.visible=!bodyOnly;
+        for(const arm of arms){
+          arm.upper.material=bodyOnly?face:uniform;
+          arm.lower.material=bodyOnly?face:uniform;
+        }
+        for(const leg of legs){
+          leg.mesh.material=bodyOnly?face:trousers;
+          leg.shin.material=bodyOnly?face:trousers;
+          leg.boot.visible=!bodyOnly;
+        }
+        weapon.visible=equipped;
+        equipmentRoot.visible=equipped;
+        for(const mesh of helmetParts)
+          mesh.visible=!bodyOnly&&soldier.profile?.helmet!=="off";
+      };
+            soldier.applyLook=(look={})=>{
         const scheme=look.uniform||"field";
         uniform.color.setHex(scheme==="olive"?0x50614c:
           scheme==="khaki"?0x9a8b62:
@@ -271,6 +299,7 @@
         equipmentRoot.visible=true;
         for(const mesh of helmetParts)mesh.visible=look.helmet!=="off";
         soldier.applyProfile(look);
+        soldier.setInspectionMode(soldier.inspectionMode);
       };
       const toTorso=(point)=>{
         weapon.updateWorldMatrix(true,false);
