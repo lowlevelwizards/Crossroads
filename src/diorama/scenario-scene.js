@@ -750,6 +750,13 @@ function initialize(THREE) {
   const getLivingUnits=()=>units;
   let selectedSquad=null;
   const activeMovements=squadMotion.createTracks();
+  window.Crossroads3DAnimationGate=Object.freeze({
+    isReady(event){
+      if(event?.type!=="shooting")return true;
+      const squad=unitLookup.get(event.shooterId);
+      return !squad||(!squad.moving&&!activeMovements.get(event.shooterId));
+    }
+  });
   let pendingTargetId=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
@@ -1720,8 +1727,7 @@ function initialize(THREE) {
             const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
               motion.heading(before,end));
             const run=stateUnit.order==="Run";
-            const duration=Math.max(run?.27:.40,
-              displacement/(run?1.42:.82));
+            const duration=motion.travelDuration(displacement,run);
             activeMovements.set(squad.unit.id,{
               squad,plan:null,remote:true,start:before,end,phase:"turn",
               elapsed:0,turn,travelDuration:duration,centerProgress:0,
@@ -1951,7 +1957,7 @@ function initialize(THREE) {
     const end=plan.worldEnd,dx=end.x-start.x,dz=end.z-start.z;
     const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
       motion.heading(start,end));
-    const duration=Math.max(.55,Math.hypot(dx,dz)/.68);
+    const duration=motion.travelDuration(Math.hypot(dx,dz),false);
     activeMovements.set(squad.unit.id,{squad,plan,start,end,phase:"turn",
       elapsed:0,turn,travelDuration:duration,centerProgress:0,
       finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))});
@@ -2219,12 +2225,17 @@ function initialize(THREE) {
           soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
         if(takingSteps&&!reducedMotion) {
-          const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
+          const totalDistance=Math.hypot(moving.end.x-moving.start.x,
+            moving.end.z-moving.start.z);
+          const stride=Math.sin(ownProgress*totalDistance*15.5+
+            soldier.phase*.45);
           const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
-          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob*easeStop;
-          soldier.breathing.rotation.x=-.07*easeStop;
+          const settle=Math.min(1,ownProgress/.12,(1-ownProgress)/.14);
+          soldier.breathing.position.y+=Math.abs(stride)*
+            (soldier.gait.bob*1.5)*Math.max(0,settle)*easeStop;
+          soldier.breathing.rotation.x=-.11*easeStop;
           for(const leg of soldier.legs)
-            leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
+            leg.mesh.rotation.x+=stride*.68*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           const crouch=(battle&&squad.unit.down)?.57:

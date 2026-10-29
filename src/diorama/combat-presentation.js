@@ -30,6 +30,11 @@
     }
     function update(dt){
       let remaining=Math.max(0,Math.min(dt,.2))*playbackSpeed;
+      // An Advance resolves immediately in the rules engine, but its fire
+      // presentation must begin after every soldier has reached the destination.
+      if(!active&&queue.length&&
+         window.Crossroads3DAnimationGate?.isReady?.(queue[0].event)===false)
+        return true;
       if(!active&&queue.length){active=queue.shift();stage=0;elapsed=0;announce(0)}
       while(active&&remaining>=0){
         const duration=active.sequence[stage][1];

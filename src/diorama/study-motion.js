@@ -42,10 +42,15 @@
   function progressFor(elapsed, duration, gait) {
     return clamp((elapsed - gait.delay) / (duration * gait.pace), 0, 1);
   }
+  function travelDuration(distance,run=false){
+    const speed=run?2.55:1.73;
+    return clamp(distance/Math.max(.25,speed),.29,2.15);
+  }
   function finishTime(duration, gaits) {
     return Math.max(duration, ...gaits.map(gait => gait.delay + duration * gait.pace));
   }
   window.CrossroadsDioramaMotion = Object.freeze({
-    heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor, finishTime
+    heading, shortestDelta, makeTurn, headingAt, gaitFor, progressFor,
+    travelDuration,finishTime
   });
 })();

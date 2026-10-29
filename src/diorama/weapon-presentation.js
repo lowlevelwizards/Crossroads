@@ -9,7 +9,7 @@
     if(/pistol|sidearm/.test(label))return "officer";
     return "rifle";
   }
-  function schedule(groups,soldiers,{maxShots=48}={}) {
+  function schedule(groups,soldiers,{maxShots=96}={}) {
     const events=[],firedByRole=new Map();
     const available=(soldiers||[]).map((s,index)=>({role:s.role,index,visible:s.visible}))
       .filter(s=>s.visible!==false&&!["crew","loader"].includes(s.role));
@@ -21,11 +21,13 @@
       if(!preferred.length)continue;
       const heavy=role==="lmg"||role==="mmg";
       const prior=firedByRole.get(role)||0;
-      const count=Math.min(Math.max(0,group.shots||0),12,maxShots-events.length);
+      const count=Math.min(Math.max(0,group.shots||0),maxShots-events.length);
       for(let i=0;i<count;i++){
         const s=preferred[(prior+i)%preferred.length];
         events.push({soldierIndex:s.index,role,heavy,
-          recoil:heavy?.32:role==="smg"?.23:.16,delay:events.length*.052});
+          recoil:heavy?.32:role==="smg"?.23:.16,
+          delay:events.length*(role==="mmg"?.078:role==="lmg"?.088:
+            role==="smg"?.095:.12)});
       }
       firedByRole.set(role,prior+count);
     }
