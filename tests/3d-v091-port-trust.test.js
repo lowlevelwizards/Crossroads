@@ -43,8 +43,8 @@ for(const token of ["CONFIRM FIRE","CONFIRM ASSAULT","SCORE OBJECTIVES & CONTINU
   assert(hud.includes(token),"HUD missing "+token);
 for(const page of ["battle3d.html","diorama.html","editor3d.html"]){
   const html=read(page);
-  assert(html.includes("formation-layout.js?v=0.9.1"));
-  assert(html.includes("scenario-scene.js?v=0.9.1"));
+  assert(html.includes("formation-layout.js?v=0.9.2"));
+  assert(html.includes("scenario-scene.js?v=0.9.2"));
 }
-assert(read("editor3d.html").includes("editor3d-ui.js?v=0.9.1"));
+assert(read("editor3d.html").includes("editor3d-ui.js?v=0.9.2"));
 console.log("PASS — exact preview/live formation resolver, distance-scaled gait, shot parity, advance firing gate, targeting and editor wiring");
