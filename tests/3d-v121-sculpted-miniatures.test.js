@@ -54,7 +54,8 @@ class V {
   add(p){return this.set(this.x+p.x,this.y+p.y,this.z+p.z)}
   subVectors(a,b){return this.set(a.x-b.x,a.y-b.y,a.z-b.z)}
   multiplyScalar(n){return this.set(this.x*n,this.y*n,this.z*n)}
-  normalize(){return this.multiplyScalar(1/(Math.hypot(this.x,this.y,this.z)||1))}
+  length(){return Math.hypot(this.x,this.y,this.z)}
+  normalize(){return this.multiplyScalar(1/(this.length()||1))}
   lerp(v,t){return this.set(this.x+(v.x-this.x)*t,
     this.y+(v.y-this.y)*t,this.z+(v.z-this.z)*t)}
   setScalar(n){return this.set(n,n,n)}
