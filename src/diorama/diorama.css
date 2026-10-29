@@ -71,3 +71,11 @@ html,body{touch-action:manipulation}
 #dioramaCanvas,.stage{touch-action:none;-webkit-user-select:none;
   user-select:none;-webkit-touch-callout:none}
 .battle-controls button{touch-action:manipulation}
+
+/* Reduce Safari's page-level rubber-banding and accidental selection.
+   Native iOS home/app-switch gestures cannot be fully suppressed by web CSS. */
+html,body,.experience,.stage{overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#dioramaCanvas{overscroll-behavior:none;-webkit-user-select:none;
+  user-select:none;-webkit-touch-callout:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}

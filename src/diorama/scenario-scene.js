@@ -40,7 +40,9 @@ function initialize(THREE) {
   const buildingVisuals=window.Crossroads3DBuildingVisuals;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
+  const pointerRecovery = window.Crossroads3DPointerRecovery;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
+  if (!pointerRecovery) throw new Error("Crossroads 3D pointer recovery was not loaded.");
   if (!motion) throw new Error("Crossroads 3D motion helpers were not loaded.");
   if (!bridge) throw new Error("Crossroads 3D movement bridge was not loaded.");
   const scene = new THREE.Scene();
@@ -2175,8 +2177,19 @@ function initialize(THREE) {
     setZoom(zoom * Math.exp(-event.deltaY * .0014));
     moveCameraTarget(gestures.targetShift(anchored,groundAtScreen(event.clientX,event.clientY)));
   }, { passive: false });
-  const pointers = new Map();
-  const tapStarts = new Map();
+  // Pointer events can be abandoned by the iOS home/app-switch gesture.
+  // Keep native camera state, but never let an abandoned ID masquerade
+  // as a second finger when the player returns to the battlefield.
+  const pointerGuard=pointerRecovery.createPointerGuard(id=>{
+    if(waypointDragId===id){
+      waypointDragId=null;waypointArmed=false;
+    }
+    try{
+      if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+    }catch(e){/* iOS may already have discarded the capture */}
+  });
+  const pointers=pointerGuard.pointers;
+  const tapStarts=pointerGuard.tapStarts;
   const raycaster = new THREE.Raycaster();
   const tapNdc = new THREE.Vector2();
 
@@ -2267,25 +2280,23 @@ function initialize(THREE) {
     return hits.length?bridge.toTable({x:hits[0].point.x,z:hits[0].point.z}):null;
   }
   canvas.addEventListener("pointerdown", function (event) {
+    // A native iPhone edge swipe may belong to iOS, not this game.
+    // Leave small edge gutters so it cannot capture a half-started orbit.
+    if(pointerRecovery.startsInSystemEdge(event,canvas.getBoundingClientRect()))
+      return;
     stopCameraFocus();
-    if(waypointScreenDistance(event.clientX,event.clientY)<38){
+    pointerGuard.begin(event);
+    if(waypointScreenDistance(event.clientX,event.clientY)<38&&
+       pointers.size===1){
       waypointDragId=event.pointerId;waypointArmed=true;
     }
-    canvas.setPointerCapture(event.pointerId);
-    pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
-    tapStarts.set(event.pointerId, { x:event.clientX, y:event.clientY, dragged:false });
-    if (pointers.size > 1) {
-      // A pinch/pan must never accidentally become a squad tap on release.
-      for (const tap of tapStarts.values()) tap.dragged = true;
-    }
+    try{canvas.setPointerCapture(event.pointerId)}
+    catch(e){pointerGuard.end(event.pointerId)}
   });
   canvas.addEventListener("pointermove", function (event) {
-    if (!pointers.has(event.pointerId)) return;
-    const previousPair = pointers.size === 2 ? [...pointers.values()] : null;
-    const old = pointers.get(event.pointerId);
-    pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
-    const tap = tapStarts.get(event.pointerId);
-    if (tap && Math.hypot(event.clientX-tap.x,event.clientY-tap.y) > 9) tap.dragged=true;
+    const tracked=pointerGuard.move(event);
+    if(!tracked)return;
+    const {old,previousPair,tap}=tracked;
     if(waypointDragId===event.pointerId){
       if(tap)tap.dragged=true;
       const now=performance.now();
@@ -2303,8 +2314,7 @@ function initialize(THREE) {
       const gesture=gestures.twoFingerGesture(previousPair,[...pointers.values()]);
       if (!gesture) return;
       const anchored=groundAtScreen(gesture.previousCenter.x,gesture.previousCenter.y);
-      // Pan and pinch are intentionally simultaneous. Reprojecting after
-      // zoom keeps the tabletop point under the fingers as they travel.
+      // Pan and pinch stay locked to the current two *real* fingers.
       if (gesture.zoomFactor !== 1) setZoom(zoom*gesture.zoomFactor);
       moveCameraTarget(gestures.targetShift(
         anchored,groundAtScreen(gesture.nextCenter.x,gesture.nextCenter.y)
@@ -2312,29 +2322,62 @@ function initialize(THREE) {
     }
   });
   function endPointer(event) {
+    if(!pointers.has(event.pointerId))return;
     if(waypointDragId===event.pointerId){
-      const point=pointerToGroundPoint(event.clientX,event.clientY);
-      if(point)previewWaypoint(point);
+      // An interrupted waypoint drag must not place a point on cancel.
+      if(event.type==="pointerup"){
+        const point=pointerToGroundPoint(event.clientX,event.clientY);
+        if(point)previewWaypoint(point);
+      }
       waypointDragId=null;waypointArmed=false;
-      tapStarts.delete(event.pointerId);pointers.delete(event.pointerId);
-      if(canvas.hasPointerCapture(event.pointerId))
-        canvas.releasePointerCapture(event.pointerId);
+      pointerGuard.end(event.pointerId);
       return;
     }
     const tap = tapStarts.get(event.pointerId);
-    if (event.type === "pointerup" && tap && !tap.dragged && pointers.size === 1) {
+    if(event.type==="pointerup" && tap && !tap.dragged && pointers.size===1)
       tapGround(event.clientX,event.clientY);
-    }
-    tapStarts.delete(event.pointerId);
-    pointers.delete(event.pointerId);
-    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    pointerGuard.end(event.pointerId);
   }
   canvas.addEventListener("pointerup", endPointer);
   canvas.addEventListener("pointercancel", endPointer);
   canvas.addEventListener("lostpointercapture", function (event) {
-    pointers.delete(event.pointerId);
-    tapStarts.delete(event.pointerId);
+    pointerGuard.end(event.pointerId);
   });
+
+  // Mobile Safari sometimes omits pointerup/cancel for an OS edge gesture.
+  // Compare pointer identities to real TouchEvent contacts (rather than
+  // assuming that every pointer capture eventually produces a release).
+  function reconcileNativeTouches(event){
+    pointerGuard.reconcileTouches(event.touches);
+  }
+  canvas.addEventListener("touchstart",reconcileNativeTouches,{passive:true});
+  canvas.addEventListener("touchmove",function(event){
+    reconcileNativeTouches(event);
+    if(pointers.size&&event.cancelable)event.preventDefault();
+  },{passive:false});
+  window.addEventListener("touchend",function(event){
+    // Pointerup may arrive after touchend on some WebKit versions. Wait
+    // a turn, and ignore stale checks if a new touch sequence began.
+    const generation=pointerGuard.generation;
+    const touches=Array.from(event.touches,t=>({
+      clientX:t.clientX,clientY:t.clientY
+    }));
+    setTimeout(()=>{
+      if(generation===pointerGuard.generation)
+        pointerGuard.reconcileTouches(touches);
+    },0);
+  },{passive:true});
+  window.addEventListener("touchcancel",()=>pointerGuard.reset(true),{passive:true});
+  function abandonGesture(){
+    pointerGuard.reset();
+  }
+  window.addEventListener("blur",abandonGesture);
+  window.addEventListener("pagehide",abandonGesture);
+  window.addEventListener("orientationchange",abandonGesture);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden)abandonGesture();
+  });
+
   window.addEventListener("keydown", function (event) {
     const el = event.target;
     if (el && /INPUT|TEXTAREA|SELECT/.test(el.tagName)) return;
