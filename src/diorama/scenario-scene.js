@@ -703,8 +703,34 @@ function initialize(THREE) {
             wall?.18:hedge?.23:.07,
             mat(wall?0xaaa18b:hedge?0x667852:0x806949),
             0,wall?.17:hedge?.19:.28,0);
-          if(renderer==="fence")for(const x of [-distance/2,distance/2])
-            block(segment,.09,.50,.11,mat(0x6c513d),x,.26,0);
+          if(renderer==="fence"){
+            // Layer posts and two independent rails instead of one flat plank.
+            for(const x of [-distance/2,distance/2]){
+              block(segment,.105,.52,.12,mat(0x5c4938),x,.30,0);
+              block(segment,.14,.06,.14,mat(0x897557),x,.56,0);
+            }
+            for(const y of [.22,.40])
+              block(segment,distance,.055,.072,mat(0x786448),0,y,.01);
+          }
+          if(renderer==="hedge"){
+            // Faceted, offset clumps break the large rectangular hedge silhouette.
+            const count=Math.min(7,Math.max(2,Math.ceil(distance/.24)));
+            for(let k=0;k<count;k++){
+              const x=-distance/2+(k+.5)*distance/count;
+              const blob=shape(segment,new THREE.DodecahedronGeometry(.15+(k%3)*.025,0),
+                mat([0x607448,0x708457,0x516b43][k%3]),
+                x,.36+((k%2)*.045),(k%2?-.065:.068));
+              blob.scale.set(1.12,.74,.92);
+            }
+          }
+          if(renderer==="wall"){
+            // Individual coping stones give physical scale to short stone sections.
+            const count=Math.min(12,Math.max(2,Math.ceil(distance/.29)));
+            for(let k=0;k<count;k++)
+              block(segment,distance/count-.012,.045,.235,
+                mat([0xbdb39a,0xa39c86,0xc8b9a0][k%3]),
+                -distance/2+(k+.5)*distance/count,.355,0);
+          }
         }
       }
     }
