@@ -39,7 +39,11 @@
     const elapsed=tickPresentation.last?Math.min(.07,(now-tickPresentation.last)/1000):.016;
     tickPresentation.last=now;
     if(director.update(elapsed))presentationRAF=requestAnimationFrame(tickPresentation);
-    else tickPresentation.last=0;
+    else {
+      tickPresentation.last=0;
+      signature="";
+      if(state)render(state); // Remove the SKIP control after the last event settles.
+    }
   }
   function startPresentation(){
     if(presentationRAF===null)

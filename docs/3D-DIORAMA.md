@@ -388,3 +388,53 @@ vehicles. These are NOT implemented by this pass.
 
 The previous v0.7.1 3D client, event director, audio, AI and renderer are archived
 at `battle3d-v071.html`, with their own versioned front-end module copies.
+
+
+## v0.8 — Living Infantry foundation (development branch)
+
+This is a staged foundation release, **not completion of the full twelve-stage
+v1.0 roadmap**. Gameplay continues to be resolved exclusively by the existing
+`InfantryCore.session` coordinator.
+
+### Implemented
+- Per-squad presentation tracks replace the previous single active movement slot.
+  Repeated authoritative snapshots cannot restart the same track. Every animated
+  unit settles exactly onto its authoritative destination and canonical slots.
+  Individual figure paths receive deterministic, bounded sideways variation
+  that returns to zero at both endpoints, without altering movement legality.
+- Weapon shots are routed by the resolved firearm group to the correct miniature
+  role (rifle, SMG, LMG, MMG, pistol); loaders and support crew no longer
+  masquerade as gunmen. Shot counts, rolls and casualties remain authoritative.
+- Cosmetic suppression reactions interpolate towards pinned/Down poses rather
+  than snapping abruptly. The original rule state remains unchanged.
+- Fire previews show anchored range, shot groups, legal/blocked state, and cover.
+  Obstructed shots render a red dashed targeting strip. These are projections
+  of the coordinator's actual `previewTarget` result.
+- Normal/fast combat playback, skip, and a short physical dice-settling effect
+  improve pacing. Skipping animations never skips a rule or rolls new dice.
+- Small assault lunge/recovery gestures and focused roof cutaways make assault
+  and garrison states easier to understand. They are NOT full individual
+  close-assault or door-entry animations.
+- Solo target scores now account for legal projected shot output and cover.
+  Candidate movement respects scenario dimensions when provided.
+- The scenario coordinate bridge derives its board dimensions from the selected
+  scenario rather than hard-coding 72x48. Decorative corner hardware, ground
+  patches and camera fit scale accordingly. Individual scenario gameplay still
+  requires end-to-end testing.
+- A separate 3D cache-version contract and node regression suite protect this
+  release from incomplete asset uploads; the classic game retains S1.1.1 versioning.
+
+### Verification
+- New pure-regression test: `tests/3d-v080-living-infantry.test.js`.
+- `tests/run-all-node.js` now includes 3D v0.7 and v0.8 suites.
+- Source parsing and focused helper runtime checks have been performed.
+- **A complete live iPhone/WebGL battle and the entire Node suite have not
+  been executed in the development environment.** The PR includes an Actions
+  workflow to run the Node suite; its result must be reviewed before merge.
+
+### Remaining roadmap
+The work here is foundational: richer per-soldier terrain negotiation, complete
+full-match interface validation, more authoritative tactical position evaluation,
+detailed close-contact choreography, door/window garrison staging, true 3D
+physics dice, sophisticated coordination AI, all-scenario editor round trips,
+and on-device frame benchmarks still require their own later stages.
