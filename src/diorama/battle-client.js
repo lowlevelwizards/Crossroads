@@ -7,7 +7,7 @@
   if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
   const scenario=new URLSearchParams(location.search).get("scenario");
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
-    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.1";
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.7.0";
   let session=null,state=null,busy=false,warning="",hint="",error="";
   let aiController=null;
   const soloMode=new URLSearchParams(location.search).get("solo")==="1";
@@ -195,7 +195,6 @@
       signature="";render(state);
     });
     ribbon.append(sound);
-    if(soloMode)ribbon.append(node("span","battle-solo-status","SOLO · GER AI"));
     hud.append(ribbon);
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
@@ -208,7 +207,7 @@
     const contextual=node("div","battle-heading "+(current.faction||"neutral"));
     contextual.append(
       node("span","battle-eyebrow "+(current.faction||"neutral"),
-        factionText(current.faction)+"  ·  "+phaseLabel(current.phase)),
+        factionText(current.faction)+(soloMode&&current.faction==="red"?" · AI":"")+"  ·  "+phaseLabel(current.phase)),
       node("strong","battle-primary",chosen?.name||
         (current.phase==="ready-to-draw"?"Order dice in the bag":phaseLabel(current.phase)))
     );
