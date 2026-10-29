@@ -2162,6 +2162,10 @@
       mover.y = opportunity.triggerPoint.y;
       pendingReaction = opportunity;
       phase = "ambush-reaction";
+      record3DCombatEvent("ambush",{decision:"interrupt",
+        ambusherId:ambusher.id,moverId:mover.id,
+        traceDistance:opportunity.trace.distance,
+        triggerPoint:{x:mover.x,y:mover.y}});
       reactionPanel.hidden = false;
       reactionHeading.textContent = "Ambush Interrupt";
       reactionText.className = "preview-card ambush";
@@ -2181,6 +2185,8 @@
       const mover = getUnit(pendingMovement.moverId);
       if (!ambusher || !mover) return;
 
+      record3DCombatEvent("ambush",{decision:"fire",
+        ambusherId:ambusher.id,moverId:mover.id});
       ambusher.ambush = false;
       ambusher.order = "Ambush Fired";
       if (battleStats) battleStats[ambusher.faction].ambushesFired += 1;
@@ -2210,7 +2216,11 @@
     function holdAmbushFire() {
       if (phase !== "ambush-reaction" || !pendingReaction || !pendingMovement) return;
       const ambusher = getUnit(pendingReaction.ambusherId);
-      if (ambusher) addLog(`${capitalize(ambusher.faction)} ${ambusher.name} holds its Ambush fire.`, "ambush");
+      if (ambusher) {
+        addLog(`${capitalize(ambusher.faction)} ${ambusher.name} holds its Ambush fire.`, "ambush");
+        record3DCombatEvent("ambush",{decision:"hold",
+          ambusherId:ambusher.id,moverId:pendingMovement.moverId});
+      }
       pendingMovement.handledAmbushers.add(pendingReaction.ambusherId);
       pendingMovement.minPathDistance = pendingReaction.pathDistance + 0.01;
       closeReactionPanel();
@@ -3307,6 +3317,10 @@
       const result = scenarioSession.dispatch("round_ended", { round }, scenarioContext());
       scores.blue += result.score.blue;
       scores.red += result.score.red;
+      record3DCombatEvent("round-score",{
+        scoredRound:round,blue:Number(result.score.blue||0),
+        red:Number(result.score.red||0),total:{...scores}
+      });
       if (result.score.blue || result.score.red) {
         showBattleAnnouncement("OBJECTIVES SCORED", `${activeScenario.factions.blue.name} +${result.score.blue} · ${activeScenario.factions.red.name} +${result.score.red}`, result.score.blue > result.score.red ? "blue" : result.score.red > result.score.blue ? "red" : "neutral", 1100);
         addLog(`Round ${round} objectives: ${activeScenario.factions.blue.name} +${result.score.blue}, ${activeScenario.factions.red.name} +${result.score.red}.`, "objective");
@@ -4236,6 +4250,8 @@
           bagRemaining:bag.length, battleEnded,
           objectives:objectiveSnapshots().map(item=>({
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
+            x:item.objective?.x??null,y:item.objective?.y??null,
+            points:item.objective?.points??null,
             state:item.state||"none"
           })),
           combatEventCount:combatEventSequence,

@@ -4,7 +4,9 @@
   const SEQUENCES=Object.freeze({
     shooting:[["aim",.28],["fire",.40],["dice",.90],["impact",.42],["settle",.12]],
     assault:[["charge",.35],["dice",.75],["impact",.48],["settle",.14]],
-    "order-test":[["dice",.75],["impact",.32],["settle",.1]]
+    "order-test":[["dice",.75],["impact",.32],["settle",.1]],
+    ambush:[["alert",.48],["settle",.12]],
+    "round-score":[["score",.9],["settle",.15]]
   });
   function create(onStage) {
     const queue=[],seen=new Set(),order=[];

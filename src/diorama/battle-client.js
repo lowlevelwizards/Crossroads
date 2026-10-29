@@ -72,12 +72,14 @@
     if(stage.phase==="settle"){
       diceOverlay.hidden=true;return;
     }
-    if(stage.phase!=="dice")return;
+    if(!["dice","alert","score"].includes(stage.phase))return;
     const e=stage.event;
     diceOverlay.replaceChildren();
     diceOverlay.append(node("div","battle-dice-heading",
       e.type==="shooting"?"SHOT RESOLUTION":
-      e.type==="assault"?"CLOSE ASSAULT":"ORDER TEST"));
+      e.type==="assault"?"CLOSE ASSAULT":
+      e.type==="ambush"?"AMBUSH REACTION":
+      e.type==="round-score"?"OBJECTIVE SCORING":"ORDER TEST"));
     function row(label,rolls,target,low=false){
       if(!rolls?.length)return;
       const line=node("div","battle-dice-row");
@@ -87,7 +89,14 @@
       for(const value of rolls)values.append(pip(value,target,low));
       line.append(values);diceOverlay.append(line);
     }
-    if(e.type==="shooting"){
+    if(e.type==="ambush"){
+      diceOverlay.append(node("div","battle-dice-result",
+        e.decision==="interrupt"?"AMBUSH! Movement interrupted":
+        e.decision==="fire"?"Ambush fire":"Ambush held"));
+    }else if(e.type==="round-score"){
+      diceOverlay.append(node("div","battle-dice-result",
+        "POL +"+e.blue+"  ·  GER +"+e.red));
+    }else if(e.type==="shooting"){
       for(const group of e.groups||[])
         row(group.weapon,group.rolls,group.hitTarget);
       row("Damage",e.damageRolls,e.damageTarget);
