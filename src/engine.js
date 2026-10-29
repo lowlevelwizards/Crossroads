@@ -4480,6 +4480,14 @@
           if(phase==="choose-target")await chooseTarget(String(payload.id||""));
           else if(phase==="choose-assault-target")chooseAssaultTarget(String(payload.id||""));
         }
+        else if(name==="rotate-mmg"){
+          const unit=getUnit(selectedUnitId);
+          const delta=Number(payload.delta);
+          if(phase!=="choose-order"||!unit||!isMMGTeam(unit)||
+             !unit.mmgDeployed||!Number.isFinite(delta)||Math.abs(delta)!==45)
+            return {ok:false,reason:"No legal MMG traverse",snapshot:this.snapshot()};
+          rotateMMGFacing(unit,delta);
+        }
         else if(name==="building"){
           if(phase==="choose-order") {
             const unit=getUnit(selectedUnitId);

@@ -70,6 +70,17 @@
       const unit=s.units.find(u=>u.id===s.selectedUnitId&&u.faction==="red");
       if(!unit)return;
       if(s.phase==="choose-order"){
+        const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
+        const turn=tactical.mmgRotation?.(unit,enemies)||0;
+        if(turn&&await command("rotate-mmg",{delta:turn}))return;
+        // A nearby empty building can become a strong defensive firing nest.
+        // Occupancy and entry range are validated by InfantryCore.
+        if(s.building?.action==="enter"&&unit.role!=="support"&&
+          (s.objectives||[]).some(o=>Number.isFinite(o.x)&&
+            Math.hypot(o.x-unit.x,o.y-unit.y)<8)&&
+          enemies.some(e=>Math.hypot(e.x-unit.x,e.y-unit.y)<20)){
+          if(await command("building"))return;
+        }
         const legal=(s.orders||[]).filter(o=>o.available).map(o=>o.order);
         const selected=tactical.chooseOrder(s,unit,legal,id=>client.previewTarget(id),failed);
         if(selected)await command("order",{order:selected});
