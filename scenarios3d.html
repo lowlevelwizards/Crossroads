@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#233229"><title>Crossroads — Choose a Battlefield</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% 12%,#627562,#243329 76%);
+color:#f0e4c9;font:15px/1.5 system-ui,sans-serif;padding:36px 20px}
+main{max-width:740px;margin:auto}h1{letter-spacing:.08em;font-size:clamp(26px,7vw,43px);margin:0}
+small{color:#d1c49d;letter-spacing:.2em;font-weight:750}p{color:#d2c9b0}
+nav a{color:#efd5a2}#list{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:12px;margin:26px 0}
+article{background:#20302aee;border:1px solid #bba87966;border-radius:10px;padding:17px;display:flex;flex-direction:column;gap:8px}
+article h2{font-size:19px;margin:0}article p{margin:0;flex:1}
+aside{font-size:11px;color:#c4b999}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions a{display:inline-block;padding:10px 14px;border-radius:6px;background:#d8c28f;color:#1c2923;font-weight:850;text-decoration:none;min-width:110px;text-align:center}
+.actions a.solo{background:#668b8b;color:white}
+footer{font-size:12px;color:#d2c2a7;margin-top:25px}
+</style></head><body><main>
+<nav><a href="./index.html">← Main menu</a></nav>
+<small>THE LIVING TABLETOP</small><h1>CHOOSE A BATTLEFIELD</h1>
+<p>Each battlefield uses the original Crossroads scenario rules. The experimental Solo option lets an AI control the German side.</p>
+<section id="list" aria-label="Available scenarios"></section>
+<footer>All scenarios share the same authoritative battle coordinator. Editor terrain features are still being validated in 3D.</footer>
+</main><script src="data/scenarios.js"></script><script>
+"use strict";
+(() => {
+const list=document.getElementById("list");
+const names=["hold_the_farm","take_the_crossroads","breakthrough","mokra"];
+for(const id of names){
+const s=window.CROSSROADS_SCENARIOS[id];
+if(!s)continue;
+const article=document.createElement("article");
+const h=document.createElement("h2");h.textContent=s.title||id;
+const p=document.createElement("p");p.textContent=s.description||"An authored World War II tabletop battle.";
+const info=document.createElement("aside");
+info.textContent=(s.rounds||4)+" rounds · "+(s.deployment?.mode==="fixed"?"Fixed":"Player")+
+" deployment · "+((s.forces?.blue?.length||0)+(s.forces?.red?.length||0))+" units";
+const actions=document.createElement("div");actions.className="actions";
+const normal=document.createElement("a");normal.textContent="Play";normal.href="./battle3d.html?scenario="+id;
+const solo=document.createElement("a");solo.textContent="Solo · beta";solo.className="solo";
+solo.href="./battle3d.html?scenario="+id+"&solo=1";
+actions.append(normal,solo);article.append(h,p,info,actions);list.append(article);
+}
+})();
+</script></body></html>
