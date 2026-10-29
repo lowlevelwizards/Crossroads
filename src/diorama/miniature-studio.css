@@ -42,3 +42,6 @@ button,select,input{font:inherit}button,select{cursor:pointer}
 }
 @media(max-width:420px){.view-dock{gap:0}.view-dock button{min-width:43px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.studio-section input[type="range"]{width:100%;accent-color:#58705e;margin:7px 0 12px}
+.studio-section label output{float:right;font-variant-numeric:tabular-nums;color:#4b6551}

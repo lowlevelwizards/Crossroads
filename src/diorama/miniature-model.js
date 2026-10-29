@@ -20,12 +20,14 @@
     base.castShadow = true;
     shape(figure, new THREE.CylinderGeometry(.345, .345, .019, 18),
       mat(german?0x6c7763:0x6b7851), 0, .086, 0);
+    // Clone mutable pigment materials: one soldier's paint must never
+    // recolor every other figure that shares the battle material cache.
     const uniform=mat(german?(variant%2?0x758076:0x606e65)
-      :(variant%2?0x787152:0x89805b));
-    const trousers=mat(german?0x515d56:0x696249);
-    const leather=mat(german?0x453c34:0x674b35);
+      :(variant%2?0x787152:0x89805b)).clone();
+    const trousers=mat(german?0x515d56:0x696249).clone();
+    const leather=mat(german?0x453c34:0x674b35).clone();
     const skin=mat(0xc5a17d);
-    const helmet=mat(german?0x53625b:0x677154);
+    const helmet=mat(german?0x53625b:0x677154).clone();
     const legs = [];
     for (const side of [-1, 1]) {
       const leg = block(figure, .15, .255, .19, trousers, side * .125, .42, 0);
@@ -36,7 +38,7 @@
     const breathing = new THREE.Group();
     breathing.position.set(0, .78, 0);
     figure.add(breathing);
-    block(breathing, .47, .56, .30, uniform, 0, 0, 0);
+    const torso=block(breathing, .47, .56, .30, uniform, 0, 0, 0);
     block(breathing, .48, .10, .32, leather, 0, -.20, 0);
     const pack=block(breathing, .34, .37, .19, mat(0x665e43), 0, -.025, .235);
     for (const side of [-1, 1]) {
@@ -50,17 +52,21 @@
       shape(breathing, new THREE.SphereGeometry(.085, 8, 6), skin, side * .27, -.20, -.33);
     }
     block(breathing, .17, .15, .16, skin, 0, .37, 0);
-    shape(breathing, new THREE.SphereGeometry(.17, 10, 8), skin, 0, .51, -.01);
+    const headGroup=new THREE.Group();
+    headGroup.position.y=.41;
+    breathing.add(headGroup);
+    shape(headGroup, new THREE.SphereGeometry(.17, 10, 8), skin, 0, .10, -.01);
+    const headwear=[];
     if(officer) {
-      shape(breathing,new THREE.CylinderGeometry(.187,.195,.18,10),uniform,0,.66,-.01);
-      block(breathing,.40,.045,.25,mat(0x343c34),0,.62,-.13); // peaked cloth cap
+      headwear.push(shape(headGroup,new THREE.CylinderGeometry(.187,.195,.18,10),uniform,0,.25,-.01));
+      headwear.push(block(headGroup,.40,.045,.25,mat(0x343c34),0,.21,-.13)); // peaked cloth cap
     } else {
-      shape(breathing,new THREE.SphereGeometry(german?.23:.205,12,8,0,Math.PI*2,0,Math.PI/2),
-        helmet,0,.63,-.012);
-      shape(breathing,new THREE.CylinderGeometry(german?.245:.212,german?.28:.218,
-        german?.09:.055,12),helmet,0,.603,-.012);
+      headwear.push(shape(headGroup,new THREE.SphereGeometry(german?.23:.205,12,8,0,Math.PI*2,0,Math.PI/2),
+        helmet,0,.22,-.012));
+      headwear.push(shape(headGroup,new THREE.CylinderGeometry(german?.245:.212,german?.28:.218,
+        german?.09:.055,12),helmet,0,.193,-.012));
       if(german) for(const side of [-1,1])
-        block(breathing,.06,.09,.26,helmet,side*.228,.57,-.02); // flared Stahlhelm
+        headwear.push(block(headGroup,.06,.09,.26,helmet,side*.228,.16,-.02)); // flared Stahlhelm
     }
     // Sling, stock, receiver and forward-pointing rifle.
     const metal=mat(0x353a33,.16);
@@ -145,8 +151,15 @@
     const issuePants=trousers.color.getHex();
     const issueHelmet=helmet.color.getHex();
     const issueLeather=leather.color.getHex();
-    // Headwear geometry sits above the head at .60+; the face remains.
-    const headwear=breathing.children.filter(part=>part.position.y>=.60);
+    soldier.applyProfile=(profile={})=>{
+      const p=window.Crossroads3DMiniatureProfiles?.normalize(profile)||profile;
+      torso.scale.x=p.bodyWidth||1;
+      headGroup.scale.setScalar(p.headSize||1);
+      pack.scale.setScalar(p.packSize||1);
+      for(const leg of legs)leg.boot.scale.setScalar(p.bootSize||1);
+      soldier.profile=p;
+    };
+    // Face and headgear scale together, retaining the original helmet silhouette.
     const inspectRing=new THREE.Mesh(new THREE.RingGeometry(.46,.51,24),
       new THREE.MeshBasicMaterial({color:0xf5d37f,transparent:true,opacity:.85,
         side:THREE.DoubleSide,depthWrite:false,depthTest:false}));
@@ -174,8 +187,11 @@
         look.leatherTint==="russet"?0x7e4c31:issueLeather);
       pack.visible=look.pack!=="off";
       for(const part of headwear)part.visible=look.helmet!=="off";
+      soldier.applyProfile(look);
     };
-    soldier.applyLook(miniatureLab?.readLook(squad.unit.id,index)||{});
+    const saved=window.Crossroads3DMiniatureProfiles?.read(
+      recipe.kit.id,squad.unit.type,index)||{};
+    soldier.applyLook(saved);
     return figure;
   }
 

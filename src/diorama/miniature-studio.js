@@ -15,6 +15,10 @@
     if(loading)loading.textContent="Miniature studio dependencies missing.";
     return;
   }
+  const morphFields={
+    headSize:$("studioHeadSize"),bodyWidth:$("studioBodyWidth"),
+    packSize:$("studioPackSize"),bootSize:$("studioBootSize")
+  };
   const fields={
     uniform:$("studioUniform"),helmet:$("studioHeadwear"),
     pack:$("studioPack"),helmetTint:$("studioHelmetTint"),
@@ -39,15 +43,12 @@
   unitSelect.value=catalogue.units().find(x=>x.id==="rifleSquad")?.id||
     catalogue.units()[0].id;
   poseSelect.value="idle";
-  const storageKey="crossroads-3d-miniature-studio-paint-v1";
-  let paint={};
-  try{paint=JSON.parse(localStorage.getItem(storageKey)||"{}")||{}}catch(_){}
-  const selectionKey=()=>[kitSelect.value,unitSelect.value,soldierSelect.value].join(":");
-  const readLook=()=>({...paint[selectionKey()]});
-  const saveLook=look=>{
-    paint[selectionKey()]=look;
-    try{localStorage.setItem(storageKey,JSON.stringify(paint))}catch(_){}
-  };
+  const profiles=window.Crossroads3DMiniatureProfiles;
+  if(!profiles)throw Error("Shared miniature profiles are required");
+  const readLook=()=>profiles.read(kitSelect.value,unitSelect.value,
+    Number(soldierSelect.value)||0);
+  const saveLook=look=>profiles.write(kitSelect.value,unitSelect.value,
+    Number(soldierSelect.value)||0,look);
   let THREE;
   try{
     try{THREE=await import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js")}
@@ -123,6 +124,10 @@
     for(const [name,select] of Object.entries(fields))
       select.value=look[name]||((name==="uniform")?"field":
         (name==="helmetTint"||name==="leatherTint")?"issue":"on");
+    for(const [name,input] of Object.entries(morphFields)){
+      input.value=look[name]||1;
+      $(input.dataset.output).textContent=Number(input.value).toFixed(2)+"×";
+    }
   };
   const updateRecipe=recipe=>{
     const role=recipe.role==="mmg"?"MMG gunner":recipe.role==="crew"?"Support crew":
@@ -174,10 +179,16 @@
       saveLook(look);activeSoldier?.applyLook(look);
     });
   }
+  for(const [name,input] of Object.entries(morphFields)){
+    input.addEventListener("input",()=>{
+      const look=saveLook({...readLook(),[name]:Number(input.value)});
+      $(input.dataset.output).textContent=Number(look[name]).toFixed(2)+"×";
+      activeSoldier?.applyLook(look);
+    });
+  }
   $("studioClearPaint").addEventListener("click",()=>{
-    delete paint[selectionKey()];
-    try{localStorage.setItem(storageKey,JSON.stringify(paint))}catch(_){}
-    refreshPaintInputs();activeSoldier?.applyLook({});
+    profiles.reset(kitSelect.value,unitSelect.value,Number(soldierSelect.value)||0);
+    refreshPaintInputs();activeSoldier?.applyLook(readLook());
   });
 
   const perspective=new THREE.PerspectiveCamera(34,1,.03,100);
