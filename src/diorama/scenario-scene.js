@@ -785,44 +785,73 @@ function initialize(THREE) {
     particle.castShadow=false;particle.receiveShadow=false;
     visualEffects.push({mesh:particle,duration,age:0});
   }
-  function showCombatAction(event) {
-    if(!["target","reaction-fire"].includes(event.action))return;
-    const shooterId=event.action==="reaction-fire"?
-      event.before?.reaction?.ambusherId:event.before?.selectedUnitId;
-    if(!shooterId)return;
-    const shooter=unitLookup.get(shooterId);
-    if(!shooter)return;
-    const shooters=shooter.soldiers.filter(s=>s.figure.visible);
-    // Role-specific pulses; hits and casualties always come from engine state.
-    for(let i=0;i<shooters.length;i++){
-      const soldier=shooters[i];
-      if(soldier.role==="crew"||soldier.role==="loader")continue;
-      soldier.recoil=soldier.role==="mmg"?.36:soldier.role==="smg"?.24:.17;
-      const facing=soldier.figure.rotation.y;
-      const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.31;
-      const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.31;
-      const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
-      spawnBriefFlash(x,soldier.figure.position.y+.54,z,
-        0xffca78,mmg?.09:smg?.073:.055,mmg?.25:.15);
-      if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.59,z-.07,
-        0x9e9990,mmg?.13:.085,.46);
+  // This director listens to ACTUAL resolved engine events. The old
+  // before/after guessed-effects callback is intentionally retired.
+  function showCombatStage(stage) {
+    const e=stage.event;
+    if(stage.type==="order-test"){
+      if(stage.phase==="impact"){
+        const u=unitLookup.get(e.unitId);
+        if(u)spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
+          e.passed?0xa4c49a:0xcf876f,.16,.35);
+      }
+      return;
     }
-    const after=event.after?.units||[],before=event.before?.units||[];
-    for(const unit of after){
-      const previous=before.find(u=>u.id===unit.id);
-      if(!previous)continue;
-      const target=unitLookup.get(unit.id);
-      if(!target)continue;
-      if(unit.soldiers<previous.soldiers)
-        spawnBriefFlash(target.root.position.x,.38,target.root.position.z,
-          0xc2b8a1,.16,.42);
-      if(unit.pins>previous.pins)
-        spawnBriefFlash(target.root.position.x,.72,target.root.position.z,
-          0xd7b268,.11,.38);
-      if(previous.soldiers>0&&unit.soldiers===0)
-        for(let i=0;i<3;i++)
-          spawnBriefFlash(target.root.position.x+Math.sin(i*2.1)*.25,.15,
-            target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
+    if(stage.type==="assault"){
+      if(stage.phase!=="impact")return;
+      for(const id of [e.attackerId,e.defenderId]){
+        const squad=unitLookup.get(id);
+        if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
+          0xc9b693,.26,.52);
+      }
+      return;
+    }
+    if(stage.type!=="shooting")return;
+    const shooter=unitLookup.get(e.shooterId);
+    const target=unitLookup.get(e.targetId);
+    if(stage.phase==="aim"&&shooter&&target){
+      const facing=motion.heading(
+        {x:shooter.root.position.x,z:shooter.root.position.z},
+        {x:target.root.position.x,z:target.root.position.z});
+      for(const soldier of shooter.soldiers)if(soldier.figure.visible)
+        soldier.figure.rotation.y=facing;
+      if(!pointers.size&&!cameraFocus){
+        // Quietly suggest attention without changing the board-centered pivot.
+        const x=(shooter.root.position.x+target.root.position.x)/2;
+        const z=(shooter.root.position.z+target.root.position.z)/2;
+        cameraFocus={x,z};
+        focusZoom=zoom;
+      }
+    }else if(stage.phase==="fire"&&shooter){
+      let fired=0;
+      const groupShots=(e.groups||[]).reduce((n,g)=>n+g.shots,0);
+      for(const soldier of shooter.soldiers){
+        if(!soldier.figure.visible||["crew","loader"].includes(soldier.role))continue;
+        if(fired>=Math.min(groupShots,shooter.soldiers.length))break;
+        fired++;
+        const mmg=soldier.role==="mmg",smg=soldier.role==="smg";
+        soldier.recoil=mmg?.35:smg?.24:.16;
+        const facing=soldier.figure.rotation.y;
+        const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
+        const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
+        spawnBriefFlash(x,soldier.figure.position.y+.52,z,
+          0xffd186,mmg?.095:smg?.073:.052,mmg?.24:.15);
+        if(mmg||smg)spawnBriefFlash(x,soldier.figure.position.y+.57,z,
+          0xa09c91,.09,.40);
+      }
+    }else if(stage.phase==="impact"&&target){
+      if(e.hits>0)
+        spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
+          e.saved>0?0x91a79b:0xc5b69a,.16,.40);
+      if(e.pinDelta>0)
+        spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
+          0xd4a75d,.12,.48);
+      if(e.casualties>0){
+        const amount=Math.min(e.casualties,6);
+        for(let i=0;i<amount;i++)
+          spawnBriefFlash(target.root.position.x+Math.sin(i*2.4)*.23,.20,
+            target.root.position.z+Math.cos(i*2.4)*.23,0x877563,.13,.55);
+      }
     }
   }
   // A physical, thick painted measuring strip—not a one-pixel WebGL line.
@@ -1119,7 +1148,7 @@ function initialize(THREE) {
       updateUnitPresentation(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
-    battle.onAction(showCombatAction);
+    battle.onCombatStage(showCombatStage);
   }
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
@@ -1506,8 +1535,10 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
-            soldier.recoil;
+          soldier.breathing.rotation.x=(
+            (battle&&squad.unit.down)?.36:
+            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0
+          )-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }
