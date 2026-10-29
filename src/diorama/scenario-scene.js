@@ -36,6 +36,7 @@ function initialize(THREE) {
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const tabletopDice=window.Crossroads3DTabletopDice;
+  const buildingVisuals=window.Crossroads3DBuildingVisuals;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
@@ -824,7 +825,7 @@ function initialize(THREE) {
     for(const soldier of squad.soldiers) {
       if(!soldier.pendingRemoval||soldier.casualtyAnimating)continue;
       soldier.casualtyAnimating=true;
-      casualtyAnimations.push({soldier,elapsed:0,duration:.46});
+      casualtyAnimations.push({soldier,elapsed:0,duration:.58,linger:1.15});
     }
   }
   let frameIndex=0;
@@ -1509,7 +1510,7 @@ function initialize(THREE) {
     root.position.set(world.x,0,world.z);
     scene.add(root);
     const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
-      coverCache:null,garrisonCache:null,
+      coverCache:null,garrisonCache:null,entrySequence:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
     for(const slot of bridge.slotsFor(unit))
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
@@ -1581,6 +1582,16 @@ function initialize(THREE) {
         const squad=unitLookup.get(stateUnit.id);
         if(!squad)continue;
         const before={x:squad.root.position.x,z:squad.root.position.z};
+        const previousBuilding=squad.unit.inBuilding||null;
+        if(buildingVisuals&&previousBuilding!==(stateUnit.inBuilding||null)){
+          const buildingId=stateUnit.inBuilding||previousBuilding;
+          const roof=roofMaterials.find(r=>r.ids.some(id=>String(id)===String(buildingId)));
+          const door=roof&&buildingVisuals.doorFor(roof.bounds,before);
+          squad.entrySequence=door?{elapsed:0,duration:.88,
+            entering:Boolean(stateUnit.inBuilding),
+            door:{x:door.x-before.x,z:door.z-before.z},
+            from:squad.soldiers.map(sol=>({x:sol.figure.position.x,z:sol.figure.position.z}))}:null;
+        }
         Object.assign(squad.unit,stateUnit);
         const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
           (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
@@ -2017,6 +2028,12 @@ function initialize(THREE) {
         squad.eligibleRing.visible=false;
       }
       if(squad.assaultCharge>0)squad.assaultCharge=Math.max(0,squad.assaultCharge-dt);
+      if(squad.entrySequence&&!isWalking){
+        squad.entrySequence.elapsed+=dt;
+        if(squad.entrySequence.elapsed>
+            squad.entrySequence.duration+(squad.soldiers.length-1)*.10)
+          squad.entrySequence=null;
+      }
       if(squad.assaultVisual){
         squad.assaultVisual.age+=dt;
         if(squad.assaultVisual.age>=squad.assaultVisual.duration)
@@ -2045,11 +2062,21 @@ function initialize(THREE) {
         if(!isWalking){
           const assault=squad.assaultVisual;
           const displacement=assault&&assaultMotion?
-            assaultMotion.displacement(assault)*(.82+(soldierIndex%3)*.13):0;
+            (assaultMotion.individualDisplacement?.(assault,soldierIndex) ??
+              assaultMotion.displacement(assault)):0;
           const garrison=buildingFormationSlot(squad,soldierIndex);
           const slot=garrison||coverFormationSlot(squad,soldierIndex);
-          const x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
-          const z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
+          let x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
+          let z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
+          const entry=squad.entrySequence;
+          if(entry&&buildingVisuals){
+            const progress=Math.max(0,Math.min(1,
+              (entry.elapsed-soldierIndex*.10)/entry.duration));
+            const at=buildingVisuals.at(entry.from[soldierIndex],
+              entry.door,{x,z},progress);
+            x=at.x;z=at.z;
+            soldier.entryStep=progress>0&&progress<1?Math.sin(progress*Math.PI):0;
+          }else soldier.entryStep=0;
           soldier.coverPose=slot?.cover?(slot.frontRow?.19:.32):0;
           if(slot?.look&&!assault&&soldier.aimTarget==null&&soldier.recoil<.02){
             const at={x:squad.root.position.x+soldier.figure.position.x,
@@ -2058,7 +2085,7 @@ function initialize(THREE) {
             soldier.figure.rotation.y+=motion.shortestDelta(soldier.figure.rotation.y,facing)*
               Math.min(1,dt*2.9);
           }
-          const blend=slot?Math.min(1,dt*5):1;
+          const blend=entry?1:slot?Math.min(1,dt*5):1;
           const shift=Math.hypot(x-soldier.figure.position.x,z-soldier.figure.position.z);
           soldier.figure.position.x+=(x-soldier.figure.position.x)*blend;
           soldier.figure.position.z+=(z-soldier.figure.position.z)*blend;
@@ -2083,7 +2110,7 @@ function initialize(THREE) {
           soldier.lastFootingFrame=frameIndex;
         }
         soldier.breathing.position.y=soldier.baseY-
-          (soldier.crouch||0)*.31;
+          (soldier.crouch||0)*.31+(soldier.entryStep||0)*.025;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.42-squad.assaultCharge)/.42*Math.PI)*.07;
         soldier.hitShock=Math.max(0,(soldier.hitShock||0)-dt*1.7);
@@ -2104,6 +2131,11 @@ function initialize(THREE) {
             Math.max(soldier.coverPose||0,
               (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
+          if(!soldier.casualtyAnimating){
+            for(const leg of soldier.legs)
+              leg.mesh.rotation.x+=soldier.crouch*
+                (leg.side===-1?1.35:-1.15);
+          }
           soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
@@ -2125,10 +2157,12 @@ function initialize(THREE) {
       const record=casualtyAnimations[i];
       record.elapsed+=dt;
       const u=Math.min(1,record.elapsed/record.duration);
-      record.soldier.figure.rotation.z=-u*1.2;
-      if(u>=1){
+      record.soldier.figure.rotation.z=-u*1.29;
+      record.soldier.breathing.rotation.x=u*.43;
+      if(record.elapsed>=record.duration+record.linger){
         record.soldier.figure.visible=false;
         record.soldier.figure.rotation.z=0;
+        record.soldier.breathing.rotation.x=0;
         record.soldier.pendingRemoval=false;
         record.soldier.casualtyAnimating=false;
         casualtyAnimations.splice(i,1);
