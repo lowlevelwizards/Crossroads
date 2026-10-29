@@ -278,12 +278,10 @@ function initialize(THREE) {
     scene.add(token);
     roofMaterials.push({
       ids:[entry.id,entry.terrainId].filter(Boolean),
-      material,occupied:false,focused:false,token
+      material,bounds:r,occupied:false,focused:false,token
     });
   }
   function updateBuildingRoofs(snapshot) {
-    const occupied=new Set((snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0)
-      .map(u=>String(u.inBuilding)));
     for(const roof of roofMaterials){
       const units=(snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0&&
         roof.ids.some(id=>String(id)===String(u.inBuilding)));
@@ -1048,6 +1046,11 @@ function initialize(THREE) {
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
+      if(e.hits>0)target.soldiers.forEach((soldier,index)=>{
+        if(soldier.figure.visible)
+          soldier.hitShock=Math.max(soldier.hitShock||0,
+            index%3===0?.40:.22);
+      });
       if(e.hits>0){
         const impactKind=e.saved>0?"cover":e.casualties>0?"casualty":"dirt";
         const count=Math.min(5,Math.max(1,e.hits));
@@ -1414,6 +1417,28 @@ function initialize(THREE) {
     return figure;
   }
 
+  function buildingFormationSlot(squad,index){
+    if(!squad.unit.inBuilding)return null;
+    const roof=roofMaterials.find(roof=>roof.ids.some(id=>
+      String(id)===String(squad.unit.inBuilding)));
+    const bounds=roof?.bounds;
+    if(!bounds)return null;
+    const root=squad.root.position;
+    if(Math.hypot(bounds.x-root.x,bounds.z-root.z)>2.7)return null;
+    const enemy=squads.filter(s=>s.unit.faction!==squad.unit.faction&&
+      s.unit.soldiers>0).sort((a,b)=>
+        a.root.position.distanceToSquared(squad.root.position)-
+        b.root.position.distanceToSquared(squad.root.position))[0];
+    const dx=enemy?enemy.root.position.x-bounds.x:
+      (squad.unit.faction==="red"?-1:1);
+    const dz=enemy?enemy.root.position.z-bounds.z:0;
+    const along=(index-(squad.soldiers.length-1)/2)*.29;
+    if(Math.abs(dx)>Math.abs(dz))
+      return {x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-.33)-root.x,
+        z:bounds.z+Math.max(-bounds.depth*.32,Math.min(bounds.depth*.32,along))-root.z};
+    return {x:bounds.x+Math.max(-bounds.width*.32,Math.min(bounds.width*.32,along))-root.x,
+      z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-.33)-root.z};
+  }
   function createSquadRenderer(unit,index) {
     const root=new THREE.Group(),world=bridge.toWorld(unit);
     root.position.set(world.x,0,world.z);
@@ -1952,12 +1977,16 @@ function initialize(THREE) {
           motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
         const takingSteps=isWalking&&ownProgress<.999;
         if(!isWalking){
-          const displacement=squad.assaultVisual&&assaultMotion?
-            assaultMotion.displacement(squad.assaultVisual):0;
-          soldier.figure.position.x=soldier.slotX+
-            (squad.assaultVisual?.dx||0)*displacement;
-          soldier.figure.position.z=soldier.slotZ+
-            (squad.assaultVisual?.dz||0)*displacement;
+          const assault=squad.assaultVisual;
+          const displacement=assault&&assaultMotion?
+            assaultMotion.displacement(assault)*(.82+(soldierIndex%3)*.13):0;
+          const slot=buildingFormationSlot(squad,soldierIndex);
+          const x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
+          const z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
+          const blend=slot?Math.min(1,dt*5):1;
+          soldier.figure.position.x+=(x-soldier.figure.position.x)*blend;
+          soldier.figure.position.z+=(z-soldier.figure.position.z)*blend;
+          if(slot&&frameIndex%4===0)soldier.grounded=false;
         }
         if(isWalking) {
           const delta=ownProgress-moving.centerProgress;
@@ -1976,11 +2005,14 @@ function initialize(THREE) {
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
         }
-        soldier.breathing.position.y=soldier.baseY;
+        soldier.breathing.position.y=soldier.baseY-
+          (soldier.crouch||0)*.31;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.30-squad.assaultCharge)/.30*Math.PI)*.07;
+        soldier.hitShock=Math.max(0,(soldier.hitShock||0)-dt*1.7);
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
-          Math.sin(soldierIndex*2.7+1)*.13;
+          Math.sin(soldierIndex*2.7+1)*.13+
+          soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
         if(takingSteps&&!reducedMotion) {
           const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
@@ -1991,8 +2023,8 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          const crouch=(battle&&squad.unit.down)?.36:
-            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0;
+          const crouch=(battle&&squad.unit.down)?.57:
+            (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0;
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
           soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
