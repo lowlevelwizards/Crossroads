@@ -332,3 +332,27 @@ firing/pinning play still warrant hands-on verification.
 
 **Rollback:** `battle3d-v060.html` retains the prior 3D renderer, motion
 module, UI scripts and CSS (still using the shared authoritative coordinator).
+
+## v0.7 — Living Firefight prototype
+
+The original combat runtime emits bounded, sequenced shooting, Order Test and
+assault events, including exact dice, modifiers, hits, cover, Pins, casualties
+and defeat. The 3D client uses a deduplicating event timeline to present
+aiming, muzzle response, dice, impacts and suppression without rerolling.
+A temporary dice tray renders the real hit, damage and cover-save rolls.
+The player may opt into procedural weapon audio using the ♪ control.
+
+Building roofs become transparent when occupied. Targeting uses a thick,
+color-coded firing indicator. `scenarios3d.html` provides an authored scenario
+selection route. `?solo=1` enables an **experimental** German AI opponent,
+operating exclusively through the normal legal command/preview API.
+This AI is intentionally conservative, not a complete tactical opponent.
+
+The public Play button still opens Hold the Farm. Previous v0.6.1 presentation
+files are archived at `battle3d-v061.html`; legacy 2D and movement study
+remain available.
+
+This release does not claim completion of every phase of the longer roadmap.
+Detailed casualty transitions, advanced assault choreography, building entry
+animations, optimized solo AI, robust audio spatialization, complete scenario
+coverage and actual iPhone performance validation need further iterations.

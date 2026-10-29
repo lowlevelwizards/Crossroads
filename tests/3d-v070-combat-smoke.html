@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8">
+<title>3D v0.7 combat smoke</title><style>body{font:14px system-ui;background:#21332b;color:#eee2c8;padding:22px}</style>
+<h2>Crossroads 3D v0.7 event and page check</h2><pre id="out">Loading…</pre>
+<script src="../src/diorama/combat-presentation.js?v=0.7.0"></script>
+<script src="../src/diorama/ai-opponent.js?v=0.7.0"></script>
+<script>
+(async()=>{
+const checks=[],test=(n,x)=>checks.push([n,!!x]);
+const stages=[],director=Crossroads3DCombatPresentation.create(x=>stages.push(x.phase));
+const event={id:1,type:"shooting",groups:[],shots:1,hits:1,casualties:1};
+test("Event accepted",director.enqueue(event));
+test("Duplicate rejected",!director.enqueue(event));
+for(let i=0;i<100;i++)director.update(.05);
+test("Presentation phases",stages.join(",")==="aim,fire,dice,impact,settle");
+test("Queue settles",!director.active);
+test("Solo module available",typeof Crossroads3DAIOpponent.create==="function");
+try{
+const html=await fetch("../battle3d.html",{cache:"no-store"}).then(r=>r.text());
+test("Event director loads first",html.indexOf("combat-presentation.js")<html.indexOf("battle-client.js"));
+test("Solo module loaded",html.includes("ai-opponent.js"));
+test("New scene asset loaded",html.includes("scenario-scene.js?v=0.7.0"));
+const engine=await fetch("../src/engine.js",{cache:"no-store"}).then(r=>r.text());
+test("Engine exports event cursor",engine.includes("combatEventCount:combatEventSequence"));
+}catch(e){test("Files accessible: "+e,false)}
+const passed=checks.filter(x=>x[1]).length;
+document.getElementById("out").textContent=checks.map(x=>(x[1]?"PASS ":"FAIL ")+x[0]).join("\n")+"\n"+passed+"/"+checks.length+" passed";
+})();
+</script>
