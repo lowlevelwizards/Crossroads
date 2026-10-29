@@ -2,6 +2,8 @@
 /* Procedural, user-gesture-unlocked miniature weapon audio. No media assets. */
 (() => {
   let context=null,master=null,muted=true;
+  let listener={yaw:0,x:0,z:0};
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   function unlock() {
     const C=window.AudioContext||window.webkitAudioContext;
     if(!C)return false;
@@ -39,11 +41,17 @@
   const sound=Object.freeze({
     unlock,playShooting(event) {
       const groups=event?.groups||[];
-      const boardX=event?.shooterPosition?.x;
-      const pan=Number.isFinite(boardX)?
-        Math.max(-.65,Math.min(.65,(boardX-36)/36*.65)):0;
+      const pos=event?.shooterPosition;
+      const dx=Number.isFinite(pos?.x)?(pos.x-36)*.30-listener.x:0;
+      const dz=Number.isFinite(pos?.y)?(pos.y-24)*.30-listener.z:0;
+      const screenX=dx*Math.cos(listener.yaw)-dz*Math.sin(listener.yaw);
+      const pan=clamp(screenX/8,-.70,.70);
+      const attenuation=clamp(1/(1+Math.hypot(dx,dz)*.045),.55,1);
       for(const group of groups)playPulse(group.weapon||group.key||"rifle",
-        .12/Math.max(1,Math.sqrt(groups.length)),pan);
+        .12*attenuation/Math.max(1,Math.sqrt(groups.length)),pan);
+    },
+    setListener({yaw=0,x=0,z=0}={}){
+      listener={yaw,x,z};
     },
     setMuted(value){muted=Boolean(value);if(!muted)unlock();return muted},
     get muted(){return muted}

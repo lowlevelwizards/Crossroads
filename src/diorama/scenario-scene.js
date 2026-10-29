@@ -1375,6 +1375,7 @@ function initialize(THREE) {
     camera.top=h/2+vertical;
     camera.bottom=-h/2+vertical;
     camera.updateProjectionMatrix();
+    window.Crossroads3DCombatAudio?.setListener({yaw,x:target.x,z:target.z});
     // A gesture may query the camera before the next rendered frame.
     camera.updateMatrixWorld();
   }
