@@ -50,6 +50,7 @@
     "src/diorama/combat-audio.js",
     "src/diorama/ai-opponent.js",
     "tests/3d-v070-combat-smoke.html",
-    "battle3d-v061.html"
+    "battle3d-v061.html",
+    "tests/3d-v070-combat-runtime.test.js"
   ]
 }
