@@ -102,10 +102,11 @@
     equal(morale.findCommandSupport(squad, [officer]), null);
   });
 
-  test("Officer units do not receive officer support", () => {
+  test("Third Edition officer units receive their own command morale bonus", () => {
     const leader = unit({ id: "leader", role: "officer" });
     const other = unit({ id: "other", role: "officer", x: 1 });
-    equal(morale.findCommandSupport(leader, [other]), null);
+    equal(morale.findCommandSupport(leader, [other]), leader);
+    equal(morale.commandBonus(leader, [other]), rules.commandMoraleBonus);
   });
 
   test("Order Test target clamps to minimum two", () => {
