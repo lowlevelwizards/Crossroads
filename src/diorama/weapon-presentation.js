@@ -3,8 +3,8 @@
 (() => {
   function roleFor(key) {
     const label=String(key||"").toLowerCase();
-    if(/mmg|mg34|machine/.test(label))return "mmg";
     if(/lmg|light.machine/.test(label))return "lmg";
+    if(/mmg|mg34|machine/.test(label))return "mmg";
     if(/smg|submachine|mp40/.test(label))return "smg";
     if(/pistol|sidearm/.test(label))return "officer";
     return "rifle";

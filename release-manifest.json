@@ -56,6 +56,10 @@
     "tests/3d-v071-movement-intent.test.js",
     "src/diorama/ai-tactics.js",
     "tests/3d-v072-battle-presentation.test.js",
-    "battle3d-v071.html"
-  ]
+    "battle3d-v071.html",
+    "src/diorama/squad-motion.js",
+    "src/diorama/weapon-presentation.js",
+    "tests/3d-v080-living-infantry.test.js"
+  ],
+  "threeDCacheVersion": "0.8.0"
 }

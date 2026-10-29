@@ -834,7 +834,7 @@ function initialize(THREE) {
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
     }
-    if(previewUnit&&!fireTag.hidden){
+    if(previewUnit){
       const pos=previewUnit.root.position;
       const view=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.23,pos.z).project(camera);
       const x=(view.x*.5+.5)*width,y=(-view.y*.5+.5)*height;
