@@ -46,6 +46,11 @@
       presentationRAF=requestAnimationFrame(tickPresentation);
   }
   function deliverCombat(snapshot){
+    if((snapshot.combatEventCount||0)<lastCombatId){
+      director.skip();
+      lastCombatId=0;
+      diceOverlay.hidden=true;
+    }
     for(const event of snapshot.combatEvents||[]){
       if(event.id<=lastCombatId)continue;
       lastCombatId=event.id;
@@ -58,42 +63,50 @@
   diceOverlay.setAttribute("aria-live","polite");
   diceOverlay.hidden=true;
   document.getElementById("stage")?.append(diceOverlay);
-  function pip(value){
-    const die=node("span","battle-roll "+(value>=4?"good":"weak"),value);
-    return die;
+  function pip(value,target,lowIsGood=false){
+    const success=Number.isFinite(target)&&
+      (lowIsGood?value<=target:value>=target);
+    return node("span","battle-roll "+(success?"good":"weak"),value);
   }
   function onDiceStage(stage){
     if(stage.phase==="settle"){
-      diceOverlay.hidden=true;
-      return;
+      diceOverlay.hidden=true;return;
     }
     if(stage.phase!=="dice")return;
-    const event=stage.event;
+    const e=stage.event;
     diceOverlay.replaceChildren();
-    const title=event.type==="shooting"?"HIT ROLLS":
-      event.type==="assault"?"CLOSE COMBAT":"ORDER TEST";
-    diceOverlay.append(node("div","battle-dice-heading",title));
-    const rows=event.type==="shooting"?event.groups||[]:
-      event.type==="order-test"?[{weapon:event.order||"Morale",rolls:event.dice||[],
-        hitTarget:event.target}]:
-      (event.rounds||[]).map(x=>({weapon:"Round "+x.number,rolls:x.attackerRolls||[]}));
-    for(const group of rows){
+    diceOverlay.append(node("div","battle-dice-heading",
+      e.type==="shooting"?"SHOT RESOLUTION":
+      e.type==="assault"?"CLOSE ASSAULT":"ORDER TEST"));
+    function row(label,rolls,target,low=false){
+      if(!rolls?.length)return;
       const line=node("div","battle-dice-row");
       line.append(node("span","battle-dice-weapon",
-        group.weapon+(group.hitTarget? " · "+group.hitTarget+"+":"")));
-      const rolls=node("div","battle-dice-rolls");
-      for(const value of group.rolls||[])rolls.append(pip(value));
-      line.append(rolls);diceOverlay.append(line);
+        label+(target!=null?" · "+target+(low?" or less":"+"):"")));
+      const values=node("div","battle-dice-rolls");
+      for(const value of rolls)values.append(pip(value,target,low));
+      line.append(values);diceOverlay.append(line);
     }
-    if(event.type==="shooting")
+    if(e.type==="shooting"){
+      for(const group of e.groups||[])
+        row(group.weapon,group.rolls,group.hitTarget);
+      row("Damage",e.damageRolls,e.damageTarget);
+      if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
       diceOverlay.append(node("div","battle-dice-result",
-        event.hits+" hits · "+event.saved+" saved · "+
-        event.casualties+" casualties · +"+event.pinDelta+" Pin"));
-    else if(event.type==="order-test")
+        e.hits+" hits · "+e.saved+" saved · "+
+        e.casualties+" losses · +"+e.pinDelta+" Pin"));
+    }else if(e.type==="order-test"){
+      row(e.order,e.dice,e.target,true);
       diceOverlay.append(node("div","battle-dice-result",
-        event.total+" / "+event.target+" · "+(event.passed?"PASSED":"FAILED")));
-    else diceOverlay.append(node("div","battle-dice-result",
-        "Winner: "+event.winner));
+        e.total+" / "+e.target+" · "+(e.passed?"PASSED":"FAILED")));
+    }else{
+      for(const round of e.rounds||[]){
+        row("Attacker R"+round.number,round.attackerRolls,null);
+        row("Defender R"+round.number,round.defenderRolls,null);
+      }
+      diceOverlay.append(node("div","battle-dice-result",
+        "Winner: "+e.winner));
+    }
     diceOverlay.hidden=false;
   }
   stageListeners.add(onDiceStage);
