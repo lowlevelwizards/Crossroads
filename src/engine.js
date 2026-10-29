@@ -4376,6 +4376,12 @@
             moverId:pendingMovement?.moverId??null
           } : null,
           deploymentFaction:phase==="deployment"?currentDeploymentFaction():null,
+          deployment:phase==="deployment"?{
+            faction:currentDeploymentFaction(),
+            zones:activeScenario.deployment.zones,
+            valid:deploymentIsValidForFaction(currentDeploymentFaction()),
+            selectedId:deploymentUnitId
+          }:null,
           deploymentUnitId:phase==="deployment"?deploymentUnitId:null,
           canCancel:Boolean(activationSnapshot)&&!transactionLockReason,
           building:selected&&phase==="choose-order"&&buildingCommand(selected)?.enabled
