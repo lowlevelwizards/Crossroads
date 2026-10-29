@@ -35,6 +35,13 @@ function initialize(THREE) {
   const motion = window.CrossroadsDioramaMotion;
   const soldierActions=window.Crossroads3DSoldierActions;
   const soldierIK=window.Crossroads3DSoldierIK;
+  const terrainContact=window.Crossroads3DTerrainContact;
+  const roughRegions=authoredTerrain.filter(e=>e.rules?.movement==="rough")
+    .map(e=>{
+      const b=scenarioAdapter.boundsWorld(e.rulesRect);
+      return {...b,difficulty:Math.max(.4,Math.min(1.8,
+        e.rules?.movementMultiplier||1.5))};
+    });
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
@@ -2783,11 +2790,20 @@ function initialize(THREE) {
             soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
           const feet=motion.plantedGait(totalDistance*ownProgress,
             soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
-          soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
+          const texture=terrainContact?.contact({
+            x:squad.root.position.x+soldier.figure.position.x,
+            z:squad.root.position.z+soldier.figure.position.z
+          },roughRegions,feet,moving.run);
+          soldier.breathing.position.y+=pose.bob*soldier.gait.bob*
+            (texture?.bobScale||1);
           soldier.breathing.rotation.x=-pose.lean;
+          soldier.breathing.rotation.z=(texture?.sway||0)*
+            Math.sin(totalDistance*7+soldierIndex);
           for(const leg of soldier.legs){
             leg.mesh.rotation.x+=pose.legs*leg.side;
-            leg.boot.position.y=.17+(leg.side===-1?feet.leftLift:feet.rightLift);
+            leg.boot.position.y=.17+(leg.side===-1?
+              feet.leftLift+(texture?.leftLift||0):
+              feet.rightLift+(texture?.rightLift||0));
             leg.boot.position.z=-.055+(leg.side===-1?feet.leftReach:feet.rightReach);
           }
         } else {

@@ -33,6 +33,7 @@ const tests = [
   "3d-v115-shot-and-ai.test.js",
   "3d-v116-support-weapon.test.js",
   "3d-v117-morale-gesture.test.js",
+  "3d-v118-terrain-contact.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",

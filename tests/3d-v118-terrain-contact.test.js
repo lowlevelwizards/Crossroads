@@ -1,0 +1,18 @@
+"use strict";
+const assert=require("node:assert/strict"),vm=require("node:vm"),fs=require("node:fs"),path=require("node:path");
+const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
+const w={},ctx=vm.createContext({window:w});
+vm.runInContext(read("src/diorama/terrain-contact.js"),ctx);
+const c=w.Crossroads3DTerrainContact;
+const regions=[{x:0,z:0,width:4,depth:4,difficulty:1.5}];
+assert.equal(c.roughness({x:0,z:0},regions),1.5);
+assert.equal(c.roughness({x:3,z:0},regions),0);
+const feet={leftLift:.1,rightLift:0};
+const inWoods=c.contact({x:0,z:0},regions,feet,false);
+assert(inWoods.leftLift>0&&inWoods.rightLift===0);
+assert(inWoods.bobScale>1);
+assert.equal(c.contact({x:8,z:0},regions,feet,false).leftLift,0);
+const scene=read("src/diorama/scenario-scene.js");
+assert(scene.includes("terrainContact?.contact"));
+assert(scene.includes("e.rules?.movementMultiplier||1.5"));
+console.log("PASS — rough terrain gives visual gait response without changing movement rules");
