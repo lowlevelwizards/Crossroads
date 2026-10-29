@@ -1936,6 +1936,7 @@ function initialize(THREE) {
   // The original 2D coordinator owns state, rules, activation and dice.
   // When this optional mode is present, the scene only projects snapshots
   // to miniature positions/poses; it never commits logical unit mutations.
+  const objectiveMarkers=[];
   if(battle) {
     let lastSnapSignal=null,seenBattleEpoch=null;
     function resetBattlePresentation(snapshot){
@@ -2088,7 +2089,6 @@ function initialize(THREE) {
 
   // Stage 8: real objective markers, painted directly onto the tabletop.
   // These don't resolve objective control; scoring remains owned by the engine.
-  const objectiveMarkers=[];
   const markerPoints=layout.objectives.flatMap(objective=>
     Array.isArray(objective.points)&&objective.points.length?
       objective.points.map(point=>({...point,parentId:objective.id})):
@@ -2131,6 +2131,8 @@ function initialize(THREE) {
       }
     }
   }
+
+  if(battle)updateObjectiveMarkers(battle.snapshot);
 
   // Optional comparison overlay for mapping/debug only; normal players
   // see neither panels nor rectangles. Enable with ?debugTerrain=1.
