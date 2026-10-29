@@ -187,6 +187,15 @@
     const geometry=shape.blend.enabled?
       sdfGeometry(THREE,shape,opts.resolution||22):
       contourGeometry(THREE,shape);
+    const transform=shape.transform;
+    if(transform){
+      geometry.scale(...transform.scale);
+      geometry.rotateX(transform.rotation[0]);
+      geometry.rotateY(transform.rotation[1]);
+      geometry.rotateZ(transform.rotation[2]);
+      geometry.translate(...transform.position);
+      geometry.computeBoundingSphere();
+    }
     if(key){
       geometry.userData=geometry.userData||{};
       geometry.userData.sharedMiniatureGeometry=true;
