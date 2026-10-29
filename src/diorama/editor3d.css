@@ -15,3 +15,6 @@ color:#ebdfc2;border-radius:5px;min-height:36px;padding:6px 9px;font-weight:750}
 .editor3d-panel textarea{width:100%;min-height:110px;background:#172420;color:#f4e4c5;font:10px monospace}
 .editor3d-panel [hidden]{display:none}
 @media(max-width:500px){.editor3d-panel{top:auto;bottom:calc(8px + env(safe-area-inset-bottom));max-height:38svh}}
+
+.editor3d-actions button{touch-action:manipulation}
+.editor3d-panel ol{scrollbar-width:thin}
