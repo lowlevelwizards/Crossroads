@@ -10,7 +10,8 @@
     "classic.html",
     "editor.html",
     "tests/startup-smoke.html",
-    "battle3d.html"
+    "battle3d.html",
+    "scenarios3d.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -43,6 +44,12 @@
     "battle3d.html",
     "classic-session.html",
     "src/diorama/battle-client.js",
-    "src/diorama/battle-controls.css"
+    "src/diorama/battle-controls.css",
+    "scenarios3d.html",
+    "src/diorama/combat-presentation.js",
+    "src/diorama/combat-audio.js",
+    "src/diorama/ai-opponent.js",
+    "tests/3d-v070-combat-smoke.html",
+    "battle3d-v061.html"
   ]
 }

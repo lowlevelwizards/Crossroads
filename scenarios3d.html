@@ -17,7 +17,7 @@ footer{font-size:12px;color:#d2c2a7;margin-top:25px}
 </style></head><body><main>
 <nav><a href="./index.html">← Main menu</a></nav>
 <small>THE LIVING TABLETOP</small><h1>CHOOSE A BATTLEFIELD</h1>
-<p>Each battlefield uses the original Crossroads scenario rules. The experimental Solo option lets an AI control the German side.</p>
+<p>Each battlefield uses the original Crossroads scenario rules. For fixed-deployment battles, experimental Solo lets an AI control the German side. Other scenarios currently use local hotseat play.</p>
 <section id="list" aria-label="Available scenarios"></section>
 <footer>All scenarios share the same authoritative battle coordinator. Editor terrain features are still being validated in 3D.</footer>
 </main><script src="data/scenarios.js"></script><script>
@@ -38,7 +38,9 @@ const actions=document.createElement("div");actions.className="actions";
 const normal=document.createElement("a");normal.textContent="Play";normal.href="./battle3d.html?scenario="+id;
 const solo=document.createElement("a");solo.textContent="Solo · beta";solo.className="solo";
 solo.href="./battle3d.html?scenario="+id+"&solo=1";
-actions.append(normal,solo);article.append(h,p,info,actions);list.append(article);
+actions.append(normal);
+if(s.deployment?.mode==="fixed")actions.append(solo);
+article.append(h,p,info,actions);list.append(article);
 }
 })();
 </script></body></html>
