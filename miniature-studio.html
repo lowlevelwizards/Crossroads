@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#e9e9e6">
   <meta name="description" content="Inspect every Crossroads tabletop miniature, pose, and animation in a neutral 3D studio.">
   <title>Crossroads — Miniature Lab</title>
-  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.32">
+  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.42">
 </head>
 <body>
   <main class="studio">
@@ -30,6 +30,75 @@
       <p class="gesture-hint">DRAG ORBIT <span>·</span> PINCH ZOOM <span>·</span> TWO FINGERS PAN</p>
     </div>
     <aside class="studio-panel" aria-label="Miniature controls">
+      <section class="studio-section workbench-shell" id="workbenchShell">
+        <div class="wb-heading">
+          <h2>MINIATURE WORKBENCH</h2>
+          <button type="button" id="wbToggle" aria-pressed="false">EDIT SHAPE</button>
+        </div>
+        <div id="wbControls" hidden>
+          <p class="field-note">Edit one shape at a time. Green points are draggable contours. Two fingers still pan and zoom.</p>
+          <label for="wbPart">Selected part</label>
+          <select id="wbPart">
+            <option value="torso">Torso / tunic</option>
+            <option value="head">Head / face</option>
+            <option value="helmet">Helmet shell</option>
+            <option value="upper-arm">Upper arms</option>
+            <option value="forearm">Forearms</option>
+            <option value="thigh">Thighs</option>
+            <option value="shin">Lower legs</option>
+            <option value="boot">Boots</option>
+          </select>
+          <div class="wb-toolbar">
+            <button type="button" id="wbIsolate">ISOLATE</button>
+            <button type="button" id="wbGhost">GHOST</button>
+            <button type="button" id="wbMirror" aria-pressed="true">MIRROR ON</button>
+          </div>
+          <label for="wbTool">Tool</label>
+          <select id="wbTool">
+            <option value="contour">Shape / drag contours</option>
+            <option value="move">Move entire shape</option>
+            <option value="scale">Scale entire shape</option>
+            <option value="rotate">Rotate entire shape</option>
+          </select>
+          <div class="wb-toolbar">
+            <button type="button" id="wbInsert">+ CONTOUR</button>
+            <button type="button" id="wbDelete">− CONTOUR</button>
+            <button type="button" id="wbSmooth">SMOOTH</button>
+          </div>
+          <label for="wbSegments">Mesh sides <output id="wbSegmentsLabel">10</output></label>
+          <input id="wbSegments" type="range" min="6" max="24" step="2" value="10">
+          <label for="wbDetail">Selected contour</label>
+          <input id="wbDetail" type="range" min="0" max="5" step="1" value="2">
+          <div class="wb-mini-fields">
+            <label>Height <input id="wbHeight" type="number" step=".01"></label>
+            <label>Width <input id="wbWidth" type="number" step=".01"></label>
+            <label>Depth <input id="wbDepth" type="number" step=".01"></label>
+          </div>
+          <details class="wb-advanced">
+            <summary>SHAPE BLENDING / SDF</summary>
+            <label class="studio-check"><input type="checkbox" id="wbBlend"> Blend with secondary volume</label>
+            <label for="wbBlendStrength">Blend softness <output id="wbBlendLabel">0.08</output></label>
+            <input id="wbBlendStrength" type="range" min=".01" max=".22" step=".01" value=".08">
+            <label for="wbBlendOffset">Secondary volume height</label>
+            <input id="wbBlendOffset" type="range" min="-.6" max=".6" step=".02" value="-.22">
+            <p class="field-note">SDF unions are baked to a regular mesh. Editing the contours remains reversible. Complex unions cost more triangles; use selectively.</p>
+          </details>
+          <div class="wb-toolbar">
+            <button type="button" id="wbUndo">UNDO</button>
+            <button type="button" id="wbRedo">REDO</button>
+            <button type="button" id="wbReset">RESET</button>
+          </div>
+          <div class="wb-toolbar">
+            <button type="button" id="wbSave">SAVE DRAFT</button>
+            <button type="button" id="wbPublish">USE ON THIS DEVICE</button>
+          </div>
+          <div class="wb-toolbar">
+            <button type="button" id="wbExport">EXPORT JSON</button>
+            <label class="wb-import">IMPORT JSON<input type="file" id="wbImport" accept=".json,application/json"></label>
+          </div>
+          <p class="field-note" id="wbStatus" aria-live="polite">Edit mode is local to this device. Publishing does not update GitHub.</p>
+        </div>
+      </section>
       <section class="studio-section">
         <h2>01 / MODEL</h2>
         <label for="studioKit">Faction / kit</label>
@@ -114,19 +183,23 @@
       </details>
     </aside>
   </main>
-  <script src="data/unit-types.js?v=0.9.32"></script>
-  <script src="data/faction-kits.js?v=0.9.32"></script>
-  <script src="src/presentation/miniatures.js?v=0.9.32"></script>
-  <script src="src/diorama/study-motion.js?v=0.9.32"></script>
-  <script src="src/diorama/soldier-ik.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-profiles.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-historical-weapons.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-heroic-character.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-v2.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-model.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-studio-data.js?v=0.9.32"></script>
-  <script src="src/diorama/miniature-studio-poses.js?v=0.9.32"></script>
-  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.32"></script>
+  <script src="data/unit-types.js?v=0.9.42"></script>
+  <script src="data/faction-kits.js?v=0.9.42"></script>
+  <script src="src/presentation/miniatures.js?v=0.9.42"></script>
+  <script src="src/diorama/study-motion.js?v=0.9.42"></script>
+  <script src="src/diorama/soldier-ik.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-profiles.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-historical-weapons.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-shape-library.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-shape-geometry.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-shape-history.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-workbench.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-heroic-character.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-v2.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-model.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-studio-data.js?v=0.9.42"></script>
+  <script src="src/diorama/miniature-studio-poses.js?v=0.9.42"></script>
+  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.42"></script>
 </body>
 </html>
