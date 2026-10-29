@@ -102,8 +102,9 @@
     mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
     parent.add(mesh);return mesh;
   };
+  const sharedWood=material(0x664836);
   const makeSoldier=factory.create({THREE,miniatureScale:1,mat:material,
-    block,shape,wood:material(0x664836),motion,
+    block,shape,wood:sharedWood,motion,
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
@@ -112,7 +113,7 @@
       node.geometry?.dispose?.();
       if(node.material){
         const array=Array.isArray(node.material)?node.material:[node.material];
-        for(const mat of array)mat.dispose?.();
+        for(const mat of array)if(mat!==sharedWood)mat.dispose?.();
       }
     });
     actorRoot.clear();activeFigure=null;activeSoldier=null;flash=null;
@@ -211,7 +212,7 @@
   function zoom(factor){
     radius=clamp(radius*factor,1.45,14);
     orthoHeight=clamp(orthoHeight*factor,.66,8);
-    applyCamera();
+    resize();
   }
   function pan(dx,dy){
     applyCamera();
