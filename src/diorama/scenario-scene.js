@@ -1555,12 +1555,24 @@ function initialize(THREE) {
       (squad.unit.faction==="red"?-1:1);
     const dz=enemy?enemy.root.position.z-bounds.z:0;
     const slots=squad.soldiers.map((_,soldierIndex)=>{
-      const along=(soldierIndex-(squad.soldiers.length-1)/2)*.29;
-      if(Math.abs(dx)>Math.abs(dz))
-        return {x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-.33)-root.x,
-          z:bounds.z+Math.max(-bounds.depth*.32,Math.min(bounds.depth*.32,along))-root.z};
-      return {x:bounds.x+Math.max(-bounds.width*.32,Math.min(bounds.width*.32,along))-root.x,
-        z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-.33)-root.z};
+      const alongX=Math.abs(dx)<=Math.abs(dz);
+      const usable=Math.max(.34,(alongX?bounds.width:bounds.depth)-.55);
+      const perRow=Math.max(1,Math.floor(usable/.37)+1);
+      const row=Math.floor(soldierIndex/perRow);
+      const column=soldierIndex%perRow;
+      const cols=Math.min(perRow,squad.soldiers.length-row*perRow);
+      const along=(column-(cols-1)/2)*.37;
+      const inward=.24+row*.35;
+      const look=enemy?{x:enemy.root.position.x,z:enemy.root.position.z}:null;
+      if(!alongX)return {
+        x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-inward)-root.x,
+        z:bounds.z+along-root.z,look
+      };
+      return {
+        x:bounds.x+along-root.x,
+        z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-inward)-root.z,
+        look
+      };
     });
     squad.garrisonCache={id,frame:frameIndex,slots};
     return slots[index]||null;
@@ -1568,16 +1580,19 @@ function initialize(THREE) {
   function coverFormationSlot(squad,index){
     if(!coverPositions||squad.unit.inBuilding||squad.moving)return null;
     const cache=squad.coverCache,root=squad.root.position;
-    const nearEnemy=squads.filter(u=>u!==squad&&u.unit.faction!==squad.unit.faction&&
-      u.unit.soldiers>0).sort((a,b)=>
-        a.root.position.distanceToSquared(root)-b.root.position.distanceToSquared(root))[0];
-    const enemy=nearEnemy?{x:nearEnemy.root.position.x,z:nearEnemy.root.position.z}:null;
     if(!cache||frameIndex-cache.frame>25||
-       Math.hypot(cache.x-root.x,cache.z-root.z)>.035||
-       (cache.enemyId||null)!==(nearEnemy?.unit.id||null)){
-      const slots=squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ}));
+       Math.hypot(cache.x-root.x,cache.z-root.z)>.035){
+      let nearEnemy=null,best=Infinity;
+      for(const enemy of squads){
+        if(enemy===squad||enemy.unit.faction===squad.unit.faction||
+          enemy.unit.soldiers<=0)continue;
+        const distance=enemy.root.position.distanceToSquared(root);
+        if(distance<best){best=distance;nearEnemy=enemy}
+      }
+      const enemy=nearEnemy?
+        {x:nearEnemy.root.position.x,z:nearEnemy.root.position.z}:null;
+      const slots=squad.soldiers.map(sol=>({x:sol.slotX,z:sol.slotZ}));
       squad.coverCache={frame:frameIndex,x:root.x,z:root.z,
-        enemyId:nearEnemy?.unit.id,
         positions:coverPositions.arrange({x:root.x,z:root.z},slots,
           coverSegments,enemy,{maxSnap:1.04})};
     }

@@ -42,14 +42,15 @@
     const margin=Math.min(.24,length*.20);
     const capacity=Math.max(1,Math.floor(Math.max(.05,length-2*margin)/spacing)+1);
     const cols=Math.min(capacity,slots.length);
-    const maxT=Math.max(margin,length-margin);
+    const maxStart=Math.max(margin,length-margin-(cols-1)*spacing);
+    const start=clamp(t-(cols-1)*spacing/2,margin,maxStart);
     const near=segment.kind==="hedge"?.25:segment.kind==="fence"?.20:.24;
     const points=[];
     for(let i=0;i<slots.length;i++){
       const row=Math.floor(i/cols);
       const column=i%cols;
       // Back ranks preserve spacing rather than spilling through wall ends.
-      const along=clamp(t+(column-(cols-1)/2)*spacing,margin,maxT);
+      const along=start+column*spacing;
       const offset=near+row*.38;
       const world={x:segment.a.x+ux*along+nx*side*offset,
         z:segment.a.z+uz*along+nz*side*offset};
