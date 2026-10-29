@@ -721,6 +721,15 @@ function initialize(THREE) {
   let pendingMovePoint=null;
   let lastMoveTap=0;
   const visualEffects=[];
+  const casualtyAnimations=[];
+  function beginCasualtyRemovals(squad){
+    if(!squad)return;
+    for(const soldier of squad.soldiers) {
+      if(!soldier.pendingRemoval||soldier.casualtyAnimating)continue;
+      soldier.casualtyAnimating=true;
+      casualtyAnimations.push({soldier,elapsed:0,duration:.46});
+    }
+  }
   let frameIndex=0;
   const unitLookup=new Map();
   const markerLayer=document.createElement("div");
@@ -819,6 +828,8 @@ function initialize(THREE) {
     }
     if(stage.type==="assault"){
       if(stage.phase!=="impact")return;
+      beginCasualtyRemovals(unitLookup.get(e.attackerId));
+      beginCasualtyRemovals(unitLookup.get(e.defenderId));
       for(const id of [e.attackerId,e.defenderId]){
         const squad=unitLookup.get(id);
         if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
@@ -860,6 +871,7 @@ function initialize(THREE) {
           0xa09c91,.09,.40);
       }
     }else if(stage.phase==="impact"&&target){
+      beginCasualtyRemovals(target);
       if(e.hits>0)
         spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
           e.saved>0?0x91a79b:0xc5b69a,.16,.40);
@@ -1171,8 +1183,22 @@ function initialize(THREE) {
         if(!squad)continue;
         const before={x:squad.root.position.x,z:squad.root.position.z};
         Object.assign(squad.unit,stateUnit);
+        const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
+          (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
+          (e.type==="assault"&&
+            (e.attackerId===stateUnit.id||e.defenderId===stateUnit.id)));
         squad.soldiers.forEach((soldier,index)=>{
-          soldier.figure.visible=index<stateUnit.soldiers;
+          const alive=index<stateUnit.soldiers;
+          if(alive){
+            soldier.pendingRemoval=false;
+            soldier.figure.visible=true;
+            soldier.figure.rotation.z=0;
+          } else if(hasUnshownCasualties&&soldier.figure.visible){
+            soldier.pendingRemoval=true;
+            soldier.pendingRemovalAt=performance.now();
+          } else if(!soldier.pendingRemoval){
+            soldier.figure.visible=false;
+          }
           if(stateUnit.down) soldier.breathing.rotation.x=.37;
         });
         const end=bridge.toWorld(stateUnit);
@@ -1602,6 +1628,25 @@ function initialize(THREE) {
         squad.ring.userData.grounded=true;
       }
     }
+    for(let i=casualtyAnimations.length-1;i>=0;i--){
+      const record=casualtyAnimations[i];
+      record.elapsed+=dt;
+      const u=Math.min(1,record.elapsed/record.duration);
+      record.soldier.figure.rotation.z=-u*1.2;
+      if(u>=1){
+        record.soldier.figure.visible=false;
+        record.soldier.figure.rotation.z=0;
+        record.soldier.pendingRemoval=false;
+        record.soldier.casualtyAnimating=false;
+        casualtyAnimations.splice(i,1);
+      }
+    }
+    for(const squad of squads)for(const soldier of squad.soldiers)
+      if(soldier.pendingRemoval&&!soldier.casualtyAnimating&&
+        performance.now()-(soldier.pendingRemovalAt||0)>2600){
+        soldier.figure.visible=false;
+        soldier.pendingRemoval=false;
+      }
     for(let i=visualEffects.length-1;i>=0;i--){
       const effect=visualEffects[i];
       effect.age+=dt;
