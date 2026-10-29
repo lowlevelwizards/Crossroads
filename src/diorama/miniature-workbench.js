@@ -31,8 +31,10 @@
           !!geometry.userData?.sharedMiniatureGeometry;
       }
       original.clear();
-      if(getSoldier()?.workbenchPelvis)
-        getSoldier().workbenchPelvis.visible=true;
+      if(getSoldier()?.workbenchPelvis){
+        const published=lib.approved("torso");
+        getSoldier().workbenchPelvis.visible=!published?.blend.enabled;
+      }
     }
     function restoreVisuals(){
       for(const [mesh,state] of visualOriginal){
@@ -145,7 +147,7 @@
       enabled=true;$("wbControls").hidden=false;
       $("wbToggle").textContent="FINISH EDITING";
       $("wbToggle").setAttribute("aria-pressed","true");
-      enterPose();selectPart(part);
+      enterPose();getSoldier()?.setMannequin?.(true);selectPart(part);
     }
     function leave(){
       if(!enabled)return;
@@ -156,7 +158,7 @@
       $("wbControls").hidden=true;
       $("wbToggle").textContent="EDIT SHAPE";
       $("wbToggle").setAttribute("aria-pressed","false");
-      exitPose();
+      getSoldier()?.setMannequin?.(false);exitPose();
     }
     $("wbToggle").addEventListener("click",()=>enabled?leave():enter());
     $("wbPart").addEventListener("change",e=>{
