@@ -835,7 +835,12 @@
     } = coordinates;
 
     function distanceBetweenPoints(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
-    function distanceBetweenUnits(a, b) { return distanceBetweenPoints(a, b); }
+    function distanceBetweenUnits(a, b) {
+      // Officer influence, close assaults and other inter-unit distances
+      // use actual model bases when the shared geometry module is loaded.
+      return window.CrossroadsModelGeometry?.closestRange(a,b) ??
+        distanceBetweenPoints(a,b);
+    }
     function distanceToObjective(unit) { return distanceBetweenPoints(unit, RULES.objective); }
 
     function unitIsOnObjective(unit) {
