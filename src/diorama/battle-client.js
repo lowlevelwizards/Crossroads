@@ -26,7 +26,75 @@
     if(drawRevealTimeout)clearTimeout(drawRevealTimeout);
     drawRevealTimeout=setTimeout(()=>drawOverlay.replaceChildren(),1100);
   }
-  const subscribers=new Set(),effects=new Set();
+  const subscribers=new Set(),effects=new Set(),combatEvents=new Set(),stageListeners=new Set();
+  let lastCombatId=0;
+  const director=window.Crossroads3DCombatPresentation.create(stage=>{
+    for(const callback of stageListeners)callback(stage);
+  });
+  let presentationRAF=null;
+  function tickPresentation(now){
+    presentationRAF=null;
+    const elapsed=tickPresentation.last?Math.min(.07,(now-tickPresentation.last)/1000):.016;
+    tickPresentation.last=now;
+    if(director.update(elapsed))presentationRAF=requestAnimationFrame(tickPresentation);
+    else tickPresentation.last=0;
+  }
+  function startPresentation(){
+    if(presentationRAF===null)
+      presentationRAF=requestAnimationFrame(tickPresentation);
+  }
+  function deliverCombat(snapshot){
+    for(const event of snapshot.combatEvents||[]){
+      if(event.id<=lastCombatId)continue;
+      lastCombatId=event.id;
+      for(const callback of combatEvents)callback(event);
+      if(director.enqueue(event))startPresentation();
+    }
+  }
+  const diceOverlay=document.createElement("section");
+  diceOverlay.className="battle-combat-dice";
+  diceOverlay.setAttribute("aria-live","polite");
+  diceOverlay.hidden=true;
+  document.getElementById("stage")?.append(diceOverlay);
+  function pip(value){
+    const die=node("span","battle-roll "+(value>=4?"good":"weak"),value);
+    return die;
+  }
+  function onDiceStage(stage){
+    if(stage.phase==="settle"){
+      diceOverlay.hidden=true;
+      return;
+    }
+    if(stage.phase!=="dice")return;
+    const event=stage.event;
+    diceOverlay.replaceChildren();
+    const title=event.type==="shooting"?"HIT ROLLS":
+      event.type==="assault"?"CLOSE COMBAT":"ORDER TEST";
+    diceOverlay.append(node("div","battle-dice-heading",title));
+    const rows=event.type==="shooting"?event.groups||[]:
+      event.type==="order-test"?[{weapon:event.order||"Morale",rolls:event.dice||[],
+        hitTarget:event.target}]:
+      (event.rounds||[]).map(x=>({weapon:"Round "+x.number,rolls:x.attackerRolls||[]}));
+    for(const group of rows){
+      const line=node("div","battle-dice-row");
+      line.append(node("span","battle-dice-weapon",
+        group.weapon+(group.hitTarget? " · "+group.hitTarget+"+":"")));
+      const rolls=node("div","battle-dice-rolls");
+      for(const value of group.rolls||[])rolls.append(pip(value));
+      line.append(rolls);diceOverlay.append(line);
+    }
+    if(event.type==="shooting")
+      diceOverlay.append(node("div","battle-dice-result",
+        event.hits+" hits · "+event.saved+" saved · "+
+        event.casualties+" casualties · +"+event.pinDelta+" Pin"));
+    else if(event.type==="order-test")
+      diceOverlay.append(node("div","battle-dice-result",
+        event.total+" / "+event.target+" · "+(event.passed?"PASSED":"FAILED")));
+    else diceOverlay.append(node("div","battle-dice-result",
+        "Winner: "+event.winner));
+    diceOverlay.hidden=false;
+  }
+  stageListeners.add(onDiceStage);
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
   function node(tag,className,text) {
     const el=document.createElement(tag);
@@ -212,6 +280,7 @@
   function accept(snapshot){
     if(!snapshot)return;
     state=snapshot;
+    deliverCombat(snapshot);
     const stateKey=JSON.stringify({
       phase:state.phase,round:state.round,faction:state.faction,
       selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
@@ -269,6 +338,8 @@
       return ()=>subscribers.delete(callback);
     },
     onAction(callback){effects.add(callback);return ()=>effects.delete(callback)},
+    onCombatEvent(callback){combatEvents.add(callback);return ()=>combatEvents.delete(callback)},
+    onCombatStage(callback){stageListeners.add(callback);return ()=>stageListeners.delete(callback)},
     setHint(message){hint=String(message||"").slice(0,180);signature="";render(state)},
     previewMove(point,waypoint){
       return session?.previewMove(point,waypoint)||
