@@ -85,7 +85,12 @@
     "src/diorama/visual-anchor.js",
     "tests/3d-v094a-visual-anchor.test.js",
     "src/diorama/garrison-windows.js",
-    "tests/3d-v100-garrison-and-arcs.test.js"
+    "tests/3d-v100-garrison-and-arcs.test.js",
+    "src/diorama/soldier-ik.js",
+    "tests/3d-v101-officer-and-guns.test.js",
+    "tests/3d-v102-soldier-ik.test.js",
+    "tests/3d-v103-miniature-lab.test.js",
+    "tests/3d-v104-tactical-cover.test.js"
   ],
-  "threeDCacheVersion": "0.9.9"
+  "threeDCacheVersion": "0.9.10"
 }
