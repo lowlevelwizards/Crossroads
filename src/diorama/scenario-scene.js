@@ -2877,6 +2877,27 @@ function initialize(THREE) {
             }
           }
         }
+        // Feed the same sculpted skeleton used by Miniature Lab with the
+        // established authoritative battle movement/Down/recoil presentation.
+        // Existing legacy leg meshes remain the fallback if V2 is disabled.
+        if(soldier.applyPose&&!soldier.casualtyAnimating){
+          const left=soldier.legs.find(leg=>leg.side===-1);
+          const right=soldier.legs.find(leg=>leg.side===1);
+          const baseLift=soldier.baseY-(soldier.crouch||0)*.31;
+          soldier.applyPose({
+            crouch:soldier.crouch||0,
+            lean:Math.max(0,-soldier.breathing.rotation.x),
+            roll:soldier.breathing.rotation.z,
+            forward:Math.max(0,-soldier.breathing.position.z),
+            bob:soldier.breathing.position.y-baseLift,
+            leftLift:Math.max(0,(left?.boot.position.y??.17)-.17),
+            rightLift:Math.max(0,(right?.boot.position.y??.17)-.17),
+            leftReach:(left?.boot.position.z??-.055)+.055,
+            rightReach:(right?.boot.position.z??-.055)+.055,
+            aim:!!soldier.aimTarget||squad.unit.order==="Fire",
+            recoil:soldier.recoil||0
+          });
+        }
       }
       if(!isWalking&&frameIndex%18===0&&squad.orderToken.visible){
         const x=squad.root.position.x+squad.orderToken.position.x;
@@ -2901,8 +2922,14 @@ function initialize(THREE) {
       const record=casualtyAnimations[i];
       record.elapsed+=dt;
       const u=Math.min(1,record.elapsed/record.duration);
-      record.soldier.figure.rotation.z=-u*1.29;
-      record.soldier.breathing.rotation.x=u*.43;
+      if(record.soldier.applyPose){
+        // No vertical/fallen tabletop bases: only the soldier body collapses.
+        record.soldier.figure.rotation.z=0;
+        record.soldier.applyPose({fall:u,crouch:.28,lean:.22});
+      }else{
+        record.soldier.figure.rotation.z=-u*1.29;
+        record.soldier.breathing.rotation.x=u*.43;
+      }
       if(record.elapsed>=record.duration+record.linger){
         record.soldier.figure.visible=false;
         record.soldier.figure.rotation.z=0;
