@@ -81,6 +81,13 @@
             <input id="wbBlendStrength" type="range" min=".01" max=".22" step=".01" value=".08">
             <label for="wbBlendOffset">Secondary volume height</label>
             <input id="wbBlendOffset" type="range" min="-.6" max=".6" step=".02" value="-.22">
+            <div class="wb-mini-fields">
+              <label>X offset <input id="wbBlendX" type="number" step=".02" value="0"></label>
+              <label>Z offset <input id="wbBlendZ" type="number" step=".02" value="0"></label>
+              <label>Width <input id="wbBlendRx" type="number" min=".025" step=".02" value=".25"></label>
+              <label>Height <input id="wbBlendRy" type="number" min=".025" step=".02" value=".12"></label>
+              <label>Depth <input id="wbBlendRz" type="number" min=".025" step=".02" value=".18"></label>
+            </div>
             <p class="field-note">SDF unions are baked to a regular mesh. Editing the contours remains reversible. Complex unions cost more triangles; use selectively.</p>
           </details>
           <div class="wb-toolbar">
