@@ -16,6 +16,7 @@ const tests = [
   "3d-v092-ios-touch-recovery.test.js",
   "3d-v093-rules-and-command.test.js",
   "3d-v094-physicality-and-solo.test.js",
+  "3d-v094-scenario-validation.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",

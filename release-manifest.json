@@ -80,7 +80,8 @@
     "tests/3d-v092-ios-touch-recovery.test.js",
     "army3d.html",
     "src/army/army-planner.js",
-    "tests/3d-v094-physicality-and-solo.test.js"
+    "tests/3d-v094-physicality-and-solo.test.js",
+    "tests/3d-v094-scenario-validation.test.js"
   ],
   "threeDCacheVersion": "0.9.4"
 }
