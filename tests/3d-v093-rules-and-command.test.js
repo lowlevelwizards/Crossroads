@@ -75,6 +75,10 @@ for(const token of ["commandMoraleBonus: 2",
  'name==="end-snap"'])
  assert(engine.includes(token),"officer engine missing "+token);
 assert(scene.includes("const prediction=")&&scene.includes("lastMoveConstraints"));
+for(const marker of ["function visualEndpointClearance(squad,plan)",
+ "visualEndpointClearance(selectedSquad,assessment)",
+ "visualEndpointClearance(selectedSquad,check)"])
+ assert(scene.includes(marker),"missing 3D final miniature friendly clearance "+marker);
 assert(scene.includes('canvas.addEventListener("dblclick"')&&
   scene.includes('canvas.addEventListener("touchend"'));
 for(const p of ["classic.html","classic-session.html","battle3d.html",
