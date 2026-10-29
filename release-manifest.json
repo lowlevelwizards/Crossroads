@@ -118,5 +118,5 @@
     "src/diorama/miniature-v2.js",
     "tests/3d-v121-sculpted-miniatures.test.js"
   ],
-  "threeDCacheVersion": "0.9.20"
+  "threeDCacheVersion": "0.9.21"
 }

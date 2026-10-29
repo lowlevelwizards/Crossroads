@@ -29,7 +29,7 @@ assert(battle.includes("if(record.soldier.applyPose)"));
 for(const [page,html] of Object.entries({
   "studio":studioPage,"battle":battlePage,"editor":editorPage
 })){
-  assert(html.includes("miniature-v2.js?v=0.9.20"),page+" missing V2 loader");
+  assert(html.includes("miniature-v2.js?v=0.9.21"),page+" missing V2 loader");
   assert(html.indexOf("miniature-v2.js")<html.indexOf("miniature-model.js"),
     page+" must load the new builder before its shared factory");
 }
@@ -42,7 +42,7 @@ assert.equal(poses.frame("casualty",100,{}).fall,1);
 assert.equal(poses.frame("casualty",1000,{}).fall,1);
 assert(poses.frame("fire",0,{}).aim);
 const manifest=JSON.parse(read("release-manifest.json"));
-assert.equal(manifest.threeDCacheVersion,"0.9.20");
+assert.equal(manifest.threeDCacheVersion,"0.9.21");
 assert(manifest.requiredFiles.includes("src/diorama/miniature-v2.js"));
 
 // Exercise every soldier role without depending on WebGL in the Node runner.
@@ -109,6 +109,29 @@ for(const role of ["rifle","smg","lmg","mmg","crew","officer","loader"]){
   make(squad,0,0,0,{role,kit:{id:"poland_1939",factionId:"poland"}},0,0);
   const soldier=squad.soldiers[0];
   assert.equal(soldier.modelVersion,2);
+  // Regression: the appearance slider multiplies the existing chest radius.
+  // The broken implementation replaced 0.31 with ~1.02 and inflated the
+  // entire torso into a horizontal oval, even for a near-default profile.
+  const initialRadius=soldier.torso.scale.x;
+  assert(Math.abs(initialRadius-.285)<.0001);
+  soldier.applyProfile({bodyWidth:1.02});
+  assert(Math.abs(soldier.torso.scale.x-.285*1.02)<.0001,
+    "Torso width slider must not overwrite the sculpted base radius");
+  soldier.applyProfile({bodyWidth:1.28});
+  assert(soldier.torso.scale.x<.37,
+    "Even the widest torso option stays within heroic miniature proportions");
+  soldier.applyProfile({bodyWidth:1.02});
+  assert(Math.abs(soldier.torso.scale.x-.285*1.02)<.0001,
+    "Successive slider updates must not accumulate scaling");
+  for(const arm of soldier.arms){
+    assert(Math.abs(arm.shoulder.x)<.27,
+      "Shoulder joints stay near the torso rather than outside the silhouette");
+    assert(arm.upper.geometry.args[0]<.12 &&
+      arm.lower.geometry.args[0]<.10,
+      "Sleeve radius is authored directly, never a full-size unit cylinder");
+    assert(arm.upper.scale.x===1&&arm.lower.scale.z===1,
+      "Posing only changes the limb length, not the authored sleeve thickness");
+  }
   assert.notEqual(soldier.body,soldier.base);
   assert.equal(soldier.base.rotation.z,0);
   soldier.applyPose({fall:1,crouch:.28,lean:.22});
