@@ -27,7 +27,9 @@
   }
   function chooseOrder(s,unit,legal,previewTarget,failed) {
     const enemy=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
-    const visible=enemy.filter(u=>previewTarget(u.id)?.legal);
+    // During choose-order the engine intentionally disallows previewTarget;
+    // choose likely firing ranges here, then confirm legal LOS in target phase.
+    const visible=enemy.filter(u=>dist(u,unit)<23);
     const has=o=>legal.includes(o);
     if(unit.pins>=2&&has("Rally"))return "Rally";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))

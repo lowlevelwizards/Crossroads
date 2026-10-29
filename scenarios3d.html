@@ -14,6 +14,14 @@ aside{font-size:11px;color:#c4b999}.actions{display:flex;gap:8px;flex-wrap:wrap}
 .actions a{display:inline-block;padding:10px 14px;border-radius:6px;background:#d8c28f;color:#1c2923;font-weight:850;text-decoration:none;min-width:110px;text-align:center}
 .actions a.solo{background:#668b8b;color:white}
 footer{font-size:12px;color:#d2c2a7;margin-top:25px}
+.briefing{background:#36453699;border-radius:6px;padding:11px;font-size:12px;color:#ebdcc1}
+.briefing strong{display:block;letter-spacing:.1em;color:#dec48b;margin:10px 0 4px;font-size:10px}
+.briefing ul{margin:4px 0;padding-left:18px}.briefing li{padding:2px 0}
+.faction-count{display:flex;gap:6px;flex-wrap:wrap}
+.faction-chip{font-size:10px;font-weight:800;padding:5px 7px;border:1px solid;border-radius:5px}
+.faction-chip.blue{color:#a1d7e1;border-color:#70b6cb66}
+.faction-chip.red{color:#edb198;border-color:#b97a6166}
+.deployment{font-size:11px;margin:5px 0 0;color:#cfc5ab}
 </style></head><body><main>
 <nav><a href="./index.html">← Main menu</a></nav>
 <small>THE LIVING TABLETOP</small><h1>CHOOSE A BATTLEFIELD</h1>
@@ -34,13 +42,44 @@ const p=document.createElement("p");p.textContent=s.description||"An authored Wo
 const info=document.createElement("aside");
 info.textContent=(s.rounds||4)+" rounds · "+(s.deployment?.mode==="fixed"?"Fixed":"Player")+
 " deployment · "+((s.forces?.blue?.length||0)+(s.forces?.red?.length||0))+" units";
+const briefing=document.createElement("div");briefing.className="briefing";
+const factions=document.createElement("div");factions.className="faction-count";
+for(const key of ["blue","red"]){
+  const units=s.forces?.[key]||[];
+  const chip=document.createElement("span");
+  chip.className="faction-chip "+key;
+  chip.textContent=(key==="blue"?"POLAND":"GERMANY")+" · "+units.length+
+    " units · "+units.filter(x=>x.unitType==="mmgTeam").length+" MMG";
+  factions.append(chip);
+}
+briefing.append(factions);
+const title=document.createElement("strong");title.textContent="BATTLE OBJECTIVES";
+briefing.append(title);
+const goals=document.createElement("ul");
+for(const objective of s.objectives||[]){
+  const row=document.createElement("li");
+  const kind=objective.type==="control_zone"?"Capture and hold":
+    objective.type==="exit_unit"?"Break through":"Scenario objective";
+  row.textContent=kind+" · "+(objective.label||objective.id)+
+    (objective.roundPoints?" · "+objective.roundPoints+" point/round":"");
+  goals.append(row);
+}
+if(!goals.children.length){
+  const item=document.createElement("li");item.textContent="Eliminate threats and complete scenario conditions.";
+  goals.append(item);
+}
+briefing.append(goals);
+const deployment=document.createElement("p");deployment.className="deployment";
+deployment.textContent="Deployment: "+(s.deployment?.mode==="fixed"?
+  "Fixed starting positions":"Place your units before the first round");
+briefing.append(deployment);
 const actions=document.createElement("div");actions.className="actions";
 const normal=document.createElement("a");normal.textContent="Play";normal.href="./battle3d.html?scenario="+id;
 const solo=document.createElement("a");solo.textContent="Solo · beta";solo.className="solo";
 solo.href="./battle3d.html?scenario="+id+"&solo=1";
 actions.append(normal);
 if(s.deployment?.mode==="fixed")actions.append(solo);
-article.append(h,p,info,actions);list.append(article);
+article.append(h,p,info,briefing,actions);list.append(article);
 }
 })();
 </script></body></html>
