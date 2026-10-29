@@ -31,6 +31,8 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const squadMotion=window.Crossroads3DSquadMotion;
+  if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
   if (!motion) throw new Error("Crossroads 3D motion helpers were not loaded.");
@@ -731,7 +733,7 @@ function initialize(THREE) {
   const hitBoxes=[];
   const getLivingUnits=()=>units;
   let selectedSquad=null;
-  let activeMovement=null;
+  const activeMovements=squadMotion.createTracks();
   let pendingTargetId=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
@@ -1291,19 +1293,20 @@ function initialize(THREE) {
         const end=bridge.toWorld(stateUnit);
         const displacement=Math.hypot(end.x-before.x,end.z-before.z);
         if(displacement>.025) {
-          if(!activeMovement) {
+          const existing=activeMovements.get(squad.unit.id);
+          // A repeated snapshot must not restart an animation already en route.
+          if(!existing||Math.hypot(existing.end.x-end.x,existing.end.z-end.z)>.025) {
             const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
               motion.heading(before,end));
             const run=stateUnit.order==="Run";
             const duration=Math.max(run?.27:.40,
               displacement/(run?1.42:.82));
-            activeMovement={squad,plan:null,remote:true,start:before,end,phase:"turn",
-              elapsed:0,turn,travelDuration:duration,
-              finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+            activeMovements.set(squad.unit.id,{
+              squad,plan:null,remote:true,start:before,end,phase:"turn",
+              elapsed:0,turn,travelDuration:duration,centerProgress:0,
+              finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))
+            });
             squad.moving=true;
-          } else if(activeMovement.squad!==squad) {
-            squad.root.position.set(end.x,0,end.z);
-            squad.soldiers.forEach(s=>s.grounded=false);
           }
         }
       }
@@ -1541,7 +1544,7 @@ function initialize(THREE) {
         " / "+analysis.allowance+" inches — tap same destination to confirm");
       return;
     }
-    if(!selectedSquad||activeMovement)return;
+    if(!selectedSquad||activeMovements.size)return;
     const hits=raycaster.intersectObject(ground,false);
     if(!hits.length)return;
     const point=hits[0].point,squad=selectedSquad;
@@ -1552,9 +1555,9 @@ function initialize(THREE) {
     const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
       motion.heading(start,end));
     const duration=Math.max(.55,Math.hypot(dx,dz)/.68);
-    activeMovement={squad,plan,start,end,phase:"turn",elapsed:0,turn,
-      travelDuration:duration,
-      finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+    activeMovements.set(squad.unit.id,{squad,plan,start,end,phase:"turn",
+      elapsed:0,turn,travelDuration:duration,centerProgress:0,
+      finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))});
     squad.moving=true;
     squad.ring.visible=false;
     squad.ring.userData.grounded=false;
@@ -1649,45 +1652,43 @@ function initialize(THREE) {
         cameraFocus=null;
       updateCamera();
     }
-    const moving=activeMovement;
-    let walking=false;
-    let centerProgress=0;
-    if(moving) {
+    // Per-squad tracks prevent the old snap-to-end behavior when the
+    // coordinator updates a second unit during another unit's presentation.
+    for(const [unitId,moving] of activeMovements) {
       const squad=moving.squad;
       moving.elapsed+=dt;
-      if(moving.phase==="turn") {
+      if(moving.phase==="turn"){
         const u=Math.min(1,moving.elapsed/moving.turn.duration);
         for(let i=0;i<squad.soldiers.length;i++)
           squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
-        if(u>=1) {moving.phase="travel";moving.elapsed=0;}
-      } else {
-        walking=true;
-        centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        if(u>=1){moving.phase="travel";moving.elapsed=0;}
+      }else{
+        moving.centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
         squad.root.position.set(
-          moving.start.x+(moving.end.x-moving.start.x)*centerProgress,
+          moving.start.x+(moving.end.x-moving.start.x)*moving.centerProgress,
           0,
-          moving.start.z+(moving.end.z-moving.start.z)*centerProgress
+          moving.start.z+(moving.end.z-moving.start.z)*moving.centerProgress
         );
-        if(moving.elapsed>=moving.finishTime) {
+        if(squadMotion.movementFinished(moving)){
           squad.root.position.set(moving.end.x,0,moving.end.z);
-          for(const soldier of squad.soldiers) {
+          for(const soldier of squad.soldiers){
             soldier.figure.position.x=soldier.slotX;
             soldier.figure.position.z=soldier.slotZ;
           }
-          if(!moving.remote) squad.controller.commitMove(moving.plan);
+          if(!moving.remote&&moving.plan)squad.controller.commitMove(moving.plan);
           squad.moving=false;
           squad.orderToken.visible=Boolean(squad.unit.order)&&
             Boolean(squad.unit.activated)&&squad.unit.soldiers>0;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
-          for(const soldier of squad.soldiers) soldier.grounded=false;
-          activeMovement=null;
-          walking=false;
+          for(const soldier of squad.soldiers)soldier.grounded=false;
+          activeMovements.delete(unitId);
         }
       }
     }
     for(const squad of squads) {
-      const isWalking=walking&&moving?.squad===squad;
+      const moving=activeMovements.get(squad.unit.id);
+      const isWalking=Boolean(moving&&moving.phase==="travel");
       if(squad.alertUntil&&performance.now()>=squad.alertUntil){
         squad.alertUntil=0;
         squad.eligibleRing.visible=false;
@@ -1712,9 +1713,12 @@ function initialize(THREE) {
           motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
         const takingSteps=isWalking&&ownProgress<.999;
         if(isWalking) {
-          const delta=ownProgress-centerProgress;
-          soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
-          soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
+          const delta=ownProgress-moving.centerProgress;
+          const dx=moving.end.x-moving.start.x,dz=moving.end.z-moving.start.z;
+          const length=Math.hypot(dx,dz)||1;
+          const lateral=squadMotion.lateralOffset(squad.index,soldierIndex,ownProgress,length);
+          soldier.figure.position.x=soldier.slotX+dx*delta-dz/length*lateral;
+          soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
         }
         if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
             (!isWalking&&!soldier.grounded)) {
