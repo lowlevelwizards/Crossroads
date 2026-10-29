@@ -828,8 +828,60 @@ function initialize(THREE) {
       walkableSurfaceMeshes.push(mesh);
     }
   }
+  function renderAuthoredScatter(){
+    for(const entry of authoredTerrain.filter(e=>
+      ["foxholes","haystack","woodpile"].includes(e.renderer))){
+      const bounds=scenarioAdapter.boundsWorld(entry.rulesRect);
+      const group=new THREE.Group();
+      group.position.set(bounds.x,terrainY(bounds.x,bounds.z),bounds.z);
+      group.rotation.y=-(entry.rotation||0)*Math.PI/180;
+      scene.add(group);
+      const width=bounds.width,depth=bounds.depth;
+      if(entry.renderer==="foxholes"){
+        // Discrete depressions with broken earthen berms, not a giant box.
+        const n=Math.max(2,Math.min(5,Math.round(width/.85)));
+        for(let i=0;i<n;i++){
+          const cx=-width/2+(i+.5)*width/n;
+          const pit=shape(group,new THREE.CylinderGeometry(.28,.30,.025,13),
+            mat(0x4d4838),cx,.018,0);
+          pit.castShadow=false;
+          for(let k=0;k<10;k++){
+            const theta=k*Math.PI/5;
+            const mound=shape(group,new THREE.DodecahedronGeometry(.115+(k%3)*.018,0),
+              mat([0x665a42,0x73664c,0x564e3a][k%3]),
+              cx+Math.sin(theta)*.29,.065,Math.cos(theta)*.25);
+            mound.scale.y=.37;
+          }
+        }
+      } else if(entry.renderer==="haystack"){
+        const r=Math.min(width,depth)*.43;
+        const hay=shape(group,new THREE.ConeGeometry(r,Math.max(.4,r*1.9),9),
+          mat(0xb7a06a),0,Math.max(.4,r*1.9)/2,0);
+        hay.rotation.y=.20;
+        for(let k=0;k<7;k++){
+          const a=k*Math.PI*2/7;
+          const tuft=shape(group,new THREE.ConeGeometry(.12,.30,4),
+            mat(k%2?0xc6b17a:0xa58c59),
+            Math.sin(a)*r*.69,.24,Math.cos(a)*r*.69);
+          tuft.rotation.z=Math.sin(a)*.4;
+        }
+      } else {
+        // Short round logs with visible cut ends and staggered stack rows.
+        const layers=3;
+        for(let layer=0;layer<layers;layer++)
+          for(let i=0;i<Math.min(5,Math.max(2,Math.floor(width/.20)-layer));i++){
+            const length=Math.min(depth*.88,.80);
+            const log=shape(group,new THREE.CylinderGeometry(.085,.087,length,9),
+              mat((i+layer)%2?0x6e563d:0x896a48),
+              (i-2)*.17+layer*.09,.10+layer*.14,0);
+            log.rotation.x=Math.PI/2;
+          }
+      }
+    }
+  }
   renderAuthoredLinearTerrain();
   renderAuthoredTerrainPatches();
+  renderAuthoredScatter();
 
 
   // Stage 6: all real units load at their authored scenario coordinates.
