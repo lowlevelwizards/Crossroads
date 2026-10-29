@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#e9e9e6">
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
   <meta name="description" content="Inspect every Crossroads tabletop miniature, pose, and animation in a neutral 3D studio.">
   <title>Crossroads — Miniature Lab</title>
   <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.42">
@@ -103,6 +104,17 @@
             <button type="button" id="wbExport">EXPORT JSON</button>
             <label class="wb-import">IMPORT JSON<input type="file" id="wbImport" accept=".json,application/json"></label>
           </div>
+          <details class="wb-advanced">
+            <summary>GLB INTERCHANGE (ADVANCED)</summary>
+            <div class="wb-toolbar">
+              <button type="button" id="wbExportGLB">EXPORT PART GLB</button>
+              <label class="wb-import">IMPORT REFERENCE GLB
+                <input type="file" id="wbImportGLB" accept=".glb,model/gltf-binary">
+              </label>
+            </div>
+            <button type="button" id="wbClearGLB">REMOVE REFERENCE</button>
+            <p class="field-note">Imported GLB geometry is shown beside the soldier for visual comparison. It is not automatically editable as a contour mesh.</p>
+          </details>
           <p class="field-note" id="wbStatus" aria-live="polite">Edit mode is local to this device. Publishing does not update GitHub.</p>
         </div>
       </section>
