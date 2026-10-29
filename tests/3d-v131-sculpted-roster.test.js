@@ -12,6 +12,8 @@ class Vec {
   multiplyScalar(s){return this.set(this.x*s,this.y*s,this.z*s)}
   length(){return Math.hypot(this.x,this.y,this.z)}
   normalize(){return this.multiplyScalar(1/(this.length()||1))}
+  lerp(v,t){return this.set(this.x+(v.x-this.x)*t,this.y+(v.y-this.y)*t,
+    this.z+(v.z-this.z)*t)}
   setScalar(s){return this.set(s,s,s)}
 }
 class Rotation{
