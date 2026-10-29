@@ -71,6 +71,23 @@
         primary:point(.065,-.083,.035),
         secondary:point(-.071,-.052,-.31)};
     }
+    function submachineGun(root,mats,kind){
+      const {steel,wood,hardware}=mats;
+      // Distinct compact receiver, side folding-stock frame and projecting
+      // magazine rather than a shortened bolt-action rifle.
+      S.box(root,steel,[.119,.118,.255],[0,.015,-.13]);
+      const muzzle=kind==="mp38"?-.51:-.48;
+      barrel(root,steel,point(0,.02,-.26),point(0,.02,muzzle),.023);
+      S.box(root,steel,[.032,.068,.020],[0,.070,muzzle+.027]);
+      S.box(root,steel,[.076,.225,.085],[0,-.167,-.17]);
+      S.box(root,wood,[.082,.140,.075],[0,-.123,.012]);
+      S.box(root,hardware,[.020,.024,.29],[.083,-.042,.055]);
+      S.box(root,hardware,[.020,.18,.020],[.081,-.112,.189]);
+      S.box(root,hardware,[.116,.025,.018],[.022,-.204,.195]);
+      return {muzzle:point(0,.02,muzzle-.015),
+        primary:point(.035,-.122,.005),
+        secondary:point(-.064,-.042,-.252)};
+    }
     function pistol(root,mats){
       const {steel,wood,hardware}=mats;
       S.box(root,steel,[.095,.075,.185],[0,0,-.08]);
@@ -83,7 +100,7 @@
     function kindFor(faction,role){
       if(role==="officer")return "pistol";
       if(role==="mmg"||role==="lmg")return faction==="germany"?"mg34":"wz28";
-      if(role==="smg")return faction==="germany"?"mp38":"pistol";
+      if(role==="smg")return faction==="germany"?"mp38":"mors39";
       return faction==="germany"?"kar98k":"wz29";
     }
     function build({figure,breathing,body,role,faction,mats}){
@@ -93,13 +110,8 @@
       weapon.rotation.set(-.08,.21,-.08);
       breathing.add(weapon);
       const grips=kind==="pistol"?pistol(weapon,mats):
-        kind==="mp38"?(function(){
-          const g=addLongGun(weapon,mats,"kar98k");
-          // Short compact SMG barrel and projecting stick magazine.
-          S.box(weapon,mats.steel,[.056,.20,.071],[0,-.15,-.11]);
-          return {...g,muzzle:point(0,.019,-.47),
-            secondary:point(-.055,-.06,-.20)};
-        })():addLongGun(weapon,mats,kind);
+        (kind==="mp38"||kind==="mors39")?submachineGun(weapon,mats,kind):
+        addLongGun(weapon,mats,kind);
       // Gun carriage is a separate sibling of the animated body.
       const mount=new THREE.Group();figure.add(mount);
       mount.visible=false;
