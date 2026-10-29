@@ -221,8 +221,10 @@
 
     // Retain the classic factory as an instant fallback and comparison target.
     // Both builders share the authoritative unit recipe and presentation API.
-    const sculpted=window.Crossroads3DMiniatureV2?.create({THREE,miniatureScale,
-      mat,block,shape,wood,motion,miniatureLab,between});
+    const sculpted=(window.Crossroads3DHeroicMiniature?.create({
+      THREE,miniatureScale,mat,block,shape,wood,motion,miniatureLab,between
+    }))||(window.Crossroads3DMiniatureV2?.create({THREE,miniatureScale,
+      mat,block,shape,wood,motion,miniatureLab,between}));
     return (...args)=>window.Crossroads3DForceClassicMiniature||!sculpted?
       makeSoldier(...args):sculpted(...args);
   }
