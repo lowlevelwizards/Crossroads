@@ -1294,7 +1294,8 @@
         chosenOrder = null;
         activationSnapshot = null;
       },
-      rollDice
+      rollDice,
+      emitBattleEvent:record3DCombatEvent
     });
 
     const {
@@ -2433,7 +2434,8 @@
         battlefield,
         target.id
       );
-      await new Promise(requestAnimationFrame);
+      if(!window.CROSSROADS_3D_SESSION_HOST)
+        await new Promise(requestAnimationFrame);
       showShotPreview(shooter, target);
 
       if (chosenOrder === "Fire" && !attemptOrder(shooter, "Fire")) {
@@ -2800,6 +2802,19 @@
     let finalScenarioScored = false;
     let battleStats = null;
     let battleLogEntries = [];
+    // Fixed-size, monotonically sequenced structured presentation events.
+    // Only the rules engine records these. The Three.js scene never rolls dice.
+    let combatEvents = [];
+    let combatEventSequence = 0;
+    function record3DCombatEvent(type, data) {
+      if(!window.CROSSROADS_3D_SESSION_HOST)return;
+      const payload=JSON.parse(JSON.stringify(data ?? {}));
+      const item=Object.freeze({
+        id:++combatEventSequence,round,phase,type,...payload
+      });
+      combatEvents.push(item);
+      if(combatEvents.length>64)combatEvents.shift();
+    }
     let battleResult = null;
     let battleHasBegun = false;
 
@@ -3405,6 +3420,8 @@
       battleResult = null;
       battleHasBegun = false;
       battleLogEntries = [];
+      combatEvents = [];
+      combatEventSequence = 0;
       battleStats = createBattleStats();
       showReportButton.hidden = true;
       afterActionModal.hidden = true;
@@ -4221,6 +4238,8 @@
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
             state:item.state||"none"
           })),
+          combatEventCount:combatEventSequence,
+          combatEvents:combatEvents.slice(-48),
           eventCount:battleLogEntries.length,
           recentEvents:battleLogEntries.slice(-16).map((event,index)=>({
             id:battleLogEntries.length-Math.min(16,battleLogEntries.length)+index,
