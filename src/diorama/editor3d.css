@@ -1,0 +1,17 @@
+.editor3d-panel{position:absolute;z-index:25;top:calc(8px + env(safe-area-inset-top));
+left:max(8px,env(safe-area-inset-left));width:min(320px,calc(100vw - 16px));
+max-height:77svh;overflow:auto;pointer-events:auto;touch-action:pan-y;
+background:#25362ded;color:#efe1c4;border:1px solid #b5a17d;border-radius:8px;
+padding:11px;font:12px/1.4 system-ui,sans-serif;box-shadow:0 7px 24px #0009}
+.editor3d-panel h2{font-size:13px;letter-spacing:.08em;margin:0}
+.editor3d-panel p{font-size:11px;color:#dccda9;margin:6px 0}
+.editor3d-panel select{width:100%;padding:8px;background:#d9c49c;color:#29372f}
+.editor3d-actions{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.editor3d-actions button{background:#425d4c;border:1px solid #a99c7b;
+color:#ebdfc2;border-radius:5px;min-height:36px;padding:6px 9px;font-weight:750}
+.editor3d-actions button.active{background:#e2c282;color:#263327}
+.editor3d-panel ol{max-height:100px;overflow:auto;padding-left:22px;margin:4px 0}
+.editor3d-panel li{cursor:pointer}.editor3d-panel li.selected{color:#f7d382;font-weight:800}
+.editor3d-panel textarea{width:100%;min-height:110px;background:#172420;color:#f4e4c5;font:10px monospace}
+.editor3d-panel [hidden]{display:none}
+@media(max-width:500px){.editor3d-panel{top:auto;bottom:calc(8px + env(safe-area-inset-bottom));max-height:38svh}}
