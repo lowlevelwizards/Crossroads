@@ -76,9 +76,11 @@
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();
   scene.background=new THREE.Color(0xe9ecea);
-  const hemisphere=new THREE.HemisphereLight(0xffffff,0xbfc3c0,2.2);
+  // Balanced, directional studio light reveals sculpted seams without
+  // washing matte wool and canvas completely flat.
+  const hemisphere=new THREE.HemisphereLight(0xffffff,0xbfc3c0,1.25);
   scene.add(hemisphere);
-  const key=new THREE.DirectionalLight(0xffffff,2.2);
+  const key=new THREE.DirectionalLight(0xffffff,2.4);
   key.position.set(-3,7,-5);
   key.castShadow=true;
   key.shadow.mapSize.set(1024,1024);
@@ -86,7 +88,7 @@
   key.shadow.camera.top=4;key.shadow.camera.bottom=-4;
   key.shadow.normalBias=.012;
   scene.add(key);
-  const fill=new THREE.DirectionalLight(0xffffff,.8);
+  const fill=new THREE.DirectionalLight(0xffffff,.65);
   fill.position.set(4,3,6);scene.add(fill);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,50),
     new THREE.MeshStandardMaterial({color:0xe9ecea,roughness:1}));
@@ -172,7 +174,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
-    if(activeSoldier.modelVersion===2)applyDisplayMode();
+    if(activeSoldier.modelVersion>=2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
@@ -188,7 +190,7 @@
     renderPose(0);
   };
   function applyDisplayMode(){
-    if(!activeSoldier||activeSoldier.modelVersion!==2)return;
+    if(!activeSoldier||activeSoldier.modelVersion<2)return;
     const mode=silhouetteMode?.value||"equipped";
     activeSoldier.setInspectionMode?.(mode);
   }
@@ -276,6 +278,22 @@
     target.set(0,.84,-.10);radius=4.5;orthoHeight=2.55;
     cameraView("front");orbitPolar=1.21;applyCamera();
   }
+  const focusSelect=$("studioFocus");
+  const focusPresets={
+    full:{y:.84,z:0,radius:3.8,height:2.45,theta:Math.PI+.46},
+    face:{y:1.30,z:-.06,radius:2.15,height:1.15,theta:Math.PI+.32},
+    torso:{y:.89,z:-.09,radius:2.20,height:1.37,theta:Math.PI+.35},
+    weapon:{y:.59,z:-.28,radius:2.2,height:1.36,theta:Math.PI+.48},
+    boots:{y:.30,z:-.03,radius:2.2,height:1.25,theta:Math.PI+.27},
+    pack:{y:.86,z:.20,radius:2.25,height:1.50,theta:-.40}
+  };
+  focusSelect?.addEventListener("change",()=>{
+    const preset=focusPresets[focusSelect.value]||focusPresets.full;
+    target.set(0,preset.y,preset.z);
+    radius=preset.radius;orthoHeight=preset.height;
+    orbitTheta=preset.theta;orbitPolar=1.35;
+    resize();applyCamera();
+  });
   for(const button of viewButtons)
     button.addEventListener("click",()=>cameraView(button.dataset.view));
   projectionButton.addEventListener("click",()=>{
@@ -361,11 +379,15 @@
       const isFall=poseSelect.value==="casualty";
       soldier.figure.rotation.set(0,pose.yaw||0,0);
       soldier.figure.position.set(0,0,0);
-      soldier.applyPose({...pose,
+      soldier.applyPose({...pose,action:poseSelect.value,
         aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
         recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
-      if(flash)flash.visible=pose.flash;
+      if(flash){
+        // Muzzle moves with the sculpted weapon, including recoil and aims.
+        flash.position.copy(soldier.muzzleLocal);
+        flash.visible=pose.flash;
+      }
       // Project all rig pivots into studio world space, even during a fall.
       // Six leg plus six arm markers identify the actual animated joints.
       rigMarkers.position.set(0,0,0);
