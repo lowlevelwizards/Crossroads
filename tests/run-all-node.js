@@ -35,6 +35,7 @@ const tests = [
   "3d-v117-morale-gesture.test.js",
   "3d-v118-terrain-contact.test.js",
   "3d-v119-battle-benchmark.test.js",
+  "3d-v120-release-contract.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",

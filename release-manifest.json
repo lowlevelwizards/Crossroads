@@ -99,7 +99,22 @@
     "src/diorama/miniature-studio-data.js",
     "src/diorama/miniature-studio-poses.js",
     "tests/3d-v110-miniature-studio.test.js",
-    "src/diorama/miniature-profiles.js"
+    "src/diorama/miniature-profiles.js",
+    "src/diorama/terrain-contact.js",
+    "src/diorama/ai-inspector.js",
+    "src/diorama/ai-inspector.css",
+    "src/diorama/benchmark-audit.js",
+    "src/diorama/benchmark-audit.css",
+    "tests/3d-v111-miniature-profiles.test.js",
+    "tests/3d-v112-soldier-actions.test.js",
+    "tests/3d-v113-inspection.test.js",
+    "tests/3d-v114-building-sockets.test.js",
+    "tests/3d-v115-shot-and-ai.test.js",
+    "tests/3d-v116-support-weapon.test.js",
+    "tests/3d-v117-morale-gesture.test.js",
+    "tests/3d-v118-terrain-contact.test.js",
+    "tests/3d-v119-battle-benchmark.test.js",
+    "tests/3d-v120-release-contract.test.js"
   ],
-  "threeDCacheVersion": "0.9.11"
+  "threeDCacheVersion": "0.9.12"
 }
