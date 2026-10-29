@@ -248,7 +248,7 @@
     hud.append(ribbon);
     if(current.phase==="round-complete"){
       const pending=node("div","battle-objective-banner",
-        "POINTS PENDING · Score objectives to complete Round "+current.round);
+        "ROUND CHECKPOINT · Continue to award eligible points for Round "+current.round);
       pending.setAttribute("role","status");hud.append(pending);
     }
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
