@@ -4,7 +4,7 @@
   "baseVersion": "S1.1.0",
   "codename": "Viewport & Interaction Reliability",
   "releaseType": "standalone",
-  "cacheVersion": "s111h3",
+  "cacheVersion": "s111h4",
   "entryPoints": [
     "index.html",
     "classic.html",
@@ -72,7 +72,9 @@
     "src/diorama/editor3d-ui.js",
     "src/diorama/editor3d.css",
     "tests/3d-v091-port-trust.test.js",
-    "tests/3d-v091-scenarios.test.js"
+    "tests/3d-v091-scenarios.test.js",
+    "src/rules/model-geometry.js",
+    "tests/3d-v093-rules-and-command.test.js"
   ],
-  "threeDCacheVersion": "0.9.1"
+  "threeDCacheVersion": "0.9.3"
 }
