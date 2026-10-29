@@ -1473,11 +1473,43 @@ function initialize(THREE) {
     waypointMarker.position.set(at.x,terrainY(at.x,at.z)+.10,at.z);
     waypointMarker.visible=true;
   }
+  function visualEndpointClearance(squad,plan){
+    if(!squad||!plan?.path?.length)return {legal:true};
+    const end=bridge.toWorld(plan.path[plan.path.length-1]);
+    const inch=bridge.table.worldUnitsPerInch,origin=squad.root.position;
+    const proposed=resolveSquadFormation(squad,end,false,{
+      startOrigin:{x:origin.x,z:origin.z},
+      startPoints:squad.soldiers.map(sol=>({
+        x:sol.figure.position.x,z:sol.figure.position.z
+      })),
+      end,maxDistance:(plan.allowance||6)*inch,
+      forwardBudget:Math.max(0,(plan.allowance||6)-(plan.cost||0))*inch
+    });
+    const required=inch+2*.42*.37-.008;
+    for(const point of proposed.points)
+      for(const other of squads){
+        if(other===squad||other.unit.faction!==squad.unit.faction||
+          other.unit.soldiers<=0)continue;
+        for(let i=0;i<Math.min(other.unit.soldiers,other.soldiers.length);i++){
+          const model=other.soldiers[i];
+          if(!model.figure.visible||model.pendingRemoval)continue;
+          const distance=Math.hypot(
+            end.x+point.x-other.root.position.x-model.figure.position.x,
+            end.z+point.z-other.root.position.z-model.figure.position.z);
+          if(distance<required)
+            return {legal:false,reason:"A miniature would finish within 1″ "+
+              "of "+other.unit.name+". Adjust the destination."};
+        }
+      }
+    return {legal:true};
+  }
   function previewMoveDestination(point){
     const assessment=battle.previewMove(point,stagedWaypoint);
     if(!assessment.legal){
       battle.setHint(assessment.reason||"Move blocked by the rules");return false;
     }
+    const clearance=visualEndpointClearance(selectedSquad,assessment);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
     movePlanner.stageDestination(point,assessment);
     movementIntent.remember(point,Date.now());
     showMovePreview(assessment);
@@ -1493,6 +1525,8 @@ function initialize(THREE) {
     if(!assessment.legal){
       battle.setHint(assessment.reason||"Waypoint route blocked");return false;
     }
+    const clearance=visualEndpointClearance(selectedSquad,assessment);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
     if(!movePlanner.stageWaypoint(point,assessment))return false;
     stagedWaypoint=point;waypointArmed=false;
     positionWaypoint(point);showMovePreview(assessment);
@@ -1509,6 +1543,8 @@ function initialize(THREE) {
     if(!check.legal){
       battle.setHint(check.reason||"This move is no longer legal");return false;
     }
+    const clearance=visualEndpointClearance(selectedSquad,check);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
     if(selectedSquad&&check.path?.length){
       const end=bridge.toWorld(check.path[check.path.length-1]);
       const inch=bridge.table.worldUnitsPerInch;
