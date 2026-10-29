@@ -12,6 +12,57 @@
   let aiController=null;
   const soloMode=new URLSearchParams(location.search).get("solo")==="1";
   let logOpen=false,signature="",lastStateKey="";
+  let briefingAcknowledged=false,briefedEpoch=null;
+  const scenarioData=window.CROSSROADS_SCENARIOS?.[
+    scenario||"hold_the_farm"]||null;
+  const briefing=document.createElement("section");
+  briefing.className="battle-prebrief";
+  briefing.setAttribute("aria-label","Pre-battle scenario overview");
+  briefing.setAttribute("role","dialog");
+  const briefTitle=document.createElement("h1");
+  const briefText=document.createElement("p");
+  const briefObjectives=document.createElement("div");
+  const briefArmies=document.createElement("div");
+  const beginBrief=document.createElement("button");
+  beginBrief.type="button";beginBrief.textContent="BEGIN BATTLE";
+  briefing.append(briefTitle,briefText,briefObjectives,briefArmies,beginBrief);
+  document.body.append(briefing);
+  if(scenarioData){
+    briefTitle.textContent=scenarioData.title;
+    briefText.textContent=scenarioData.description+" · "+
+      scenarioData.rounds+" rounds · "+
+      (soloMode?"SOLO · German AI":"LOCAL HOTSEAT");
+    const sub=document.createElement("h2");sub.textContent="MISSIONS";
+    briefObjectives.append(sub);
+    for(const obj of scenarioData.objectives||[]){
+      const item=document.createElement("p");
+      const scoring=obj.roundPoints?
+        obj.roundPoints+" VP / round":obj.finalPoints?
+        obj.finalPoints+" VP at battle end":obj.pointsPerUnit?
+        obj.pointsPerUnit+" VP per exiting unit":obj.roundScoring?
+        "Special round conditions · consult objective panel":
+        "Scenario-specific victory condition";
+      item.textContent="⚑ "+obj.label+" · "+scoring;
+      briefObjectives.append(item);
+    }
+    const armyHeader=document.createElement("h2");
+    armyHeader.textContent="FORCES";briefArmies.append(armyHeader);
+    for(const side of ["blue","red"]){
+      const heading=document.createElement("h3");
+      heading.textContent=scenarioData.factions?.[side]?.name||
+        (side==="blue"?"Polish forces":"German forces");
+      briefArmies.append(heading);
+      const list=document.createElement("p");
+      list.textContent=(scenarioData.forces?.[side]||[]).map(unit=>
+        (unit.name||window.CROSSROADS_UNIT_TYPES?.[unit.unitType]?.name||
+          unit.unitType)+" · "+(unit.quality||"regular")).join("  •  ");
+      briefArmies.append(list);
+    }
+  }
+  beginBrief.addEventListener("click",()=>{
+    briefingAcknowledged=true;briefing.hidden=true;
+    aiController?.observe(state);
+  });
   let toastExpires=0,lastEventCount=-1;
   const drawOverlay=document.createElement("div");
   drawOverlay.className="battle-draw-overlay";
@@ -445,13 +496,19 @@
   }
   function accept(snapshot){
     if(!snapshot)return;
+    if(briefedEpoch===null)briefedEpoch=snapshot.battleEpoch??0;
+    else if(briefedEpoch!==(snapshot.battleEpoch??0)){
+      briefedEpoch=snapshot.battleEpoch??0;
+      briefingAcknowledged=false;
+      briefing.hidden=false;
+    }
     state=snapshot;
     deliverCombat(snapshot);
     const stateKey=JSON.stringify({
       phase:state.phase,round:state.round,battleEpoch:state.battleEpoch,faction:state.faction,
       selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
       bag:state.bagRemaining,events:state.eventCount,result:state.result,
-      objectives:state.objectives,
+      objectives:state.objectives,battleEpoch:state.battleEpoch,
       scores:state.scores,units:state.units?.map(u=>
         [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding])
     });
@@ -460,7 +517,7 @@
       for(const callback of subscribers)callback(state);
     }
     render(state);
-    if(aiController)aiController.observe(state);
+    if(aiController&&briefingAcknowledged)aiController.observe(state);
   }
   async function send(actionName,payload={}){
     if(!session||busy)return {ok:false,reason:"Battle coordinator busy"};

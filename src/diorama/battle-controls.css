@@ -252,3 +252,32 @@
 .battle-score{font-variant-numeric:tabular-nums}
 .battle-objective-banner[role="status"]{border:1px solid #e3bb78;
   color:#ffe4ad;background:#4a3f2be9}
+
+/* Pre-battle inspection appears over the real board, never over the hidden engine. */
+.battle-prebrief{position:fixed;z-index:30;inset:0;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;
+  overflow:auto;overscroll-behavior:contain;gap:10px;padding:
+  calc(18px + env(safe-area-inset-top)) max(20px,env(safe-area-inset-left))
+  calc(24px + env(safe-area-inset-bottom));
+  background:linear-gradient(150deg,#192823ef,#27342be7);
+  color:#efe0c0;font-family:system-ui,sans-serif;text-align:center}
+.battle-prebrief h1{font:700 clamp(23px,4vw,36px) Georgia,serif;margin:0;color:#f0c983}
+.battle-prebrief h2{font-size:11px;letter-spacing:.18em;margin:10px 0 3px}
+.battle-prebrief h3{font-size:11px;margin:4px 0}
+.battle-prebrief p{font-size:12px;line-height:1.45;margin:2px 0;max-width:600px}
+.battle-prebrief>div{max-height:30vh;overflow:auto;width:min(610px,100%)}
+.battle-prebrief button{min-height:48px;min-width:200px;border:1px solid #f0d59b;
+  border-radius:7px;background:#e9c782;color:#263427;font-weight:900;letter-spacing:.06em;
+  padding:11px 18px;touch-action:manipulation}
+.battle-prebrief[hidden]{display:none}
+@media(max-height:600px){.battle-prebrief{gap:3px}
+.battle-prebrief>div{max-height:21vh}.battle-prebrief p{font-size:10px}}
+/* Objective inspection remains available while playing, not only at round end. */
+.battle-objectives-inspect{pointer-events:auto;align-self:center;width:min(530px,100%);
+  background:#28342de8;border:1px solid #b8a77b7d;border-radius:6px;
+  font:700 10px system-ui,sans-serif;color:#ebd8a7}
+.battle-objectives-inspect summary{list-style-position:inside;padding:6px 9px;
+  cursor:pointer;touch-action:manipulation;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.battle-objective-detail{padding:7px 10px;border-top:1px solid #ffffff1c;
+  line-height:1.4}
