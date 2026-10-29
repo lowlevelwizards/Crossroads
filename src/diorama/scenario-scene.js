@@ -347,6 +347,19 @@ function initialize(THREE) {
   scene.add(pebbles);
 
   const roofMaterials=[];
+  const physicalWindowSockets=new Map();
+  function registerWindow(entry,group,x,y,z,side){
+    group.updateMatrixWorld(true);
+    const inside=group.localToWorld(new THREE.Vector3(x,y,z-side*.14));
+    const muzzle=group.localToWorld(new THREE.Vector3(x,y,z+side*.14));
+    const normal=new THREE.Vector3(0,0,side).transformDirection(group.matrixWorld);
+    const collection=physicalWindowSockets.get(entry.id)||[];
+    collection.push({x:inside.x,z:inside.z,y:inside.y,
+      outlet:{x:muzzle.x,z:muzzle.z,y:muzzle.y},
+      normal:{x:normal.x,z:normal.z}});
+    physicalWindowSockets.set(entry.id,collection);
+    if(entry.terrainId)physicalWindowSockets.set(entry.terrainId,collection);
+  }
   function registerRoof(entry,material){
     const r=scenarioAdapter.boundsWorld(entry.rulesRect);
     const token=new THREE.Mesh(new THREE.RingGeometry(.21,.28,26),
@@ -460,6 +473,7 @@ function initialize(THREE) {
             block(group,.085,height+.04,.048,shutter,x+shutterSide*(width/2+.075),
               centerY,z+side*.043);
           block(group,width+.11,.041,.13,masonry,x,centerY-height/2-.043,z+side*.055);
+          registerWindow(entry,group,x,centerY,z,side);
         }
       }
     }
@@ -544,6 +558,7 @@ function initialize(THREE) {
         const z=side*(D/2+.04);
         block(group,.20,height,.055,mat(0x586b70),x,eave*.60,z);
         block(group,.025,height+.03,.07,mat(0xd4c6a8),x,eave*.60,z+side*.023);
+        registerWindow(entry,group,x,eave*.60,z,side);
       }
     }
     if(church){
@@ -1222,7 +1237,8 @@ function initialize(THREE) {
     if(!b)return null;
     const point=new THREE.Vector3();
     soldier.figure.getWorldPosition(point);
-    const outlet=garrisonWindows?.outlet(b,point,enemyPosition);
+    const sockets=physicalWindowSockets.get(id);
+    const outlet=garrisonWindows?.outlet(b,point,enemyPosition,sockets);
     if(outlet){
       point.x=outlet.x;point.z=outlet.z;
     }else{
@@ -1235,7 +1251,7 @@ function initialize(THREE) {
       point.z=b.z+Math.sign(dz||1)*(b.depth/2+.055);
     }
     }
-    point.y=terrainY(point.x,point.z)+.66;
+    point.y=Number.isFinite(outlet?.y)?outlet.y:terrainY(point.x,point.z)+.66;
     return point;
   }
   function showCombatStage(stage) {
@@ -1854,7 +1870,8 @@ function initialize(THREE) {
         squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
       living,
       segments:coverSegments,coverPositions,
-      buildingBounds:roof?.bounds||null,threat,
+      buildingBounds:roof?.bounds||null,
+      buildingWindows:building?physicalWindowSockets.get(building)||null:null,threat,
       cohesion:bridge.table.worldUnitsPerInch*1.85,move
     });
     if(allowCache)squad.formationCache={

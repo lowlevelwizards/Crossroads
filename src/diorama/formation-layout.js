@@ -27,8 +27,8 @@
     }
     return result;
   }
-  function buildingSlots(origin,slots,bounds,threat){
-    const sockets=window.Crossroads3DGarrisonWindows?.slots(bounds,threat,slots.length);
+  function buildingSlots(origin,slots,bounds,threat,windows=null){
+    const sockets=window.Crossroads3DGarrisonWindows?.slots(bounds,threat,slots.length,windows);
     if(sockets)return sockets.map(socket=>({
       ...socket,x:socket.x-origin.x,z:socket.z-origin.z
     }));
@@ -81,14 +81,14 @@
     });
   }
   function resolve({origin,slots,living,segments=[],coverPositions=null,
-     buildingBounds=null,threat=null,cohesion=.57,move=null}={}){
+     buildingBounds=null,buildingWindows=null,threat=null,cohesion=.57,move=null}={}){
     const count=Math.max(0,Math.min(slots?.length||0,
       Number.isFinite(living)?Math.floor(living):slots?.length||0));
     const originals=(slots||[]).slice(0,count)
       .map(p=>({x:p.x,z:p.z,cover:false}));
     let points=originals,source="open";
     if(buildingBounds){
-      points=buildingSlots(origin,originals,buildingBounds,threat);
+      points=buildingSlots(origin,originals,buildingBounds,threat,buildingWindows);
       source="building";
     }else if(coverPositions){
       const cover=coverPositions.arrange(origin,originals,segments,threat,{
