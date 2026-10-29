@@ -741,7 +741,8 @@ function initialize(THREE) {
   let pendingTargetId=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
-  let waypointArmed=false,stagedWaypoint=null;
+  const movePlanner=window.Crossroads3DMovementIntent.createPlanner();
+  let waypointArmed=false,stagedWaypoint=null,waypointDragId=null;
   const visualEffects=[];
   const delayedMuzzleBursts=[];
   const casualtyAnimations=[];
@@ -1037,20 +1038,83 @@ function initialize(THREE) {
   const waypointMarker=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.035,20),
     new THREE.MeshBasicMaterial({color:0xd4b56a,depthTest:false}));
   waypointMarker.visible=false;waypointMarker.renderOrder=14;scene.add(waypointMarker);
+
   function clearWaypoint(){
-    stagedWaypoint=null;waypointArmed=false;
-    waypointMarker.visible=false;
-    clearMovePreview();
+    stagedWaypoint=null;waypointArmed=false;waypointDragId=null;
+    waypointMarker.visible=false;movePlanner.reset();clearMovePreview();
+  }
+  function positionWaypoint(point){
+    const at=bridge.toWorld(point);
+    waypointMarker.position.set(at.x,terrainY(at.x,at.z)+.10,at.z);
+    waypointMarker.visible=true;
+  }
+  function previewMoveDestination(point){
+    const assessment=battle.previewMove(point,stagedWaypoint);
+    if(!assessment.legal){
+      battle.setHint(assessment.reason||"Move blocked by the rules");return false;
+    }
+    movePlanner.stageDestination(point,assessment);
+    movementIntent.remember(point,Date.now());
+    showMovePreview(assessment);
+    battle.setHint("MOVE "+assessment.cost.toFixed(1)+" / "+assessment.allowance+
+      " inches"+(assessment.shortened?" · LIMITED":"")+
+      " · Confirm Move or adjust destination");
+    return true;
+  }
+  function previewWaypoint(point){
+    const destination=movePlanner.snapshot().destination;
+    if(!destination){battle.setHint("Choose a destination first");return false}
+    const assessment=battle.previewMove(destination,point);
+    if(!assessment.legal){
+      battle.setHint(assessment.reason||"Waypoint route blocked");return false;
+    }
+    if(!movePlanner.stageWaypoint(point,assessment))return false;
+    stagedWaypoint=point;waypointArmed=false;
+    positionWaypoint(point);showMovePreview(assessment);
+    battle.setHint("WAYPOINT · "+assessment.cost.toFixed(1)+" / "+
+      assessment.allowance+" inches · Confirm Move");
+    return true;
+  }
+  function confirmMove(){
+    if(!battle||battle.snapshot?.phase!=="plan-movement")return false;
+    const request=movePlanner.commit();
+    if(!request){battle.setHint("Choose a destination first");return false}
+    // An authoritative read-only recheck immediately precedes commitment.
+    const check=battle.previewMove(request.point,request.waypoint);
+    if(!check.legal){
+      battle.setHint(check.reason||"This move is no longer legal");return false;
+    }
+    clearWaypoint();
+    battle.setHint("Movement confirmed — soldiers advancing");
+    void battle.send("move",request).then(reply=>{
+      if(reply?.ok===false)battle.setHint(reply.reason||"Move rejected");
+    });
+    return true;
   }
   window.Crossroads3DMoveTools=Object.freeze({
+    getState(){return {...movePlanner.snapshot(),placingWaypoint:waypointArmed}},
+    confirmMove,
     armWaypoint(){
       if(!battle||battle.snapshot?.phase!=="plan-movement")return false;
-      waypointArmed=true;stagedWaypoint=null;waypointMarker.visible=false;
-      clearMovePreview();
-      battle.setHint("Tap ground to place waypoint; then choose destination");
+      if(!movePlanner.snapshot().destination){
+        battle.setHint("Choose a destination first");return false;
+      }
+      waypointArmed=true;
+      battle.setHint("Tap route to place waypoint, or drag existing waypoint");
       return true;
     },
-    clearWaypoint(){clearWaypoint();battle?.setHint("Waypoint cleared");}
+    clearWaypoint(){
+      const destination=movePlanner.snapshot().destination;
+      if(!destination){clearWaypoint();return}
+      const assessment=battle.previewMove(destination,null);
+      if(!movePlanner.removeWaypoint(assessment)){
+        battle.setHint(assessment.reason||"Direct route blocked");return;
+      }
+      stagedWaypoint=null;waypointArmed=false;waypointMarker.visible=false;
+      showMovePreview(assessment);
+      battle.setHint("Waypoint removed · Confirm Move or adjust destination");
+    },
+    reset(){clearWaypoint();battle?.setHint("Tap ground for a destination")}
   });
   function clearMovePreview(forgetIntent=true){
     if(forgetIntent)movementIntent.clear();
@@ -1552,39 +1616,13 @@ function initialize(THREE) {
         void battle.send("deploy-place",{point:position});
         return;
       }
-      // Confirm before recalculating a slightly different second tap:
-      // the authoritative engine will revalidate the *previewed* point.
+      if(waypointArmed){previewWaypoint(position);return;}
+      // Double-tap remains an optional shortcut. Button confirmation is primary.
       const destination=movementIntent.consumeIfMatch(position,Date.now());
-      if(destination){
-        const waypoint=stagedWaypoint;
-        clearWaypoint();
-        battle.setHint("Movement confirmed — soldiers advancing");
-        void battle.send("move",{point:destination,waypoint}).then(reply=>{
-          if(reply?.ok===false)
-            battle.setHint(reply.reason||"Movement blocked by the rules");
-        });
-        return;
+      if(destination&&movePlanner.snapshot().destination){
+        confirmMove();return;
       }
-      if(waypointArmed){
-        waypointArmed=false;
-        stagedWaypoint=position;
-        waypointMarker.position.set(groundHits[0].point.x,
-          terrainY(groundHits[0].point.x,groundHits[0].point.z)+.075,
-          groundHits[0].point.z);
-        waypointMarker.visible=true;
-        battle.setHint("Waypoint placed — tap destination to preview");
-        return;
-      }
-      const analysis=battle.previewMove(position,stagedWaypoint);
-      if(!analysis.legal) {
-        clearMovePreview();
-        battle.setHint(analysis.reason||"Movement blocked by game rules");
-        return;
-      }
-      movementIntent.remember(position,Date.now());
-      showMovePreview(analysis);
-      battle.setHint("Movement "+analysis.cost.toFixed(1)+
-        " / "+analysis.allowance+" inches — tap same destination to confirm");
+      previewMoveDestination(position);
       return;
     }
     if(!selectedSquad||activeMovements.size)return;
@@ -1605,8 +1643,26 @@ function initialize(THREE) {
     squad.ring.visible=false;
     squad.ring.userData.grounded=false;
   }
+  function waypointScreenDistance(x,y){
+    if(!waypointMarker.visible||battle?.snapshot?.phase!=="plan-movement")return Infinity;
+    const at=waypointMarker.position.clone().project(camera);
+    const bounds=canvas.getBoundingClientRect();
+    return Math.hypot((at.x*.5+.5)*bounds.width+bounds.left-x,
+      (-at.y*.5+.5)*bounds.height+bounds.top-y);
+  }
+  function pointerToGroundPoint(x,y){
+    const bounds=canvas.getBoundingClientRect();
+    tapNdc.set(((x-bounds.left)/bounds.width)*2-1,
+      1-((y-bounds.top)/bounds.height)*2);
+    raycaster.setFromCamera(tapNdc,camera);
+    const hits=raycaster.intersectObject(ground,false);
+    return hits.length?bridge.toTable({x:hits[0].point.x,z:hits[0].point.z}):null;
+  }
   canvas.addEventListener("pointerdown", function (event) {
     stopCameraFocus();
+    if(waypointScreenDistance(event.clientX,event.clientY)<38){
+      waypointDragId=event.pointerId;waypointArmed=true;
+    }
     canvas.setPointerCapture(event.pointerId);
     pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
     tapStarts.set(event.pointerId, { x:event.clientX, y:event.clientY, dragged:false });
@@ -1622,6 +1678,12 @@ function initialize(THREE) {
     pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
     const tap = tapStarts.get(event.pointerId);
     if (tap && Math.hypot(event.clientX-tap.x,event.clientY-tap.y) > 9) tap.dragged=true;
+    if(waypointDragId===event.pointerId){
+      if(tap)tap.dragged=true;
+      const point=pointerToGroundPoint(event.clientX,event.clientY);
+      if(point)previewWaypoint(point);
+      return;
+    }
     if (pointers.size === 1) {
       yaw -= (event.clientX-old.x) * .0085;
       updateCamera();
@@ -1638,6 +1700,15 @@ function initialize(THREE) {
     }
   });
   function endPointer(event) {
+    if(waypointDragId===event.pointerId){
+      const point=pointerToGroundPoint(event.clientX,event.clientY);
+      if(point)previewWaypoint(point);
+      waypointDragId=null;waypointArmed=false;
+      tapStarts.delete(event.pointerId);pointers.delete(event.pointerId);
+      if(canvas.hasPointerCapture(event.pointerId))
+        canvas.releasePointerCapture(event.pointerId);
+      return;
+    }
     const tap = tapStarts.get(event.pointerId);
     if (event.type === "pointerup" && tap && !tap.dragged && pointers.size === 1) {
       tapGround(event.clientX,event.clientY);
