@@ -5,7 +5,12 @@
   function create(THREE) {
     const cache=new Map();
     const cached=(key,construct)=>{
-      if(!cache.has(key))cache.set(key,construct());
+      if(!cache.has(key)){
+        const geometry=construct();
+        geometry.userData=geometry.userData||{};
+        geometry.userData.sharedMiniatureGeometry=true;
+        cache.set(key,geometry);
+      }
       return cache.get(key);
     };
     const sphere=cached("sphere",()=>new THREE.SphereGeometry(1,20,14));
@@ -13,7 +18,7 @@
       ()=>new THREE.BoxGeometry(x,y,z));
     function mesh(parent,geometry,material,position=[0,0,0]) {
       const m=new THREE.Mesh(geometry,material);
-      m.userData.sharedMiniatureGeometry=true;
+      m.userData.sharedMiniatureGeometry=!!geometry.userData?.sharedMiniatureGeometry;
       m.position.set(...position);
       m.castShadow=true;m.receiveShadow=true;
       parent.add(m);
