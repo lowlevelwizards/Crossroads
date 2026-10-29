@@ -8,6 +8,7 @@
   const preset=(id,axis,contours,sides=10)=>({schemaVersion:1,id,
     name:id.split("-").map(w=>w[0].toUpperCase()+w.slice(1)).join(" "),
     type:"contour",axis,radialSegments:sides,symmetry:"x",revision:1,
+    transform:{position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]},
     contours:contours.map(([height,width,depth,offsetX=0,offsetZ=0])=>
       ({height,width,depth,offsetX,offsetZ})),
     blend:{enabled:false,strength:.085,primitive:{
@@ -64,7 +65,17 @@
     for(let i=1;i<result.contours.length;i++)
       if(result.contours[i].height-result.contours[i-1].height<.008)
         throw Error("Contour heights must increase by at least .008");
-    const blend=doc.blend||{};
+    const transform=doc.transform||template.transform;
+    result.transform={};
+    for(const field of ["position","rotation","scale"]){
+      const values=transform[field];
+      if(!Array.isArray(values)||values.length!==3||values.some(x=>!Number.isFinite(Number(x))))
+        throw Error("Invalid transform");
+      const limit=field==="position"?1.5:field==="rotation"?Math.PI*2:3;
+      result.transform[field]=values.map(x=>clamp(Number(x),
+        field==="scale"?.25:-limit,limit));
+    }
+        const blend=doc.blend||{};
     result.blend.enabled=!!blend.enabled;
     result.blend.strength=clamp(Number(blend.strength)||.085,.005,.22);
     const primitive=blend.primitive||template.blend.primitive;
