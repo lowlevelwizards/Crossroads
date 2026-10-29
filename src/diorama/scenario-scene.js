@@ -2432,7 +2432,7 @@ function initialize(THREE) {
           squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
         if(u>=1){moving.phase="travel";moving.elapsed=0;}
       }else{
-        moving.centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        moving.centerProgress=motion.travelProgress(moving.elapsed,moving.travelDuration);
         squad.root.position.set(
           moving.start.x+(moving.end.x-moving.start.x)*moving.centerProgress,
           0,
@@ -2498,9 +2498,8 @@ function initialize(THREE) {
             if(Math.abs(difference)<.014)soldier.aimTarget=null;
           }
         }
-        const ownProgress=isWalking?
-          motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
-        const takingSteps=isWalking&&ownProgress<.999;
+        const ownProgress=isWalking?moving.centerProgress:1;
+        const takingSteps=isWalking&&moving.elapsed<moving.travelDuration;
         if(!isWalking){
           const assault=squad.assaultVisual;
           const displacement=assault&&assaultMotion?
@@ -2544,12 +2543,13 @@ function initialize(THREE) {
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
         }
-        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
-            (!isWalking&&!soldier.grounded)) {
+        if(isWalking||!soldier.grounded){
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
           const baseBottom=(.02-.11/2)*MINIATURE_SCALE;
-          soldier.figure.position.y=footingHeight(fx,fz)-baseBottom+.016;
+          const nextHeight=footingHeight(fx,fz)-baseBottom+.016;
+          soldier.figure.position.y+=(nextHeight-soldier.figure.position.y)*
+            (isWalking?Math.min(1,dt*19):1);
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
         }
@@ -2565,15 +2565,13 @@ function initialize(THREE) {
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
             moving.end.z-moving.start.z);
-          const stride=Math.sin(ownProgress*totalDistance*15.5+
-            soldier.phase*.45);
-          const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
-          const settle=Math.min(1,ownProgress/.12,(1-ownProgress)/.14);
-          soldier.breathing.position.y+=Math.abs(stride)*
-            (soldier.gait.bob*1.5)*Math.max(0,settle)*easeStop;
-          soldier.breathing.rotation.x=-.11*easeStop;
+          const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
+          const pose=motion.gaitPose(totalDistance*ownProgress,
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase);
+          soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
+          soldier.breathing.rotation.x=-pose.lean;
           for(const leg of soldier.legs)
-            leg.mesh.rotation.x+=stride*.68*leg.side*easeStop;
+            leg.mesh.rotation.x+=pose.legs*leg.side;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           const crouch=(battle&&squad.unit.down)?.57:
