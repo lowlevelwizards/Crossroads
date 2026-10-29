@@ -4325,10 +4325,17 @@
           return {legal:a.legal,reason:a.reason??null,distance:a.distance};
         }
         const a=analyzeShot(unit,target);
+        const weapons=availableFireGroups(unit,a.distance,
+          chosenOrder==="Advance",true).map(group=>({
+          label:group.profile?.label||group.key,
+          models:group.models,shots:group.shots,
+          hitTarget:group.hitTarget??null,
+          modifiers:(group.modifiers||[]).map(m=>m.label)
+        }));
         return {legal:Boolean(a.inRange&&!a.blocked),
           reason:!a.inRange?"Out of range":a.blockReason??null,
           distance:a.distance,inRange:a.inRange,blocked:a.blocked,
-          cover:a.cover??null};
+          cover:a.cover??null,weapons};
       },
       async command(action,payload={}) {
         const name=String(action||"");

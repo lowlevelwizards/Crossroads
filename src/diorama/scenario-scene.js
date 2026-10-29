@@ -264,13 +264,29 @@ function initialize(THREE) {
 
   const roofMaterials=[];
   function registerRoof(entry,material){
-    roofMaterials.push({ids:[entry.id,entry.terrainId],material,occupied:false});
+    const r=scenarioAdapter.boundsWorld(entry.rulesRect);
+    const token=new THREE.Mesh(new THREE.RingGeometry(.21,.28,26),
+      new THREE.MeshBasicMaterial({color:0xdac784,transparent:true,opacity:.9,
+        side:THREE.DoubleSide,depthWrite:false,depthTest:false}));
+    token.rotation.x=-Math.PI/2;
+    token.position.set(r.x,terrainY(r.x,r.z)+.09,r.z);
+    token.renderOrder=12;token.visible=false;
+    scene.add(token);
+    roofMaterials.push({
+      ids:[entry.id,entry.terrainId].filter(Boolean),
+      material,occupied:false,token
+    });
   }
   function updateBuildingRoofs(snapshot) {
     const occupied=new Set((snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0)
       .map(u=>String(u.inBuilding)));
     for(const roof of roofMaterials){
-      const inside=roof.ids.some(id=>occupied.has(String(id)));
+      const units=(snapshot.units||[]).filter(u=>u.inBuilding&&u.soldiers>0&&
+        roof.ids.some(id=>String(id)===String(u.inBuilding)));
+      const inside=units.length>0;
+      roof.token.visible=inside;
+      if(inside)roof.token.material.color.setHex(units[0].faction==="red"?
+        0xd68f71:0x8ac1cc);
       if(inside===roof.occupied)continue;
       roof.occupied=inside;
       roof.material.transparent=inside;
@@ -1431,12 +1447,15 @@ function initialize(THREE) {
             pendingTargetId=pickedSquad.unit.id;
             lastTargetTap=now;
             const cover=assessment.cover?.saveTarget!=null
-              ? assessment.cover.label+" · "+assessment.cover.saveTarget+"+ save"
+              ? (assessment.cover.label||"Cover")+" · "+assessment.cover.saveTarget+"+ save"
               : "No cover save";
+            const weapons=(assessment.weapons||[]).map(g=>
+              g.shots+" "+g.label+(g.hitTarget?" ("+g.hitTarget+"+ hit)":"")
+            ).join(" · ");
             const range=Number.isFinite(assessment.distance)
               ? assessment.distance.toFixed(1)+"″ · ":"";
             battle.setHint(assessment.legal
-              ? range+cover+" · Tap same squad again to fire"
+              ? range+(weapons?weapons+" · ":"")+cover+" · Tap again to fire"
               : assessment.reason||"Target obstructed");
           }
         }
