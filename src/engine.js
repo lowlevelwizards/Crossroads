@@ -4343,7 +4343,11 @@
           objectives:objectiveSnapshots().map(item=>({
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
             x:item.objective?.x??null,y:item.objective?.y??null,
-            points:item.objective?.points??null,
+            points:item.points??item.objective?.points??null,
+            controlled:item.controlled??null,
+            present:item.present??null,
+            roundScoring:item.objective?.roundScoring??null,
+            finalScoring:item.objective?.finalScoring??null,
             type:item.objective?.type||"unknown",
             faction:item.objective?.faction||null,
             roundPoints:Number(item.objective?.roundPoints||0),

@@ -277,6 +277,34 @@
       hud.append(detail);
     }
 
+    const objectiveSummaries=(current.objectives||[]).filter(o=>
+      o.type!=="unknown"&&o.label);
+    if(objectiveSummaries.length){
+      const inspect=node("details","battle-objectives-inspect");
+      const summary=node("summary",null,"⚑ OBJECTIVES · "+
+        objectiveSummaries.map(o=>o.label).join(" / "));
+      inspect.append(summary);
+      for(const obj of objectiveSummaries){
+        const status=obj.state==="blue"?"POL CONTROL":obj.state==="red"?
+          "GER CONTROL":obj.state==="contested"?"CONTESTED":"UNCONTROLLED";
+        let terms="";
+        if(obj.roundPoints)terms+="+"+obj.roundPoints+" VP at each round checkpoint";
+        if(obj.finalPoints)terms+=(terms?" · ":"")+"+"+obj.finalPoints+" VP at battle end";
+        if(obj.pointsPerUnit)terms+=(terms?" · ":"")+"+"+
+          obj.pointsPerUnit+" VP per unit exiting";
+        if(obj.roundScoring?.length)
+          terms+=(terms?" · ":"")+"Scenario-specific round scoring "+
+            obj.roundScoring.map(r=>r.faction+" "+r.rule+" +"+r.points+
+              (r.startRound?" from R"+r.startRound:"")).join(", ");
+        if(obj.finalScoring?.length)
+          terms+=(terms?" · ":"")+"Scenario-specific final scoring";
+        const pointState=Array.isArray(obj.points)?
+          " · "+obj.points.map(p=>p.label+": "+(p.state||"none")).join(" · "):"";
+        inspect.append(node("div","battle-objective-detail",
+          obj.label+" · "+status+pointState+" · "+(terms||"Check mission rules")));
+      }
+      hud.append(inspect);
+    }
     const center=node("section","battle-center");
     const contextual=node("div","battle-heading "+(current.faction||"neutral"));
     contextual.append(

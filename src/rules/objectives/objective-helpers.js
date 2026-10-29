@@ -10,12 +10,24 @@
   }
 
   function pointInObjective(unit, objective) {
-    if (objective.shape === "rect") {
-      return unit.x >= Number(objective.x ?? 0) && unit.x <= Number(objective.x ?? 0) + Number(objective.width ?? 0) &&
-        unit.y >= Number(objective.y ?? 0) && unit.y <= Number(objective.y ?? 0) + Number(objective.height ?? 0);
-    }
-    const radius = Number(objective.radius ?? 0);
-    return Math.hypot(Number(unit.x) - Number(objective.x), Number(unit.y) - Number(objective.y)) <= radius + .001;
+    // A point controls a zone if ANY surviving model base overlaps it.
+    // The same deterministic model footprint module is loaded by the
+    // authoritative 2D engine and the Three.js battlefield.
+    const models=window.CrossroadsModelGeometry?.models?.(unit);
+    const bases=models?.length?models:[{x:unit.x,y:unit.y,radius:0}];
+    return bases.some(base=>{
+      const r=Number(base.radius||0);
+      if(objective.shape==="rect"){
+        const x=Math.max(Number(objective.x??0),Math.min(base.x,
+          Number(objective.x??0)+Number(objective.width??0)));
+        const y=Math.max(Number(objective.y??0),Math.min(base.y,
+          Number(objective.y??0)+Number(objective.height??0)));
+        return Math.hypot(base.x-x,base.y-y)<=r+.001;
+      }
+      const radius=Number(objective.radius??0);
+      return Math.hypot(base.x-Number(objective.x),
+        base.y-Number(objective.y))<=radius+r+.001;
+    });
   }
 
   function controlState(objective, context) {

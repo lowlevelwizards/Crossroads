@@ -2080,6 +2080,7 @@ function initialize(THREE) {
       }
       lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
+      updateObjectiveMarkers(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
     battle.onCombatStage(showCombatStage);
@@ -2088,8 +2089,13 @@ function initialize(THREE) {
   // Stage 8: real objective markers, painted directly onto the tabletop.
   // These don't resolve objective control; scoring remains owned by the engine.
   const objectiveMarkers=[];
-  for(const objective of layout.objectives) {
-    if(!Number.isFinite(objective.x)||!Number.isFinite(objective.y))continue;
+  const markerPoints=layout.objectives.flatMap(objective=>
+    Array.isArray(objective.points)&&objective.points.length?
+      objective.points.map(point=>({...point,parentId:objective.id})):
+      [objective]);
+  for(const objective of markerPoints) {
+    if(objective.showMarker===false||!Number.isFinite(objective.x)||
+       !Number.isFinite(objective.y))continue;
     const at=bridge.toWorld(objective);
     const radius=Math.max(.22,(objective.radius||1)*bridge.table.worldUnitsPerInch);
     const y=footingHeight(at.x,at.z)+.035;
@@ -2097,17 +2103,33 @@ function initialize(THREE) {
       new THREE.MeshBasicMaterial({color:0xd6be89,transparent:true,opacity:.48,
         depthWrite:false,side:THREE.DoubleSide}),at.x,y,at.z);
     marker.rotation.x=-Math.PI/2;
-    marker.castShadow=false;
-    marker.receiveShadow=false;
+    marker.castShadow=false;marker.receiveShadow=false;
     marker.userData.objectiveId=objective.id;
+    marker.userData.parentObjectiveId=objective.parentId||objective.id;
     objectiveMarkers.push(marker);
-    // Small flag pin reads as a practical miniature objective marker.
     const pole=shape(scene,new THREE.CylinderGeometry(.017,.019,.58,7),
       mat(0x948571),at.x,y+.29,at.z);
     pole.castShadow=false;
     const flag=block(scene,.30,.14,.025,mat(0xb49b72),
       at.x+.15,y+.47,at.z);
     flag.castShadow=false;
+    marker.userData.flag=flag;
+  }
+  function updateObjectiveMarkers(snapshot){
+    for(const marker of objectiveMarkers){
+      const objective=(snapshot?.objectives||[]).find(o=>
+        o.id===marker.userData.parentObjectiveId);
+      const point=objective?.points?.find?.(p=>p.id===marker.userData.objectiveId);
+      const state=point?.state||objective?.state||"none";
+      const color=state==="blue"?0x72c5da:
+        state==="red"?0xd89475:state==="contested"?0xf1ca6a:0xd6be89;
+      if(marker.userData.lastState!==state){
+        marker.userData.lastState=state;
+        marker.material.color.setHex(color);
+        marker.userData.flag?.material?.color.setHex(color);
+        marker.material.opacity=state==="none"?.48:.90;
+      }
+    }
   }
 
   // Optional comparison overlay for mapping/debug only; normal players
