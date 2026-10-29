@@ -47,7 +47,7 @@
   }
   function deliverCombat(snapshot){
     if((snapshot.combatEventCount||0)<lastCombatId){
-      director.skip();
+      director.reset();
       lastCombatId=0;
       diceOverlay.hidden=true;
     }
@@ -72,12 +72,18 @@
     if(stage.phase==="settle"){
       diceOverlay.hidden=true;return;
     }
-    if(stage.phase!=="dice")return;
+    if(!["dice","hit-dice","damage-dice","save-dice","alert","score","recover"].includes(stage.phase))return;
     const e=stage.event;
     diceOverlay.replaceChildren();
     diceOverlay.append(node("div","battle-dice-heading",
-      e.type==="shooting"?"SHOT RESOLUTION":
-      e.type==="assault"?"CLOSE ASSAULT":"ORDER TEST"));
+      e.type==="shooting"?(
+        stage.phase==="hit-dice"?"HIT ROLLS":
+        stage.phase==="damage-dice"?"DAMAGE ROLLS":"COVER SAVES"
+      ):
+      e.type==="assault"?"CLOSE ASSAULT":
+      e.type==="ambush"?"AMBUSH REACTION":
+      e.type==="round-score"?"OBJECTIVE SCORING":
+      e.type==="rally"?"RALLY":"ORDER TEST"));
     function row(label,rolls,target,low=false){
       if(!rolls?.length)return;
       const line=node("div","battle-dice-row");
@@ -87,14 +93,32 @@
       for(const value of rolls)values.append(pip(value,target,low));
       line.append(values);diceOverlay.append(line);
     }
-    if(e.type==="shooting"){
-      for(const group of e.groups||[])
-        row(group.weapon,group.rolls,group.hitTarget);
-      row("Damage",e.damageRolls,e.damageTarget);
-      if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
+    if(e.type==="ambush"){
       diceOverlay.append(node("div","battle-dice-result",
-        e.hits+" hits · "+e.saved+" saved · "+
-        e.casualties+" losses · +"+e.pinDelta+" Pin"));
+        e.decision==="interrupt"?"AMBUSH! Movement interrupted":
+        e.decision==="fire"?"Ambush fire":"Ambush held"));
+    }else if(e.type==="round-score"){
+      diceOverlay.append(node("div","battle-dice-result",
+        "POL +"+e.blue+"  ·  GER +"+e.red));
+    }else if(e.type==="rally"){
+      diceOverlay.append(node("div","battle-dice-result",
+        e.removedPins+" Pin"+(e.removedPins===1?"":"s")+" removed"));
+    }else if(e.type==="shooting"){
+      if(stage.phase==="hit-dice"){
+        for(const group of e.groups||[])row(group.weapon,group.rolls,group.hitTarget);
+        diceOverlay.append(node("div","battle-dice-result",e.hits+" hits"));
+      }else if(stage.phase==="damage-dice"){
+        row("Damage",e.damageRolls,e.damageTarget);
+        diceOverlay.append(node("div","battle-dice-result",
+          e.potentialCasualties+" potential casualties"));
+      }else if(stage.phase==="save-dice"){
+        if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
+        diceOverlay.append(node("div","battle-dice-result",
+          e.saved+" saved · "+e.casualties+" casualties · +"+
+          e.pinDelta+" Pin"+(e.pinDelta===1?"":"s")+
+          (e.routed?" · ROUTED":"")+
+          (e.destroyed?" · UNIT LOST":"")));
+      }
     }else if(e.type==="order-test"){
       row(e.order,e.dice,e.target,true);
       diceOverlay.append(node("div","battle-dice-result",
@@ -272,6 +296,12 @@
       if(current.building)action(controls,"⌂  "+current.building.label,"building");
       if(current.canCancel)action(controls,"Cancel","cancel",{},"battle-secondary");
     } else if(current.phase==="plan-movement"){
+      const waypoint=node("button","battle-action battle-secondary","↱ Waypoint");
+      waypoint.type="button";waypoint.disabled=busy;
+      waypoint.addEventListener("click",()=>{
+        window.Crossroads3DMoveTools?.armWaypoint();
+      });
+      controls.append(waypoint);
       if(current.canCancel)action(controls,"Cancel movement","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");

@@ -356,3 +356,35 @@ This release does not claim completion of every phase of the longer roadmap.
 Detailed casualty transitions, advanced assault choreography, building entry
 animations, optimized solo AI, robust audio spatialization, complete scenario
 coverage and actual iPhone performance validation need further iterations.
+
+
+## 3D v0.7.2 — Battlefield Depth
+
+This is an iterative pass across the remaining ten gameplay/presentation
+priorities, NOT a claim of full v1.0 feature completion. The original rules
+engine continues to resolve all orders, rolls, movement and losses.
+
+* Firefights now animate individually staggered aim and capped shot bursts.
+  Actual hit, damage and cover-save dice play in distinct presentation steps.
+  Muzzle effects are capped for mobile performance.
+* Structured Ambush interruptions/Fire/Hold choices and objective-round scores
+  are emitted from the original coordinator and projected by the 3D director.
+  Assaults receive a modest visible charge impulse; the underlying 2D rules
+  still decide defensive fire, casualties and any position changes.
+* Target previews reveal real permitted weapon group shots, hit thresholds,
+  range and cover save. Occupied buildings have tinted physical garrison
+  markers alongside their translucent roofs.
+* Procedural shot stereo panning now responds to camera orbit and pan.
+* The scenario picker presents the real force roster, objectives, victory
+  conditions and deployment style for authored scenarios.
+* Experimental Solo now uses pure deterministic objective/enemy utility scoring
+  for unit selection, target selection, and candidate legal movement points.
+  It still sends only original rules-validated commands.
+
+Known work: real on-device WebGL performance and full-session testing; full
+close-assault animation and individual door/window choreography; sophisticated
+cover-aware tactical AI; proper multitrack spatial sound, artillery and
+vehicles. These are NOT implemented by this pass.
+
+The previous v0.7.1 3D client, event director, audio, AI and renderer are archived
+at `battle3d-v071.html`, with their own versioned front-end module copies.
