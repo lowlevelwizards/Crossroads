@@ -134,7 +134,7 @@
       headGroup.position.set(0,.406,-.004);breathing.add(headGroup);
       // Head is shaped with a subtle jaw and little face, not protruding
       // spherical ears and a bright button nose.
-      S.soft(headGroup,mat.skin,[0,.132,-.005],[.216,.217,.190]);
+      const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],[.216,.217,.190]);
       S.soft(headGroup,mat.skin,[0,.020,-.037],[.171,.089,.151]);
       S.soft(headGroup,mat.skin,[0,.063,-.191],[.047,.048,.034]);
       for(const side of [-1,1]){
@@ -146,6 +146,7 @@
           [.067,.018,.022]);brow.rotation.z=-side*.09;
       }
       const hat=new THREE.Group();headGroup.add(hat);
+      let editableHelmet=null;
       if(role==="officer"){
         S.loft(hat,mat.helmet,"officer-cap",[
           [-.5,.217,.190],[-.25,.229,.195],[.23,.204,.178],[.5,.160,.155]
@@ -156,6 +157,7 @@
         const domeGeometry=S.cached("smooth-steel-helmet",()=>
           new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI/2));
         const shell=S.mesh(hat,domeGeometry,mat.helmet,[0,.263,.009]);
+        editableHelmet=shell;
         shell.scale.set(faction==="germany"?.259:.252,.251,
           faction==="germany"?.275:.260);
         const brim=S.loft(hat,mat.helmet,
@@ -248,6 +250,34 @@
         windowArc:firingArc,role,modelVersion:3,phase:0,recoil:0,crouch:0,
         baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
+      // Each editable part is tagged with a stable logical ID. Runtime loads
+      // only explicitly approved device assets; drafts live solely in the lab.
+      const shapeLibrary=window.Crossroads3DShapeLibrary,
+        shapeGeometry=window.Crossroads3DShapeGeometry;
+      const editableParts=new Map();
+      const bindPart=(id,meshes)=>{
+        const list=meshes.filter(Boolean);
+        editableParts.set(id,list);
+        for(const mesh of list)mesh.userData.workbenchPart=id;
+        const doc=shapeLibrary?.approved(id);
+        if(!doc||!shapeGeometry)return;
+        const geometry=shapeGeometry.make(THREE,doc,{published:true});
+        for(const mesh of list){
+          mesh.geometry=geometry;
+          mesh.userData.sharedMiniatureGeometry=true;
+        }
+        if(id==="torso"&&doc.blend.enabled)pelvis.visible=false;
+      };
+      bindPart("torso",[torso]);
+      bindPart("head",[editableHead]);
+      bindPart("helmet",[editableHelmet]);
+      bindPart("upper-arm",arms.map(a=>a.upper));
+      bindPart("forearm",arms.map(a=>a.lower));
+      bindPart("thigh",legs.map(a=>a.mesh));
+      bindPart("shin",legs.map(a=>a.shin));
+      bindPart("boot",legs.map(a=>a.bootModel.upper));
+      soldier.editableParts=editableParts;
+      soldier.workbenchPelvis=pelvis;
       squad.soldiers.push(soldier);
       let gesture=0;
       soldier.applyGesture=value=>{gesture=clamp(Number(value)||0,0,1)};
