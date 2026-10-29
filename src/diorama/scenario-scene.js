@@ -731,16 +731,19 @@ function initialize(THREE) {
       const destroyed=u.soldiers<=0;
       if(squad.eligibleRing){
         squad.eligibleRing.visible=eligible&&!selected;
-        squad.eligibleRing.material.opacity=eligible?.6:0;
+        squad.eligibleRing.material.opacity=eligible?.8:0;
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
-      squad.orderToken.visible=Boolean(u.order)&&!destroyed;
+      // Used dice appear only once the soldiers have finished moving.
+      squad.orderToken.visible=Boolean(u.order)&&Boolean(u.activated)&&
+        !destroyed&&!squad.moving;
       for(let i=0;i<squad.pinTokens.length;i++)
         squad.pinTokens[i].visible=i<Math.min(u.pins||0,5)&&!destroyed;
       const m=squad.marker;
       if(!m)continue;
-      const visible=selected||eligible||u.pins>0||Boolean(u.order)||destroyed;
-      m.item.hidden=!visible;
+      // Hide stale labels immediately. The projection pass only unhides the
+      // current selected unit, preventing detached unselected text.
+      m.item.hidden=true;
       m.item.className="miniature-marker"+(selected?" selected":"")+
         (eligible?" eligible":"")+(destroyed?" destroyed":"");
       m.title.textContent=destroyed?u.name+" · LOST":
@@ -752,19 +755,28 @@ function initialize(THREE) {
       m.order.textContent=u.order||"USED";
     }
   }
+  // Only selected units get a nameplate, at useful zoom and interaction phases.
+  // Project every render frame so the single label cannot lag behind its base.
   function placeUnitMarkers(){
     const width=stage.clientWidth,height=stage.clientHeight;
+    const state=battle?.snapshot;
     for(const squad of squads){
       const marker=squad.marker?.item;
-      if(!marker||marker.hidden)continue;
-      const at=new THREE.Vector3(squad.root.position.x,
-        squad.soldiers.length?.74:.25,squad.root.position.z);
+      if(!marker)continue;
+      const show=squad===selectedSquad&&squad.unit.soldiers>0&&
+        zoom>=1.12&&(!state||["choose-order","plan-movement",
+          "choose-target","choose-assault-target","deployment"].includes(state.phase));
+      if(!show){marker.hidden=true;marker.style.display="none";continue}
+      const ground=terrainY(squad.root.position.x,squad.root.position.z);
+      const at=new THREE.Vector3(squad.root.position.x,ground+.92,squad.root.position.z);
       at.project(camera);
       const x=(at.x*.5+.5)*width,y=(-at.y*.5+.5)*height;
+      if(at.z<-1||at.z>1||x<20||x>width-20||y<30||y>height-30){
+        marker.hidden=true;marker.style.display="none";continue;
+      }
+      marker.hidden=false;marker.style.display="flex";
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
-      marker.style.display=(at.z<-1||at.z>1||x<-120||x>width+120||
-        y<-50||y>height+50)?"none":"flex";
     }
   }
   function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
@@ -813,30 +825,50 @@ function initialize(THREE) {
             target.root.position.z+Math.cos(i*2.1)*.2,0x88745d,.15,.75);
     }
   }
-  const movePreviewLine=new THREE.Line(new THREE.BufferGeometry(),
-    new THREE.LineDashedMaterial({
-      color:0xdac78b,transparent:true,opacity:.92,depthTest:false,
-      dashSize:.18,gapSize:.09
-    }));
+  // A physical, thick painted measuring strip—not a one-pixel WebGL line.
+  const movePreviewLine=new THREE.Group();
+  const rulerMaterial=new THREE.MeshBasicMaterial({
+    color:0xe7c16b,transparent:true,opacity:.95,depthTest:false
+  });
   movePreviewLine.visible=false;
   movePreviewLine.renderOrder=13;
   scene.add(movePreviewLine);
   function clearMovePreview(){
     pendingMovePoint=null;
     movePreviewLine.visible=false;
+    for(const child of [...movePreviewLine.children]){
+      movePreviewLine.remove(child);
+      child.geometry?.dispose();
+    }
   }
   function showMovePreview(plan) {
     if(!selectedSquad||!plan.path?.length)return;
+    clearMovePreview();
     const from=selectedSquad.root.position;
-    const to=bridge.toWorld(plan.path[plan.path.length-1]);
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute("position",new THREE.Float32BufferAttribute([
-      from.x,terrainY(from.x,from.z)+.12,from.z,
-      to.x,terrainY(to.x,to.z)+.12,to.z
-    ],3));
-    movePreviewLine.geometry.dispose();
-    movePreviewLine.geometry=geo;
-    movePreviewLine.computeLineDistances();
+    const checkpoints=[{x:from.x,z:from.z},...plan.path.slice(1).map(bridge.toWorld)];
+    for(let i=1;i<checkpoints.length;i++){
+      const a=checkpoints[i-1],b=checkpoints[i];
+      const fullLength=Math.hypot(b.x-a.x,b.z-a.z);
+      const segments=Math.max(1,Math.ceil(fullLength/.32));
+      for(let j=0;j<segments;j++){
+        const f0=j/segments,f1=(j+1)/segments;
+        const x0=a.x+(b.x-a.x)*f0,z0=a.z+(b.z-a.z)*f0;
+        const x1=a.x+(b.x-a.x)*f1,z1=a.z+(b.z-a.z)*f1;
+        const length=Math.hypot(x1-x0,z1-z0);
+        const midX=(x0+x1)/2,midZ=(z0+z1)/2;
+        const stripe=new THREE.Mesh(
+          new THREE.BoxGeometry(length+.008,.026,.115),rulerMaterial);
+        stripe.position.set(midX,terrainY(midX,midZ)+.065,midZ);
+        stripe.rotation.y=-Math.atan2(z1-z0,x1-x0);
+        stripe.renderOrder=14;
+        movePreviewLine.add(stripe);
+      }
+    }
+    const last=checkpoints[checkpoints.length-1];
+    const end=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.03,22),rulerMaterial);
+    end.position.set(last.x,terrainY(last.x,last.z)+.075,last.z);
+    end.renderOrder=14;
+    movePreviewLine.add(end);
     movePreviewLine.visible=true;
   }
   const groundRay=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0),0,20);
@@ -879,8 +911,9 @@ function initialize(THREE) {
       squad.ring.userData.grounded=false;
     }
     if(next&&changed){
+      next.selectionPulse=1;
       cameraFocus={x:next.root.position.x,z:next.root.position.z};
-      focusZoom=Math.max(zoom,1.85);
+      focusZoom=Math.max(zoom,1.50);
     }
     if(battle)updateUnitPresentation(battle.snapshot);
   }
@@ -993,18 +1026,20 @@ function initialize(THREE) {
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
     const radius=unit.role==="officer"?.53:1.27;
-    const ring=shape(root,new THREE.RingGeometry(radius,radius+.043,32),
-      new THREE.MeshBasicMaterial({color:unit.faction==="red"?0xc5a68c:0xc4cfa9,
-        transparent:true,opacity:.73,side:THREE.DoubleSide,depthWrite:false}),0,.32,0);
+    const ring=shape(root,new THREE.RingGeometry(radius,radius+.13,48),
+      new THREE.MeshBasicMaterial({color:0xe7c16b,
+        transparent:true,opacity:.96,side:THREE.DoubleSide,
+        depthWrite:false,depthTest:false}),0,.32,0);
     ring.rotation.x=-Math.PI/2;
     ring.castShadow=false;
     ring.receiveShadow=false;
     ring.visible=false;
     squad.ring=ring;
-    const eligibleRing=shape(root,new THREE.RingGeometry(radius+.12,radius+.155,40),
+    const eligibleRing=shape(root,new THREE.RingGeometry(radius+.18,radius+.27,40),
       new THREE.MeshBasicMaterial({
-        color:unit.faction==="red"?0xcaa78e:0xbdcfac,
-        transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false
+        color:unit.faction==="red"?0xdc8c71:0x80becb,
+        transparent:true,opacity:.78,side:THREE.DoubleSide,
+        depthWrite:false,depthTest:false
       }),0,.33,0);
     eligibleRing.rotation.x=-Math.PI/2;
     eligibleRing.visible=false;
@@ -1013,8 +1048,9 @@ function initialize(THREE) {
     squad.eligibleRing=eligibleRing;
     // Physical markers remain on the board instead of becoming a large HUD.
     // Order and pin count text is projected separately at low frequency.
-    const orderToken=block(root,.23,.23,.23,
-      mat(unit.faction==="red"?0x8f674b:0x66765a),radius+.28,.17,0);
+    const orderToken=block(root,.22,.17,.22,
+      mat(unit.faction==="red"?0xa5614d:0x598c99),radius+.18,.18,-.05);
+    orderToken.rotation.y=Math.PI/4;
     orderToken.visible=false;
     squad.orderToken=orderToken;
     squad.pinTokens=[];
@@ -1065,7 +1101,9 @@ function initialize(THREE) {
           if(!activeMovement) {
             const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
               motion.heading(before,end));
-            const duration=Math.max(.4,displacement/.8);
+            const run=stateUnit.order==="Run";
+            const duration=Math.max(run?.27:.40,
+              displacement/(run?1.42:.82));
             activeMovement={squad,plan:null,remote:true,start:before,end,phase:"turn",
               elapsed:0,turn,travelDuration:duration,
               finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
@@ -1152,18 +1190,23 @@ function initialize(THREE) {
   // Camera: horizontal orbit only, locked isometric elevation, orthographic zoom.
   function updateCamera() {
     const radius = 31;
+    // Always orbit the board center. Focus and two-finger pan translate the
+    // orthographic window, not the camera's orbital pivot.
     camera.position.set(
-      target.x + Math.sin(yaw) * Math.cos(elevation) * radius,
-      target.y + Math.sin(elevation) * radius,
-      target.z + Math.cos(yaw) * Math.cos(elevation) * radius
+      Math.sin(yaw)*Math.cos(elevation)*radius,
+      .75+Math.sin(elevation)*radius,
+      Math.cos(yaw)*Math.cos(elevation)*radius
     );
-    camera.lookAt(target);
-    const h = baseHeight / zoom;
-    const aspect = viewportWidth / viewportHeight;
-    camera.left = -h * aspect / 2;
-    camera.right = h * aspect / 2;
-    camera.top = h / 2;
-    camera.bottom = -h / 2;
+    camera.lookAt(0,.75,0);
+    const h=baseHeight/zoom,aspect=viewportWidth/viewportHeight;
+    const dx=target.x,dz=target.z,dy=target.y-.75;
+    const horizontal=dx*Math.cos(yaw)-dz*Math.sin(yaw);
+    const vertical=dy*Math.cos(elevation)-
+      (dx*Math.sin(yaw)+dz*Math.cos(yaw))*Math.sin(elevation);
+    camera.left=-h*aspect/2+horizontal;
+    camera.right=h*aspect/2+horizontal;
+    camera.top=h/2+vertical;
+    camera.bottom=-h/2+vertical;
     camera.updateProjectionMatrix();
     // A gesture may query the camera before the next rendered frame.
     camera.updateMatrixWorld();
@@ -1415,8 +1458,11 @@ function initialize(THREE) {
           }
           if(!moving.remote) squad.controller.commitMove(moving.plan);
           squad.moving=false;
+          squad.orderToken.visible=Boolean(squad.unit.order)&&
+            Boolean(squad.unit.activated)&&squad.unit.soldiers>0;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
+          for(const soldier of squad.soldiers) soldier.grounded=false;
           activeMovement=null;
           walking=false;
         }
@@ -1424,12 +1470,17 @@ function initialize(THREE) {
     }
     for(const squad of squads) {
       const isWalking=walking&&moving?.squad===squad;
-      if(isWalking&&cameraFocus===null&&selectedSquad===squad&&
-        !pointers.size){/* manual camera input always takes priority */}
+      if(squad.selectionPulse>0){
+        squad.selectionPulse=Math.max(0,squad.selectionPulse-dt*2.0);
+        const u=squad.selectionPulse;
+        squad.ring.scale.setScalar(1+Math.sin((1-u)*Math.PI)*.22);
+      }else if(squad.ring.scale.x!==1)squad.ring.scale.setScalar(1);
       for(let soldierIndex=0;soldierIndex<squad.soldiers.length;soldierIndex++){
         const soldier=squad.soldiers[soldierIndex];
+        const ownProgress=isWalking?
+          motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
+        const takingSteps=isWalking&&ownProgress<.999;
         if(isWalking) {
-          const ownProgress=motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait);
           const delta=ownProgress-centerProgress;
           soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
           soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
@@ -1446,19 +1497,19 @@ function initialize(THREE) {
         soldier.breathing.position.y=soldier.baseY;
         soldier.breathing.rotation.z=0;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
-        if(isWalking&&!reducedMotion) {
+        if(takingSteps&&!reducedMotion) {
           const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
-          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob;
-          soldier.breathing.rotation.x=-.07;
-          for(const leg of soldier.legs)leg.mesh.rotation.x+=stride*.46*leg.side;
+          const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
+          soldier.breathing.position.y+=Math.abs(stride)*soldier.gait.bob*easeStop;
+          soldier.breathing.rotation.x=-.07*easeStop;
+          for(const leg of soldier.legs)
+            leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
           soldier.breathing.rotation.x=((battle&&squad.unit.down)?.32:0)-
             soldier.recoil;
-          if(!reducedMotion) {
-            soldier.breathing.position.y+=Math.sin(t*1.45+soldier.phase)*.007;
-            soldier.breathing.rotation.z=Math.sin(t*.72+soldier.phase)*.009;
-          }
+          // Stationary painted miniatures hold a stable physical pose. No
+          // breathing/sway loop that looks like jogging in place.
         }
       }
       if(squad.ring.visible&&!squad.ring.userData.grounded) {
@@ -1478,8 +1529,8 @@ function initialize(THREE) {
         visualEffects.splice(i,1);
       }
     }
-    // Markers are cheap HTML chips, projected at 15fps rather than every frame.
-    if(frameIndex%4===0)placeUnitMarkers();
+    // One label max: keep synchronized with camera and soldiers at 60fps.
+    placeUnitMarkers();
     if(frameIndex%12===0&&battle?.snapshot?.objectives){
       // Objective tint follows the original scenario-runtime evaluator.
       for(const marker of objectiveMarkers){

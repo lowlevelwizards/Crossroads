@@ -1,0 +1,259 @@
+"use strict";
+// Presentation only. The hidden original Crossroads coordinator owns every roll,
+// order, scoring result, casualty and game-state mutation.
+(() => {
+  const frame=document.getElementById("battleSessionFrame");
+  const hud=document.getElementById("battleControls");
+  if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
+  const scenario=new URLSearchParams(location.search).get("scenario");
+  if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.0";
+  let session=null,state=null,busy=false,warning="",hint="",error="";
+  let logOpen=false,signature="",lastStateKey="";
+  const subscribers=new Set(),effects=new Set();
+  const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
+  function node(tag,className,text) {
+    const el=document.createElement(tag);
+    if(className)el.className=className;
+    if(text!==undefined)el.textContent=String(text);
+    return el;
+  }
+  function action(parent,label,command,payload={},variant="") {
+    const button=node("button","battle-action "+variant,label);
+    button.type="button";
+    button.disabled=busy;
+    button.addEventListener("click",()=>{void send(command,payload)});
+    parent.append(button);
+    return button;
+  }
+  function factionName(value) {
+    return value==="blue"?"Polish":value==="red"?"German":"Both armies";
+  }
+  function factionText(value) {
+    return value==="blue"?"POLAND":value==="red"?"GERMANY":"CROSSROADS";
+  }
+  function phaseLabel(phase) {
+    return ({
+      "ready-to-draw":"Draw an order die","choose-unit":"Choose a unit",
+      "choose-order":"Choose its order","plan-movement":"Plan movement",
+      "choose-target":"Choose a firing target","choose-assault-target":"Choose an assault",
+      "deployment":"Position your forces","ambush-reaction":"Ambush reaction",
+      "round-complete":"End of round","game-over":"Battle complete"
+    })[phase]||"Resolving order";
+  }
+  function render(current) {
+    if(!current)return;
+    const chosen=current.units?.find(u=>u.id===(current.selectedUnitId||current.deploymentUnitId));
+    const fingerprint=JSON.stringify({
+      phase:current.phase,round:current.round,bag:current.bagRemaining,
+      faction:current.faction,chosen:current.selectedUnitId,
+      deployment:current.deploymentUnitId,order:current.chosenOrder,
+      score:current.scores,end:current.battleEnded,
+      objectives:current.objectives,units:current.units?.map(u=>
+        [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
+      available:current.orders,building:current.building,reaction:current.reaction,
+      count:current.eventCount,hint,warning,busy,logOpen
+    });
+    if(signature===fingerprint)return;
+    signature=fingerprint;
+    hud.replaceChildren();
+
+    const ribbon=node("div","battle-ribbon");
+    const round=node("div","battle-round",
+      "ROUND "+current.round+" / "+current.maxRounds);
+    const score=node("div","battle-score",
+      "POL "+(current.scores?.blue??0)+"  :  "+(current.scores?.red??0)+" GER");
+    const dice=node("div","battle-die-bag",
+      current.battleEnded?"FINAL":current.bagRemaining+" DICE");
+    ribbon.append(round,score,dice);
+    hud.append(ribbon);
+    const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
+    if(focusedObjective){
+      const label=node("div","battle-objective-banner",
+        "⚑  "+focusedObjective.label+" · "+String(focusedObjective.state).toUpperCase());
+      hud.append(label);
+    }
+
+    const center=node("section","battle-center");
+    const contextual=node("div","battle-heading");
+    contextual.append(
+      node("span","battle-eyebrow",factionText(current.faction)+"  ·  "+phaseLabel(current.phase)),
+      node("strong","battle-primary",chosen?.name||
+        (current.phase==="ready-to-draw"?"Order dice in the bag":phaseLabel(current.phase)))
+    );
+    if(chosen){
+      const status=node("div","battle-unit-status",
+        (chosen.quality||"Infantry")+"  ·  "+chosen.soldiers+
+        "/"+(chosen.maxSoldiers||chosen.soldiers)+" soldiers"+
+        (chosen.pins?"  ·  "+chosen.pins+" PINS":"")+
+        (chosen.inBuilding?"  ·  IN BUILDING":""));
+      contextual.append(status);
+    }
+    const guidance=({
+      "ready-to-draw":"Draw a die to determine the next faction.",
+      "choose-unit":"Tap any glowing, eligible squad to activate it.",
+      "choose-order":"Only legal orders are shown below.",
+      "plan-movement":"Tap ground to measure; tap again to commit.",
+      "choose-target":"Tap an enemy to inspect the shot; tap again to fire.",
+      "choose-assault-target":"Tap the target twice to confirm the assault.",
+      "deployment":"Tap a unit, then choose its legal deployment point.",
+      "ambush-reaction":"An enemy entered a prepared firing lane.",
+      "round-complete":"Review the result before advancing.",
+      "game-over":"The tabletop battle has concluded."
+    })[current.phase]||"Resolving the active order.";
+    contextual.append(node("div","battle-hint",warning||hint||guidance));
+    center.append(contextual);
+
+    if(current.faction && !current.battleEnded) {
+      const die=node("div","battle-order-die "+current.faction+
+        (current.chosenOrder?" has-order":""));
+      die.append(
+        node("span","battle-die-symbol",
+          current.chosenOrder?actionIcons[current.chosenOrder]||"◆":"◆"),
+        node("span","battle-die-caption",current.chosenOrder||"DRAWN")
+      );
+      die.setAttribute("aria-label",factionName(current.faction)+
+        (current.chosenOrder?" "+current.chosenOrder+" order":" order die"));
+      center.append(die);
+    }
+    const controls=node("div","battle-actions");
+    if(current.battleEnded){
+      const winner=current.result?.winner;
+      contextual.prepend(node("div","battle-victory",
+        winner?factionName(winner)+" VICTORY":"BATTLE COMPLETE"));
+      contextual.append(node("div","battle-end-score",
+        "Final score  "+(current.scores?.blue??0)+" — "+
+        (current.scores?.red??0)));
+      if(current.statistics){
+        const bs=current.statistics.blue,rs=current.statistics.red;
+        contextual.append(node("div","battle-after-action",
+          "Casualties inflicted: "+(bs.casualtiesInflicted||0)+
+          " / "+(rs.casualtiesInflicted||0)+
+          "   ·   Units lost: "+(bs.unitsLost||0)+" / "+(rs.unitsLost||0)));
+      }
+      action(controls,"↻  Play again","restart",{},"battle-primary-action");
+    } else if(current.phase==="ready-to-draw"){
+      action(controls,"◈  DRAW ORDER DIE","draw",{},"battle-primary-action");
+    } else if(current.phase==="choose-order"){
+      for(const item of current.orders||[]) {
+        if(item.available)action(controls,(actionIcons[item.order]||"◆")+"  "+item.order,
+          "order",{order:item.order});
+      }
+      if(current.building)action(controls,"⌂  "+current.building.label,"building");
+      if(current.canCancel)action(controls,"Cancel","cancel",{},"battle-secondary");
+    } else if(current.phase==="plan-movement"){
+      if(current.canCancel)action(controls,"Cancel movement","cancel",{},"battle-secondary");
+    } else if(["choose-target","choose-assault-target"].includes(current.phase)){
+      if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
+      if(current.canCancel)action(controls,"Cancel target","cancel",{},"battle-secondary");
+    } else if(current.phase==="round-complete"){
+      action(controls,"CONTINUE TO NEXT ROUND","score-round",{},"battle-primary-action");
+    } else if(current.phase==="ambush-reaction"){
+      action(controls,"✦  Fire ambush","reaction-fire",{},"battle-primary-action");
+      action(controls,"Hold fire","reaction-hold",{},"battle-secondary");
+    } else if(current.phase==="deployment"){
+      action(controls,"Confirm deployment","confirm-deployment",{},"battle-primary-action");
+    }
+    center.append(controls);
+    hud.append(center);
+
+    const events=current.recentEvents||[];
+    if(events.length){
+      const latest=events.at(-1);
+      const feed=node("div","battle-event-preview");
+      feed.append(node("span","battle-event-message",latest.message));
+      const toggle=node("button","battle-log-toggle",logOpen?"Hide log":"Log");
+      toggle.type="button";toggle.addEventListener("click",()=>{
+        logOpen=!logOpen;signature="";render(state);
+      });
+      feed.append(toggle);
+      hud.append(feed);
+      if(logOpen){
+        const history=node("div","battle-log");
+        history.setAttribute("role","log");
+        history.setAttribute("aria-label","Battle events");
+        for(const event of events.slice().reverse())
+          history.append(node("div","battle-log-entry "+(event.className||""),
+            "R"+event.round+"  "+event.message));
+        hud.append(history);
+      }
+    }
+  }
+  function accept(snapshot){
+    if(!snapshot)return;
+    state=snapshot;
+    const stateKey=JSON.stringify({
+      phase:state.phase,round:state.round,faction:state.faction,
+      selected:state.selectedUnitId,deploy:state.deploymentUnitId,order:state.chosenOrder,
+      bag:state.bagRemaining,events:state.eventCount,result:state.result,
+      objectives:state.objectives,
+      scores:state.scores,units:state.units?.map(u=>
+        [u.id,u.x,u.y,u.soldiers,u.pins,u.down,u.activated,u.order,u.inBuilding])
+    });
+    if(lastStateKey!==stateKey){
+      lastStateKey=stateKey;
+      for(const callback of subscribers)callback(state);
+    }
+    render(state);
+  }
+  async function send(actionName,payload={}){
+    if(!session||busy)return {ok:false,reason:"Battle coordinator busy"};
+    busy=true;warning="";hint="";signature="";render(state);
+    try{
+      const before=state;
+      const response=await session.command(actionName,payload);
+      if(response?.ok===false)warning=response.reason||"Order rejected";
+      if(response?.snapshot)accept(response.snapshot);
+      if(response?.ok!==false)for(const callback of effects)
+        callback({action:actionName,payload,before,after:response?.snapshot});
+      return response;
+    }catch(e){
+      warning=String(e?.message||e);
+      error=warning;
+      return {ok:false,reason:warning};
+    }finally{
+      busy=false;signature="";
+      if(session)accept(session.snapshot());
+    }
+  }
+  function connect(){
+    try{
+      const api=frame.contentWindow?.InfantryCore?.session;
+      if(!api?.snapshot||!api?.command)return false;
+      session=api;
+      const snapshot=api.snapshot();
+      if(!snapshot?.units?.length)return false;
+      accept(snapshot);
+      return true;
+    }catch(e){error=String(e);return false}
+  }
+  const client=Object.freeze({
+    get snapshot(){return state},
+    get ready(){return Boolean(session)},
+    get error(){return error},
+    send,subscribe(callback){
+      subscribers.add(callback);
+      if(state)callback(state);
+      return ()=>subscribers.delete(callback);
+    },
+    onAction(callback){effects.add(callback);return ()=>effects.delete(callback)},
+    setHint(message){hint=String(message||"").slice(0,180);signature="";render(state)},
+    previewMove(point,waypoint){
+      return session?.previewMove(point,waypoint)||
+        {legal:false,reason:"Battle coordinator not ready"};
+    },
+    previewTarget(id){
+      return session?.previewTarget(id)||
+        {legal:false,reason:"Battle coordinator not ready"};
+    }
+  });
+  window.CrossroadsBattle3D=client;
+  frame.addEventListener("load",()=>{
+    if(!connect())hud.textContent="Could not initialize the shared battle coordinator";
+  });
+  // A poll is still needed for engine-owned asynchronous reactions; no 2D DOM
+  // repaint occurs and unchanged snapshots do not notify the Three.js scene.
+  window.setInterval(()=>{if(!session){connect();return}
+    try{accept(session.snapshot())}catch(e){error=String(e)}
+  },250);
+})();

@@ -7,9 +7,25 @@
   if(!frame||!hud)throw Error("Crossroads 3D battle host missing");
   const scenario=new URLSearchParams(location.search).get("scenario");
   if(scenario&&/^[a-z0-9_-]+$/.test(scenario))
-    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.0";
+    frame.src="classic-session.html?scenario="+encodeURIComponent(scenario)+"&v=0.6.1";
   let session=null,state=null,busy=false,warning="",hint="",error="";
   let logOpen=false,signature="",lastStateKey="";
+  let toastExpires=0,lastEventCount=-1;
+  const drawOverlay=document.createElement("div");
+  drawOverlay.className="battle-draw-overlay";
+  drawOverlay.setAttribute("aria-live","polite");
+  document.getElementById("stage")?.append(drawOverlay);
+  let drawRevealTimeout=null;
+  function revealDraw(snapshot) {
+    if(!snapshot?.faction)return;
+    const die=node("div","battle-big-die "+snapshot.faction);
+    die.append(node("span","battle-big-symbol","◆"),
+      node("span","battle-big-caption",factionName(snapshot.faction).toUpperCase()+
+        " · ORDER DIE"));
+    drawOverlay.replaceChildren(die);
+    if(drawRevealTimeout)clearTimeout(drawRevealTimeout);
+    drawRevealTimeout=setTimeout(()=>drawOverlay.replaceChildren(),1100);
+  }
   const subscribers=new Set(),effects=new Set();
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
   function node(tag,className,text) {
@@ -44,6 +60,15 @@
   function render(current) {
     if(!current)return;
     const chosen=current.units?.find(u=>u.id===(current.selectedUnitId||current.deploymentUnitId));
+    const eventCount=current.eventCount||0;
+    if(eventCount!==lastEventCount){
+      lastEventCount=eventCount;
+      if(eventCount>0){
+        toastExpires=Date.now()+3600;
+        setTimeout(()=>{signature="";if(state)render(state)},3700);
+      }
+    }
+    const showToast=Date.now()<toastExpires;
     const fingerprint=JSON.stringify({
       phase:current.phase,round:current.round,bag:current.bagRemaining,
       faction:current.faction,chosen:current.selectedUnitId,
@@ -52,7 +77,7 @@
       objectives:current.objectives,units:current.units?.map(u=>
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
-      count:current.eventCount,hint,warning,busy,logOpen
+      count:current.eventCount,hint,warning,busy,logOpen,showToast
     });
     if(signature===fingerprint)return;
     signature=fingerprint;
@@ -61,8 +86,12 @@
     const ribbon=node("div","battle-ribbon");
     const round=node("div","battle-round",
       "ROUND "+current.round+" / "+current.maxRounds);
-    const score=node("div","battle-score",
-      "POL "+(current.scores?.blue??0)+"  :  "+(current.scores?.red??0)+" GER");
+    const score=node("div","battle-score");
+    score.append(
+      node("span","battle-team-score blue","POL "+(current.scores?.blue??0)),
+      node("span","battle-score-divider","·"),
+      node("span","battle-team-score red","GER "+(current.scores?.red??0))
+    );
     const dice=node("div","battle-die-bag",
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
@@ -75,9 +104,10 @@
     }
 
     const center=node("section","battle-center");
-    const contextual=node("div","battle-heading");
+    const contextual=node("div","battle-heading "+(current.faction||"neutral"));
     contextual.append(
-      node("span","battle-eyebrow",factionText(current.faction)+"  ·  "+phaseLabel(current.phase)),
+      node("span","battle-eyebrow "+(current.faction||"neutral"),
+        factionText(current.faction)+"  ·  "+phaseLabel(current.phase)),
       node("strong","battle-primary",chosen?.name||
         (current.phase==="ready-to-draw"?"Order dice in the bag":phaseLabel(current.phase)))
     );
@@ -160,9 +190,9 @@
     const events=current.recentEvents||[];
     if(events.length){
       const latest=events.at(-1);
-      const feed=node("div","battle-event-preview");
-      feed.append(node("span","battle-event-message",latest.message));
-      const toggle=node("button","battle-log-toggle",logOpen?"Hide log":"Log");
+      const feed=node("div","battle-event-preview"+(showToast?" is-recent":""));
+      if(showToast)feed.append(node("span","battle-event-message",latest.message));
+      const toggle=node("button","battle-log-toggle",logOpen?"Close":"Log");
       toggle.type="button";toggle.addEventListener("click",()=>{
         logOpen=!logOpen;signature="";render(state);
       });
@@ -204,6 +234,8 @@
       const response=await session.command(actionName,payload);
       if(response?.ok===false)warning=response.reason||"Order rejected";
       if(response?.snapshot)accept(response.snapshot);
+      if(actionName==="draw"&&response?.ok!==false)
+        revealDraw(response?.snapshot);
       if(response?.ok!==false)for(const callback of effects)
         callback({action:actionName,payload,before,after:response?.snapshot});
       return response;
