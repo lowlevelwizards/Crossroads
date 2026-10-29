@@ -8,7 +8,8 @@ function check(name, condition) {
   if (!condition) { console.error(`FAIL ${name}`); process.exitCode = 1; return; }
   passed += 1; console.log(`PASS ${name}`);
 }
-const index = read("index.html");
+// The classic 2D engine is preserved at classic.html; the landing page is the 3D entry.
+const index = read("classic.html");
 const terrain = read("data/terrain.js");
 const scenarios = read("data/scenarios.js");
 const runtime = read("src/presentation/terrain-runtime.js");
