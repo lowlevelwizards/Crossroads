@@ -748,9 +748,65 @@ function initialize(THREE) {
   const casualtyAnimations=[];
   // Small shared visual budgets protect mobile WebGL when a whole squad fires.
   const MAX_PARTICLES=84;
-  function scheduleFire(x,y,z,heavy=false,index=0){
-    delayedMuzzleBursts.push({x,y,z,heavy,delay:index*.045});
+  function scheduleFire(origin,target,role="rifle",index=0){
+    delayedMuzzleBursts.push({origin,target,role,
+      heavy:role==="lmg"||role==="mmg",delay:index*.052});
   }
+  function addShotEffect(geometry,color,x,y,z,duration,extra={}){
+    if(visualEffects.length>=MAX_PARTICLES)return;
+    const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.92,
+      depthWrite:false,side:THREE.DoubleSide});
+    const mesh=shape(scene,geometry,material,x,y,z);
+    mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=10;
+    visualEffects.push({mesh,duration,age:0,...extra});
+    return mesh;
+  }
+  function muzzleBurst(burst){
+    const start=burst.origin,end=burst.target;
+    const direction=new THREE.Vector3().subVectors(end,start);
+    const distance=direction.length();
+    if(distance<.05)return;
+    direction.normalize();
+    const size=burst.heavy?.13:burst.role==="smg"?.10:.085;
+    const flash=addShotEffect(new THREE.ConeGeometry(size,size*2.8,5),
+      0xffcf75,start.x+direction.x*size,start.y+direction.y*size,
+      start.z+direction.z*size,.12);
+    if(flash)flash.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
+      direction);
+    const spark=addShotEffect(new THREE.SphereGeometry(size*.53,6,4),
+      0xffe5a4,start.x,start.y,start.z,.095);
+    // Short, irregular streaks are feedback rather than a ballistics simulation.
+    if(delayedMuzzleBursts.length%3===0||burst.role==="rifle"){
+      const visible=Math.min(distance*.66,3.4);
+      const at=start.clone().addScaledVector(direction,visible*.55);
+      const streak=addShotEffect(new THREE.BoxGeometry(.024,.024,visible),
+        0xe9c989,at.x,at.y,at.z,.065);
+      if(streak)streak.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),
+        direction);
+    }
+    const smoke=addShotEffect(new THREE.SphereGeometry(size*.94,7,6),
+      0x92958c,start.x+direction.x*.09,start.y+.045,start.z+direction.z*.09,
+      burst.heavy?.61:.40,{velocity:{x:direction.x*.12,y:.23,z:direction.z*.12},
+        expansion:2.6});
+    if(smoke)smoke.material.opacity=.48;
+  }
+  function impactDust(x,y,z,kind="dirt",scale=1){
+    const cover=kind==="cover",hit=kind==="casualty";
+    const color=cover?0xb2a891:hit?0xc3aa87:0x9c9277;
+    for(let n=0;n<3;n++){
+      const theta=n*2.4+scale;
+      const offset=.08+n*.035;
+      const mesh=addShotEffect(new THREE.DodecahedronGeometry(.065*scale,0),
+        color,x+Math.sin(theta)*offset,y+.08,z+Math.cos(theta)*offset,
+        .43+n*.07,{velocity:{x:Math.sin(theta)*.24,y:.24+n*.12,
+          z:Math.cos(theta)*.24},expansion:2.1});
+      if(mesh)mesh.material.opacity=.65;
+    }
+    const ring=addShotEffect(new THREE.RingGeometry(.09*scale,.13*scale,14),
+      cover?0xe0c49c:0xaaa08a,x,y+.03,z,.31,{expansion:2.9});
+    if(ring)ring.rotation.x=-Math.PI/2;
+  }
+
   function beginCasualtyRemovals(squad){
     if(!squad)return;
     for(const soldier of squad.soldiers) {
@@ -947,20 +1003,31 @@ function initialize(THREE) {
       const groups=e.groups||[];
       const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
         ({role:s.role,visible:s.figure.visible})))||[];
+      shooter.root.updateMatrixWorld(true);
       for(const shot of firing){
         const soldier=shooter.soldiers[shot.soldierIndex];
         soldier.recoil=Math.max(soldier.recoil,shot.recoil);
-        const facing=soldier.figure.rotation.y;
-        const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
-        const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
-        scheduleFire(x,soldier.figure.position.y+.52,z,shot.heavy,
-          shot.delay/.052);
+        // The muzzle belongs to the actual figure and its rotated weapon.
+        const origin=soldier.breathing.localToWorld(soldier.muzzleLocal.clone());
+        const end=target?target.root.position.clone():shooter.root.position.clone();
+        end.x+=Math.sin(shot.soldierIndex*2.37)*.16;
+        end.z+=Math.cos(shot.soldierIndex*1.91)*.13;
+        end.y=terrainY(end.x,end.z)+.53;
+        scheduleFire(origin,end,shot.role,shot.delay/.052);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
-      if(e.hits>0)
-        spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
-          e.saved>0?0x91a79b:0xc5b69a,.16,.40);
+      if(e.hits>0){
+        const impactKind=e.saved>0?"cover":e.casualties>0?"casualty":"dirt";
+        const count=Math.min(5,Math.max(1,e.hits));
+        for(let n=0;n<count;n++){
+          const dx=Math.sin((n+1)*2.81)*.43;
+          const dz=Math.cos((n+1)*2.81)*.39;
+          const x=target.root.position.x+dx,z=target.root.position.z+dz;
+          impactDust(x,terrainY(x,z),z,impactKind,.8+(n%2)*.3);
+        }
+        showOutcome(target,e);
+      }
       if(e.pinDelta>0){
         target.suppressionImpulse=.85;
         spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
@@ -1294,7 +1361,9 @@ function initialize(THREE) {
     }
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
+    const muzzleZ=recipe.role==="mmg"?-1.305:center-length*.5;
     squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
+      muzzleLocal:new THREE.Vector3(.08,-.105,muzzleZ),
       baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
       gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z,crouch:0});
     return figure;
@@ -1890,10 +1959,7 @@ function initialize(THREE) {
       const burst=delayedMuzzleBursts[i];
       burst.delay-=dt;
       if(burst.delay>0)continue;
-      spawnBriefFlash(burst.x,burst.y,burst.z,0xffd083,
-        burst.heavy?.085:.052,burst.heavy?.22:.15);
-      if(burst.heavy)spawnBriefFlash(burst.x,burst.y+.06,burst.z,
-        0xa49d90,.08,.42);
+      muzzleBurst(burst);
       delayedMuzzleBursts.splice(i,1);
     }
     for(let i=casualtyAnimations.length-1;i>=0;i--){
@@ -1918,8 +1984,14 @@ function initialize(THREE) {
     for(let i=visualEffects.length-1;i>=0;i--){
       const effect=visualEffects[i];
       effect.age+=dt;
-      effect.mesh.material.opacity=Math.max(0,1-effect.age/effect.duration);
-      effect.mesh.scale.setScalar(1+effect.age/effect.duration*.6);
+      const fraction=Math.min(1,effect.age/effect.duration);
+      effect.mesh.material.opacity=Math.max(0,(effect.initialOpacity??.92)*(1-fraction));
+      effect.mesh.scale.setScalar(1+fraction*(effect.expansion??.6));
+      if(effect.velocity){
+        effect.mesh.position.x+=effect.velocity.x*dt;
+        effect.mesh.position.y+=effect.velocity.y*dt;
+        effect.mesh.position.z+=effect.velocity.z*dt;
+      }
       if(effect.age>=effect.duration){
         scene.remove(effect.mesh);
         effect.mesh.geometry.dispose();
