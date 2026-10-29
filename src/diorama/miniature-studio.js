@@ -166,6 +166,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
+    activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
     activeSoldier.windowArc.visible=false;
@@ -337,6 +338,9 @@
     const soldier=activeSoldier;
     if(!soldier)return;
     const pose=poses.frame(poseSelect.value,t,motion);
+    if(soldier.setGunDeployed)
+      soldier.setGunDeployed(poseSelect.value==="pack"?t<.9:
+        poseSelect.value==="deploy"?t>=.9:true);
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);

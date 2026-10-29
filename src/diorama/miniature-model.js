@@ -79,23 +79,26 @@
     block(breathing,.055,.14,.07,metal,.08,-.09,center-length*.43);
     if(officer)block(breathing,.07,.18,.07,leather,.08,-.27,-.31);
     if(recipe.role==="smg")block(breathing,.09,.27,.10,metal,.08,-.31,-.43);
+    const gunParts=[];
     if (recipe.role === "mmg") {
       // Heavy receiver, long mounted barrel and a stable three-legged tripod.
-      block(breathing,.22,.26,.32,mat(0x343b36),.08,-.19,-.52);
+      gunParts.push(block(breathing,.22,.26,.32,mat(0x343b36),.08,-.19,-.52));
       block(breathing,.24,.27,.14,leather,-.18,-.22,-.47);
       const muzzle=shape(breathing,new THREE.CylinderGeometry(.065,.055,.73,9),
         mat(0x333a36,.22),.08,-.15,-.94);
+      gunParts.push(muzzle);
       muzzle.rotation.x=Math.PI/2;
       for(const a of [-.75,0,.75]){
         const foot=block(figure,.065,.45,.055,mat(0x343b36),
           Math.sin(a)*.26,.31,-.40+Math.cos(a)*.19);
         foot.rotation.z=Math.sin(a)*.7;foot.rotation.x=-.55;
+        gunParts.push(foot);
       }
       block(breathing,.26,.24,.25,mat(0x665d45),-.28,-.19,-.53);
       for(let n=0;n<7;n++)
         block(breathing,.035,.075,.07,mat(0xb49c60),
           -.15-n*.045,-.10-Math.sin(n/7*Math.PI)*.07,-.54);
-      block(figure,.24,.16,.26,mat(0x575744),-.34,.13,-.27);
+      gunParts.push(block(figure,.24,.16,.26,mat(0x575744),-.34,.13,-.27));
     } else if(recipe.role==="crew") {
       if(index===1){
         block(figure,.29,.22,.34,mat(0x73664a),-.22,.24,-.34);
@@ -151,6 +154,17 @@
     const issuePants=trousers.color.getHex();
     const issueHelmet=helmet.color.getHex();
     const issueLeather=leather.color.getHex();
+    // Folded carrying rig is visible while the crew is moving; the tripod
+    // and mounted receiver become distinct only after official deployment.
+    const packedBundle=recipe.role==="mmg"?
+      block(breathing,.36,.37,.18,mat(0x50554c),0,-.10,.32):null;
+    soldier.setGunDeployed=(deployed)=>{
+      if(!gunParts.length)return;
+      for(const part of gunParts)part.visible=Boolean(deployed);
+      if(packedBundle)packedBundle.visible=!deployed;
+      soldier.gunDeployed=Boolean(deployed);
+    };
+    soldier.setGunDeployed(squad.unit.mmgDeployed??true);
     soldier.applyProfile=(profile={})=>{
       const p=window.Crossroads3DMiniatureProfiles?.normalize(profile)||profile;
       torso.scale.x=p.bodyWidth||1;

@@ -2034,6 +2034,9 @@ function initialize(THREE) {
         const state=snapshot.units.find(u=>u.id===squad.unit.id);
         if(!state)continue;
         Object.assign(squad.unit,state);
+        squad.gunTransition=null;
+        for(const soldier of squad.soldiers)
+          soldier.setGunDeployed?.(Boolean(squad.unit.mmgDeployed));
         const dest=bridge.toWorld(state);
         squad.root.position.set(dest.x,0,dest.z);
         squad.moving=false;squad.entrySequence=null;squad.assaultVisual=null;
@@ -2096,7 +2099,17 @@ function initialize(THREE) {
         if(squad.unit.soldiers!==stateUnit.soldiers||
            previousBuilding!==(stateUnit.inBuilding||null))
           squad.formationCache=null;
+        const wasDeployed=Boolean(squad.unit.mmgDeployed);
         Object.assign(squad.unit,stateUnit);
+        if(squad.unit.type==="mmgTeam"&&
+          wasDeployed!==Boolean(squad.unit.mmgDeployed)){
+          squad.gunTransition={
+            elapsed:0,duration:1.0,
+            mode:squad.unit.mmgDeployed?"deploy":"pack"
+          };
+        }
+        for(const soldier of squad.soldiers)
+          soldier.setGunDeployed?.(Boolean(squad.unit.mmgDeployed));
         const hasUnshownCasualties=(snapshot.combatEvents||[]).some(e=>
           (e.type==="shooting"&&e.targetId===stateUnit.id&&e.casualties>0)||
           (e.type==="assault"&&
@@ -2817,6 +2830,13 @@ function initialize(THREE) {
               Math.sin(t*10)),3)*.20;
           }
         }
+        if(squad.gunTransition&&!isWalking&&soldierActions){
+          const transition=squad.gunTransition;
+          const t=transition.elapsed;
+          const gunPose=soldierActions.frame(transition.mode,t,motion);
+          soldier.breathing.rotation.x=-gunPose.lean;
+          soldier.breathing.position.y=soldier.baseY-gunPose.crouch*.31;
+        }
         if(soldierIK){
           for(const leg of soldier.legs){
             const solved=soldierIK.solve({
@@ -2867,6 +2887,11 @@ function initialize(THREE) {
         record.soldier.casualtyAnimating=false;
         casualtyAnimations.splice(i,1);
       }
+    }
+    for(const squad of squads)if(squad.gunTransition){
+      squad.gunTransition.elapsed+=dt;
+      if(squad.gunTransition.elapsed>=squad.gunTransition.duration)
+        squad.gunTransition=null;
     }
     for(const squad of squads)for(const soldier of squad.soldiers)
       if(soldier.pendingRemoval&&!soldier.casualtyAnimating&&
