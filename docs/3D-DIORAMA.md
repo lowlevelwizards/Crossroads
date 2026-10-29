@@ -438,3 +438,36 @@ full-match interface validation, more authoritative tactical position evaluation
 detailed close-contact choreography, door/window garrison staging, true 3D
 physics dice, sophisticated coordination AI, all-scenario editor round trips,
 and on-device frame benchmarks still require their own later stages.
+
+
+## v0.8.1 — Orders, Firefight & Tactical Feedback (development)
+
+- **Movement:** One tap previews a destination, a large Confirm Move button
+  commits it, and Clear Route cancels the preview. A near-identical second tap
+  is only an opt-in shortcut using `?quickmove=1`. The coordinator's
+  `previewMove` is queried again immediately before submission.
+- **Waypoints:** Add/Edit Waypoint starts a single tabletop tap, then retains the
+  destination. Drag the in-world waypoint marker to re-evaluate a route; Remove
+  Waypoint restores a verified direct route. Invalid intermediate routes retain
+  the last valid one. One waypoint remains the authoritative engine limit.
+- **Ruler:** Persistent route cost, remaining allowance, and final soldier-base
+  footprint. No game-position or terrain legality approximation.
+- **Combat:** Weapon-tip geometry drives muzzle flashes, smoke, short tracer
+  cues, recoil, and per-weapon procedural gunshot texture. Authoritative
+  `shooting` events drive cover debris, impacts, and on-screen casualty/Pin/
+  save results. Visual effects obey the same particle cap.
+- **Infantry:** More decisive Down/Pin poses and per-soldier impact flinches;
+  occupied building squads shift miniatures toward the nearest facade/window
+  on the visible building footprint. These are *visual* offsets only.
+- **Assault:** Figures face their opponents, react to the charge, and display
+  the winner and actual survivors after resolution. The engine still decides
+  every close-combat outcome.
+- **Solo AI:** Evaluates legal routes, basic local force balance, objective
+  defense, and danger to badly damaged squads without changing rules.
+- **Performance:** Waypoint drag previews are throttled to at most about
+  12 redraws per second. All procedural effects remain bounded.
+
+This milestone does **not** implement true independent soldier cover-search
+simulation, interior doorway navigation, multi-round individual melee or
+competitive-grade AI. Those are subsequent v0.9/v1.0 stages. Test touch
+controls on actual devices before merging.

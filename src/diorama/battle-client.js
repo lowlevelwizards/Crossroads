@@ -272,7 +272,7 @@
       "ready-to-draw":"Draw a die to determine the next faction.",
       "choose-unit":"Tap any glowing, eligible squad to activate it.",
       "choose-order":"Only legal orders are shown below.",
-      "plan-movement":"Tap ground to measure; tap again to commit.",
+      "plan-movement":"Tap destination, then Confirm Move; add a waypoint to bend the route.",
       "choose-target":"Tap an enemy to inspect the shot; tap again to fire.",
       "choose-assault-target":"Tap the target twice to confirm the assault.",
       "deployment":"Tap a unit, then choose its legal deployment point.",
@@ -321,13 +321,29 @@
       if(current.building)action(controls,"⌂  "+current.building.label,"building");
       if(current.canCancel)action(controls,"Cancel","cancel",{},"battle-secondary");
     } else if(current.phase==="plan-movement"){
-      const waypoint=node("button","battle-action battle-secondary","↱ Waypoint");
-      waypoint.type="button";waypoint.disabled=busy;
-      waypoint.addEventListener("click",()=>{
-        window.Crossroads3DMoveTools?.armWaypoint();
-      });
-      controls.append(waypoint);
-      if(current.canCancel)action(controls,"Cancel movement","cancel",{},"battle-secondary");
+      const tools=window.Crossroads3DMoveTools,move=tools?.getState?.()||{};
+      if(move.legal)center.append(node("div","battle-move-summary",
+        "ROUTE "+Number(move.cost||0).toFixed(1)+" / "+move.allowance+
+        "″"+(move.shortened?" · LIMITED":"")+
+        (move.waypoint?" · VIA WAYPOINT":"")));
+      const confirm=node("button","battle-action battle-primary-action battle-confirm-move",
+        "✓ CONFIRM MOVE");
+      confirm.type="button";confirm.disabled=busy||!move.legal;
+      confirm.addEventListener("click",()=>tools?.confirmMove?.());controls.append(confirm);
+      const waypoint=node("button","battle-action battle-secondary",
+        move.placingWaypoint?"TAP ROUTE…":move.waypoint?"↱ Edit waypoint":"↱ Add waypoint");
+      waypoint.type="button";waypoint.disabled=busy||!move.legal;
+      waypoint.addEventListener("click",()=>tools?.armWaypoint?.());controls.append(waypoint);
+      if(move.waypoint){
+        const remove=node("button","battle-action battle-secondary","Remove waypoint");
+        remove.type="button";remove.disabled=busy;
+        remove.addEventListener("click",()=>tools?.clearWaypoint?.());
+        controls.append(remove);
+      }
+      const reset=node("button","battle-action battle-secondary","Clear route");
+      reset.type="button";reset.disabled=busy||!move.legal;
+      reset.addEventListener("click",()=>tools?.reset?.());controls.append(reset);
+      if(current.canCancel)action(controls,"Cancel order","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
       if(current.canCancel)action(controls,"Cancel target","cancel",{},"battle-secondary");

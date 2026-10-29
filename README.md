@@ -1,11 +1,11 @@
-# CROSSROADS — S1.1.1 / Living Infantry 3D v0.8.0
+# CROSSROADS — S1.1.1 / Living Infantry 3D v0.8.1
 
 Standalone World War II miniature tabletop wargame with an authoritative
 2D battle coordinator, a mobile-first 3D battlefield presentation, scenario
 authoring tools, and preserved archived prototypes.
 
 ## Play
-- **Play** on the homepage opens `battle3d.html` (3D v0.8.0), using the
+- **Play** on the homepage opens `battle3d.html` (3D v0.8.1), using the
   original `InfantryCore.session` for all movement legality, dice, combat,
   morale, objectives, and scoring.
 - `scenarios3d.html` lists available authored 3D scenario entries.
@@ -13,7 +13,7 @@ authoring tools, and preserved archived prototypes.
 - `editor.html` provides the scenario editor.
 - `diorama.html` preserves the standalone 3D movement study.
 
-## 3D v0.8.0 changes
+## 3D v0.8.1 changes
 Per-squad movement tracks, cosmetic individual stride variation, correct
 weapon-role shot presentation, pinned-unit responses, anchored tactical fire
 previews, normal/fast/skip combat presentations, assault contact gestures,

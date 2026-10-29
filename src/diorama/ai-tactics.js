@@ -3,6 +3,16 @@
    The original InfantryCore session validates and commits every action. */
 (() => {
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  function nearby(point,units,radius){
+    return (units||[]).filter(u=>u.soldiers>0&&dist(point,u)<=radius);
+  }
+  function forceBalance(point,allies,enemies){
+    const support=nearby(point,allies,9).reduce((v,u)=>v+
+      Math.min(8,u.soldiers)*(u.pins>=2?.5:1),0);
+    const opposition=nearby(point,enemies,9).reduce((v,u)=>v+
+      Math.min(8,u.soldiers)*(u.down?.65:1),0);
+    return {support,opposition,advantage:support-opposition};
+  }
   function objectivePoint(s,faction) {
     const objectives=(s.objectives||[]).filter(o=>Number.isFinite(o.x)&&Number.isFinite(o.y)
       &&o.state!==faction);
@@ -15,12 +25,15 @@
     const ready=s.units.filter(u=>u.faction===faction&&u.soldiers>0&&!u.activated);
     const enemies=s.units.filter(u=>u.faction!==faction&&u.soldiers>0);
     const objectives=objectivePoint(s,faction);
+    const allies=s.units.filter(u=>u.faction===faction&&u.soldiers>0);
     return ready.sort((a,b)=>{
       const value=u=>{
         const enemy=nearest(u,enemies),obj=nearest(u,objectives);
-        return (obj?Math.max(0,20-dist(u,obj))*2:0)+
-          (enemy?Math.max(0,18-dist(u,enemy)):0)+
-          (u.pins>=2?-8:0)+(u.role==="officer"?4:0);
+        const balance=forceBalance(u,allies,enemies);
+        return (obj?Math.max(0,22-dist(u,obj))*1.8:0)+
+          (enemy?Math.max(0,18-dist(u,enemy))*.6:0)+
+          (u.pins>=2?-8:0)+(u.role==="officer"?4:0)+
+          (balance.advantage>0?2:0)+(u.down?-3:0);
       };
       return value(b)-value(a)||a.id.localeCompare(b.id);
     })[0]||null;
@@ -30,10 +43,18 @@
     // During choose-order the engine intentionally disallows previewTarget;
     // choose likely firing ranges here, then confirm legal LOS in target phase.
     const visible=enemy.filter(u=>dist(u,unit)<23);
+    const objectives=objectivePoint(s,unit.faction)||[];
+    const holding=(s.objectives||[]).some(o=>o.state===unit.faction&&
+      Number.isFinite(o.x)&&dist(unit,o)<3);
     const has=o=>legal.includes(o);
+    const allies=s.units.filter(u=>u.faction===unit.faction&&u.soldiers>0);
+    const balance=forceBalance(unit,allies,enemy);
     if(unit.pins>=2&&has("Rally"))return "Rally";
+    if(unit.soldiers<=2&&balance.advantage<-3&&
+      !visible.length&&has("Down"))return "Down";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
       return "Fire";
+    if(holding&&has("Ambush"))return "Ambush";
     if(has("Advance")&&!failed.move.has(unit.id))return "Advance";
     if(has("Run")&&!failed.move.has(unit.id))return "Run";
     if(has("Ambush")&&enemy.some(u=>dist(u,unit)<22))return "Ambush";
@@ -76,14 +97,28 @@
         // Reward objectives and useful firing proximity, discourage exposed
         // suicidal charges and movement that makes no tactical progress.
         const vulnerable=(unit.pins||0)>=2||unit.soldiers<=2;
-        const threat=enemyDist<3?(vulnerable?-16:-9):
-          enemyDist<7?(vulnerable?-6:-2):0;
-        const score=progress*4+(objective?5:0)+threat+
-          (preview.shortened?-1:0)+Math.min(.5,step*.03);
+        const allies=s.units.filter(other=>other.faction===unit.faction&&
+          other.id!==unit.id&&other.soldiers>0);
+        const balance=forceBalance(endpoint,allies,enemies);
+        const threat=enemyDist<3?(vulnerable?-17:-8):
+          enemyDist<7?(vulnerable?-7:-2):0;
+        const outnumbered=balance.advantage< -4?
+          (vulnerable?-6:-3):0;
+        const support=Math.max(0,Math.min(3,balance.advantage*.25));
+        const objectiveRange=objective?dist(endpoint,objective):Infinity;
+        const objectiveHold=objectiveRange<2.7?4:0;
+        // An actual legal preview supplies all path costs. Never guess cover or LOS.
+        const efficiency=Number.isFinite(preview.cost)?
+          -Math.max(0,preview.cost-step)*.15:0;
+        const score=progress*4+(objective?4:0)+objectiveHold+
+          threat+outnumbered+support+efficiency+
+          (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score});
       }
     }
     return options.sort((a,b)=>b.score-a.score)[0]?.point||null;
   }
-  window.Crossroads3DAITactics=Object.freeze({chooseUnit,chooseOrder,chooseTarget,chooseMove});
+  window.Crossroads3DAITactics=Object.freeze({
+    chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance
+  });
 })();
