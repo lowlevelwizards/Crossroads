@@ -1727,9 +1727,12 @@ function initialize(THREE) {
     });
     const prior=squad.visualAnchor;
     squad.visualAnchor=anchor;
-    const changed=!prior||
-      Math.hypot(prior.x-anchor.x,prior.z-anchor.z)>.025;
     const center=squadVisualWorld(squad);
+    const last=squad.visualAnchorWorld;
+    const changed=!prior||!last||
+      Math.hypot(prior.x-anchor.x,prior.z-anchor.z)>.025||
+      Math.hypot(last.x-center.x,last.z-center.z)>.025;
+    squad.visualAnchorWorld=center;
     const height=changed||!Number.isFinite(squad.visualAnchorHeight)?
       footingHeight(center.x,center.z)+.035:squad.visualAnchorHeight;
     squad.visualAnchorHeight=height;
