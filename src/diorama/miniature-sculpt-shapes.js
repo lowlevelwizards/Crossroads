@@ -97,12 +97,12 @@
     // Feet are shaped longitudinally, with a flattened sole, instep and toe.
     function bootGeometry(){
       const rings=[
-        [-.210,.075,.045,.050], // toe: broad and low
-        [-.165,.132,.087,.070],
-        [-.060,.124,.101,.094],
-        [ .060,.109,.118,.112],
-        [ .165,.083,.124,.125],
-        [ .205,.071,.090,.122]
+        [-.210,.075,.045,-.015], // toe: broad and low
+        [-.165,.132,.087,.005],
+        [-.060,.124,.101,.029],
+        [ .060,.109,.118,.047],
+        [ .165,.083,.124,.060],
+        [ .205,.071,.090,.057]
       ];
       const verts=[],indices=[],sides=16;
       for(const [z,rx,ry,cy] of rings){
@@ -126,7 +126,7 @@
       parent.add(root);
       const upper=mesh(root,cached("shaped-boot",bootGeometry),leather);
       const sole=soft(root,soleMat,[0,.028,-.035],[.131,.031,.205]);
-      const heel=box(root,soleMat,[.125,.04,.072],[0,.023,.118]);
+      const heel=box(root,soleMat,[.125,.04,.072],[0,-.050,.118]);
       const cuff=loft(root,leather,"boot-cuff",[
         [-.5,.077,.081],[-.2,.096,.095],[.25,.090,.092],[.5,.078,.078]
       ],[0,.17,.105]);
