@@ -30,7 +30,7 @@ assert.equal(ai.chooseOrder(snapshot,mmg,["Ambush","Advance","Fire"],()=>null,
   {fire:new Set(),move:new Set()}),"Ambush");
 const scene=read("src/diorama/scenario-scene.js");
 for(const marker of ["miniatureLab?.attach(","shotExplanation.summarize",
-  "pose.leftLift","squad.arcIndicator","Crossroads3DMiniatureModel?.create"])
+  "feet.leftLift","squad.arcIndicator","Crossroads3DMiniatureModel?.create"])
   assert(scene.includes(marker),marker+" not wired into 3D scene");
 const html=read("battle3d.html");
 for(const script of ["src/diorama/study-motion.js","src/diorama/shot-explanation.js",

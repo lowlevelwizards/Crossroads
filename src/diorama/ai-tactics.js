@@ -129,7 +129,7 @@
     }
     return benefit;
   }
-  function chooseMove(s,unit,previewMove) {
+  function chooseMove(s,unit,previewMove,explain=false) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     const objective=nearest(unit,objectivePoint(s,unit.faction));
     const enemy=nearest(unit,enemies);
@@ -187,10 +187,16 @@
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
           commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
-        options.push({point:endpoint,score});
+        options.push({point:endpoint,score,progress,cover:coverBenefit,
+          exposure:exposurePenalty,command:commandBenefit,
+          objective:objectiveHold,support,threat});
       }
     }
-    return options.sort((a,b)=>b.score-a.score)[0]?.point||null;
+    const ranked=options.sort((a,b)=>b.score-a.score||
+      a.point.x-b.point.x||a.point.y-b.point.y);
+    return explain?{
+      point:ranked[0]?.point||null,candidates:ranked.slice(0,3).map(c=>({...c}))
+    }:ranked[0]?.point||null;
   }
   window.Crossroads3DAITactics=Object.freeze({
     chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
