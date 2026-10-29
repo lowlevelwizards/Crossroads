@@ -34,7 +34,7 @@ d.update(.1);assert.deepEqual(stages,[],"firing waits on moving shooter");
 ready=true;d.update(.1);assert.equal(stages[0],"aim");
 const scene=read("src/diorama/scenario-scene.js"),
   hud=read("src/diorama/battle-client.js");
-for(const token of ["resolveSquadFormation(selectedSquad,last,false)",
+for(const token of ["resolveSquadFormation(selectedSquad,last,false,prediction)",
   "const formation=resolveSquadFormation(squad,squad.root.position)",
   "Crossroads3DAnimationGate","confirmTarget()","garrisonFiringOutlet(",
   "renderAuthoredScatter()","editorDraftPlace(entry)"])
