@@ -15,6 +15,10 @@
     if(loading)loading.textContent="Miniature studio dependencies missing.";
     return;
   }
+  // Comparison mode lives in the studio, never mutates combat rules.
+  const classicCheckbox=document.getElementById("studioClassicModel");
+  const silhouetteMode=document.getElementById("studioDisplayMode");
+  window.Crossroads3DForceClassicMiniature=false;
   const morphFields={
     headSize:$("studioHeadSize"),bodyWidth:$("studioBodyWidth"),
     packSize:$("studioPackSize"),bootSize:$("studioBootSize")
@@ -131,7 +135,8 @@
   }
   const disposeActor=()=>{
     actorRoot.traverse(node=>{
-      node.geometry?.dispose?.();
+      // Shared sculpture geometry is reused by future soldier builds.
+      if(!node.userData?.sharedMiniatureGeometry)node.geometry?.dispose?.();
       if(node.material){
         const array=Array.isArray(node.material)?node.material:[node.material];
         for(const mat of array)if(mat!==sharedWood)mat.dispose?.();
@@ -157,6 +162,7 @@
       "  ·  "+(recipe.weaponProfile||"unarmed").replaceAll("-"," ");
   };
   const build=()=>{
+    window.Crossroads3DForceClassicMiniature=!!classicCheckbox?.checked;
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
     const index=Math.max(0,Math.min(unit.soldiers-1,Number(soldierSelect.value)||0));
     disposeActor();
@@ -166,6 +172,7 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
+    if(activeSoldier.modelVersion===2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
     activeSoldier.inspectRing.visible=false;
@@ -180,7 +187,17 @@
     elapsed=0;
     renderPose(0);
   };
-  const refreshSoldierList=()=>{
+  function applyDisplayMode(){
+    if(!activeSoldier||activeSoldier.modelVersion!==2)return;
+    const mode=silhouetteMode?.value||"equipped";
+    if(activeSoldier.equipmentRoot)
+      activeSoldier.equipmentRoot.visible=mode==="equipped";
+    if(activeSoldier.uniformRoot)
+      activeSoldier.uniformRoot.visible=mode!=="body";
+  }
+  classicCheckbox?.addEventListener("change",build);
+  silhouetteMode?.addEventListener("change",applyDisplayMode);
+    const refreshSoldierList=()=>{
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
     choices(soldierSelect,Array.from({length:unit.soldiers},(_,i)=>{
       const recipe=catalogue.soldier(unit.type,unit.kitId,i);
@@ -341,6 +358,28 @@
     if(soldier.setGunDeployed)
       soldier.setGunDeployed(poseSelect.value==="pack"?t<.9:
         poseSelect.value==="deploy"?t>=.9:true);
+    if(soldier.applyPose){
+      // The body falls independently of the fixed miniature base.
+      const isFall=poseSelect.value==="casualty";
+      soldier.figure.rotation.set(0,pose.yaw||0,0);
+      soldier.figure.position.set(0,0,0);
+      soldier.applyPose({...pose,
+        aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
+        recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
+        fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
+      if(flash)flash.visible=pose.flash;
+      // Existing joint guides remain available, augmented by arm markers.
+      const body=soldier.body;
+      for(let i=0;i<soldier.legs.length;i++){
+        const leg=soldier.legs[i],side=leg.side;
+        joints[i*3].position.set(side*.15,.60-pose.crouch*.18,0);
+        joints[i*3+1].position.copy(leg.mesh.position);
+        joints[i*3+2].position.copy(leg.boot.position);
+      }
+      rigMarkers.position.copy(soldier.figure.position);
+      rigMarkers.rotation.copy(body.rotation);
+      return;
+    }
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);
