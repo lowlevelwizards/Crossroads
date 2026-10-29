@@ -157,6 +157,73 @@ function initialize(THREE) {
   groundGeometry.computeVertexNormals();
   const ground = shape(scene, groundGeometry,
     mat(layout.scenario.table.mat==="grass_dry"?0x899464:0x72865c), 0, 0, 0);
+  // Early 3D terrain editor: visual draft terrain stays separate from the
+  // authoritative scenario, and exports compatible terrain record shapes.
+  const editorDraftMeshes=new Map();
+  const editorDraftStyle={
+    wall:{color:0xb4a58e,height:.36},hedge:{color:0x5e7e52,height:.52},
+    fence:{color:0x79654d,height:.45},road_straight:{color:0xb0a17e,height:.042},
+    woods:{color:0x607a51,height:.50},medium_cottage:{color:0xc2aa8d,height:1.42},
+    barn:{color:0x76664f,height:1.35},field_wheat:{color:0xb6a06b,height:.10}
+  };
+  function editorDraftRemove(id){
+    const group=editorDraftMeshes.get(id);
+    if(!group)return false;
+    scene.remove(group);
+    group.traverse(child=>{
+      if(child.isMesh){child.geometry?.dispose();child.material?.dispose()}
+    });
+    editorDraftMeshes.delete(id);return true;
+  }
+  function editorDraftPlace(entry){
+    if(!window.Crossroads3DEditor?.enabled||
+       !entry?.id||!editorDraftStyle[entry.terrainId])return false;
+    editorDraftRemove(entry.id);
+    const style=editorDraftStyle[entry.terrainId];
+    const inch=bridge.table.worldUnitsPerInch;
+    const width=Math.max(.15,entry.width*inch);
+    const depth=Math.max(.15,entry.height*inch);
+    const center=bridge.toWorld({x:entry.x+entry.width/2,
+      y:entry.y+entry.height/2});
+    const group=new THREE.Group();
+    group.position.set(center.x,terrainY(center.x,center.z),center.z);
+    group.rotation.y=-(Number(entry.rotation)||0)*Math.PI/180;
+    scene.add(group);
+    const surface=new THREE.MeshStandardMaterial({color:style.color,
+      transparent:true,opacity:.73,roughness:.95,depthWrite:false});
+    const height=style.height;
+    const base=block(group,width,height,depth,surface,0,height/2,0);
+    base.castShadow=false;base.receiveShadow=false;
+    if(entry.terrainId==="medium_cottage"||entry.terrainId==="barn"){
+      const roof=new THREE.Mesh(new THREE.ConeGeometry(
+        Math.max(width,depth)*.73,.55,4),
+        new THREE.MeshStandardMaterial({color:0x8b5e4a,
+          transparent:true,opacity:.78,roughness:1}));
+      roof.position.set(0,height+.26,0);
+      roof.rotation.y=Math.PI/4;group.add(roof);
+    }
+    if(entry.terrainId==="woods"){
+      for(const [x,z] of [[-.24,-.16],[.19,-.04],[.02,.25]]){
+        const top=new THREE.Mesh(new THREE.DodecahedronGeometry(.31,0),
+          new THREE.MeshStandardMaterial({color:0x527047,
+            transparent:true,opacity:.76}));
+        top.position.set(x*width,height+.22,z*depth);
+        group.add(top);
+      }
+    }
+    const outline=new THREE.LineSegments(new THREE.EdgesGeometry(
+      new THREE.BoxGeometry(width,height,depth)),
+      new THREE.LineBasicMaterial({color:0xffdf87,transparent:true,opacity:.80}));
+    outline.position.y=height/2;group.add(outline);
+    editorDraftMeshes.set(entry.id,group);
+    return true;
+  }
+  window.Crossroads3DEditorBridge=Object.freeze({
+    place:editorDraftPlace,remove:editorDraftRemove,
+    clear(){for(const id of [...editorDraftMeshes.keys()])editorDraftRemove(id)},
+    get ids(){return [...editorDraftMeshes.keys()]}
+  });
+
   ground.castShadow = false;
   // Sample the actual visible triangles (not the analytical height estimate).
   // Includes grass-color overlays and road surfaces, which sit higher than soil.
@@ -1955,6 +2022,12 @@ function initialize(THREE) {
       1-((clientY-rect.top)/rect.height)*2);
     scene.updateMatrixWorld(true);
     raycaster.setFromCamera(tapNdc,camera);
+    if(window.Crossroads3DEditor?.enabled){
+      const terrain=raycaster.intersectObject(ground,false);
+      if(terrain.length)window.Crossroads3DEditor.handleGround({
+        x:terrain[0].point.x,z:terrain[0].point.z});
+      return;
+    }
     const picked=raycaster.intersectObjects(hitBoxes,false);
     if(picked.length) {
       const pickedSquad=picked[0].object.userData.squad;
