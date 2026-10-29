@@ -155,7 +155,7 @@
           [side*.12,.02,.193]);packStrap.rotation.z=side*.09;
         const pouch=box(equipmentRoot,leather,[.15,.15,.11],
           [side*.18,-.215,-.18]);
-        box(pouch,canvas,[.92,.28,1.02],[0,.42,-.02]);
+        box(pouch,canvas,[.16,.035,.12],[0,.09,-.005]);
       }
       cylinder(packGroup,canvas,.10,.09,.18,[.25,-.11,.04],12)
         .rotation.x=Math.PI/2; // canteen
