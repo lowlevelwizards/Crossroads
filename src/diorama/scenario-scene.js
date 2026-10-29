@@ -1442,26 +1442,37 @@ function initialize(THREE) {
   }
 
   function buildingFormationSlot(squad,index){
-    if(!squad.unit.inBuilding)return null;
-    const roof=roofMaterials.find(roof=>roof.ids.some(id=>
-      String(id)===String(squad.unit.inBuilding)));
-    const bounds=roof?.bounds;
-    if(!bounds)return null;
-    const root=squad.root.position;
-    if(Math.hypot(bounds.x-root.x,bounds.z-root.z)>2.7)return null;
-    const enemy=squads.filter(s=>s.unit.faction!==squad.unit.faction&&
-      s.unit.soldiers>0).sort((a,b)=>
-        a.root.position.distanceToSquared(squad.root.position)-
-        b.root.position.distanceToSquared(squad.root.position))[0];
+    const id=squad.unit.inBuilding;
+    if(!id){squad.garrisonCache=null;return null}
+    // Keep DOM/Three frame cost flat even with many soldiers in houses.
+    if(squad.garrisonCache?.id===id&&frameIndex-squad.garrisonCache.frame<18)
+      return squad.garrisonCache.slots[index]||null;
+    const roof=roofMaterials.find(roof=>roof.ids.some(key=>
+      String(key)===String(id)));
+    const bounds=roof?.bounds,root=squad.root.position;
+    if(!bounds||Math.hypot(bounds.x-root.x,bounds.z-root.z)>2.7){
+      squad.garrisonCache=null;return null;
+    }
+    const enemies=squads.filter(s=>s.unit.faction!==squad.unit.faction&&
+      s.unit.soldiers>0);
+    let enemy=null,best=Infinity;
+    for(const opponent of enemies){
+      const d=opponent.root.position.distanceToSquared(root);
+      if(d<best){best=d;enemy=opponent}
+    }
     const dx=enemy?enemy.root.position.x-bounds.x:
       (squad.unit.faction==="red"?-1:1);
     const dz=enemy?enemy.root.position.z-bounds.z:0;
-    const along=(index-(squad.soldiers.length-1)/2)*.29;
-    if(Math.abs(dx)>Math.abs(dz))
-      return {x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-.33)-root.x,
-        z:bounds.z+Math.max(-bounds.depth*.32,Math.min(bounds.depth*.32,along))-root.z};
-    return {x:bounds.x+Math.max(-bounds.width*.32,Math.min(bounds.width*.32,along))-root.x,
-      z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-.33)-root.z};
+    const slots=squad.soldiers.map((_,soldierIndex)=>{
+      const along=(soldierIndex-(squad.soldiers.length-1)/2)*.29;
+      if(Math.abs(dx)>Math.abs(dz))
+        return {x:bounds.x+Math.sign(dx)*Math.max(.20,bounds.width/2-.33)-root.x,
+          z:bounds.z+Math.max(-bounds.depth*.32,Math.min(bounds.depth*.32,along))-root.z};
+      return {x:bounds.x+Math.max(-bounds.width*.32,Math.min(bounds.width*.32,along))-root.x,
+        z:bounds.z+Math.sign(dz||1)*Math.max(.20,bounds.depth/2-.33)-root.z};
+    });
+    squad.garrisonCache={id,frame:frameIndex,slots};
+    return slots[index]||null;
   }
   function createSquadRenderer(unit,index) {
     const root=new THREE.Group(),world=bridge.toWorld(unit);
@@ -2008,9 +2019,10 @@ function initialize(THREE) {
           const x=(slot?.x??soldier.slotX)+(assault?.dx||0)*displacement;
           const z=(slot?.z??soldier.slotZ)+(assault?.dz||0)*displacement;
           const blend=slot?Math.min(1,dt*5):1;
+          const shift=Math.hypot(x-soldier.figure.position.x,z-soldier.figure.position.z);
           soldier.figure.position.x+=(x-soldier.figure.position.x)*blend;
           soldier.figure.position.z+=(z-soldier.figure.position.z)*blend;
-          if(slot&&frameIndex%4===0)soldier.grounded=false;
+          if(slot&&frameIndex%4===0&&shift>.026)soldier.grounded=false;
         }
         if(isWalking) {
           const delta=ownProgress-moving.centerProgress;
