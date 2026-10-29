@@ -116,7 +116,11 @@
     "tests/3d-v119-battle-benchmark.test.js",
     "tests/3d-v120-release-contract.test.js",
     "src/diorama/miniature-v2.js",
-    "tests/3d-v121-sculpted-miniatures.test.js"
+    "tests/3d-v121-sculpted-miniatures.test.js",
+    "src/diorama/miniature-sculpt-shapes.js",
+    "src/diorama/miniature-historical-weapons.js",
+    "src/diorama/miniature-heroic-character.js",
+    "tests/3d-v131-sculpted-roster.test.js"
   ],
-  "threeDCacheVersion": "0.9.21"
+  "threeDCacheVersion": "0.9.31"
 }
