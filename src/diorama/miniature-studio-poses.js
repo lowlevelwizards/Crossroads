@@ -6,7 +6,8 @@
     ["idle","Standing / idle"],["aim","Aiming"],["fire","Shooting"],
     ["reload","Reloading"],["walk","Walking"],["run","Running"],
     ["turn","Turning / pivot"],["down","Down / low profile"],
-    ["ambush","Ambush / ready"],["cover","In cover"],["pinned","Pinned / suppressed"],
+    ["ambush","Ambush / ready"],["cover","In cover"],
+    ["kneel","Kneeling / braced"],["pinned","Pinned / suppressed"],
     ["rally","Rally / recovering"],["assault","Assault / charge"],
     ["hit","Hit reaction"],["casualty","Casualty / fall"],
     ["enter","Entering building"],["exit","Exiting building"],
@@ -42,10 +43,14 @@
     }
     if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){
-      state.crouch=.84;state.lean=.30;state.forward=.12;
+      state.crouch=.84;state.lean=.24;state.forward=.08;
       state.headDuck=.14;
     }
-    if(pose==="cover")state.crouch=.39,state.lean=.22;
+    if(pose==="cover")state.crouch=.42,state.lean=.16;
+    if(pose==="kneel"){
+      state.crouch=.69;state.lean=.12;state.aim=true;
+      state.forward=.06;
+    }
     if(pose==="pinned")state.crouch=.47,
       state.roll=Math.sin(t*8)*.09,state.lean=.35;
     if(pose==="fire"){
