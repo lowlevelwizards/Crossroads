@@ -52,8 +52,11 @@
       .flatMap(u=>models(u));
     let clear=0,blocked=0,nearest=Infinity;
     for(const start of shooterModels){
-      for(const end of targetModels){
-        let obstructed=false;
+      // Each soldier fires toward a visible target model, not through every
+      // member of an enemy formation; choose the closest target base.
+      const ends=targetModels.slice().sort((a,b)=>edgeGap(start,a)-edgeGap(start,b));
+      let obstructed=true;
+      for(const end of ends){
         for(const other of friends){
           const gap=distanceToSegment(other,start,end);
           nearest=Math.min(nearest,gap.distance-(other.radius??BASE_RADIUS));
@@ -62,11 +65,11 @@
             obstructed=true;break;
           }
         }
-        if(obstructed)blocked++;
-        else clear++;
+        if(!obstructed){clear++;break}
       }
+      if(obstructed)blocked++;
     }
-    return Object.freeze({blocked:clear===0&&blocked>0,
+    return Object.freeze({blocked:blocked>0,
       clearLines:clear,blockedLines:blocked,nearestFriendlyGap:nearest});
   }
   function destinationClearance(unit,destination,allUnits,clearance=1){
