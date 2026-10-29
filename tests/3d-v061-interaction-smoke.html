@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8">
+<title>Crossroads 3D v0.6.1 interaction smoke</title>
+<style>body{font:14px/1.5 system-ui;background:#28362e;color:#efe4d0;padding:24px}</style>
+<h1>Crossroads v0.6.1 — Interaction and motion</h1>
+<pre id="result">Loading real 3D motion source…</pre>
+<script src="../src/diorama/study-motion.js?v=0.6.1"></script>
+<script>
+(async () => {
+  const checks=[],test=(name,ok)=>checks.push([name,Boolean(ok)]);
+  const motion=window.CrossroadsDioramaMotion;
+  const gaits=Array.from({length:12},(_,i)=>motion.gaitFor(0,i));
+  test("Visual gait cadence is slower",gaits.every(g=>g.stride>=5.7&&g.stride<=9.3));
+  test("Stepping amplitude is greater",gaits.every(g=>g.bob>=.084&&g.bob<=.138));
+  test("Soldiers independently finish walking",gaits.some(g=>g.pace!==gaits[0].pace));
+  test("Every soldier's progress stops at 1",gaits.every(g=>motion.progressFor(100,2,g)===1));
+  const turn=motion.makeTurn([0,.5,-.3],1.2);
+  test("Individual turn angles converge",turn.turns.every(t=>
+    Math.abs(motion.headingAt(t,1)-1.2)<.0001));
+  try{
+    const [scene,client,html]=await Promise.all([
+      "../src/diorama/scenario-scene.js","../src/diorama/battle-client.js",
+      "../battle3d.html"].map(p=>fetch(p,{cache:"no-store"}).then(r=>r.text())));
+    test("Map is the fixed camera orbit pivot",scene.includes("camera.lookAt(0,.75,0)"));
+    test("Frustum follows selection, not orbital position",scene.includes("camera.left=-h*aspect/2+horizontal"));
+    test("Only selected labels appear",scene.includes("squad===selectedSquad&&squad.unit.soldiers>0"));
+    test("Selected label follows figure each frame",scene.includes("placeUnitMarkers();"));
+    test("No idle walking bob",scene.includes("Stationary painted miniatures hold a stable physical pose"));
+    test("Used order dice hidden while walking",scene.includes("!destroyed&&!squad.moving"));
+    test("Thicker gold ring",scene.includes("RingGeometry(radius,radius+.13"));
+    test("Gold 3D movement ruler",scene.includes("const rulerMaterial=new THREE.MeshBasicMaterial"));
+    test("Action tray supports dramatic die reveal",client.includes("function revealDraw(snapshot)"));
+    test("Release loads fresh motion",html.includes("study-motion.js?v=0.6.1"));
+  }catch(err){test("Source fetch failed: "+err,false)}
+  const passed=checks.filter(row=>row[1]).length;
+  document.querySelector("#result").textContent=checks.map(row=>
+    (row[1]?"PASS ":"FAIL ")+row[0]).join("\n")+"\n"+passed+"/"+checks.length+" passed";
+  document.querySelector("#result").style.color=passed===checks.length?"#b9d9bd":"#efaaa0";
+})();
+</script>
