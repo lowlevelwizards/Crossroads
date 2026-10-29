@@ -78,7 +78,14 @@
               c.height,
               c.offsetZ+(kind==="depth-"?-c.depth:kind==="depth+"?c.depth:0)];
           const marker=new THREE.Mesh(sphere,i===contourIndex?activeMat:handleMat);
-          marker.position.set(...p);marker.renderOrder=101;
+          // The editable geometry bakes the part transform. Apply the same
+          // transform to each handle so editing remains WYSIWYG.
+          const q=new THREE.Vector3(...p);
+          const transform=doc.transform;
+          q.multiply(new THREE.Vector3(...transform.scale));
+          q.applyEuler(new THREE.Euler(...transform.rotation));
+          q.add(new THREE.Vector3(...transform.position));
+          marker.position.copy(q);marker.renderOrder=101;
           marker.userData={contour:i,kind,handle:true};
           marker.scale.setScalar(i===contourIndex?1.35:1.0);
           handles.add(marker);
