@@ -33,6 +33,7 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const soldierIK=window.Crossroads3DSoldierIK;
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
@@ -1837,10 +1838,10 @@ function initialize(THREE) {
     const helmet=mat(german?0x53625b:0x677154);
     const legs = [];
     for (const side of [-1, 1]) {
-      const leg = block(figure, .15, .39, .19, trousers, side * .125, .34, 0);
-      leg.rotation.x = side * .08;
+      const leg = block(figure, .15, .255, .19, trousers, side * .125, .42, 0);
+      const shin=block(figure,.145,.255,.18,trousers,side*.125,.27,-.02);
       const boot=block(figure, .175, .16, .26, leather, side * .125, .17, -.055);
-      legs.push({ mesh:leg, side, boot });
+      legs.push({ mesh:leg, shin, side, boot });
     }
     const breathing = new THREE.Group();
     breathing.position.set(0, .78, 0);
@@ -2181,6 +2182,7 @@ function initialize(THREE) {
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
           leg.boot.position.y=.17;leg.boot.position.z=-.055;
+          leg.shin.rotation.x=0;leg.mesh.scale.y=1;leg.shin.scale.y=1;
         }
         });
       }
@@ -2846,6 +2848,10 @@ function initialize(THREE) {
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
         }
+        if(soldier.crossingLift){
+          soldier.figure.position.y-=soldier.crossingLift;
+          soldier.crossingLift=0;
+        }
         if(isWalking||!soldier.grounded){
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
@@ -2855,6 +2861,14 @@ function initialize(THREE) {
             (isWalking?Math.min(1,dt*19):1);
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
+        }
+        if(isWalking&&soldierIK&&!reducedMotion){
+          const lift=soldierIK.crossingLift({
+            x:squad.root.position.x+soldier.figure.position.x,
+            z:squad.root.position.z+soldier.figure.position.z
+          },moving.start,moving.end,coverSegments);
+          soldier.figure.position.y+=lift;
+          soldier.crossingLift=lift;
         }
         soldier.breathing.position.y=soldier.baseY-
           (soldier.crouch||0)*.31+(soldier.entryStep||0)*.025;
@@ -2867,6 +2881,7 @@ function initialize(THREE) {
         for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
           leg.boot.position.y=.17;leg.boot.position.z=-.055;
+          leg.shin.rotation.x=0;leg.mesh.scale.y=1;leg.shin.scale.y=1;
         }
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
@@ -2900,6 +2915,22 @@ function initialize(THREE) {
           }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
+        }
+        if(soldierIK){
+          for(const leg of soldier.legs){
+            const solved=soldierIK.solve({
+              hipY:.54-(soldier.crouch||0)*.20,
+              footY:leg.boot.position.y+.07,
+              footZ:leg.boot.position.z,
+              upper:.255,lower:.255
+            });
+            for(const [part,segment] of [[leg.mesh,solved.thigh],[leg.shin,solved.shin]]){
+              part.position.y=segment.y;
+              part.position.z=segment.z;
+              part.rotation.x=segment.rotation;
+              part.scale.y=segment.length/.255;
+            }
+          }
         }
       }
       if(!isWalking&&frameIndex%18===0&&squad.orderToken.visible){

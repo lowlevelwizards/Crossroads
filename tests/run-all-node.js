@@ -21,6 +21,7 @@ const tests = [
   "3d-v095-v099.test.js",
   "3d-v100-garrison-and-arcs.test.js",
   "3d-v101-officer-and-guns.test.js",
+  "3d-v102-soldier-ik.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
