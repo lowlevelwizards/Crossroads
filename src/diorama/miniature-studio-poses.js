@@ -20,10 +20,11 @@
       pose==="deploy"||pose==="pack"?2:1.6;
   }
   function frame(pose,t,motion){
-    const q=cycle(t,duration(pose));
+    // A casualty is a one-shot transition with a persistent end pose.
+    const q=pose==="casualty"?clamp(t/duration(pose),0,1):cycle(t,duration(pose));
     const state={bob:0,lean:0,roll:0,yaw:0,crouch:0,
       leftLift:0,rightLift:0,leftReach:0,rightReach:0,
-      forward:0,gesture:0,
+      forward:0,gesture:0,aim:false,recoil:0,fall:0,headDuck:0,
       flash:false,footOffset:0};
     const walking=pose==="walk"||pose==="run"||pose==="assault"||
       pose==="enter"||pose==="exit";
@@ -39,19 +40,22 @@
       state.footOffset=Math.sin(t*3)*.025;
       if(pose==="enter"||pose==="exit")state.yaw=Math.sin(t*.9)*.18;
     }
-    if(pose==="aim"||pose==="ambush")state.lean=.10;
+    if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){
-      state.crouch=.83;state.lean=.87;state.forward=.13;
+      state.crouch=.84;state.lean=.30;state.forward=.10;
+      state.headDuck=.14;
     }
     if(pose==="cover")state.crouch=.39,state.lean=.22;
     if(pose==="pinned")state.crouch=.47,
       state.roll=Math.sin(t*8)*.09,state.lean=.35;
     if(pose==="fire"){
-      state.lean=.12+(q<.15?.20*(1-q/.15):0);
+      state.lean=.09+(q<.15?.07*(1-q/.15):0);
+      state.aim=true;state.recoil=q<.18?(1-q/.18)*.17:0;
       state.flash=q<.11;
     }
     if(pose==="reload"){
-      state.lean=.10+Math.sin(q*Math.PI)*.23;
+      state.aim=true;
+      state.lean=.08+Math.sin(q*Math.PI)*.12;
       state.yaw=Math.sin(q*Math.PI*2)*.11;
     }
     if(pose==="turn")state.yaw=t*.9;
@@ -71,8 +75,9 @@
       state.yaw=Math.sin(q*Math.PI)*.11;
     }
     if(pose==="casualty"){
-      state.roll=clamp(q*2.6,0,1)*1.25;
-      state.crouch=.2;
+      state.fall=clamp(q*1.15,0,1);
+      state.roll=state.fall*1.25; // classic-model compatibility
+      state.crouch=.28;state.lean=.22;
     }
     return state;
   }
