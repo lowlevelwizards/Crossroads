@@ -735,6 +735,7 @@ function initialize(THREE) {
   let pendingTargetId=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
+  let waypointArmed=false,stagedWaypoint=null;
   const visualEffects=[];
   const delayedMuzzleBursts=[];
   const casualtyAnimations=[];
@@ -990,6 +991,24 @@ function initialize(THREE) {
   movePreviewLine.visible=false;
   movePreviewLine.renderOrder=13;
   scene.add(movePreviewLine);
+  const waypointMarker=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.035,20),
+    new THREE.MeshBasicMaterial({color:0xd4b56a,depthTest:false}));
+  waypointMarker.visible=false;waypointMarker.renderOrder=14;scene.add(waypointMarker);
+  function clearWaypoint(){
+    stagedWaypoint=null;waypointArmed=false;
+    waypointMarker.visible=false;
+    clearMovePreview();
+  }
+  window.Crossroads3DMoveTools=Object.freeze({
+    armWaypoint(){
+      if(!battle||battle.snapshot?.phase!=="plan-movement")return false;
+      waypointArmed=true;stagedWaypoint=null;waypointMarker.visible=false;
+      clearMovePreview();
+      battle.setHint("Tap ground to place waypoint; then choose destination");
+      return true;
+    },
+    clearWaypoint(){clearWaypoint();battle?.setHint("Waypoint cleared");}
+  });
   function clearMovePreview(forgetIntent=true){
     if(forgetIntent)movementIntent.clear();
     movePreviewLine.visible=false;
@@ -1245,7 +1264,7 @@ function initialize(THREE) {
         pendingTargetId=null;
         clearFirePreview();
       }
-      if(snapshot.phase!=="plan-movement")clearMovePreview();
+      if(snapshot.phase!=="plan-movement")clearWaypoint();
       for(const stateUnit of snapshot.units || []) {
         const squad=unitLookup.get(stateUnit.id);
         if(!squad)continue;
@@ -1491,15 +1510,26 @@ function initialize(THREE) {
       // the authoritative engine will revalidate the *previewed* point.
       const destination=movementIntent.consumeIfMatch(position,Date.now());
       if(destination){
-        clearMovePreview();
+        const waypoint=stagedWaypoint;
+        clearWaypoint();
         battle.setHint("Movement confirmed — soldiers advancing");
-        void battle.send("move",{point:destination}).then(reply=>{
+        void battle.send("move",{point:destination,waypoint}).then(reply=>{
           if(reply?.ok===false)
             battle.setHint(reply.reason||"Movement blocked by the rules");
         });
         return;
       }
-      const analysis=battle.previewMove(position);
+      if(waypointArmed){
+        waypointArmed=false;
+        stagedWaypoint=position;
+        waypointMarker.position.set(groundHits[0].point.x,
+          terrainY(groundHits[0].point.x,groundHits[0].point.z)+.075,
+          groundHits[0].point.z);
+        waypointMarker.visible=true;
+        battle.setHint("Waypoint placed — tap destination to preview");
+        return;
+      }
+      const analysis=battle.previewMove(position,stagedWaypoint);
       if(!analysis.legal) {
         clearMovePreview();
         battle.setHint(analysis.reason||"Movement blocked by game rules");

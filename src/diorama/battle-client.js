@@ -294,6 +294,12 @@
       if(current.building)action(controls,"⌂  "+current.building.label,"building");
       if(current.canCancel)action(controls,"Cancel","cancel",{},"battle-secondary");
     } else if(current.phase==="plan-movement"){
+      const waypoint=node("button","battle-action battle-secondary","↱ Waypoint");
+      waypoint.type="button";waypoint.disabled=busy;
+      waypoint.addEventListener("click",()=>{
+        window.Crossroads3DMoveTools?.armWaypoint();
+      });
+      controls.append(waypoint);
       if(current.canCancel)action(controls,"Cancel movement","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
