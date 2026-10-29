@@ -39,11 +39,14 @@
       mesh.position.set(...pos);mesh.castShadow=true;parent.add(mesh);
       return mesh;
     };
-    const segment=(mesh,a,b,radius)=>{
+    const segment=(mesh,a,b)=>{
       const d=new THREE.Vector3().subVectors(b,a);
       mesh.position.copy(a).add(b).multiplyScalar(.5);
       mesh.quaternion.setFromUnitVectors(Y,d.clone().normalize());
-      mesh.scale.set(radius,d.length(),radius);
+      // Cylinder cross-sections are already authored in the geometry.
+      // Only scale the segment's longitudinal axis, so legacy movement
+      // resets cannot accidentally produce unit-radius giant limbs.
+      mesh.scale.set(1,d.length(),1);
     };
     const v=(x,y,z)=>new THREE.Vector3(x,y,z);
     function makeSoldier(squad,x,z,facing,recipe,variant,index){
@@ -70,12 +73,14 @@
       const body=new THREE.Group();figure.add(body);
       const breathing=new THREE.Group();breathing.position.y=.76;body.add(breathing);
       const pelvis=ellipsoid(breathing,trousers,[0,-.22,.005],[.27,.19,.21]);
-      const torso=ellipsoid(breathing,uniform,[0,.055,0],[.31,.33,.23]);
-      const yoke=ellipsoid(breathing,uniform,[0,.28,-.02],[.23,.09,.19]);
+      const torsoRadius=.285;
+      const torso=ellipsoid(breathing,uniform,[0,.055,0],
+        [torsoRadius,.315,.225]);
+      const yoke=ellipsoid(breathing,uniform,[0,.275,-.02],[.225,.082,.175]);
       const belt=cylinder(breathing,leather,.245,.235,.07,[0,-.205,0],14);
       // jacket hem and collar are separate, intentionally readable shapes.
       const jacketHem=ellipsoid(breathing,uniform,[0,-.18,.025],
-        [.29,.09,.225]);
+        [.268,.085,.208]);
       const collar=cylinder(breathing,uniform,.15,.18,.10,
         [0,.335,-.018],14);
       // A genuine un-dressed silhouette study, rather than a palette toggle.
@@ -124,16 +129,23 @@
       // targets. Each frame solves two segments toward the weapon's grips.
       const arms=[];
       for(const side of [-1,1]){
-        const upper=cylinder(breathing,uniform,1,1,1,[0,0,0],12);
-        const lower=cylinder(breathing,uniform,1,1,1,[0,0,0],12);
+        // Use real-world limb radii in the geometry, not unit-radius
+        // cylinders that become enormous if a pose temporarily resets scale.
+        const upper=cylinder(breathing,uniform,.086,.098,1,[0,0,0],12);
+        const lower=cylinder(breathing,uniform,.076,.084,1,[0,0,0],12);
         const hand=ellipsoid(breathing,face,[0,0,0],[.105,.085,.095]);
-        arms.push({side,upper,lower,hand,shoulder:v(side*.28,.21,-.005)});
+        const shoulder=v(side*.253,.205,-.005);
+        // Small sleeve cap makes the shoulder joint visible without a
+        // continuous inflated oval stretching across the chest.
+        ellipsoid(breathing,uniform,[side*.255,.205,-.012],
+          [.102,.105,.103]);
+        arms.push({side,upper,lower,hand,shoulder});
       }
       // The legs sit under the articulated body, not under the base.
       const legs=[];
       for(const side of [-1,1]){
-        const thigh=cylinder(body,trousers,1,1,1,[0,0,0],12);
-        const shin=cylinder(body,trousers,1,1,1,[0,0,0],12);
+        const thigh=cylinder(body,trousers,.114,.122,1,[0,0,0],12);
+        const shin=cylinder(body,trousers,.098,.108,1,[0,0,0],12);
         const boot=ellipsoid(body,leather,[side*.15,.18,-.055],
           [.133,.125,.19]);
         // ankle cuff / gaiter
@@ -253,10 +265,15 @@
         soldier.gunDeployed=!!deployed;
       };
       soldier.setGunDeployed(squad.unit.mmgDeployed??true);
+      // Expose the authored chest primitive for diagnostics and testing.
+      soldier.torso=torso;
       soldier.applyProfile=(raw={})=>{
         const p=window.Crossroads3DMiniatureProfiles?.normalize(raw)||raw;
         headGroup.scale.setScalar(p.headSize||1);
-        torso.scale.x=p.bodyWidth||1;
+        // The slider is a dimensionless multiplier. Replacing this radius
+        // with 1.00 enlarged the chest ~3.5x and made the giant oval.
+        // Always derive from the authored radius (non-cumulative).
+        torso.scale.x=torsoRadius*(p.bodyWidth||1);
         packGroup.scale.setScalar(p.packSize||1);
         for(const leg of legs)
           leg.boot.scale.set((p.bootSize||1)*.133,.125,(p.bootSize||1)*.19);
@@ -340,8 +357,8 @@
             const hip=v(side*.15,k.hip.y,k.hip.z);
             const knee=v(side*.15,k.knee.y,k.knee.z);
             const ankle=v(side*.15,k.ankle.y,k.ankle.z);
-            segment(leg.mesh,hip,knee,.122);
-            segment(leg.shin,knee,ankle,.103);
+            segment(leg.mesh,hip,knee);
+            segment(leg.shin,knee,ankle);
           }
         }
         // Re-evaluate grips in local space after every weapon motion.
@@ -355,8 +372,8 @@
           const shoulder=arm.shoulder;
           const elbow=shoulder.clone().lerp(wrist,.51);
           elbow.x+=side*.14;elbow.y-=.12;elbow.z+=.07;
-          segment(arm.upper,shoulder,elbow,.107);
-          segment(arm.lower,elbow,wrist,.092);
+          segment(arm.upper,shoulder,elbow);
+          segment(arm.lower,elbow,wrist);
           arm.hand.position.copy(wrist);
         }
         soldier.updateMuzzle();
