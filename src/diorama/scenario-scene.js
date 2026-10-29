@@ -1857,7 +1857,10 @@ function initialize(THREE) {
         console.info("[Crossroads 3D perf]",{
           frameMs:(perfDuration/perfFrames).toFixed(2),frames:perfFrames,
           groundRaycasts:groundingRaycasts,cache:footingCache.size,
-          triangleDraws:renderer.info.render.calls
+          drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,
+          squadTracks:activeMovements.size,
+          particles:visualEffects.length,queuedMuzzles:delayedMuzzleBursts.length,
+          pendingCasualties:casualtyAnimations.length
         });
         perfFrames=0;perfDuration=0;groundingRaycasts=0;perfStart=performance.now();
       }

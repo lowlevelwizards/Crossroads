@@ -211,3 +211,16 @@
   .battle-ribbon{gap:4px;flex-wrap:wrap;justify-content:center}
   .battle-ribbon .battle-audio-toggle{min-height:31px;padding:5px 7px;font-size:9px}
 }
+
+/* Dice retain their authoritative value while a fast cosmetic settling motion
+   communicates a physical tabletop roll. Reduced motion avoids animation. */
+.battle-combat-dice:not([hidden]) .battle-roll{animation:crossroads-die-settle .19s both;
+  transform-origin:center bottom}
+.battle-combat-dice:not([hidden]) .battle-roll:nth-child(2n){animation-delay:.045s}
+@keyframes crossroads-die-settle{
+  from{transform:translateY(-8px) rotate(13deg) scale(.93);opacity:.55}
+  to{transform:translateY(0) rotate(0) scale(1);opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+  .battle-combat-dice:not([hidden]) .battle-roll{animation:none}
+}
