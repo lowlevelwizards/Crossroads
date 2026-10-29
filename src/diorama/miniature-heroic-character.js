@@ -71,6 +71,22 @@
       collarLeft.rotation.z=.16;collarRight.rotation.z=-.16;
       collarLeft.rotation.x=-.17;collarRight.rotation.x=-.17;
       S.soft(uniformGroup,mat.straps,[0,.28,.014],[.105,.026,.055]);
+      // Faction-distinct tunic construction: collar, pockets and seams.
+      // Small cues are understated at battle distance, visible in the lab.
+      for(const side of [-1,1]){
+        S.box(uniformGroup,mat.uniform,
+          faction==="germany"?[.118,.109,.019]:[.128,.125,.021],
+          [side*.153,.092,-.216]);
+        S.box(uniformGroup,mat.straps,[.114,.020,.018],
+          [side*.153,.143,-.228]);
+        if(faction==="poland"){
+          S.box(uniformGroup,mat.uniform,[.116,.090,.019],
+            [side*.156,-.150,-.206]);
+        }else{
+          S.box(uniformGroup,mat.hardware,[.032,.018,.013],
+            [side*.153,.110,-.233]);
+        }
+      }
       // No separate giant spherical 'shoulder caps'. Sleeve contour meets
       // the chest; upper/lower segments form an actual bent elbow.
       const arms=[];
@@ -160,6 +176,7 @@
         ],.018,.01);
       // Historical load-bearing kit. Straps follow chest curvature; bags are
       // mounted on the body or waist instead of world-space positions.
+      // A visible, curved chest/neck transition (not a giant donut collar).
       const equipmentRoot=new THREE.Group();breathing.add(equipmentRoot);
       const packGroup=new THREE.Group();
       packGroup.position.set(0,-.010,.230);equipmentRoot.add(packGroup);
@@ -237,7 +254,7 @@
       soldier.setGunDeployed=value=>{
         armaments.setDeployed(value);soldier.gunDeployed=armaments.isDeployed();
       };
-      soldier.setGunDeployed(squad.unit.mmgDeployed??false);
+      soldier.setGunDeployed(squad.unit.mmgDeployed??true);
       soldier.updateMuzzle=()=>muzzleLocal.copy(armaments.muzzle());
       soldier.applyProfile=(raw={})=>{
         const p=window.Crossroads3DMiniatureProfiles?.normalize(raw)||raw;
@@ -249,9 +266,16 @@
         soldier.profile=p;
       };
       soldier.inspectionMode="equipped";
+      const silhouetteMat=S.material(0x303834,.96);
+      const originalMaterials=new Map();
       soldier.setInspectionMode=(mode="equipped")=>{
+        // Restore surfaces before switching from monochrome silhouette.
+        for(const [mesh,material] of originalMaterials)
+          mesh.material=material;
+        originalMaterials.clear();
         soldier.inspectionMode=mode;
-        const naked=mode==="body",equipped=mode==="equipped";
+        const naked=mode==="body",silhouette=mode==="silhouette";
+        const equipped=mode==="equipped"||silhouette;
         anatomy.visible=naked;uniformGroup.visible=!naked;
         equipmentRoot.visible=equipped;
         armaments.weapon.visible=equipped&&!armaments.isDeployed();
@@ -265,7 +289,24 @@
         for(const leg of legs){
           leg.mesh.material=naked?mat.skin:mat.trousers;
           leg.shin.material=naked?mat.skin:mat.trousers;
-          leg.boot.visible=!naked;
+          // Keep natural feet visible in the bare-body comparison.
+          leg.boot.visible=true;
+          leg.bootModel.upper.material=naked?mat.skin:mat.boots;
+          leg.bootModel.cuff.visible=!naked;
+          leg.bootModel.sole.visible=!naked;
+          leg.bootModel.heel.visible=!naked;
+        }
+        if(silhouette){
+          body.traverse(node=>{
+            if(!node.isMesh||!node.visible)return;
+            originalMaterials.set(node,node.material);
+            node.material=silhouetteMat;
+          });
+          armaments.mount.traverse(node=>{
+            if(!node.isMesh||!node.visible)return;
+            originalMaterials.set(node,node.material);
+            node.material=silhouetteMat;
+          });
         }
       };
       soldier.applyLook=(look={})=>{
@@ -286,7 +327,8 @@
         leftLift:0,rightLift:0,leftReach:0,rightReach:0,aim:false};
       soldier.applyPose=(raw={},opts={})=>{
         const pose={...poseDefaults,...raw},action=pose.action||"idle";
-        const down=action==="down",cover=action==="cover";
+        const down=action==="down",cover=action==="cover",
+          kneel=action==="kneel";
         const fall=clamp(pose.fall||0,0,1),eased=fall*fall*(3-2*fall);
         const crouch=clamp(pose.crouch||0,0,1);
         const moving=["walk","run","assault","enter","exit"].includes(action);
@@ -298,6 +340,7 @@
         breathing.rotation.set(-(pose.lean||0)*.62,0,
           (pose.roll||0)*(1-eased));
         headGroup.rotation.x=(pose.headDuck||0)+crouch*.065;
+        headGroup.rotation.z=((index%3)-1)*.033*(1-eased);
         headGroup.rotation.y=action==="turn"?.16:0;
         const fallAngle=eased*1.23;
         body.rotation.set(-eased*.14,0,-fallAngle);
@@ -317,11 +360,14 @@
           const reach=(side<0?pose.leftReach:pose.rightReach)||0;
           const stride=moving?reach:0;
           const stance=down?(side<0?-.22:.15):
-            cover?(side<0?-.15:.10):0;
+            kneel?(side<0?-.19:.23):
+            cover?(side<0?-.15:.10):
+            (!moving&&action==="idle"?(side<0?-.018:.038):0);
           const foot=leg.boot;
           foot.position.set(side*(.145+crouch*.024),
             .18+lift*(1-crouch*.3),-.045+stride+stance);
-          foot.rotation.set(0,side*(crouch*.11),0);
+          foot.rotation.set(0,side*(crouch*.11)+
+            (!moving&&action==="idle"?(index%3-1)*.07:0),0);
           const solver=window.Crossroads3DSoldierIK;
           const hipY=.586-crouch*.102;
           const k=solver?.solve({hipY,hipZ:crouch*.035,
