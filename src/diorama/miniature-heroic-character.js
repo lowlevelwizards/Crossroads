@@ -60,30 +60,31 @@
         [.5,.232,.185]
       ],[0,-.262,.009]);
       hem.scale.y=.075;uniformParts.push(hem);
-      const waist=S.loft(uniformGroup,mat.straps,"belt-ring",[
+      const garmentDetails=new THREE.Group();uniformGroup.add(garmentDetails);
+      const waist=S.loft(garmentDetails,mat.straps,"belt-ring",[
         [-.5,.246,.203],[.5,.247,.204]
       ],[0,-.212,0]);
       waist.scale.y=.058;
-      const collarLeft=S.box(uniformGroup,mat.uniform,[.154,.092,.112],
+      const collarLeft=S.box(garmentDetails,mat.uniform,[.154,.092,.112],
         [-.103,.349,-.083]);
-      const collarRight=S.box(uniformGroup,mat.uniform,[.154,.092,.112],
+      const collarRight=S.box(garmentDetails,mat.uniform,[.154,.092,.112],
         [.103,.349,-.083]);
       collarLeft.rotation.z=.16;collarRight.rotation.z=-.16;
       collarLeft.rotation.x=-.17;collarRight.rotation.x=-.17;
-      S.soft(uniformGroup,mat.straps,[0,.28,.014],[.105,.026,.055]);
+      S.soft(garmentDetails,mat.straps,[0,.28,.014],[.105,.026,.055]);
       // Faction-distinct tunic construction: collar, pockets and seams.
       // Small cues are understated at battle distance, visible in the lab.
       for(const side of [-1,1]){
-        S.box(uniformGroup,mat.uniform,
+        S.box(garmentDetails,mat.uniform,
           faction==="germany"?[.118,.109,.019]:[.128,.125,.021],
           [side*.153,.092,-.216]);
-        S.box(uniformGroup,mat.straps,[.114,.020,.018],
+        S.box(garmentDetails,mat.straps,[.114,.020,.018],
           [side*.153,.143,-.228]);
         if(faction==="poland"){
           S.box(uniformGroup,mat.uniform,[.116,.090,.019],
             [side*.156,-.150,-.206]);
         }else{
-          S.box(uniformGroup,mat.hardware,[.032,.018,.013],
+          S.box(garmentDetails,mat.hardware,[.032,.018,.013],
             [side*.153,.110,-.233]);
         }
       }
@@ -276,6 +277,13 @@
       bindPart("thigh",legs.map(a=>a.mesh));
       bindPart("shin",legs.map(a=>a.shin));
       bindPart("boot",legs.map(a=>a.bootModel.upper));
+      soldier.setMannequin=on=>{
+        garmentDetails.visible=!on;
+        hem.visible=!on;
+        equipmentRoot.visible=!on;
+        armaments.weapon.visible=!on&&!armaments.isDeployed();
+        armaments.mount.visible=!on&&armaments.isDeployed();
+      };
       soldier.editableParts=editableParts;
       soldier.workbenchPelvis=pelvis;
       squad.soldiers.push(soldier);
