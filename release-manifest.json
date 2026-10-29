@@ -61,7 +61,11 @@
     "src/diorama/weapon-presentation.js",
     "tests/3d-v080-living-infantry.test.js",
     "src/diorama/assault-motion.js",
-    "tests/3d-v081-interaction-and-firefight.test.js"
+    "tests/3d-v081-interaction-and-firefight.test.js",
+    "src/diorama/cover-positions.js",
+    "src/diorama/building-visuals.js",
+    "src/diorama/tabletop-dice.js",
+    "tests/3d-v090-living-battlefield.test.js"
   ],
-  "threeDCacheVersion": "0.8.1"
+  "threeDCacheVersion": "0.9.0"
 }
