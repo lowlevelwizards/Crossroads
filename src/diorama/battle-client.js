@@ -95,6 +95,12 @@
     diceOverlay.hidden=false;
   }
   stageListeners.add(onDiceStage);
+  const audio=window.Crossroads3DCombatAudio;
+  stageListeners.add(stage=>{
+    if(stage.type==="shooting"&&stage.phase==="fire")
+      audio?.playShooting(stage.event);
+  });
+  let audioEnabled=false;
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
   function node(tag,className,text) {
     const el=document.createElement(tag);
@@ -145,7 +151,8 @@
       objectives:current.objectives,units:current.units?.map(u=>
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
-      count:current.eventCount,hint,warning,busy,logOpen,showToast
+      count:current.eventCount,hint,warning,busy,logOpen,showToast,
+      audioEnabled
     });
     if(signature===fingerprint)return;
     signature=fingerprint;
@@ -163,6 +170,16 @@
     const dice=node("div","battle-die-bag",
       current.battleEnded?"FINAL":current.bagRemaining+" DICE");
     ribbon.append(round,score,dice);
+    const sound=node("button","battle-audio-toggle",
+      audioEnabled?"♪ ON":"♪ OFF");
+    sound.type="button";
+    sound.setAttribute("aria-label",audioEnabled?"Mute battle audio":"Enable battle audio");
+    sound.addEventListener("click",()=>{
+      audioEnabled=!audioEnabled;
+      audio?.setMuted(!audioEnabled);
+      signature="";render(state);
+    });
+    ribbon.append(sound);
     hud.append(ribbon);
     const focusedObjective=current.objectives?.find(o=>o.state&&o.state!=="none");
     if(focusedObjective){
@@ -297,6 +314,9 @@
   }
   async function send(actionName,payload={}){
     if(!session||busy)return {ok:false,reason:"Battle coordinator busy"};
+    // One of these commands is a genuine player gesture, so the audio
+    // context can be unlocked without browser autoplay workarounds.
+    if(audioEnabled)audio?.unlock();
     busy=true;warning="";hint="";signature="";render(state);
     try{
       const before=state;
