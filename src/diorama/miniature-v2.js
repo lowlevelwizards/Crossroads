@@ -13,7 +13,8 @@
     const ellipsoid=(parent,material,xyz,scale)=>{
       const mesh=new THREE.Mesh(sphere,material);
       mesh.position.set(...xyz);mesh.scale.set(...scale);
-      mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);
+      mesh.castShadow=true;mesh.receiveShadow=true;
+      mesh.userData.sharedMiniatureGeometry=true;parent.add(mesh);
       return mesh;
     };
     const box=(parent,material,size,pos)=>{
@@ -116,24 +117,25 @@
         legs.push({mesh:thigh,shin,boot,side});
       }
       // WW2 load-bearing equipment is carried by actual torso / waist nodes.
+      const equipmentRoot=new THREE.Group();breathing.add(equipmentRoot);
       const packGroup=new THREE.Group();
-      packGroup.position.set(0,.02,.255);breathing.add(packGroup);
+      packGroup.position.set(0,.02,.255);equipmentRoot.add(packGroup);
       const pack=ellipsoid(packGroup,canvas,[0,0,.05],[.22,.26,.14]);
       box(packGroup,canvas,[.37,.12,.13],[0,.16,.13]); // pack flap
       const bedroll=cylinder(packGroup,canvas,.11,.11,.39,[0,.29,.04],16);
       bedroll.rotation.z=Math.PI/2;
       for(const side of [-1,1]){
-        const strap=box(breathing,leather,[.055,.40,.035],
+        const strap=box(equipmentRoot,leather,[.055,.40,.035],
           [side*.18,.055,-.211]);strap.rotation.z=-side*.13;
         const packStrap=box(packGroup,leather,[.034,.5,.022],
           [side*.12,.02,.193]);packStrap.rotation.z=side*.09;
-        const pouch=box(breathing,leather,[.15,.15,.11],
+        const pouch=box(equipmentRoot,leather,[.15,.15,.11],
           [side*.18,-.215,-.18]);
         box(pouch,canvas,[.92,.28,1.02],[0,.42,-.02]);
       }
       cylinder(packGroup,canvas,.10,.09,.18,[.25,-.11,.04],12)
         .rotation.x=Math.PI/2; // canteen
-      const breadBag=ellipsoid(breathing,canvas,[-.285,-.16,.17],
+      const breadBag=ellipsoid(equipmentRoot,canvas,[-.285,-.16,.17],
         [.12,.16,.095]);
       const extraPack=ellipsoid(packGroup,canvas,[-.19,-.18,.08],
         [.11,.11,.12]);
@@ -194,7 +196,7 @@
       wedge.rotation.x=-Math.PI/2;firingArc.visible=false;
       // The body owns all joints and gear; the base is never a casualty child.
       const soldier={figure,body,breathing,legs,arms,headGroup,base,weapon,
-        inspectRing,windowArc:firingArc,role,
+        inspectRing,windowArc:firingArc,equipmentRoot,role,
         phase:0,recoil:0,crouch:0,baseY:.76,grounded:false,
         lastFootingFrame:-100,gait:motion.gaitFor(squad.index,index),
         slotX:x,slotZ:z,muzzleLocal,modelVersion:2,rigMarkers:unusedRig};
@@ -231,6 +233,7 @@
           look.leatherTint==="russet"?0x7e4c31:
           german?0x483a32:0x604a36);
         packGroup.visible=look.pack!=="off";
+        equipmentRoot.visible=true;
         for(const mesh of helmetParts)mesh.visible=look.helmet!=="off";
         soldier.applyProfile(look);
       };
