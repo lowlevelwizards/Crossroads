@@ -120,7 +120,12 @@
     "src/diorama/miniature-sculpt-shapes.js",
     "src/diorama/miniature-historical-weapons.js",
     "src/diorama/miniature-heroic-character.js",
-    "tests/3d-v131-sculpted-roster.test.js"
+    "tests/3d-v131-sculpted-roster.test.js",
+    "src/diorama/miniature-shape-library.js",
+    "src/diorama/miniature-shape-geometry.js",
+    "src/diorama/miniature-shape-history.js",
+    "src/diorama/miniature-workbench.js",
+    "tests/3d-v142-miniature-workbench.test.js"
   ],
-  "threeDCacheVersion": "0.9.32"
+  "threeDCacheVersion": "0.9.42"
 }
