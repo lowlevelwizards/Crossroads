@@ -579,3 +579,43 @@ cosmetic. Exact per-soldier firing allocation, each soldier's independent
 terrain/LOS measurement, building/vehicle exceptions, and fully authoritative
 physical placements are follow-on work; the current safe-fire policy may
 reject some shots where only a subset of soldiers could fire legally.
+
+
+## v0.9.4 — Physicality, replay and expanded sandbox foundations
+
+- **One physical locomotion clock:** short acceleration and braking,
+  mostly steady speed, matching per-model leg phase and vertical bob to
+  actual ground distance. No visual soldier-specific arrival delays.
+  Walking feet now smoothly follow sampled ground on every render frame.
+  This does not modify the authoritative order movement allowance.
+- **Battle reset epoch:** the coordinator increments an epoch on Play Again.
+  The scene immediately clears movement tracks, active shots, dice, hit
+  effects, casualties, selection and figure damage/pose states; it restores
+  each unit directly at its original scenario position and returns the
+  camera to the center. It never animates a reverse move.
+- **Objective fidelity:** a unit occupies a mission zone when any surviving
+  miniature base overlaps the zone, not just when its center enters.
+  Objective rings/flags indicate Polish, German, contested or neutral
+  control. Mokra's grouped crossings are rendered as separate markers.
+  The HUD explains each objective's scoring checkpoint and special rules.
+- **Every main scenario supports Solo**, including German deployment using
+  the real authoritative deployment commands; no silent automatic placement
+  in the rules state. Two new declarative scenarios, Meeting Engagement and
+  Village Holdout, exercise multi-objective round scoring and final-only
+  scoring respectively.
+- **Pre-battle overview:** scenario-specific mission, victory timing, both
+  factions' unit lists and experience before the first order die. Returns
+  after Play Again.
+- **Miniature/event readability:** stronger Down and failed order feedback,
+  Rally pins recovery, status text and distinct NCO/rifle/SMG/LMG/officer
+  equipment silhouettes.
+- **3D editor alpha:** undo/redo, duplicate, optional grid snap, validated
+  draft JSON import, local save/export. Still no automatic authoritative
+  terrain import into playable scenarios or deployment-zone editor.
+- **Army Planner alpha:** source-aware force draft, unit type, experience,
+  equipment display, local save and validated JSON import/export. It
+  intentionally has no invented book points, selector legality, or
+  deployment into battles. Full EasyArmy-like parity requires a verified,
+  appropriately licensed Third Edition army-book data set.
+- Native iPhone WebGL gesture and framerate validation, long-form AI
+  match balance tests and full per-soldier animation QA remain to be done.
