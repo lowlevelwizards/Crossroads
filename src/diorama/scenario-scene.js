@@ -1093,7 +1093,8 @@ function initialize(THREE) {
       const u=squad.unit;
       const selected=selectedSquad===squad;
       const eligible=snapshot?.phase==="choose-unit"&&
-        u.faction===snapshot.faction&&!u.activated&&u.soldiers>0;
+        u.faction===snapshot.faction&&!u.activated&&u.soldiers>0&&
+        (!snapshot.snap||snapshot.snap.eligibleIds.includes(u.id));
       const destroyed=u.soldiers<=0;
       if(squad.eligibleRing){
         squad.eligibleRing.visible=eligible&&!selected;

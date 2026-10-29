@@ -177,7 +177,7 @@
       ambushSampleStep: 0.35,
       reactionFireThreshold: 6,
       commandRadius: 6,
-      commandMoraleBonus: 1
+      commandMoraleBonus: 2
     };
 
     // Static definitions are required external data. Startup validation fails
@@ -264,6 +264,7 @@
     let round = 1;
     let scores = { blue: 0, red: 0 };
     let bag = [];
+    let snapSelection = null;
     let currentFaction = null;
     let selectedUnitId = null;
     let chosenOrder = null;
@@ -779,7 +780,7 @@
         FEATURES.movementIntegrity
           ? `Choose deployment before Round 1. Units cannot overlap or pass through units. Dense woods double movement spent inside them; ordinary woods and mud cost ×1.5. Fences, hedges, ditches, and sandbags cost +1″ to cross; walls and rail embankments cost +2″. Overlong legal paths stop at the furthest affordable point. Use Add Waypoint, then tap once to place it and once more for the destination. Shift-click remains an optional shortcut.`
           : `Movement uses the earlier direct-path prototype rules so the stage isolates its featured system.`,
-        `Officer teams project a <code>6″</code> command radius and add <code>+1 Morale</code> to nearby friendly Order Tests. Rifle squads carry rifles plus an LMG; assault squads mix rifles and SMGs; MMG teams cannot fire after an Advance.`
+        `Officer teams project a <code>6″</code> command radius and add <code>+2 Morale</code> to nearby friendly Order Tests. Snap to Action can reserve two nearby friendly orders. Rifle squads carry rifles plus an LMG; assault squads mix rifles and SMGs; MMG teams cannot fire after an Advance.`
       ];
 
       stageRules.innerHTML = ruleLines.join("<br><br>");
@@ -804,6 +805,7 @@
 
     function fillBag() {
       bag = livingUnits().map(unit => unit.faction);
+      snapSelection=null;
       shuffle(bag);
     }
 
@@ -1733,6 +1735,10 @@
         setStatus(`${unit.name} has already acted this round.`);
         return;
       }
+      if(snapSelection&&!snapEligible().some(u=>u.id===unitId)){
+        setStatus("Only ready non-officer units within 6″ of the commander can obey this Snap to Action order.");
+        return;
+      }
 
       if (switchingBeforeOrder) {
         const previousUnit = getUnit(selectedUnitId);
@@ -2591,7 +2597,59 @@
       });
     }
 
+    // Rank is platoon commander in the current scenario roster. Reserve
+    // actual order dice of this faction rather than creating free activations.
+    function snapEligible(){
+      if(!snapSelection)return [];
+      const officer=getUnit(snapSelection.officerId);
+      if(!officer||!unitIsActive(officer))return [];
+      return livingUnits().filter(unit=>unit.id!==officer.id&&
+        unit.role!=="officer"&&unit.faction===officer.faction&&
+        !unit.activated&&distanceBetweenUnits(unit,officer)<=RULES.commandRadius+.001);
+    }
+    function releaseUnusedSnap(){
+      if(!snapSelection)return;
+      for(let i=0;i<snapSelection.remaining;i++)
+        bag.push(snapSelection.faction);
+      shuffle(bag);
+      snapSelection=null;
+    }
+    function nextSnapUnit(){
+      if(!snapSelection||snapSelection.remaining<=0)return false;
+      if(!snapEligible().length){
+        releaseUnusedSnap();return false;
+      }
+      phase="choose-unit";
+      currentFaction=snapSelection.faction;
+      drawnDie.textContent="Officer · Snap to Action";
+      drawnDie.className="drawn-die "+currentFaction;
+      drawButton.disabled=true;
+      setStatus("OFFICER COMMAND · Choose a nearby friendly unit for a bonus order.",
+        snapSelection.remaining+" reserved order die/dice · within "+RULES.commandRadius+
+        "″ of the commander · normal Order Tests still apply.");
+      renderUnits();
+      return true;
+    }
+    function tryStartSnap(officer,order){
+      if(!officer||officer.role!=="officer"||!officer.activated||
+         officer.soldiers<=0||/Down|Failed/i.test(order||""))return false;
+      const available=livingUnits().filter(unit=>unit.id!==officer.id&&
+        unit.role!=="officer"&&unit.faction===officer.faction&&!unit.activated&&
+        distanceBetweenUnits(unit,officer)<=RULES.commandRadius+.001);
+      let capacity=Math.min(2,available.length,
+        bag.filter(faction=>faction===officer.faction).length);
+      if(!capacity)return false;
+      const count=capacity;
+      while(capacity--){
+        const at=bag.indexOf(officer.faction);
+        if(at>=0)bag.splice(at,1);
+      }
+      snapSelection={officerId:officer.id,faction:officer.faction,remaining:count};
+      addLog(officer.name+" · Snap to Action! "+count+" nearby orders reserved.","morale");
+      return true;
+    }
     function finishActivationState() {
+      const completing=getUnit(selectedUnitId),completedOrder=completing?.order||chosenOrder;
       clearActionOverlays();
       phase = "ready-to-draw";
       currentFaction = null;
@@ -2605,6 +2663,11 @@
       finishAdvanceButton.hidden = true;
       clearWaypointButton.hidden = true;
 
+      if(snapSelection){
+        snapSelection.remaining=Math.max(0,snapSelection.remaining-1);
+        if(snapSelection.remaining===0)releaseUnusedSnap();
+      }else tryStartSnap(completing,completedOrder);
+      if(nextSnapUnit())return;
       if (bag.length === 0 || !livingUnits().some(unit => !unit.activated)) endRound();
       else {
         drawnDie.textContent = "Order completed";
@@ -2613,6 +2676,13 @@
         setStatus(`Order completed. ${bag.length} dice remain in the bag.`);
         renderUnits();
       }
+    }
+
+    function finishActivationStateAfterSnap(){
+      phase="ready-to-draw";currentFaction=null;selectedUnitId=null;
+      chosenOrder=null;drawButton.disabled=false;
+      if(!bag.length||!livingUnits().some(u=>!u.activated))endRound();
+      else{setStatus("Officer command ended. Draw a new order die.");renderUnits()}
     }
 
     function endRound() {
@@ -4250,6 +4320,10 @@
           maxRounds:RULES.maxRounds, scores:{...scores},
           faction:currentFaction, selectedUnitId, chosenOrder,
           bagRemaining:bag.length, battleEnded,
+          snap:snapSelection?{
+            officerId:snapSelection.officerId,remaining:snapSelection.remaining,
+            eligibleIds:snapEligible().map(u=>u.id)
+          }:null,
           objectives:objectiveSnapshots().map(item=>({
             id:item.objective?.id||"",label:item.objective?.label||"Objective",
             x:item.objective?.x??null,y:item.objective?.y??null,
@@ -4299,6 +4373,8 @@
             pins:unit.pins,down:unit.down,activated:unit.activated,
             order:unit.order,ambush:unit.ambush,mmgDeployed:unit.mmgDeployed,
             inBuilding:unit.inBuilding,outcome:unit.outcome,
+            commandBonus:commandBonus(unit),
+            commandSource:commandSupport(unit)?.id||null,
             weapons:{...unit.weapons}
           }))
         };
@@ -4347,7 +4423,13 @@
       },
       async command(action,payload={}) {
         const name=String(action||"");
-        if(name==="draw")drawDie();
+        if(name==="end-snap"){
+          if(snapSelection&&phase==="choose-unit"){
+            releaseUnusedSnap();
+            finishActivationStateAfterSnap();
+          }else return {ok:false,reason:"No officer orders available",snapshot:this.snapshot()};
+        }
+        else if(name==="draw")drawDie();
         else if(name==="select")selectUnit(String(payload.id||""));
         else if(name==="order")await chooseOrder(String(payload.order||""));
         else if(name==="move"){

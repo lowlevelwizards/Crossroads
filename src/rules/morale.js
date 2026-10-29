@@ -15,7 +15,9 @@
     }
 
     function findCommandSupport(unit, candidates = []) {
-      if (!unit || unit.role === "officer") return null;
+      if (!unit)return null;
+      // The commander's own morale is also supported by their leadership.
+      if(unit.role==="officer")return unit;
       return candidates.find(other =>
         other &&
         other.faction === unit.faction &&

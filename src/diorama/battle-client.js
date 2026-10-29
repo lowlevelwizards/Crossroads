@@ -191,7 +191,7 @@
       phase:current.phase,round:current.round,bag:current.bagRemaining,
       faction:current.faction,chosen:current.selectedUnitId,
       deployment:current.deploymentUnitId,order:current.chosenOrder,
-      score:current.scores,end:current.battleEnded,
+      score:current.scores,snap:current.snap,end:current.battleEnded,
       objectives:current.objectives,units:current.units?.map(u=>
         [u.id,u.soldiers,u.pins,u.order,u.activated,u.down,u.inBuilding]),
       available:current.orders,building:current.building,reaction:current.reaction,
@@ -295,7 +295,9 @@
     }
     const guidance=({
       "ready-to-draw":"Draw a die to determine the next faction.",
-      "choose-unit":"Tap any glowing, eligible squad to activate it.",
+      "choose-unit":current.snap?
+        "OFFICER SNAP TO ACTION · Pick a nearby ready squad ("+current.snap.remaining+
+        " reserved die/dice).":"Tap any glowing, eligible squad to activate it.",
       "choose-order":"Only legal orders are shown below.",
       "plan-movement":"Tap destination, then Confirm Move; add a waypoint to bend the route.",
       "choose-target":"Tap an enemy, review its cover and shots, then Confirm Fire.",
@@ -336,6 +338,8 @@
           "   ·   Units lost: "+(bs.unitsLost||0)+" / "+(rs.unitsLost||0)));
       }
       action(controls,"↻  Play again","restart",{},"battle-primary-action");
+    } else if(current.phase==="choose-unit"&&current.snap){
+      action(controls,"END OFFICER ORDERS","end-snap",{},"battle-secondary");
     } else if(current.phase==="ready-to-draw"){
       action(controls,"◈  DRAW ORDER DIE","draw",{},"battle-primary-action");
     } else if(current.phase==="choose-order"){
