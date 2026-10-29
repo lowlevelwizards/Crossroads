@@ -1034,6 +1034,27 @@ function initialize(THREE) {
   }
   // This director listens to ACTUAL resolved engine events. The old
   // before/after guessed-effects callback is intentionally retired.
+  // Place the visual muzzle at an occupied building's visible firing facade.
+  // The actual shooting calculation and line-of-sight remain engine-owned.
+  function garrisonFiringOutlet(squad,soldier,enemyPosition){
+    const id=squad?.unit.inBuilding;
+    if(!id||!enemyPosition)return null;
+    const roof=roofMaterials.find(r=>r.ids.some(key=>String(key)===String(id)));
+    const b=roof?.bounds;
+    if(!b)return null;
+    const point=new THREE.Vector3();
+    soldier.figure.getWorldPosition(point);
+    const dx=enemyPosition.x-b.x,dz=enemyPosition.z-b.z;
+    if(Math.abs(dx)>Math.abs(dz)){
+      point.x=b.x+Math.sign(dx||1)*(b.width/2+.055);
+      point.z=clamp(point.z,b.z-b.depth/2+.21,b.z+b.depth/2-.21);
+    }else{
+      point.x=clamp(point.x,b.x-b.width/2+.21,b.x+b.width/2-.21);
+      point.z=b.z+Math.sign(dz||1)*(b.depth/2+.055);
+    }
+    point.y=terrainY(point.x,point.z)+.66;
+    return point;
+  }
   function showCombatStage(stage) {
     showPhysicalDice(stage);
     const e=stage.event;
@@ -1095,11 +1116,17 @@ function initialize(THREE) {
         spawnBriefFlash(attacker.root.position.x,.55,attacker.root.position.z,
           0xe3b36b,.19,.42);
       }
+      if(stage.phase==="dice"&&attacker){
+        const defender=unitLookup.get(e.defenderId);
+        if(defender&&assaultMotion&&!defender.assaultVisual)
+          defender.assaultVisual=assaultMotion.create(defender.root.position,
+            attacker.root.position,{defender:true});
+      }
       if(stage.phase!=="impact")return;
       beginCasualtyRemovals(unitLookup.get(e.attackerId));
       beginCasualtyRemovals(unitLookup.get(e.defenderId));
       const defender=unitLookup.get(e.defenderId);
-      if(defender&&attacker&&assaultMotion)
+      if(defender&&attacker&&assaultMotion&&!defender.assaultVisual)
         defender.assaultVisual=assaultMotion.create(defender.root.position,
           attacker.root.position,{defender:true});
       for(const id of [e.attackerId,e.defenderId]){
@@ -1152,7 +1179,8 @@ function initialize(THREE) {
         const soldier=shooter.soldiers[shot.soldierIndex];
         soldier.recoil=Math.max(soldier.recoil,shot.recoil);
         // The muzzle belongs to the actual figure and its rotated weapon.
-        const origin=soldier.breathing.localToWorld(soldier.muzzleLocal.clone());
+        const muzzle=soldier.breathing.localToWorld(soldier.muzzleLocal.clone());
+        const origin=garrisonFiringOutlet(shooter,soldier,target?.root.position)||muzzle;
         const end=target?target.root.position.clone():shooter.root.position.clone();
         end.x+=Math.sin(shot.soldierIndex*2.37)*.16;
         end.z+=Math.cos(shot.soldierIndex*1.91)*.13;
