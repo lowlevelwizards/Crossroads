@@ -2861,7 +2861,7 @@ function initialize(THREE) {
           soldier.breathing.rotation.x=-gunPose.lean;
           soldier.breathing.position.y=soldier.baseY-gunPose.crouch*.31;
         }
-        if(soldierIK){
+        if(soldierIK&&soldier.modelVersion!==3){
           for(const leg of soldier.legs){
             const solved=soldierIK.solve({
               hipY:.54-(soldier.crouch||0)*.20,
@@ -2885,6 +2885,9 @@ function initialize(THREE) {
           const right=soldier.legs.find(leg=>leg.side===1);
           const baseLift=soldier.baseY-(soldier.crouch||0)*.31;
           soldier.applyPose({
+            action:isWalking?(moving.run?"run":"walk"):
+              (squad.unit.down?"down":squad.unit.pins>0?"pinned":
+                squad.unit.mmgDeployed?"ambush":"idle"),
             crouch:soldier.crouch||0,
             lean:Math.max(0,-soldier.breathing.rotation.x),
             roll:soldier.breathing.rotation.z,
