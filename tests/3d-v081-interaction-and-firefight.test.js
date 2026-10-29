@@ -40,10 +40,10 @@ const scene=read("src/diorama/scenario-scene.js");
 const hud=read("src/diorama/battle-client.js");
 for(const term of ["movePlanner.commit()","previewWaypoint(point)",
  "positionWaypoint(point)","waypointDragId","muzzleBurst(burst)",
- "impactDust(","showOutcome(target,e)","buildingFormationSlot(",
+ "impactDust(","showOutcome(target,e)","resolveSquadFormation(",
  "battle.previewMove(request.point,request.waypoint)"])
  assert(scene.includes(term),"Missing scene interaction: "+term);
 assert(hud.includes("CONFIRM MOVE")&&hud.includes("Remove waypoint"));
-assert(read("battle3d.html").includes("3D v0.9.0"));
-assert(read("diorama.html").includes("movement-intent.js?v=0.9.0"));
+assert(read("battle3d.html").includes("3D v0.9.1"));
+assert(read("diorama.html").includes("movement-intent.js?v=0.9.1"));
 console.log("PASS — persistent routes, legal waypoint editing, target-state safety, solo tactics and firefight wiring");

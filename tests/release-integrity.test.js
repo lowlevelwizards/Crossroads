@@ -87,7 +87,8 @@ for (const htmlPath of entryPoints) {
     if (/\.(?:js|css)$/i.test(clean)) {
       assert.strictEqual(
         queryVersion(reference),
-        htmlPath==="battle3d.html"?manifest.threeDCacheVersion:manifest.cacheVersion,
+        ["battle3d.html","editor3d.html"].includes(htmlPath)?
+          manifest.threeDCacheVersion:manifest.cacheVersion,
         `${htmlPath} must use the correct cache token for ${clean}`
       );
     }
