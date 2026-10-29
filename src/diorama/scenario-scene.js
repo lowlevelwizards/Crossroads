@@ -2432,7 +2432,7 @@ function initialize(THREE) {
           squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
         if(u>=1){moving.phase="travel";moving.elapsed=0;}
       }else{
-        moving.centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        moving.centerProgress=motion.travelProgress(moving.elapsed,moving.travelDuration);
         squad.root.position.set(
           moving.start.x+(moving.end.x-moving.start.x)*moving.centerProgress,
           0,
@@ -2499,7 +2499,7 @@ function initialize(THREE) {
           }
         }
         const ownProgress=isWalking?
-          motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
+          motion.travelProgress(Math.max(0,moving.elapsed-soldier.gait.delay*.25),moving.travelDuration):1;
         const takingSteps=isWalking&&ownProgress<.999;
         if(!isWalking){
           const assault=squad.assaultVisual;
@@ -2544,7 +2544,7 @@ function initialize(THREE) {
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
         }
-        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
+        if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=1)||
             (!isWalking&&!soldier.grounded)) {
           const fx=squad.root.position.x+soldier.figure.position.x;
           const fz=squad.root.position.z+soldier.figure.position.z;
@@ -2565,12 +2565,12 @@ function initialize(THREE) {
         if(takingSteps&&!reducedMotion) {
           const totalDistance=Math.hypot(moving.end.x-moving.start.x,
             moving.end.z-moving.start.z);
-          const stride=Math.sin(ownProgress*totalDistance*15.5+
+          const stride=Math.sin(motion.stepPhase(ownProgress*totalDistance,.52)+
             soldier.phase*.45);
           const easeStop=Math.min(1,Math.max(0,(1-ownProgress)/.19));
           const settle=Math.min(1,ownProgress/.12,(1-ownProgress)/.14);
           soldier.breathing.position.y+=Math.abs(stride)*
-            (soldier.gait.bob*1.5)*Math.max(0,settle)*easeStop;
+            (soldier.gait.bob*1.1)*Math.max(0,settle)*easeStop;
           soldier.breathing.rotation.x=-.11*easeStop;
           for(const leg of soldier.legs)
             leg.mesh.rotation.x+=stride*.68*leg.side*easeStop;
