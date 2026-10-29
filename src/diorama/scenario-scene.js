@@ -1064,6 +1064,13 @@ function initialize(THREE) {
   outcomeChip.className="mini-impact-outcome";outcomeChip.hidden=true;
   markerLayer.appendChild(outcomeChip);
   let outcomeTarget=null,outcomeUntil=0;
+  function showStatus(target,message,color="neutral",duration=1650){
+    if(!target)return;
+    outcomeTarget=target;
+    outcomeChip.textContent=message;
+    outcomeChip.className="mini-impact-outcome status-"+color;
+    outcomeChip.hidden=false;outcomeUntil=performance.now()+duration;
+  }
   function showOutcome(target,event){
     const parts=[];
     if(event.saved>0)parts.push(event.saved+" COVER SAVED");
@@ -1241,16 +1248,32 @@ function initialize(THREE) {
     if(stage.type==="rally"){
       if(stage.phase==="recover"){
         const recovering=unitLookup.get(e.unitId);
-        if(recovering)spawnBriefFlash(recovering.root.position.x,.64,
-          recovering.root.position.z,0xa8cf9e,.24,.64);
+        if(recovering){
+          spawnBriefFlash(recovering.root.position.x,.64,
+            recovering.root.position.z,0xa8cf9e,.30,.70);
+          showStatus(recovering,"RALLY · "+(e.removedPins||0)+
+            " PINS REMOVED","rally");
+          recovering.soldiers.forEach(sol=>{
+            sol.crouch=0;sol.hitShock=0;
+          });
+        }
       }
       return;
     }
     if(stage.type==="order-test"){
       if(stage.phase==="impact"){
         const u=unitLookup.get(e.unitId);
-        if(u)spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
-          e.passed?0xa4c49a:0xcf876f,.16,.35);
+        if(u){
+          spawnBriefFlash(u.root.position.x,.58,u.root.position.z,
+            e.passed?0xa4c49a:0xcf876f,e.passed?.22:.36,.60);
+          showStatus(u,e.passed?
+            "ORDER PASSED · "+e.total+"/"+e.target:
+            "ORDER FAILED · DOWN",""+(e.passed?"rally":"failed"),2000);
+          if(!e.passed){
+            u.suppressionImpulse=1;
+            u.soldiers.forEach(sol=>sol.hitShock=.5);
+          }
+        }
       }
       return;
     }
@@ -1803,6 +1826,33 @@ function initialize(THREE) {
       block(breathing, .07, .08, .20, mat(0x34392e), .08, -.12, -.98);
     } else if (recipe.role === "loader") {
       block(breathing, .22, .17, .12, leather, -.20, -.19, .16);
+    }
+    // Differentiation starts with silhouettes and equipment, not labels:
+    // NCOs carry dispatch cases and rank tabs; weapon specialists carry
+    // role-appropriate ammunition and hardware.
+    if(index===0&&!officer&&recipe.role!=="mmg"&&recipe.role!=="crew"){
+      block(breathing,.22,.085,.035,mat(0xc8b476),.02,.16,-.17);
+      block(breathing,.14,.18,.23,leather,-.31,-.23,.20);
+    }
+    if(recipe.role==="rifle"){
+      block(breathing,.32,.16,.13,mat(0x796b50),.18,-.24,.22);
+      for(const n of [-1,0,1])
+        block(breathing,.055,.10,.055,mat(0xb9a16d),
+          -.29+n*.085,-.29,.02);
+    }else if(recipe.role==="smg"){
+      for(const n of [-1,0,1])
+        block(breathing,.095,.22,.065,mat(0x4e5245),
+          -.27+n*.13,-.25,.12);
+      block(breathing,.10,.07,.07,metal,.09,-.21,-.63);
+    }else if(recipe.role==="lmg"){
+      block(breathing,.27,.30,.14,mat(0x5b5747),-.24,-.23,.24);
+      for(const side of [-1,1])
+        block(breathing,.03,.27,.04,metal,.08+side*.10,-.29,-1.13)
+          .rotation.z=side*.28;
+    }else if(officer){
+      block(breathing,.24,.30,.13,leather,.28,-.12,.23);
+      block(breathing,.09,.22,.13,mat(0xb7ab82),-.24,-.05,-.18);
+      block(breathing,.26,.06,.12,mat(0x3c473b),.15,.11,.24);
     }
     // A tiny painted cartridge pouch, not another interface marker.
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
@@ -2649,7 +2699,7 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=pose.legs*leg.side;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          const crouch=(battle&&squad.unit.down)?.57:
+          const crouch=(battle&&squad.unit.down)?.69:
             Math.max(soldier.coverPose||0,
               (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
@@ -2658,7 +2708,11 @@ function initialize(THREE) {
               leg.mesh.rotation.x+=soldier.crouch*
                 (leg.side===-1?1.35:-1.15);
           }
-          soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
+          soldier.breathing.rotation.x=soldier.crouch*.85-soldier.recoil;
+          if(battle&&squad.unit.down){
+            soldier.breathing.position.y-=soldier.crouch*.10;
+            soldier.figure.rotation.z=0;
+          }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }
