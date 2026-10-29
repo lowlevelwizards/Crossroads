@@ -115,7 +115,9 @@
         if(e.coverSaveTarget!=null)row("Cover saves",e.saveRolls,e.coverSaveTarget);
         diceOverlay.append(node("div","battle-dice-result",
           e.saved+" saved · "+e.casualties+" casualties · +"+
-          e.pinDelta+" Pin"+(e.pinDelta===1?"":"s")));
+          e.pinDelta+" Pin"+(e.pinDelta===1?"":"s")+
+          (e.routed?" · ROUTED":"")+
+          (e.destroyed?" · UNIT LOST":"")));
       }
     }else if(e.type==="order-test"){
       row(e.order,e.dice,e.target,true);
