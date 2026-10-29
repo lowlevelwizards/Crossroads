@@ -17,6 +17,7 @@
     resolveShooterPoint,
     resolveTargetPoint,
     getTerrainInstance,
+    getLivingUnits=()=>[],
     analyzeIncomingPins
   }) {
     if (
@@ -189,12 +190,18 @@
       return analyzeShotAtPoint(shooter, target);
     }
 
+    const modelGeometry=window.CrossroadsModelGeometry;
     function analyzeShotAtPoint(shooter, targetPoint) {
       const shooterPoint = resolveShooterPoint(shooter, targetPoint);
       const targetContext = resolveTargetPoint(targetPoint);
       const targetUnit = targetContext.unit ?? null;
       const targetAimPoint = targetContext.point;
-      const distance = distanceBetweenPoints(shooterPoint, targetAimPoint);
+      // Infantry range is model-base edge to model-base edge; the unit's
+      // logical center is only for selection and drawing the tabletop UI.
+      const distance = modelGeometry&&targetUnit&&!shooter?.inBuilding&&
+        !targetUnit?.inBuilding?
+        modelGeometry.closestRange(shooter,targetUnit):
+        distanceBetweenPoints(shooterPoint,targetAimPoint);
       const range = weaponRange(shooter, false);
       const inRange = distance <= range + 0.001;
 
@@ -216,8 +223,13 @@
 
       const blockedByBuilding = Boolean(blockingBuilding);
       const blockedByArc = !mmgArc.insideArc;
-      const blocked = blockedByBuilding || blockedByArc;
-      const blockReason = blockedByArc
+      const friendlySafety=modelGeometry&&targetUnit?
+        modelGeometry.friendlyFire(shooter,targetUnit,getLivingUnits()):null;
+      const blockedByFriends=Boolean(friendlySafety?.blocked);
+      const blocked = blockedByBuilding || blockedByArc || blockedByFriends;
+      const blockReason = blockedByFriends
+        ? "Friendly models obstruct the firing lane or are within 1\" of it."
+        : blockedByArc
         ? "Outside the deployed MMG firing arc."
         : blockedByBuilding
           ? `The ${blockingBuilding.definition?.label ?? "building"} ` +
@@ -247,7 +259,8 @@
         cover,
         shooterPoint,
         targetPoint: targetAimPoint,
-        insideArc: mmgArc.insideArc
+        insideArc: mmgArc.insideArc,
+        friendlySafety
       });
     }
 

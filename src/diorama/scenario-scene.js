@@ -1095,13 +1095,16 @@ function initialize(THREE) {
       const u=squad.unit;
       const selected=selectedSquad===squad;
       const eligible=snapshot?.phase==="choose-unit"&&
-        u.faction===snapshot.faction&&!u.activated&&u.soldiers>0;
+        u.faction===snapshot.faction&&!u.activated&&u.soldiers>0&&
+        (!snapshot.snap||snapshot.snap.eligibleIds.includes(u.id));
       const destroyed=u.soldiers<=0;
       if(squad.eligibleRing){
         squad.eligibleRing.visible=eligible&&!selected;
         squad.eligibleRing.material.opacity=eligible?.8:0;
       }
       squad.ring.visible=selected&&!squad.moving&&!destroyed;
+      if(squad.commandAura)squad.commandAura.visible=!destroyed&&(
+        selected||snapshot?.snap?.officerId===u.id);
       if(squad.eligibleRing&&squad.alertUntil>performance.now())
         squad.eligibleRing.visible=true;
       // Used dice appear only once the soldiers have finished moving.
@@ -1123,7 +1126,8 @@ function initialize(THREE) {
       m.item.className="miniature-marker"+(selected?" selected":"")+
         (eligible?" eligible":"")+(destroyed?" destroyed":"");
       m.title.textContent=destroyed?u.name+" · LOST":
-        selected?u.name+" · "+u.soldiers+" SOLDIERS":
+        selected?u.name+" · "+u.soldiers+" SOLDIERS"+
+          (u.role==="officer"?" · +2 COMMAND":""):
         eligible?u.name+" · READY":u.name;
       m.pins.hidden=!u.pins;
       m.pins.textContent=u.pins+" PIN"+(u.pins===1?"":"S");
@@ -1471,11 +1475,43 @@ function initialize(THREE) {
     waypointMarker.position.set(at.x,terrainY(at.x,at.z)+.10,at.z);
     waypointMarker.visible=true;
   }
+  function visualEndpointClearance(squad,plan){
+    if(!squad||!plan?.path?.length)return {legal:true};
+    const end=bridge.toWorld(plan.path[plan.path.length-1]);
+    const inch=bridge.table.worldUnitsPerInch,origin=squad.root.position;
+    const proposed=resolveSquadFormation(squad,end,false,{
+      startOrigin:{x:origin.x,z:origin.z},
+      startPoints:squad.soldiers.map(sol=>({
+        x:sol.figure.position.x,z:sol.figure.position.z
+      })),
+      end,maxDistance:(plan.allowance||6)*inch,
+      forwardBudget:Math.max(0,(plan.allowance||6)-(plan.cost||0))*inch
+    });
+    const required=inch+2*.42*.37-.008;
+    for(const point of proposed.points)
+      for(const other of squads){
+        if(other===squad||other.unit.faction!==squad.unit.faction||
+          other.unit.soldiers<=0)continue;
+        for(let i=0;i<Math.min(other.unit.soldiers,other.soldiers.length);i++){
+          const model=other.soldiers[i];
+          if(!model.figure.visible||model.pendingRemoval)continue;
+          const distance=Math.hypot(
+            end.x+point.x-other.root.position.x-model.figure.position.x,
+            end.z+point.z-other.root.position.z-model.figure.position.z);
+          if(distance<required)
+            return {legal:false,reason:"A miniature would finish within 1″ "+
+              "of "+other.unit.name+". Adjust the destination."};
+        }
+      }
+    return {legal:true};
+  }
   function previewMoveDestination(point){
     const assessment=battle.previewMove(point,stagedWaypoint);
     if(!assessment.legal){
       battle.setHint(assessment.reason||"Move blocked by the rules");return false;
     }
+    const clearance=visualEndpointClearance(selectedSquad,assessment);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
     movePlanner.stageDestination(point,assessment);
     movementIntent.remember(point,Date.now());
     showMovePreview(assessment);
@@ -1491,6 +1527,8 @@ function initialize(THREE) {
     if(!assessment.legal){
       battle.setHint(assessment.reason||"Waypoint route blocked");return false;
     }
+    const clearance=visualEndpointClearance(selectedSquad,assessment);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
     if(!movePlanner.stageWaypoint(point,assessment))return false;
     stagedWaypoint=point;waypointArmed=false;
     positionWaypoint(point);showMovePreview(assessment);
@@ -1506,6 +1544,21 @@ function initialize(THREE) {
     const check=battle.previewMove(request.point,request.waypoint);
     if(!check.legal){
       battle.setHint(check.reason||"This move is no longer legal");return false;
+    }
+    const clearance=visualEndpointClearance(selectedSquad,check);
+    if(!clearance.legal){battle.setHint(clearance.reason);return false}
+    if(selectedSquad&&check.path?.length){
+      const end=bridge.toWorld(check.path[check.path.length-1]);
+      const inch=bridge.table.worldUnitsPerInch;
+      selectedSquad.lastMoveConstraints={
+        startOrigin:{x:selectedSquad.root.position.x,z:selectedSquad.root.position.z},
+        startPoints:selectedSquad.soldiers.map(sol=>({
+          x:sol.figure.position.x,z:sol.figure.position.z
+        })),
+        end,maxDistance:(check.allowance||6)*inch,
+        forwardBudget:Math.max(0,(check.allowance||6)-(check.cost||0))*inch
+      };
+      selectedSquad.formationCache=null;
     }
     clearWaypoint();
     battle.setHint("Movement confirmed — soldiers advancing");
@@ -1581,7 +1634,17 @@ function initialize(THREE) {
     ring.rotation.x=-Math.PI/2;
     ring.position.set(last.x,terrainY(last.x,last.z)+.083,last.z);
     ring.renderOrder=14;movePreviewLine.add(ring);
-    const predicted=resolveSquadFormation(selectedSquad,last,false);
+    const inch=bridge.table.worldUnitsPerInch;
+    const prediction={
+      startOrigin:{x:from.x,z:from.z},
+      startPoints:selectedSquad.soldiers.map(sol=>({
+        x:sol.figure.position.x,z:sol.figure.position.z
+      })),
+      end:{x:last.x,z:last.z},
+      maxDistance:(plan.allowance||6)*inch,
+      forwardBudget:Math.max(0,(plan.allowance||6)-(plan.cost||0))*inch
+    };
+    const predicted=resolveSquadFormation(selectedSquad,last,false,prediction);
     for(let i=0;i<predicted.points.length;i++){
       const slot=predicted.points[i];
       const x=last.x+slot.x,z=last.z+slot.z;
@@ -1752,7 +1815,7 @@ function initialize(THREE) {
   }
 
   // Shared output is used by both the ghost preview and settled soldiers.
-  function resolveSquadFormation(squad,world,allowCache=true){
+  function resolveSquadFormation(squad,world,allowCache=true,plannedMove=null){
     if(!formationLayout)return {points:squad.soldiers.map(s=>
       ({x:s.slotX,z:s.slotZ})),source:"open"};
     const cache=squad.formationCache;
@@ -1772,6 +1835,9 @@ function initialize(THREE) {
     const building=squad.unit.inBuilding;
     const roof=building?roofMaterials.find(r=>r.ids.some(id=>
       String(id)===String(building))):null;
+    const movement=plannedMove||squad.lastMoveConstraints;
+    const move=movement&&Math.hypot(world.x-movement.end.x,
+      world.z-movement.end.z)<.08?movement:null;
     const value=formationLayout.resolve({
       origin:{x:world.x,z:world.z},
       slots:squad.unit.type==="mmgTeam"?
@@ -1782,7 +1848,7 @@ function initialize(THREE) {
       living,
       segments:coverSegments,coverPositions,
       buildingBounds:roof?.bounds||null,threat,
-      cohesion:bridge.table.worldUnitsPerInch*1.85
+      cohesion:bridge.table.worldUnitsPerInch*1.85,move
     });
     if(allowCache)squad.formationCache={
       frame:frameIndex,x:world.x,z:world.z,living,
@@ -1795,12 +1861,22 @@ function initialize(THREE) {
     root.position.set(world.x,0,world.z);
     scene.add(root);
     const squad={unit,index,root,soldiers:[],moving:false,ring:null,hitBox:null,
-      coverCache:null,garrisonCache:null,formationCache:null,entrySequence:null,
+      coverCache:null,garrisonCache:null,formationCache:null,
+      lastMoveConstraints:null,entrySequence:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
     for(const slot of bridge.slotsFor(unit))
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
     const radius=unit.role==="officer"?.53:1.27;
+    if(unit.role==="officer"){
+      const r=6*bridge.table.worldUnitsPerInch;
+      const aura=shape(root,new THREE.RingGeometry(r-.04,r,72),
+        new THREE.MeshBasicMaterial({color:unit.faction==="red"?0xe7a98a:0x8ec9cf,
+          transparent:true,opacity:.42,depthWrite:false,depthTest:false,
+          side:THREE.DoubleSide}),0,.28,0);
+      aura.rotation.x=-Math.PI/2;aura.visible=false;
+      aura.castShadow=false;squad.commandAura=aura;
+    }
     const ring=shape(root,new THREE.RingGeometry(radius,radius+.13,48),
       new THREE.MeshBasicMaterial({color:0xe7c16b,
         transparent:true,opacity:.96,side:THREE.DoubleSide,
@@ -1861,6 +1937,7 @@ function initialize(THREE) {
   // When this optional mode is present, the scene only projects snapshots
   // to miniature positions/poses; it never commits logical unit mutations.
   if(battle) {
+    let lastSnapSignal=null;
     function applyAuthoritativeSnapshot(snapshot) {
       if(!snapshot)return;
       if(snapshot.phase!=="choose-target"&&snapshot.phase!=="choose-assault-target"){
@@ -1907,6 +1984,19 @@ function initialize(THREE) {
         const end=bridge.toWorld(stateUnit);
         const displacement=Math.hypot(end.x-before.x,end.z-before.z);
         if(displacement>.025) {
+          if(!squad.lastMoveConstraints||
+             Math.hypot(squad.lastMoveConstraints.end.x-end.x,
+               squad.lastMoveConstraints.end.z-end.z)>.08){
+            const allowance=(stateUnit.order==="Run"?12:6)*bridge.table.worldUnitsPerInch;
+            squad.lastMoveConstraints={
+              startOrigin:before,
+              startPoints:squad.soldiers.map(sol=>({
+                x:sol.figure.position.x,z:sol.figure.position.z
+              })),end:{x:end.x,z:end.z},maxDistance:allowance,
+              forwardBudget:Math.max(0,allowance-displacement)
+            };
+          }
+          squad.formationCache=null;
           const existing=activeMovements.get(squad.unit.id);
           // A repeated snapshot must not restart an animation already en route.
           if(!existing||Math.hypot(existing.end.x-end.x,existing.end.z-end.z)>.025) {
@@ -1926,6 +2016,18 @@ function initialize(THREE) {
       const selected=unitLookup.get(snapshot.selectedUnitId||snapshot.deploymentUnitId)||null;
       if(selectedSquad!==selected)selectSquad(selected);
       updateUnitPresentation(snapshot);
+      const signal=snapshot.snap?
+        snapshot.snap.officerId+":"+snapshot.snap.remaining:null;
+      if(signal&&signal!==lastSnapSignal){
+        const officer=unitLookup.get(snapshot.snap.officerId);
+        if(officer)spawnBriefFlash(officer.root.position.x,.75,
+          officer.root.position.z,0xe9c37b,.35,.83);
+        for(const id of snapshot.snap.eligibleIds||[]){
+          const squad=unitLookup.get(id);
+          if(squad)squad.alertUntil=performance.now()+1050;
+        }
+      }
+      lastSnapSignal=signal;
       updateBuildingRoofs(snapshot);
     }
     battle.subscribe(applyAuthoritativeSnapshot);
@@ -2058,6 +2160,16 @@ function initialize(THREE) {
     target.z=clamp(target.z+delta.z,-worldDepth/2-3,worldDepth/2+3);
     updateCamera();
   }
+  // Suppress Safari's browser double-tap zoom only over the game view.
+  canvas.addEventListener("dblclick",event=>{
+    event.preventDefault();event.stopPropagation();
+  });
+  canvas.addEventListener("touchend",event=>{
+    if(event.cancelable)event.preventDefault();
+  },{passive:false});
+  stage.addEventListener("gesturestart",event=>{
+    if(event.cancelable)event.preventDefault();
+  },{passive:false});
   canvas.addEventListener("wheel", function (event) {
     event.preventDefault();
     stopCameraFocus();

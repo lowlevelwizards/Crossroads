@@ -19,6 +19,7 @@
     segmentPointDistance,
     capitalize
   }) {
+    const modelGeometry=window.CrossroadsModelGeometry;
     function analyzeMovementPath(unit, path, order, exemptUnitId) {
       const allowance =
         order === "Run" ? rules.runDistance : rules.advanceDistance;
@@ -280,6 +281,9 @@
             continue;
           }
 
+          // Third Edition infantry can pass through friendly formations,
+          // but must not finish within 1\" of a different friendly unit.
+          if(other.faction===unit.faction)continue;
           const proximity = segmentPointDistance(start, end, other);
 
           if (
@@ -344,15 +348,17 @@
           continue;
         }
 
-        const distance = distanceBetweenPoints(destination, other);
-
-        if (distance < rules.unitSeparation - 0.001) {
+        const distance = modelGeometry?
+          modelGeometry.unitGap(unit,other,destination,other):
+          distanceBetweenPoints(destination,other);
+        const required = modelGeometry?1:rules.unitSeparation;
+        if (distance < required - 0.001) {
           return {
             blocked: true,
             reason:
               `destination would overlap ` +
               `${capitalize(other.faction)} ${other.name}; ` +
-              `maintain ${rules.unitSeparation.toFixed(1)}″ separation.`
+              `maintain ${required.toFixed(1)}″ between model bases.`
           };
         }
       }

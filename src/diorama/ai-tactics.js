@@ -25,7 +25,8 @@
     return things?.slice().sort((a,b)=>dist(origin,a)-dist(origin,b))[0]||null;
   }
   function chooseUnit(s,faction) {
-    const ready=s.units.filter(u=>u.faction===faction&&u.soldiers>0&&!u.activated);
+    const ready=s.units.filter(u=>u.faction===faction&&u.soldiers>0&&!u.activated&&
+      (!s.snap||s.snap.eligibleIds?.includes(u.id)));
     const enemies=s.units.filter(u=>u.faction!==faction&&u.soldiers>0);
     const objectives=objectivePoint(s,faction);
     const allies=s.units.filter(u=>u.faction===faction&&u.soldiers>0);

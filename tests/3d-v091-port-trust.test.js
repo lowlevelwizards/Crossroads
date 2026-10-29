@@ -34,7 +34,7 @@ d.update(.1);assert.deepEqual(stages,[],"firing waits on moving shooter");
 ready=true;d.update(.1);assert.equal(stages[0],"aim");
 const scene=read("src/diorama/scenario-scene.js"),
   hud=read("src/diorama/battle-client.js");
-for(const token of ["resolveSquadFormation(selectedSquad,last,false)",
+for(const token of ["resolveSquadFormation(selectedSquad,last,false,prediction)",
   "const formation=resolveSquadFormation(squad,squad.root.position)",
   "Crossroads3DAnimationGate","confirmTarget()","garrisonFiringOutlet(",
   "renderAuthoredScatter()","editorDraftPlace(entry)"])
@@ -43,8 +43,8 @@ for(const token of ["CONFIRM FIRE","CONFIRM ASSAULT","SCORE OBJECTIVES & CONTINU
   assert(hud.includes(token),"HUD missing "+token);
 for(const page of ["battle3d.html","diorama.html","editor3d.html"]){
   const html=read(page);
-  assert(html.includes("formation-layout.js?v=0.9.2"));
-  assert(html.includes("scenario-scene.js?v=0.9.2"));
+  assert(html.includes("formation-layout.js?v=0.9.3"));
+  assert(html.includes("scenario-scene.js?v=0.9.3"));
 }
-assert(read("editor3d.html").includes("editor3d-ui.js?v=0.9.2"));
+assert(read("editor3d.html").includes("editor3d-ui.js?v=0.9.3"));
 console.log("PASS — exact preview/live formation resolver, distance-scaled gait, shot parity, advance firing gate, targeting and editor wiring");

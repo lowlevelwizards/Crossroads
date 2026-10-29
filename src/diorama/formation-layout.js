@@ -50,8 +50,34 @@
     }
     return arr;
   }
+  function capTravel(points,origin,move){
+    if(!move?.startOrigin||!Array.isArray(move.startPoints))return points;
+    const shift={x:origin.x-move.startOrigin.x,z:origin.z-move.startOrigin.z};
+    const length=Math.hypot(shift.x,shift.z);
+    const heading=length>1e-6?{x:shift.x/length,z:shift.z/length}:{x:0,z:0};
+    return points.map((point,i)=>{
+      const start=move.startPoints[i];
+      if(!start)return point;
+      const source={x:move.startOrigin.x+start.x,z:move.startOrigin.z+start.z};
+      const translated={x:source.x+shift.x,z:source.z+shift.z};
+      const next={x:origin.x+point.x,z:origin.z+point.z};
+      const forward=(next.x-translated.x)*heading.x+
+        (next.z-translated.z)*heading.z;
+      if(forward>move.forwardBudget){
+        next.x-=heading.x*(forward-move.forwardBudget);
+        next.z-=heading.z*(forward-move.forwardBudget);
+      }
+      const dx=next.x-source.x,dz=next.z-source.z;
+      const travelled=Math.hypot(dx,dz);
+      if(travelled>move.maxDistance&&travelled>1e-6){
+        next.x=source.x+dx*move.maxDistance/travelled;
+        next.z=source.z+dz*move.maxDistance/travelled;
+      }
+      return {...point,x:next.x-origin.x,z:next.z-origin.z};
+    });
+  }
   function resolve({origin,slots,living,segments=[],coverPositions=null,
-     buildingBounds=null,threat=null,cohesion=.57}={}){
+     buildingBounds=null,threat=null,cohesion=.57,move=null}={}){
     const count=Math.max(0,Math.min(slots?.length||0,
       Number.isFinite(living)?Math.floor(living):slots?.length||0));
     const originals=(slots||[]).slice(0,count)
@@ -66,7 +92,8 @@
       });
       if(cover){points=cover.points;source="cover"}
     }
-    return Object.freeze({source,points:cohere(points,{maxNeighbor:cohesion})});
+    return Object.freeze({source,
+      points:capTravel(cohere(points,{maxNeighbor:cohesion}),origin,move)});
   }
-  window.Crossroads3DFormationLayout=Object.freeze({resolve,cohere,buildingSlots});
+  window.Crossroads3DFormationLayout=Object.freeze({resolve,cohere,buildingSlots,capTravel});
 })();
