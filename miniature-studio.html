@@ -47,6 +47,7 @@
             <option value="equipped">Fully equipped</option>
             <option value="uniform">Uniform only</option>
             <option value="body">Body / proportion study</option>
+            <option value="silhouette">Monochrome silhouette</option>
           </select>
           <p class="field-note">Switch models and hide carried gear to inspect the shared soldier silhouette.</p>
         </details>
@@ -72,6 +73,15 @@
           <button type="button" id="studioProjection" aria-pressed="false">ORTHOGRAPHIC</button>
           <button type="button" id="studioReset">RESET VIEW</button>
         </div>
+        <label for="studioFocus">Inspection framing</label>
+        <select id="studioFocus">
+          <option value="full">Full model · three-quarter</option>
+          <option value="face">Face and helmet</option>
+          <option value="torso">Sleeves and torso</option>
+          <option value="weapon">Weapon and hands</option>
+          <option value="boots">Legs and boots</option>
+          <option value="pack">Backpack and equipment</option>
+        </select>
         <label class="studio-check"><input id="studioShowJoints" type="checkbox"> Show joints &amp; rig guides</label>
         <label class="studio-check"><input id="studioWireframe" type="checkbox"> Wireframe surfaces</label>
         <p class="field-note">One finger or left drag: orbit. Two fingers or right drag: pan. Pinch or wheel: zoom. Front, side, rear and top presets work in either projection.</p>
