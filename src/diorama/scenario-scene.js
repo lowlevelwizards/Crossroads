@@ -1078,6 +1078,7 @@ function initialize(THREE) {
     if(event.pinDelta>0)parts.push("+"+event.pinDelta+" PIN");
     if(!parts.length&&event.hits>0)parts.push(event.hits+" HITS");
     outcomeChip.textContent=parts.join(" · ");
+    outcomeChip.className="mini-impact-outcome";
     outcomeChip.classList.toggle("casualty",Boolean(event.casualties));
     outcomeChip.hidden=false;
     outcomeTarget=target;outcomeUntil=performance.now()+1700;
@@ -2029,6 +2030,7 @@ function initialize(THREE) {
         });
       }
       selectSquad(null);
+      cameraFocus={x:0,z:0};focusZoom=1;
       stage.classList.remove("battle-resetting");
       // A single-frame board wipe prevents backwards interpolation while
       // the initial footprints settle to the original cover formation.

@@ -32,7 +32,8 @@
           const within=zone&&unit.x>=zone.xMin&&unit.x<=zone.xMax&&
             unit.y>=zone.yMin&&unit.y<=zone.yMax;
           if(within&&!s.deployment?.selectedId)continue;
-          await command("deploy-select",{id:unit.id});
+          if(client.snapshot?.deployment?.selectedId!==unit.id)
+            await command("deploy-select",{id:unit.id});
           const centerY=(zone.yMin+zone.yMax)/2;
           for(const yOffset of [0,-9,9,-15,15,-20,20]){
             const point={x:(zone.xMin+zone.xMax)/2,
@@ -48,7 +49,8 @@
         // invalid because of separation or terrain. Try legal positions.
         const unit=friendly.find(u=>u.id===s.deployment?.selectedId)||friendly[0];
         if(unit&&zone){
-          await command("deploy-select",{id:unit.id});
+          if(client.snapshot?.deployment?.selectedId!==unit.id)
+            await command("deploy-select",{id:unit.id});
           for(let i=0;i<18;i++){
             const point={x:zone.xMin+2+(i%3)*3.5,
               y:zone.yMin+2+Math.floor(i/3)*5.3};

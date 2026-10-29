@@ -281,3 +281,11 @@
   text-overflow:ellipsis}
 .battle-objective-detail{padding:7px 10px;border-top:1px solid #ffffff1c;
   line-height:1.4}
+
+/* High contrast world-space result labels: the log is not required. */
+.mini-impact-outcome.status-failed{border:2px solid #f19a81;
+background:#673b33f2;color:#ffe3d1;box-shadow:0 4px 24px #36120ebb}
+.mini-impact-outcome.status-rally{border:2px solid #a1d6a7;
+background:#294934f2;color:#e4f4d1;box-shadow:0 4px 24px #122e17bb}
+.battle-objective-banner{pointer-events:auto;max-width:min(520px,100%);
+text-align:center;line-height:1.35}
