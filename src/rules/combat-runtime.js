@@ -108,6 +108,7 @@
       resolveShooterPoint,
       resolveTargetPoint,
       getTerrainInstance,
+      getLivingUnits,
       analyzeIncomingPins: moraleRules.analyzeIncomingPins
     });
 
