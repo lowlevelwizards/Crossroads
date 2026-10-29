@@ -28,8 +28,13 @@ assert.equal(i.remember({x:NaN,y:5},15000),false,"invalid position rejected");
 const scene=fs.readFileSync(path.join(root,"src/diorama/scenario-scene.js"),"utf8");
 assert(scene.includes("clearMovePreview(false)"),"ruler redraw must preserve move intent");
 assert(scene.includes("movementIntent.consumeIfMatch(position,Date.now())"),"tap handler consumes staged intent");
-assert(scene.includes('battle.send("move",{point:destination})'),"commit exact previewed point");
+assert(scene.includes('battle.send("move",{point:destination,waypoint})'),
+  "commit exact previewed point with optional waypoint");
+assert(scene.includes("battle.previewMove(position,stagedWaypoint)"),
+  "waypoints must use original movement preview rules");
+assert(scene.includes("clearWaypoint();"),
+  "waypoint must be discarded after move confirmation");
 assert(scene.indexOf("movementIntent.consumeIfMatch(position,Date.now())")<
-  scene.indexOf("const analysis=battle.previewMove(position);"),
+  scene.indexOf("const analysis=battle.previewMove(position,stagedWaypoint);"),
   "confirmation must be processed before testing a potentially different second tap");
 console.log("PASS — 3D movement first tap previews, nearby second tap commits original point, expiration and cancellation reset correctly");

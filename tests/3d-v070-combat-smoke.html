@@ -11,7 +11,7 @@ const event={id:1,type:"shooting",groups:[],shots:1,hits:1,casualties:1};
 test("Event accepted",director.enqueue(event));
 test("Duplicate rejected",!director.enqueue(event));
 for(let i=0;i<100;i++)director.update(.05);
-test("Presentation phases",stages.join(",")==="aim,fire,dice,impact,settle");
+test("Presentation phases",stages.join(",")==="aim,fire,hit-dice,damage-dice,save-dice,impact,settle");
 test("Queue settles",!director.active);
 test("Solo module available",typeof Crossroads3DAIOpponent.create==="function");
 try{
