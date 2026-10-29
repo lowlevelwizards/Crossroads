@@ -15,6 +15,11 @@ d.enqueue({id:2,type:"ambush",decision:"interrupt"});
 d.enqueue({id:3,type:"round-score",blue:1,red:0});
 for(let i=0;i<50;i++)d.update(.05);
 assert.equal(reaction.join(","),"alert,settle,score,settle");
+d.reset();phases.length=0;
+assert(d.enqueue({id:1,type:"rally",unitId:"r",removedPins:2}),
+  "Restart must accept previously-used event IDs");
+for(let i=0;i<30;i++)d.update(.05);
+assert.equal(phases.join(","),"recover,settle");
 const a={};
 vm.runInNewContext(read("src/diorama/ai-tactics.js"),{window:a});
 const tactics=a.Crossroads3DAITactics;

@@ -7,7 +7,8 @@
     assault:[["charge",.35],["dice",.75],["impact",.48],["settle",.14]],
     "order-test":[["dice",.75],["impact",.32],["settle",.1]],
     ambush:[["alert",.48],["settle",.12]],
-    "round-score":[["score",.9],["settle",.15]]
+    "round-score":[["score",.9],["settle",.15]],
+    rally:[["recover",.65],["settle",.12]]
   });
   function create(onStage) {
     const queue=[],seen=new Set(),order=[];
@@ -48,7 +49,10 @@
       if(active)onStage({type:active.event.type,phase:"settle",event:active.event});
       active=null;queue.length=0;stage=-1;elapsed=0;
     }
-    return Object.freeze({enqueue,update,skip,get active(){return Boolean(active||queue.length)},get pending(){return queue.length}});
+    function reset(){
+      skip();seen.clear();order.length=0;
+    }
+    return Object.freeze({enqueue,update,skip,reset,get active(){return Boolean(active||queue.length)},get pending(){return queue.length}});
   }
   window.Crossroads3DCombatPresentation=Object.freeze({create});
 })();

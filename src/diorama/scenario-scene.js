@@ -863,6 +863,14 @@ function initialize(THREE) {
             0xe5ce78,.19,.65);
       return;
     }
+    if(stage.type==="rally"){
+      if(stage.phase==="recover"){
+        const recovering=unitLookup.get(e.unitId);
+        if(recovering)spawnBriefFlash(recovering.root.position.x,.64,
+          recovering.root.position.z,0xa8cf9e,.24,.64);
+      }
+      return;
+    }
     if(stage.type==="order-test"){
       if(stage.phase==="impact"){
         const u=unitLookup.get(e.unitId);

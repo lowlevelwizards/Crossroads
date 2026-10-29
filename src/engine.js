@@ -1921,6 +1921,8 @@
         const removedPins = unit.pins;
         await presentationEffects.playRally(unit.id);
         unit.pins = 0;
+        record3DCombatEvent("rally",{unitId:unit.id,faction:unit.faction,
+          removedPins,pinsAfter:unit.pins});
         addLog(
           `${capitalize(unit.faction)} ${unit.name} rallies and removes ${removedPins} Pin${removedPins === 1 ? "" : "s"}.`,
           "morale"
