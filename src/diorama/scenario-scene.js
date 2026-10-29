@@ -33,6 +33,7 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const soldierActions=window.Crossroads3DSoldierActions;
   const soldierIK=window.Crossroads3DSoldierIK;
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
@@ -2744,18 +2745,24 @@ function initialize(THREE) {
           const speed=motion.travelVelocity(moving.elapsed,moving.travelDuration);
           const pose=motion.gaitPose(totalDistance*ownProgress,
             soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
+          const feet=motion.plantedGait(totalDistance*ownProgress,
+            soldier.gait.stepLength,speed/1.2,soldier.gait.phase,moving.run);
           soldier.breathing.position.y+=pose.bob*soldier.gait.bob;
           soldier.breathing.rotation.x=-pose.lean;
           for(const leg of soldier.legs){
             leg.mesh.rotation.x+=pose.legs*leg.side;
-            leg.boot.position.y=.17+(leg.side===-1?pose.leftLift:pose.rightLift);
-            leg.boot.position.z=-.055+(leg.side===-1?pose.leftReach:pose.rightReach);
+            leg.boot.position.y=.17+(leg.side===-1?feet.leftLift:feet.rightLift);
+            leg.boot.position.z=-.055+(leg.side===-1?feet.leftReach:feet.rightReach);
           }
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          const crouch=(battle&&squad.unit.down)?.69:
+          const action=squad.unit.down?"down":
+            squad.unit.pins>0?"pinned":squad.unit.mmgDeployed?"ambush":"idle";
+          const sharedPose=soldierActions?.frame(action,t+soldierIndex*.08,motion);
+          const crouch=battle&&squad.unit.down?(sharedPose?.crouch??.69):
             Math.max(soldier.coverPose||0,
-              (battle&&squad.unit.pins)?Math.min(.37,squad.unit.pins*.087):0);
+              (battle&&squad.unit.pins)?Math.min(.39,
+                sharedPose?.crouch??squad.unit.pins*.087):0);
           soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
           if(!soldier.casualtyAnimating){
             for(const leg of soldier.legs)
@@ -2763,10 +2770,14 @@ function initialize(THREE) {
                 (leg.side===-1?1.35:-1.15);
           }
           // Lean into prone/Down cover rather than bending backward.
-          soldier.breathing.rotation.x=-soldier.crouch*.92-soldier.recoil;
+          soldier.breathing.rotation.x=-Math.max(soldier.crouch*.92,
+            sharedPose?.lean||0)-soldier.recoil;
           if(battle&&squad.unit.down){
             soldier.breathing.position.y-=soldier.crouch*.10;
             soldier.figure.rotation.z=0;
+          }else if(squad.unit.pins>0&&!soldier.casualtyAnimating){
+            soldier.breathing.rotation.z=(sharedPose?.roll||0)*
+              Math.min(1,squad.unit.pins/3);
           }
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
