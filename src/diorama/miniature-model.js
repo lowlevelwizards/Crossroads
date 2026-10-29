@@ -44,11 +44,13 @@
     for (const side of [-1, 1]) {
       block(breathing, .11, .38, .07, leather, side * .17, .02, -.169).rotation.z = -side * .21;
     }
-    // Arms support a weapon across the chest rather than float beside it.
+    // Arms support weapons and are individually poseable for command gestures.
+    const arms=[];
     for (const side of [-1, 1]) {
       const arm = block(breathing, .15, .42, .19, uniform, side * .28, -.04, -.115);
       arm.rotation.x = -.76;
       arm.rotation.z = side * .19;
+      arms.push({mesh:arm,side});
       shape(breathing, new THREE.SphereGeometry(.085, 8, 6), skin, side * .27, -.20, -.33);
     }
     block(breathing, .17, .15, .16, skin, 0, .37, 0);
@@ -150,6 +152,14 @@
       baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
       gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z,crouch:0});
     const soldier=squad.soldiers[squad.soldiers.length-1];
+    soldier.arms=arms;
+    soldier.applyGesture=(strength=0)=>{
+      for(const arm of arms){
+        const commanding=recipe.role==="officer"&&arm.side===1?strength:0;
+        arm.mesh.rotation.x=-.76+commanding*.83;
+        arm.mesh.rotation.z=arm.side*.19+commanding*.72;
+      }
+    };
     const issueCoat=uniform.color.getHex();
     const issuePants=trousers.color.getHex();
     const issueHelmet=helmet.color.getHex();

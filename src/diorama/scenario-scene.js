@@ -2167,6 +2167,7 @@ function initialize(THREE) {
         snapshot.snap.officerId+":"+snapshot.snap.remaining:null;
       if(signal&&signal!==lastSnapSignal){
         const officer=unitLookup.get(snapshot.snap.officerId);
+        if(officer)officer.commandGestureUntil=performance.now()+1100;
         if(officer)spawnBriefFlash(officer.root.position.x,.75,
           officer.root.position.z,0xe9c37b,.35,.83);
         for(const id of snapshot.snap.eligibleIds||[]){
@@ -2758,9 +2759,14 @@ function initialize(THREE) {
         }
         soldier.breathing.position.y=soldier.baseY-
           (soldier.crouch||0)*.31+(soldier.entryStep||0)*.025;
+        soldier.breathing.position.z=0;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.42-squad.assaultCharge)/.42*Math.PI)*.07;
         soldier.hitShock=Math.max(0,(soldier.hitShock||0)-dt*1.7);
+        const commanding=squad.commandGestureUntil?
+          Math.max(0,(squad.commandGestureUntil-performance.now())/1100):0;
+        soldier.applyGesture?.(squad.unit.role==="officer"?
+          Math.sin((1-commanding)*Math.PI)*commanding:0);
         soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
           Math.sin(soldierIndex*2.7+1)*.13+
           soldier.hitShock*Math.sin(soldierIndex*2.23+1)*.3;
@@ -2789,6 +2795,7 @@ function initialize(THREE) {
           const action=squad.unit.down?"down":
             squad.unit.pins>0?"pinned":squad.unit.mmgDeployed?"ambush":"idle";
           const sharedPose=soldierActions?.frame(action,t+soldierIndex*.08,motion);
+          soldier.breathing.position.z=-(sharedPose?.forward||0);
           const crouch=battle&&squad.unit.down?(sharedPose?.crouch??.69):
             Math.max(soldier.coverPose||0,
               (battle&&squad.unit.pins)?Math.min(.39,

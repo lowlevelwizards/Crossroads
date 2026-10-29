@@ -344,8 +344,9 @@
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);
-    torso.position.set(0,soldier.baseY-pose.crouch*.31+pose.bob,0);
+    torso.position.set(0,soldier.baseY-pose.crouch*.31+pose.bob,-pose.forward);
     torso.rotation.set(-pose.lean,0,0);
+    soldier.applyGesture?.(pose.gesture);
     for(const leg of soldier.legs){
       const side=leg.side;
       const lift=side<0?pose.leftLift:pose.rightLift;
