@@ -28,6 +28,10 @@
     return result;
   }
   function buildingSlots(origin,slots,bounds,threat){
+    const sockets=window.Crossroads3DGarrisonWindows?.slots(bounds,threat,slots.length);
+    if(sockets)return sockets.map(socket=>({
+      ...socket,x:socket.x-origin.x,z:socket.z-origin.z
+    }));
     const dx=threat?threat.x-bounds.x:1,dz=threat?threat.z-bounds.z:0;
     const faceX=Math.abs(dx)>Math.abs(dz);
     const width=Math.max(.35,(faceX?bounds.depth:bounds.width)-.58);

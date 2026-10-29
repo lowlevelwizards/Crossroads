@@ -83,7 +83,9 @@
     "tests/3d-v094-physicality-and-solo.test.js",
     "tests/3d-v094-scenario-validation.test.js",
     "src/diorama/visual-anchor.js",
-    "tests/3d-v094a-visual-anchor.test.js"
+    "tests/3d-v094a-visual-anchor.test.js",
+    "src/diorama/garrison-windows.js",
+    "tests/3d-v100-garrison-and-arcs.test.js"
   ],
   "threeDCacheVersion": "0.9.9"
 }

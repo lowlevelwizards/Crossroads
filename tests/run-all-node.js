@@ -19,6 +19,7 @@ const tests = [
   "3d-v094-scenario-validation.test.js",
   "3d-v094a-visual-anchor.test.js",
   "3d-v095-v099.test.js",
+  "3d-v100-garrison-and-arcs.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
