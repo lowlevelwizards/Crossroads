@@ -132,7 +132,7 @@
       selectedMesh=mesh||getSoldier()?.editableParts?.get(id)?.[0]||null;
       history=History.create(lib.resolve(id,"draft"));
       contourIndex=Math.floor(history.get().contours.length/2);
-      history.subscribe(()=>{preview(true)});
+      history.subscribe(()=>{preview(false)});
       preview(true);
       setStatus("Editing "+id+". Changes remain on this device until published.");
     }
@@ -347,7 +347,6 @@
       }
       try{
         history.update(lib.validate(doc));
-        preview(false);
       }catch(_){}
       event.preventDefault();return true;
     }
