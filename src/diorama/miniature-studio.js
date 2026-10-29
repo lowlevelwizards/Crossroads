@@ -117,7 +117,7 @@
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
     new THREE.MeshBasicMaterial({color,depthTest:false}));
   const joints=[];
-  for(let i=0;i<6;i++){
+  for(let i=0;i<12;i++){
     const marker=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),
       jointMaterials[i%2]);
     marker.renderOrder=100;rigMarkers.add(marker);joints.push(marker);
@@ -368,18 +368,33 @@
         recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
       if(flash)flash.visible=pose.flash;
-      // Existing joint guides remain available, augmented by arm markers.
-      const body=soldier.body;
+      // Project all rig pivots into studio world space, even during a fall.
+      // Six leg plus six arm markers identify the actual animated joints.
+      rigMarkers.position.set(0,0,0);
+      rigMarkers.rotation.set(0,0,0);
+      const markerAt=(parent,local)=>{
+        parent.updateWorldMatrix(true,false);
+        return parent.localToWorld(local.clone());
+      };
       for(let i=0;i<soldier.legs.length;i++){
         const leg=soldier.legs[i],side=leg.side;
-        joints[i*3].position.set(side*.15,.60-pose.crouch*.18,0);
-        joints[i*3+1].position.copy(leg.mesh.position);
-        joints[i*3+2].position.copy(leg.boot.position);
+        const hip=new THREE.Vector3(side*.15,.60-pose.crouch*.18,0);
+        const knee=leg.mesh.position.clone().multiplyScalar(2).sub(hip);
+        joints[i*3].position.copy(markerAt(soldier.body,hip));
+        joints[i*3+1].position.copy(markerAt(soldier.body,knee));
+        joints[i*3+2].position.copy(markerAt(soldier.body,leg.boot.position));
       }
-      rigMarkers.position.copy(soldier.figure.position);
-      rigMarkers.rotation.copy(body.rotation);
+      for(let i=0;i<soldier.arms.length;i++){
+        const arm=soldier.arms[i],shoulder=arm.shoulder;
+        const elbow=arm.upper.position.clone().multiplyScalar(2).sub(shoulder);
+        joints[6+i*3].position.copy(markerAt(soldier.breathing,shoulder));
+        joints[7+i*3].position.copy(markerAt(soldier.breathing,elbow));
+        joints[8+i*3].position.copy(markerAt(soldier.breathing,arm.hand.position));
+      }
+      for(let i=6;i<12;i++)joints[i].visible=true;
       return;
     }
+    for(let i=6;i<12;i++)joints[i].visible=false;
     const figure=soldier.figure,torso=soldier.breathing;
     figure.rotation.set(0,pose.yaw,pose.roll);
     figure.position.set(0,pose.footOffset,0);
