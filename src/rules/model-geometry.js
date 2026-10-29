@@ -57,6 +57,7 @@
       const ends=targetModels.slice().sort((a,b)=>edgeGap(start,a)-edgeGap(start,b));
       let obstructed=true;
       for(const end of ends){
+        obstructed=false;
         for(const other of friends){
           const gap=distanceToSegment(other,start,end);
           nearest=Math.min(nearest,gap.distance-(other.radius??BASE_RADIUS));
