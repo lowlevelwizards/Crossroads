@@ -273,8 +273,8 @@
       "choose-unit":"Tap any glowing, eligible squad to activate it.",
       "choose-order":"Only legal orders are shown below.",
       "plan-movement":"Tap destination, then Confirm Move; add a waypoint to bend the route.",
-      "choose-target":"Tap an enemy to inspect the shot; tap again to fire.",
-      "choose-assault-target":"Tap the target twice to confirm the assault.",
+      "choose-target":"Tap an enemy, review its cover and shots, then Confirm Fire.",
+      "choose-assault-target":"Tap an enemy, then Confirm Assault.",
       "deployment":"Tap a unit, then choose its legal deployment point.",
       "ambush-reaction":"An enemy entered a prepared firing lane.",
       "round-complete":"Review the result before advancing.",
@@ -345,6 +345,12 @@
       reset.addEventListener("click",()=>tools?.reset?.());controls.append(reset);
       if(current.canCancel)action(controls,"Cancel order","cancel",{},"battle-secondary");
     } else if(["choose-target","choose-assault-target"].includes(current.phase)){
+      const target=window.Crossroads3DTargetTools?.getState?.()||{};
+      const confirm=node("button","battle-action battle-primary-action battle-confirm-target",
+        current.phase==="choose-assault-target"?"✓ CONFIRM ASSAULT":"✓ CONFIRM FIRE");
+      confirm.type="button";confirm.disabled=busy||!target.legal;
+      confirm.addEventListener("click",()=>window.Crossroads3DTargetTools?.confirmTarget?.());
+      controls.append(confirm);
       if(current.chosenOrder==="Advance")action(controls,"Finish Advance","finish-advance");
       if(current.canCancel)action(controls,"Cancel target","cancel",{},"battle-secondary");
     } else if(current.phase==="round-complete"){

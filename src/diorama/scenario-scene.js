@@ -757,7 +757,7 @@ function initialize(THREE) {
       return !squad||(!squad.moving&&!activeMovements.get(event.shooterId));
     }
   });
-  let pendingTargetId=null;
+  let pendingTargetId=null,pendingTargetAssessment=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
   const movePlanner=window.Crossroads3DMovementIntent.createPlanner();
@@ -840,8 +840,8 @@ function initialize(THREE) {
   }
   // Small shared visual budgets protect mobile WebGL when a whole squad fires.
   const MAX_PARTICLES=84;
-  function scheduleFire(origin,target,role="rifle",index=0){
-    delayedMuzzleBursts.push({origin,target,role,
+  function scheduleFire(origin,target,role="rifle",index=0,soldier=null,recoil=.18){
+    delayedMuzzleBursts.push({origin,target,role,soldier,recoil,
       heavy:role==="lmg"||role==="mmg",delay:index*.052});
   }
   function addShotEffect(geometry,color,x,y,z,duration,extra={}){
@@ -1185,7 +1185,7 @@ function initialize(THREE) {
       shooter.root.updateMatrixWorld(true);
       for(const shot of firing){
         const soldier=shooter.soldiers[shot.soldierIndex];
-        soldier.recoil=Math.max(soldier.recoil,shot.recoil);
+        // Each shot's recoil is applied when its flash is actually emitted.
         // The muzzle belongs to the actual figure and its rotated weapon.
         const muzzle=soldier.breathing.localToWorld(soldier.muzzleLocal.clone());
         const origin=garrisonFiringOutlet(shooter,soldier,target?.root.position)||muzzle;
@@ -1193,7 +1193,7 @@ function initialize(THREE) {
         end.x+=Math.sin(shot.soldierIndex*2.37)*.16;
         end.z+=Math.cos(shot.soldierIndex*1.91)*.13;
         end.y=terrainY(end.x,end.z)+.53;
-        scheduleFire(origin,end,shot.role,shot.delay/.052);
+        scheduleFire(origin,end,shot.role,shot.delay/.052,soldier,shot.recoil);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
@@ -1235,7 +1235,8 @@ function initialize(THREE) {
   markerLayer.appendChild(fireTag);
   let previewUnit=null;
   function clearFirePreview(){
-    previewUnit=null;fireTag.hidden=true;
+    previewUnit=null;pendingTargetAssessment=null;pendingTargetId=null;
+    fireTag.hidden=true;
     firePreview.visible=false;
     for(const m of [...firePreview.children]){
       firePreview.remove(m);m.geometry.dispose();m.material.dispose();
@@ -1245,6 +1246,7 @@ function initialize(THREE) {
     clearFirePreview();
     if(!selectedSquad)return;
     previewUnit=squad;
+    pendingTargetId=squad.unit.id;pendingTargetAssessment=assessment;
     const groupInfo=(assessment.weapons||[]).map(g=>
       (g.shots||0)+" "+(g.label||g.key||"shots")).join(" · ");
     const distanceText=Number.isFinite(assessment.distance)?
@@ -1274,12 +1276,34 @@ function initialize(THREE) {
       line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
       line.renderOrder=14;firePreview.add(line);
     }
-    const circle=new THREE.Mesh(new THREE.RingGeometry(.29,.41,28),material.clone());
+    const r=squad.unit.role==="officer"?.49:.98;
+    const circle=new THREE.Mesh(new THREE.RingGeometry(r,r+.18,44),material.clone());
     circle.rotation.x=-Math.PI/2;
     circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
     circle.renderOrder=14;firePreview.add(circle);
     firePreview.visible=true;
   }
+  function confirmTarget(){
+    if(!battle||!["choose-target","choose-assault-target"].includes(battle.snapshot?.phase)||
+       !pendingTargetId)return false;
+    const id=pendingTargetId;
+    const assessment=battle.previewTarget(id);
+    if(!assessment.legal){
+      battle.setHint(assessment.reason||"Target no longer legal");
+      const squad=unitLookup.get(id);
+      if(squad)showFirePreview(squad,assessment);
+      return false;
+    }
+    clearFirePreview();
+    void battle.send("target",{id}).then(reply=>{
+      if(reply?.ok===false)battle.setHint(reply.reason||"Target rejected");
+    });
+    return true;
+  }
+  window.Crossroads3DTargetTools=Object.freeze({
+    getState(){return {id:pendingTargetId,legal:Boolean(pendingTargetAssessment?.legal)}},
+    confirmTarget,reset:clearFirePreview
+  });
   const movePreviewLine=new THREE.Group();
   const rulerMaterial=new THREE.MeshBasicMaterial({
     color:0xe7c16b,transparent:true,opacity:.95,depthTest:false
@@ -1897,27 +1921,11 @@ function initialize(THREE) {
         const phase=battle.snapshot?.phase;
         if(phase==="choose-target"||phase==="choose-assault-target") {
           const assessment=battle.previewTarget(pickedSquad.unit.id);
-          const now=Date.now();
-          if(assessment.legal&&pendingTargetId===pickedSquad.unit.id&&now-lastTargetTap<8000) {
-            clearFirePreview();
-            pendingTargetId=null;
-            void battle.send("target",{id:pickedSquad.unit.id});
-          } else {
-            showFirePreview(pickedSquad,assessment);
-            pendingTargetId=pickedSquad.unit.id;
-            lastTargetTap=now;
-            const cover=assessment.cover?.saveTarget!=null
-              ? (assessment.cover.label||"Cover")+" · "+assessment.cover.saveTarget+"+ save"
-              : "No cover save";
-            const weapons=(assessment.weapons||[]).map(g=>
-              g.shots+" "+g.label+(g.hitTarget?" ("+g.hitTarget+"+ hit)":"")
-            ).join(" · ");
-            const range=Number.isFinite(assessment.distance)
-              ? assessment.distance.toFixed(1)+"″ · ":"";
-            battle.setHint(assessment.legal
-              ? range+(weapons?weapons+" · ":"")+cover+" · Tap again to fire"
-              : assessment.reason||"Target obstructed");
-          }
+          showFirePreview(pickedSquad,assessment);
+          const weapons=(assessment.weapons||[]).map(g=>g.shots+" "+g.label).join(" · ");
+          battle.setHint(assessment.legal?
+            (weapons?weapons+" · ":"")+(assessment.cover?.label||"Open ground")+
+            " · Confirm Fire/Assault":assessment.reason||"Target blocked");
         }
         else if(phase==="deployment")
           void battle.send("deploy-select",{id:pickedSquad.unit.id});
@@ -2154,6 +2162,13 @@ function initialize(THREE) {
       }else if(squad.ring.scale.x!==1)squad.ring.scale.setScalar(1);
       for(let soldierIndex=0;soldierIndex<squad.soldiers.length;soldierIndex++){
         const soldier=squad.soldiers[soldierIndex];
+        const selection=squad.selectionPulse||0;
+        const wiggle=selection>0?
+          Math.sin((1-selection)*Math.PI*4+soldierIndex*.4)*
+          Math.sin((1-selection)*Math.PI)*.045:0;
+        soldier.figure.scale.setScalar(MINIATURE_SCALE*
+          (1+(selection>0?Math.sin((1-selection)*Math.PI)*.095:0)));
+        if(!soldier.casualtyAnimating)soldier.figure.rotation.z=wiggle;
         if(Number.isFinite(soldier.aimTarget)&&!isWalking){
           if(soldier.aimDelay>0)soldier.aimDelay-=dt;
           else{
@@ -2267,6 +2282,8 @@ function initialize(THREE) {
       const burst=delayedMuzzleBursts[i];
       burst.delay-=dt;
       if(burst.delay>0)continue;
+      if(burst.soldier)burst.soldier.recoil=Math.max(
+        burst.soldier.recoil||0,burst.recoil);
       muzzleBurst(burst);
       delayedMuzzleBursts.splice(i,1);
     }
