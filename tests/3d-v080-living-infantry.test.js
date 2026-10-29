@@ -4,7 +4,8 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const read=p=>fs.readFileSync(path.join(__dirname,"..",p),"utf8");
 const w={};
-for(const p of ["src/diorama/squad-motion.js","src/diorama/weapon-presentation.js",
+for(const p of ["src/diorama/squad-motion.js","src/diorama/assault-motion.js",
+  "src/diorama/weapon-presentation.js",
   "src/diorama/combat-presentation.js"])
   vm.runInNewContext(read(p),{window:w},{filename:p});
 const tracks=w.Crossroads3DSquadMotion.createTracks();
@@ -19,6 +20,10 @@ for(const id of [0,1,2]){
 }
 assert(w.Crossroads3DSquadMotion.movementFinished({phase:"travel",elapsed:2,finishTime:1}));
 assert(!w.Crossroads3DSquadMotion.movementFinished({phase:"turn",elapsed:2,finishTime:1}));
+const gesture=w.Crossroads3DAssaultMotion.create({x:0,z:0},{x:1,z:0});
+assert.equal(w.Crossroads3DAssaultMotion.displacement(gesture),0);
+gesture.age=.6;assert(w.Crossroads3DAssaultMotion.displacement(gesture)>0);
+gesture.age=2;assert.equal(w.Crossroads3DAssaultMotion.displacement(gesture),0);
 const weapons=w.Crossroads3DWeaponPresentation;
 assert.equal(weapons.roleFor("light machine gun"),"lmg");
 const roster=[{role:"rifle"},{role:"lmg"},{role:"loader"},{role:"smg"},{role:"mmg"},{role:"crew"}];
@@ -41,5 +46,6 @@ assert(scene.includes("weaponPresentation?.schedule"),"Role-based shot presentat
 assert(scene.includes("previewUnit"),"Contextual targeting attached to selected target");
 assert(scene.includes("movementIntent.consumeIfMatch(position,Date.now())"),"Exact two-tap confirmation intact");
 assert(read("battle3d.html").includes("src/diorama/squad-motion.js"));
+assert(read("battle3d.html").includes("src/diorama/assault-motion.js"));
 assert(read("battle3d.html").includes("src/diorama/weapon-presentation.js"));
 console.log("PASS — independent squad tracks, final positions, role-specific shots, combat speed/skip and input wiring");

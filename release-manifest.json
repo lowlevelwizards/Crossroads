@@ -59,7 +59,8 @@
     "battle3d-v071.html",
     "src/diorama/squad-motion.js",
     "src/diorama/weapon-presentation.js",
-    "tests/3d-v080-living-infantry.test.js"
+    "tests/3d-v080-living-infantry.test.js",
+    "src/diorama/assault-motion.js"
   ],
   "threeDCacheVersion": "0.8.0"
 }

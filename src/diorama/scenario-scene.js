@@ -33,6 +33,7 @@ function initialize(THREE) {
   const motion = window.CrossroadsDioramaMotion;
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
+  const assaultMotion=window.Crossroads3DAssaultMotion;
   if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
@@ -277,7 +278,7 @@ function initialize(THREE) {
     scene.add(token);
     roofMaterials.push({
       ids:[entry.id,entry.terrainId].filter(Boolean),
-      material,occupied:false,token
+      material,occupied:false,focused:false,token
     });
   }
   function updateBuildingRoofs(snapshot) {
@@ -290,10 +291,12 @@ function initialize(THREE) {
       roof.token.visible=inside;
       if(inside)roof.token.material.color.setHex(units[0].faction==="red"?
         0xd68f71:0x8ac1cc);
-      if(inside===roof.occupied)continue;
-      roof.occupied=inside;
+      const focused=inside&&units.some(u=>u.id===snapshot.selectedUnitId);
+      roof.token.scale.setScalar(focused?1.22:1);
+      if(inside===roof.occupied&&focused===roof.focused)continue;
+      roof.occupied=inside;roof.focused=focused;
       roof.material.transparent=inside;
-      roof.material.opacity=inside?.22:1;
+      roof.material.opacity=inside?(focused?.09:.22):1;
       roof.material.depthWrite=!inside;
       roof.material.needsUpdate=true;
     }
@@ -898,12 +901,20 @@ function initialize(THREE) {
       const attacker=unitLookup.get(e.attackerId);
       if(stage.phase==="charge"&&attacker){
         attacker.assaultCharge=.30;
+        const defender=unitLookup.get(e.defenderId);
+        if(defender&&assaultMotion)
+          attacker.assaultVisual=assaultMotion.create(attacker.root.position,
+            defender.root.position);
         spawnBriefFlash(attacker.root.position.x,.55,attacker.root.position.z,
           0xe3b36b,.19,.42);
       }
       if(stage.phase!=="impact")return;
       beginCasualtyRemovals(unitLookup.get(e.attackerId));
       beginCasualtyRemovals(unitLookup.get(e.defenderId));
+      const defender=unitLookup.get(e.defenderId);
+      if(defender&&attacker&&assaultMotion)
+        defender.assaultVisual=assaultMotion.create(defender.root.position,
+          attacker.root.position,{defender:true});
       for(const id of [e.attackerId,e.defenderId]){
         const squad=unitLookup.get(id);
         if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
@@ -1726,6 +1737,11 @@ function initialize(THREE) {
         squad.eligibleRing.visible=false;
       }
       if(squad.assaultCharge>0)squad.assaultCharge=Math.max(0,squad.assaultCharge-dt);
+      if(squad.assaultVisual){
+        squad.assaultVisual.age+=dt;
+        if(squad.assaultVisual.age>=squad.assaultVisual.duration)
+          squad.assaultVisual=null;
+      }
       if(squad.suppressionImpulse>0)
         squad.suppressionImpulse=Math.max(0,squad.suppressionImpulse-dt*2);
       if(squad.selectionPulse>0){
@@ -1746,6 +1762,14 @@ function initialize(THREE) {
         const ownProgress=isWalking?
           motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
         const takingSteps=isWalking&&ownProgress<.999;
+        if(!isWalking){
+          const displacement=squad.assaultVisual&&assaultMotion?
+            assaultMotion.displacement(squad.assaultVisual):0;
+          soldier.figure.position.x=soldier.slotX+
+            (squad.assaultVisual?.dx||0)*displacement;
+          soldier.figure.position.z=soldier.slotZ+
+            (squad.assaultVisual?.dz||0)*displacement;
+        }
         if(isWalking) {
           const delta=ownProgress-moving.centerProgress;
           const dx=moving.end.x-moving.start.x,dz=moving.end.z-moving.start.z;
