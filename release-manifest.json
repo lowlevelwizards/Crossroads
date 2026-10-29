@@ -81,7 +81,9 @@
     "army3d.html",
     "src/army/army-planner.js",
     "tests/3d-v094-physicality-and-solo.test.js",
-    "tests/3d-v094-scenario-validation.test.js"
+    "tests/3d-v094-scenario-validation.test.js",
+    "src/diorama/visual-anchor.js",
+    "tests/3d-v094a-visual-anchor.test.js"
   ],
-  "threeDCacheVersion": "0.9.4"
+  "threeDCacheVersion": "0.9.4a"
 }
