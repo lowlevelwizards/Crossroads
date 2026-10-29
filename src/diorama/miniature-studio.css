@@ -49,3 +49,11 @@ button,select,input{font:inherit}button,select{cursor:pointer}
 .studio-check{display:flex!important;align-items:center;gap:8px;cursor:pointer}
 .studio-check input{accent-color:#546d5d;width:16px;height:16px}
 .studio-section input[type="range"]{touch-action:pan-y}
+
+/* Comparison controls stay tucked away until the miniature is being judged. */
+.studio-comparison{margin-top:12px;padding:10px 11px;border:1px solid #d8ddd7;border-radius:7px;background:#f1f3ef}
+.studio-comparison summary{cursor:pointer;color:#63756a;font-size:10px;font-weight:850;letter-spacing:.10em;list-style:none}
+.studio-comparison summary::after{content:" +";float:right}
+.studio-comparison[open] summary::after{content:" −"}
+.studio-comparison select{width:100%;min-height:38px;margin-top:3px}
+.studio-comparison .studio-check{margin:10px 0}
