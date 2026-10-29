@@ -87,8 +87,8 @@ for (const htmlPath of entryPoints) {
     if (/\.(?:js|css)$/i.test(clean)) {
       assert.strictEqual(
         queryVersion(reference),
-        manifest.cacheVersion,
-        `${htmlPath} must use cache token v=${manifest.cacheVersion} for ${clean}`
+        htmlPath==="battle3d.html"?manifest.threeDCacheVersion:manifest.cacheVersion,
+        `${htmlPath} must use the correct cache token for ${clean}`
       );
     }
   }
@@ -147,6 +147,8 @@ assert(battleDoor.includes("src/diorama/scenario-scene.js"), "Battle page must l
 assert(battleDoor.includes("src/diorama/combat-presentation.js"), "Battle must load the structured combat presentation");
 assert(battleDoor.includes("src/diorama/movement-intent.js"), "The 3D battle must load its movement confirmation state");
 assertOrdered("battle3d.html", "src/diorama/movement-intent.js", "src/diorama/scenario-scene.js");
+assertOrdered("battle3d.html", "src/diorama/squad-motion.js", "src/diorama/scenario-scene.js");
+assertOrdered("battle3d.html", "src/diorama/weapon-presentation.js", "src/diorama/scenario-scene.js");
 assertOrdered("battle3d.html", "src/diorama/combat-presentation.js", "src/diorama/battle-client.js");
 assertOrdered("battle3d.html", "src/diorama/ai-tactics.js", "src/diorama/ai-opponent.js");
 assertOrdered("battle3d.html", "src/diorama/ai-opponent.js", "src/diorama/battle-client.js");

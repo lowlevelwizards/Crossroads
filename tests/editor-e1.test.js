@@ -118,15 +118,16 @@ assert(badIssues.some(item => item.code === "unknown-terrain"), "unknown terrain
 assert(badIssues.some(item => item.code === "unit-zone"), "deployment-zone violations must be reported");
 
 const editorHtml = fs.readFileSync(path.join(root, "editor.html"), "utf8");
-const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+// Editor playtest and 2D editor entry live in the preserved classic client.
+const classicHtml = fs.readFileSync(path.join(root, "classic.html"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src/editor/editor.js"), "utf8");
 const persistenceSource = fs.readFileSync(path.join(root, "src/editor/editor-persistence.js"), "utf8");
 assert(editorHtml.includes("src/editor/editor-document.js"), "editor document model must load before editor controller");
 assert(editorHtml.includes("src/editor/editor-validation.js"), "editor validation must load before editor controller");
-assert(indexHtml.includes("data/editor-playtest.js"), "battle runtime must load the optional editor bridge");
-assert(indexHtml.includes("TERRAIN EDITOR"), "main menu must expose the internal editor");
-assert(indexHtml.includes("CrossroadsFlow.openEditor"), "main menu editor action must use the shared flow boundary");
-assert(indexHtml.includes("restoreScenarioFromUrl"), "game must restore the edited scenario when returning from the editor");
+assert(classicHtml.includes("data/editor-playtest.js"), "battle runtime must load the optional editor bridge");
+assert(classicHtml.includes("TERRAIN EDITOR"), "main menu must expose the internal editor");
+assert(classicHtml.includes("CrossroadsFlow.openEditor"), "main menu editor action must use the shared flow boundary");
+assert(classicHtml.includes("restoreScenarioFromUrl"), "game must restore the edited scenario when returning from the editor");
 assert(editorHtml.includes("src/editor/editor-persistence.js"), "editor must load persistence before the coordinator");
 assert(persistenceSource.includes("requestedScenarioId"), "editor persistence must resolve a scenario from the live-game launch URL");
 assert(persistenceSource.includes("crossroads.editor.lastScenario"), "editor persistence must remember the last scenario edited");

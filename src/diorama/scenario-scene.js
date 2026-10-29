@@ -31,6 +31,10 @@ function initialize(THREE) {
   const layout=scenarioAdapter.loadScenario(requestedScenario);
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
+  const squadMotion=window.Crossroads3DSquadMotion;
+  const weaponPresentation=window.Crossroads3DWeaponPresentation;
+  const assaultMotion=window.Crossroads3DAssaultMotion;
+  if(!squadMotion)throw new Error("3D squad motion helper missing");
   const gestures = window.CrossroadsDioramaGestures;
   if (!gestures) throw new Error("Crossroads 3D touch gestures were not loaded.");
   if (!motion) throw new Error("Crossroads 3D motion helpers were not loaded.");
@@ -134,8 +138,8 @@ function initialize(THREE) {
   for (const x of [-(worldWidth + .15) / 2, (worldWidth + .15) / 2]) {
     block(scene, 0.09, 0.14, worldDepth + .15, mat(0x926847), x, -0.28, 0);
   }
-  for (const x of [-9.8, 9.8]) {
-    for (const z of [-6.65, 6.65]) {
+  for(const x of [-worldWidth/2+.99,worldWidth/2-.99]){
+    for(const z of [-worldDepth/2+.55,worldDepth/2-.55]){
       shape(scene, new THREE.CylinderGeometry(0.09, 0.09, 0.045, 8), mat(0xb19b76, 0.22), x, 0.09, z);
     }
   }
@@ -157,8 +161,8 @@ function initialize(THREE) {
   // Tonal field patches: no repeating photo texture, no noisy realism.
   const patchColors = [0x6b7c50, 0x87915d, 0x708052, 0x8e9565];
   for (let i = 0; i < 27; i++) {
-    const x = between(-9.4, 9.4);
-    const z = between(-6.5, 6.5);
+    const x=between(-worldWidth/2+.7,worldWidth/2-.7);
+    const z=between(-worldDepth/2+.6,worldDepth/2-.6);
     const patch = shape(scene, new THREE.CircleGeometry(1, 11), mat(patchColors[i % patchColors.length]), x, terrainY(x, z) + 0.028, z);
     patch.rotation.x = -Math.PI / 2;
     patch.scale.set(between(0.65, 2.4), between(0.48, 1.7), 1);
@@ -274,7 +278,7 @@ function initialize(THREE) {
     scene.add(token);
     roofMaterials.push({
       ids:[entry.id,entry.terrainId].filter(Boolean),
-      material,occupied:false,token
+      material,occupied:false,focused:false,token
     });
   }
   function updateBuildingRoofs(snapshot) {
@@ -287,10 +291,12 @@ function initialize(THREE) {
       roof.token.visible=inside;
       if(inside)roof.token.material.color.setHex(units[0].faction==="red"?
         0xd68f71:0x8ac1cc);
-      if(inside===roof.occupied)continue;
-      roof.occupied=inside;
+      const focused=inside&&units.some(u=>u.id===snapshot.selectedUnitId);
+      roof.token.scale.setScalar(focused?1.22:1);
+      if(inside===roof.occupied&&focused===roof.focused)continue;
+      roof.occupied=inside;roof.focused=focused;
       roof.material.transparent=inside;
-      roof.material.opacity=inside?.22:1;
+      roof.material.opacity=inside?(focused?.09:.22):1;
       roof.material.depthWrite=!inside;
       roof.material.needsUpdate=true;
     }
@@ -731,7 +737,7 @@ function initialize(THREE) {
   const hitBoxes=[];
   const getLivingUnits=()=>units;
   let selectedSquad=null;
-  let activeMovement=null;
+  const activeMovements=squadMotion.createTracks();
   let pendingTargetId=null;
   let lastTargetTap=0;
   const movementIntent=window.Crossroads3DMovementIntent.create();
@@ -831,6 +837,17 @@ function initialize(THREE) {
       marker.style.left=x.toFixed(1)+"px";
       marker.style.top=y.toFixed(1)+"px";
     }
+    if(previewUnit){
+      const pos=previewUnit.root.position;
+      const view=new THREE.Vector3(pos.x,terrainY(pos.x,pos.z)+1.23,pos.z).project(camera);
+      const x=(view.x*.5+.5)*width,y=(-view.y*.5+.5)*height;
+      const visible=view.z>=-1&&view.z<=1&&x>30&&x<width-30&&y>40&&y<height-75;
+      fireTag.hidden=!visible;
+      if(visible){
+        fireTag.style.left=Math.max(88,Math.min(width-88,x)).toFixed(1)+"px";
+        fireTag.style.top=Math.max(45,Math.min(height-80,y)).toFixed(1)+"px";
+      }
+    }
   }
   function spawnBriefFlash(x,y,z,color,size=.08,duration=.22) {
     if(visualEffects.length>=MAX_PARTICLES)return;
@@ -884,12 +901,20 @@ function initialize(THREE) {
       const attacker=unitLookup.get(e.attackerId);
       if(stage.phase==="charge"&&attacker){
         attacker.assaultCharge=.30;
+        const defender=unitLookup.get(e.defenderId);
+        if(defender&&assaultMotion)
+          attacker.assaultVisual=assaultMotion.create(attacker.root.position,
+            defender.root.position);
         spawnBriefFlash(attacker.root.position.x,.55,attacker.root.position.z,
           0xe3b36b,.19,.42);
       }
       if(stage.phase!=="impact")return;
       beginCasualtyRemovals(unitLookup.get(e.attackerId));
       beginCasualtyRemovals(unitLookup.get(e.defenderId));
+      const defender=unitLookup.get(e.defenderId);
+      if(defender&&attacker&&assaultMotion)
+        defender.assaultVisual=assaultMotion.create(defender.root.position,
+          attacker.root.position,{defender:true});
       for(const id of [e.attackerId,e.defenderId]){
         const squad=unitLookup.get(id);
         if(squad)spawnBriefFlash(squad.root.position.x,.50,squad.root.position.z,
@@ -919,33 +944,27 @@ function initialize(THREE) {
       }
     }else if(stage.phase==="fire"&&shooter){
       const groups=e.groups||[];
-      let fired=0;
-      for(const group of groups){
-        const matches=shooter.soldiers.filter(soldier=>soldier.figure.visible&&
-          !["crew","loader"].includes(soldier.role));
-        const gun=/mmg|mg34|machine/i.test(group.weapon||group.key||""),
-          smg=/smg|submachine|mp40/i.test(group.weapon||group.key||"");
-        const shots=Math.min(group.shots||0,12);
-        for(let shot=0;shot<shots;shot++){
-          const soldier=matches[(fired+shot)%Math.max(1,matches.length)];
-          if(!soldier)break;
-          soldier.recoil=gun?.34:smg?.23:.16;
-          const facing=soldier.figure.rotation.y;
-          const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
-          const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
-          scheduleFire(x,soldier.figure.position.y+.52,z,gun||smg,
-            fired+shot);
-        }
-        fired+=shots;
+      const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
+        ({role:s.role,visible:s.figure.visible})))||[];
+      for(const shot of firing){
+        const soldier=shooter.soldiers[shot.soldierIndex];
+        soldier.recoil=Math.max(soldier.recoil,shot.recoil);
+        const facing=soldier.figure.rotation.y;
+        const x=shooter.root.position.x+soldier.figure.position.x-Math.sin(facing)*.30;
+        const z=shooter.root.position.z+soldier.figure.position.z-Math.cos(facing)*.30;
+        scheduleFire(x,soldier.figure.position.y+.52,z,shot.heavy,
+          shot.delay/.052);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
       if(e.hits>0)
         spawnBriefFlash(target.root.position.x,.44,target.root.position.z,
           e.saved>0?0x91a79b:0xc5b69a,.16,.40);
-      if(e.pinDelta>0)
+      if(e.pinDelta>0){
+        target.suppressionImpulse=.85;
         spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
           0xd4a75d,.12,.48);
+      }
       if(e.casualties>0){
         const amount=Math.min(e.casualties,6);
         for(let i=0;i<amount;i++)
@@ -957,7 +976,13 @@ function initialize(THREE) {
   // A physical, thick painted measuring strip—not a one-pixel WebGL line.
   const firePreview=new THREE.Group();
   firePreview.visible=false;firePreview.renderOrder=14;scene.add(firePreview);
+  const fireTag=document.createElement("div");
+  fireTag.className="mini-fire-preview";
+  fireTag.hidden=true;
+  markerLayer.appendChild(fireTag);
+  let previewUnit=null;
   function clearFirePreview(){
+    previewUnit=null;fireTag.hidden=true;
     firePreview.visible=false;
     for(const m of [...firePreview.children]){
       firePreview.remove(m);m.geometry.dispose();m.material.dispose();
@@ -966,6 +991,18 @@ function initialize(THREE) {
   function showFirePreview(squad,assessment){
     clearFirePreview();
     if(!selectedSquad)return;
+    previewUnit=squad;
+    const groupInfo=(assessment.weapons||[]).map(g=>
+      (g.shots||0)+" "+(g.label||g.key||"shots")).join(" · ");
+    const distanceText=Number.isFinite(assessment.distance)?
+      assessment.distance.toFixed(1)+"″ · ":"";
+    fireTag.textContent=assessment.legal?
+      distanceText+(groupInfo||"LEGAL FIRE")+
+        (assessment.cover?.saveTarget!=null?
+          " · COVER "+assessment.cover.saveTarget+"+":" · OPEN"):
+      "BLOCKED · "+(assessment.reason||"No legal shot");
+    fireTag.classList.toggle("blocked",!assessment.legal);
+    fireTag.hidden=false;
     const a=selectedSquad.root.position,b=squad.root.position;
     const distance=Math.hypot(b.x-a.x,b.z-a.z);
     const color=!assessment.legal?0xc37b65:
@@ -973,11 +1010,17 @@ function initialize(THREE) {
     const material=new THREE.MeshBasicMaterial({
       color,transparent:true,opacity:.92,depthTest:false
     });
-    const line=new THREE.Mesh(new THREE.BoxGeometry(distance,.026,.09),material);
-    const midX=(a.x+b.x)/2,midZ=(a.z+b.z)/2;
-    line.position.set(midX,Math.max(terrainY(a.x,a.z),terrainY(b.x,b.z))+.12,midZ);
-    line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
-    line.renderOrder=14;firePreview.add(line);
+    const count=assessment.legal?1:11;
+    for(let i=0;i<count;i++){
+      if(!assessment.legal&&i%2)continue;
+      const partLength=distance/count;
+      const mid=(i+.5)/count;
+      const x=a.x+(b.x-a.x)*mid,z=a.z+(b.z-a.z)*mid;
+      const line=new THREE.Mesh(new THREE.BoxGeometry(partLength,.026,.095),material.clone());
+      line.position.set(x,terrainY(x,z)+.13,z);
+      line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
+      line.renderOrder=14;firePreview.add(line);
+    }
     const circle=new THREE.Mesh(new THREE.RingGeometry(.29,.41,28),material.clone());
     circle.rotation.x=-Math.PI/2;
     circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
@@ -1189,7 +1232,7 @@ function initialize(THREE) {
     block(breathing, .17, .15, .14, leather, -.22, -.18, -.09);
     squad.soldiers.push({figure,breathing,legs,phase:between(0,Math.PI*2),
       baseY:.78,grounded:false,lastFootingFrame:-100,role:recipe.role,recoil:0,
-      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z});
+      gait:motion.gaitFor(squad.index,index),slotX:x,slotZ:z,crouch:0});
     return figure;
   }
 
@@ -1291,19 +1334,20 @@ function initialize(THREE) {
         const end=bridge.toWorld(stateUnit);
         const displacement=Math.hypot(end.x-before.x,end.z-before.z);
         if(displacement>.025) {
-          if(!activeMovement) {
+          const existing=activeMovements.get(squad.unit.id);
+          // A repeated snapshot must not restart an animation already en route.
+          if(!existing||Math.hypot(existing.end.x-end.x,existing.end.z-end.z)>.025) {
             const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
               motion.heading(before,end));
             const run=stateUnit.order==="Run";
             const duration=Math.max(run?.27:.40,
               displacement/(run?1.42:.82));
-            activeMovement={squad,plan:null,remote:true,start:before,end,phase:"turn",
-              elapsed:0,turn,travelDuration:duration,
-              finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+            activeMovements.set(squad.unit.id,{
+              squad,plan:null,remote:true,start:before,end,phase:"turn",
+              elapsed:0,turn,travelDuration:duration,centerProgress:0,
+              finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))
+            });
             squad.moving=true;
-          } else if(activeMovement.squad!==squad) {
-            squad.root.position.set(end.x,0,end.z);
-            squad.soldiers.forEach(s=>s.grounded=false);
           }
         }
       }
@@ -1416,7 +1460,9 @@ function initialize(THREE) {
     viewportHeight = Math.max(1, Math.floor(bounds.height));
     const aspect = viewportWidth / viewportHeight;
     // On narrow screens, fit the full board rather than clip its wooden edges.
-    baseHeight = Math.max(20.3, 25.2 / Math.max(aspect, .28));
+    const diagonal=Math.hypot(worldWidth,worldDepth);
+    baseHeight=Math.max(diagonal*.80,
+      diagonal*1.00/Math.max(aspect,.28));
     renderer.setSize(viewportWidth, viewportHeight, false);
     updateCamera();
   }
@@ -1541,7 +1587,7 @@ function initialize(THREE) {
         " / "+analysis.allowance+" inches — tap same destination to confirm");
       return;
     }
-    if(!selectedSquad||activeMovement)return;
+    if(!selectedSquad||activeMovements.size)return;
     const hits=raycaster.intersectObject(ground,false);
     if(!hits.length)return;
     const point=hits[0].point,squad=selectedSquad;
@@ -1552,9 +1598,9 @@ function initialize(THREE) {
     const turn=motion.makeTurn(squad.soldiers.map(s=>s.figure.rotation.y),
       motion.heading(start,end));
     const duration=Math.max(.55,Math.hypot(dx,dz)/.68);
-    activeMovement={squad,plan,start,end,phase:"turn",elapsed:0,turn,
-      travelDuration:duration,
-      finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))};
+    activeMovements.set(squad.unit.id,{squad,plan,start,end,phase:"turn",
+      elapsed:0,turn,travelDuration:duration,centerProgress:0,
+      finishTime:motion.finishTime(duration,squad.soldiers.map(s=>s.gait))});
     squad.moving=true;
     squad.ring.visible=false;
     squad.ring.userData.grounded=false;
@@ -1649,50 +1695,55 @@ function initialize(THREE) {
         cameraFocus=null;
       updateCamera();
     }
-    const moving=activeMovement;
-    let walking=false;
-    let centerProgress=0;
-    if(moving) {
+    // Per-squad tracks prevent the old snap-to-end behavior when the
+    // coordinator updates a second unit during another unit's presentation.
+    for(const [unitId,moving] of activeMovements) {
       const squad=moving.squad;
       moving.elapsed+=dt;
-      if(moving.phase==="turn") {
+      if(moving.phase==="turn"){
         const u=Math.min(1,moving.elapsed/moving.turn.duration);
         for(let i=0;i<squad.soldiers.length;i++)
           squad.soldiers[i].figure.rotation.y=motion.headingAt(moving.turn.turns[i],u);
-        if(u>=1) {moving.phase="travel";moving.elapsed=0;}
-      } else {
-        walking=true;
-        centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
+        if(u>=1){moving.phase="travel";moving.elapsed=0;}
+      }else{
+        moving.centerProgress=Math.min(1,moving.elapsed/moving.travelDuration);
         squad.root.position.set(
-          moving.start.x+(moving.end.x-moving.start.x)*centerProgress,
+          moving.start.x+(moving.end.x-moving.start.x)*moving.centerProgress,
           0,
-          moving.start.z+(moving.end.z-moving.start.z)*centerProgress
+          moving.start.z+(moving.end.z-moving.start.z)*moving.centerProgress
         );
-        if(moving.elapsed>=moving.finishTime) {
+        if(squadMotion.movementFinished(moving)){
           squad.root.position.set(moving.end.x,0,moving.end.z);
-          for(const soldier of squad.soldiers) {
+          for(const soldier of squad.soldiers){
             soldier.figure.position.x=soldier.slotX;
             soldier.figure.position.z=soldier.slotZ;
           }
-          if(!moving.remote) squad.controller.commitMove(moving.plan);
+          if(!moving.remote&&moving.plan)squad.controller.commitMove(moving.plan);
           squad.moving=false;
           squad.orderToken.visible=Boolean(squad.unit.order)&&
             Boolean(squad.unit.activated)&&squad.unit.soldiers>0;
           squad.ring.visible=selectedSquad===squad;
           squad.ring.userData.grounded=false;
-          for(const soldier of squad.soldiers) soldier.grounded=false;
-          activeMovement=null;
-          walking=false;
+          for(const soldier of squad.soldiers)soldier.grounded=false;
+          activeMovements.delete(unitId);
         }
       }
     }
     for(const squad of squads) {
-      const isWalking=walking&&moving?.squad===squad;
+      const moving=activeMovements.get(squad.unit.id);
+      const isWalking=Boolean(moving&&moving.phase==="travel");
       if(squad.alertUntil&&performance.now()>=squad.alertUntil){
         squad.alertUntil=0;
         squad.eligibleRing.visible=false;
       }
       if(squad.assaultCharge>0)squad.assaultCharge=Math.max(0,squad.assaultCharge-dt);
+      if(squad.assaultVisual){
+        squad.assaultVisual.age+=dt;
+        if(squad.assaultVisual.age>=squad.assaultVisual.duration)
+          squad.assaultVisual=null;
+      }
+      if(squad.suppressionImpulse>0)
+        squad.suppressionImpulse=Math.max(0,squad.suppressionImpulse-dt*2);
       if(squad.selectionPulse>0){
         squad.selectionPulse=Math.max(0,squad.selectionPulse-dt*2.0);
         const u=squad.selectionPulse;
@@ -1711,10 +1762,21 @@ function initialize(THREE) {
         const ownProgress=isWalking?
           motion.progressFor(moving.elapsed,moving.travelDuration,soldier.gait):1;
         const takingSteps=isWalking&&ownProgress<.999;
+        if(!isWalking){
+          const displacement=squad.assaultVisual&&assaultMotion?
+            assaultMotion.displacement(squad.assaultVisual):0;
+          soldier.figure.position.x=soldier.slotX+
+            (squad.assaultVisual?.dx||0)*displacement;
+          soldier.figure.position.z=soldier.slotZ+
+            (squad.assaultVisual?.dz||0)*displacement;
+        }
         if(isWalking) {
-          const delta=ownProgress-centerProgress;
-          soldier.figure.position.x=soldier.slotX+(moving.end.x-moving.start.x)*delta;
-          soldier.figure.position.z=soldier.slotZ+(moving.end.z-moving.start.z)*delta;
+          const delta=ownProgress-moving.centerProgress;
+          const dx=moving.end.x-moving.start.x,dz=moving.end.z-moving.start.z;
+          const length=Math.hypot(dx,dz)||1;
+          const lateral=squadMotion.lateralOffset(squad.index,soldierIndex,ownProgress,length);
+          soldier.figure.position.x=soldier.slotX+dx*delta-dz/length*lateral;
+          soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
         }
         if((isWalking&&frameIndex-(soldier.lastFootingFrame??-100)>=3)||
             (!isWalking&&!soldier.grounded)) {
@@ -1728,7 +1790,8 @@ function initialize(THREE) {
         soldier.breathing.position.y=soldier.baseY;
         if(squad.assaultCharge>0&&!isWalking)
           soldier.breathing.position.y+=Math.sin((.30-squad.assaultCharge)/.30*Math.PI)*.07;
-        soldier.breathing.rotation.z=0;
+        soldier.breathing.rotation.z=(squad.suppressionImpulse||0)*
+          Math.sin(soldierIndex*2.7+1)*.13;
         for(const leg of soldier.legs)leg.mesh.rotation.x=leg.side*.08;
         if(takingSteps&&!reducedMotion) {
           const stride=Math.sin(t*soldier.gait.stride+soldier.phase);
@@ -1739,10 +1802,10 @@ function initialize(THREE) {
             leg.mesh.rotation.x+=stride*.46*leg.side*easeStop;
         } else {
           soldier.recoil=Math.max(0,(soldier.recoil||0)-dt*1.7);
-          soldier.breathing.rotation.x=(
-            (battle&&squad.unit.down)?.36:
-            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0
-          )-soldier.recoil;
+          const crouch=(battle&&squad.unit.down)?.36:
+            (battle&&squad.unit.pins)?Math.min(.24,squad.unit.pins*.065):0;
+          soldier.crouch+=(crouch-soldier.crouch)*Math.min(1,dt*8);
+          soldier.breathing.rotation.x=soldier.crouch-soldier.recoil;
           // Stationary painted miniatures hold a stable physical pose. No
           // breathing/sway loop that looks like jogging in place.
         }
@@ -1818,7 +1881,10 @@ function initialize(THREE) {
         console.info("[Crossroads 3D perf]",{
           frameMs:(perfDuration/perfFrames).toFixed(2),frames:perfFrames,
           groundRaycasts:groundingRaycasts,cache:footingCache.size,
-          triangleDraws:renderer.info.render.calls
+          drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,
+          squadTracks:activeMovements.size,
+          particles:visualEffects.length,queuedMuzzles:delayedMuzzleBursts.length,
+          pendingCasualties:casualtyAnimations.length
         });
         perfFrames=0;perfDuration=0;groundingRaycasts=0;perfStart=performance.now();
       }

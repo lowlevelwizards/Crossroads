@@ -204,3 +204,23 @@
   padding:3px 7px;border-color:#baa881;background:#394b42;color:#e9d6a7}
 
 .battle-solo-status{font:800 9px system-ui,sans-serif;color:#e4b797;background:#462f29b8;padding:6px;border-radius:5px}
+
+/* Keep the command ribbon usable on narrow phone displays with the extra
+   presentation speed/skip controls. */
+@media(max-width:480px){
+  .battle-ribbon{gap:4px;flex-wrap:wrap;justify-content:center}
+  .battle-ribbon .battle-audio-toggle{min-height:31px;padding:5px 7px;font-size:9px}
+}
+
+/* Dice retain their authoritative value while a fast cosmetic settling motion
+   communicates a physical tabletop roll. Reduced motion avoids animation. */
+.battle-combat-dice:not([hidden]) .battle-roll{animation:crossroads-die-settle .19s both;
+  transform-origin:center bottom}
+.battle-combat-dice:not([hidden]) .battle-roll:nth-child(2n){animation-delay:.045s}
+@keyframes crossroads-die-settle{
+  from{transform:translateY(-8px) rotate(13deg) scale(.93);opacity:.55}
+  to{transform:translateY(0) rotate(0) scale(1);opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+  .battle-combat-dice:not([hidden]) .battle-roll{animation:none}
+}

@@ -10,9 +10,10 @@
     "round-score":[["score",.9],["settle",.15]],
     rally:[["recover",.65],["settle",.12]]
   });
-  function create(onStage) {
+  function create(onStage,{speed=1}={}) {
     const queue=[],seen=new Set(),order=[];
     let active=null,elapsed=0,stage=-1;
+    let playbackSpeed=Math.max(.5,Math.min(4,Number(speed)||1));
     function announce(part) {
       if(!active)return;
       const [name]=active.sequence[part];
@@ -28,7 +29,7 @@
       return true;
     }
     function update(dt){
-      let remaining=Math.max(0,Math.min(dt,.2));
+      let remaining=Math.max(0,Math.min(dt,.2))*playbackSpeed;
       if(!active&&queue.length){active=queue.shift();stage=0;elapsed=0;announce(0)}
       while(active&&remaining>=0){
         const duration=active.sequence[stage][1];
@@ -52,7 +53,10 @@
     function reset(){
       skip();seen.clear();order.length=0;
     }
-    return Object.freeze({enqueue,update,skip,reset,get active(){return Boolean(active||queue.length)},get pending(){return queue.length}});
+    function setSpeed(value){playbackSpeed=Math.max(.5,Math.min(4,Number(value)||1));}
+    return Object.freeze({enqueue,update,skip,reset,setSpeed,
+      get active(){return Boolean(active||queue.length)},
+      get pending(){return queue.length}});
   }
   window.Crossroads3DCombatPresentation=Object.freeze({create});
 })();

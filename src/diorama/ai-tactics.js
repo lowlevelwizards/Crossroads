@@ -42,23 +42,31 @@
   }
   function chooseTarget(s,unit,previewTarget) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
-    return enemies.filter(u=>previewTarget(u.id)?.legal).sort((a,b)=>{
-      const score=u=>100-dist(unit,u)*1.2+(u.pins?u.pins*2:0)+
-        (u.soldiers<=3?6:0)+(u.role==="officer"?8:0);
-      return score(b)-score(a)||a.id.localeCompare(b.id);
-    })[0]||null;
+    const evaluated=enemies.map(u=>({unit:u,shot:previewTarget(u.id)}))
+      .filter(item=>item.shot?.legal);
+    const value=({unit:u,shot})=>{
+      const output=(shot.weapons||[]).reduce((n,g)=>
+        n+(g.shots||0)*Math.max(.1,(7-(g.hitTarget||6))/6),0);
+      const save=shot.cover?.saveTarget;
+      const coverPenalty=save!=null?Math.max(.30,(save-1)/6):1;
+      return output*coverPenalty*8-dist(unit,u)*.6+
+        (u.pins||0)*1.5+(u.soldiers<=3?5:0)+(u.role==="officer"?5:0);
+    };
+    return evaluated.sort((a,b)=>value(b)-value(a)||
+      a.unit.id.localeCompare(b.unit.id))[0]?.unit||null;
   }
   function chooseMove(s,unit,previewMove) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     const objective=nearest(unit,objectivePoint(s,unit.faction));
     const enemy=nearest(unit,enemies);
-    const target=objective||enemy||{x:36,y:24};
+    const board=s.table||{width:72,height:48};
+    const target=objective||enemy||{x:board.width/2,y:board.height/2};
     const theta=Math.atan2(target.y-unit.y,target.x-unit.x);
     const options=[];
     for(const angle of [0,.32,-.32,.7,-.7,1.08,-1.08,1.6,-1.6,Math.PI]){
       for(const step of [5.5,4,2.5,1.2]){
-        const point={x:Math.max(1,Math.min(71,unit.x+step*Math.cos(theta+angle))),
-          y:Math.max(1,Math.min(47,unit.y+step*Math.sin(theta+angle)))};
+        const point={x:Math.max(1,Math.min(board.width-1,unit.x+step*Math.cos(theta+angle))),
+          y:Math.max(1,Math.min(board.height-1,unit.y+step*Math.sin(theta+angle)))};
         const preview=previewMove(point);
         if(!preview?.legal)continue;
         const endpoint=preview.path?.at(-1)||point;
@@ -67,7 +75,9 @@
         const enemyDist=nearestEnemy?dist(endpoint,nearestEnemy):20;
         // Reward objectives and useful firing proximity, discourage exposed
         // suicidal charges and movement that makes no tactical progress.
-        const threat=enemyDist<3?-10:enemyDist<7?-3:0;
+        const vulnerable=(unit.pins||0)>=2||unit.soldiers<=2;
+        const threat=enemyDist<3?(vulnerable?-16:-9):
+          enemyDist<7?(vulnerable?-6:-2):0;
         const score=progress*4+(objective?5:0)+threat+
           (preview.shortened?-1:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score});
