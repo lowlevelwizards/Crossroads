@@ -51,6 +51,8 @@
     "src/diorama/ai-opponent.js",
     "tests/3d-v070-combat-smoke.html",
     "battle3d-v061.html",
-    "tests/3d-v070-combat-runtime.test.js"
+    "tests/3d-v070-combat-runtime.test.js",
+    "src/diorama/movement-intent.js",
+    "tests/3d-v071-movement-intent.test.js"
   ]
 }

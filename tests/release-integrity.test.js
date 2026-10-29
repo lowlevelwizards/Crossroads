@@ -145,6 +145,8 @@ assert(battleDoor.includes('id="battleSessionFrame"'), "Battle page must load it
 assert(battleDoor.includes("src/diorama/battle-client.js"), "Battle page must load the 3D battle client");
 assert(battleDoor.includes("src/diorama/scenario-scene.js"), "Battle page must load the 3D scene");
 assert(battleDoor.includes("src/diorama/combat-presentation.js"), "Battle must load the structured combat presentation");
+assert(battleDoor.includes("src/diorama/movement-intent.js"), "The 3D battle must load its movement confirmation state");
+assertOrdered("battle3d.html", "src/diorama/movement-intent.js", "src/diorama/scenario-scene.js");
 assertOrdered("battle3d.html", "src/diorama/combat-presentation.js", "src/diorama/battle-client.js");
 assertOrdered("battle3d.html", "src/diorama/ai-opponent.js", "src/diorama/battle-client.js");
 assert(read("scenarios3d.html").includes("CROSSROADS_SCENARIOS"), "3D scenario selection must read official scenario data");

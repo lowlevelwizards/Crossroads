@@ -718,8 +718,7 @@ function initialize(THREE) {
   let activeMovement=null;
   let pendingTargetId=null;
   let lastTargetTap=0;
-  let pendingMovePoint=null;
-  let lastMoveTap=0;
+  const movementIntent=window.Crossroads3DMovementIntent.create();
   const visualEffects=[];
   const casualtyAnimations=[];
   function beginCasualtyRemovals(squad){
@@ -923,8 +922,8 @@ function initialize(THREE) {
   movePreviewLine.visible=false;
   movePreviewLine.renderOrder=13;
   scene.add(movePreviewLine);
-  function clearMovePreview(){
-    pendingMovePoint=null;
+  function clearMovePreview(forgetIntent=true){
+    if(forgetIntent)movementIntent.clear();
     movePreviewLine.visible=false;
     for(const child of [...movePreviewLine.children]){
       movePreviewLine.remove(child);
@@ -933,7 +932,8 @@ function initialize(THREE) {
   }
   function showMovePreview(plan) {
     if(!selectedSquad||!plan.path?.length)return;
-    clearMovePreview();
+    // Updating ruler meshes must never erase the staged two-tap destination.
+    clearMovePreview(false);
     const from=selectedSquad.root.position;
     const checkpoints=[{x:from.x,z:from.z},...plan.path.slice(1).map(bridge.toWorld)];
     for(let i=1;i<checkpoints.length;i++){
@@ -1415,26 +1415,28 @@ function initialize(THREE) {
         void battle.send("deploy-place",{point:position});
         return;
       }
+      // Confirm before recalculating a slightly different second tap:
+      // the authoritative engine will revalidate the *previewed* point.
+      const destination=movementIntent.consumeIfMatch(position,Date.now());
+      if(destination){
+        clearMovePreview();
+        battle.setHint("Movement confirmed — soldiers advancing");
+        void battle.send("move",{point:destination}).then(reply=>{
+          if(reply?.ok===false)
+            battle.setHint(reply.reason||"Movement blocked by the rules");
+        });
+        return;
+      }
       const analysis=battle.previewMove(position);
       if(!analysis.legal) {
         clearMovePreview();
         battle.setHint(analysis.reason||"Movement blocked by game rules");
         return;
       }
-      const now=Date.now();
-      const repeat=pendingMovePoint&&
-        Math.hypot(pendingMovePoint.x-position.x,pendingMovePoint.y-position.y)<.65 &&
-        now-lastMoveTap<9000;
-      if(repeat) {
-        clearMovePreview();
-        void battle.send("move",{point:position});
-      } else {
-        pendingMovePoint=position;
-        lastMoveTap=now;
-        showMovePreview(analysis);
-        battle.setHint("Movement "+analysis.cost.toFixed(1)+
-          " / "+analysis.allowance+" inches — tap again to commit");
-      }
+      movementIntent.remember(position,Date.now());
+      showMovePreview(analysis);
+      battle.setHint("Movement "+analysis.cost.toFixed(1)+
+        " / "+analysis.allowance+" inches — tap same destination to confirm");
       return;
     }
     if(!selectedSquad||activeMovement)return;
