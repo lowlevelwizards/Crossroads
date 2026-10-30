@@ -166,7 +166,11 @@
       const syncMount=()=>{
         if(!isMMG||!mountParent)return;
         mount.position.copy(figure.position);
-        mount.rotation.copy(figure.rotation);
+        // Direct Euler components also support the lightweight Node model
+        // harness (its mock Group does not implement Euler.copy).
+        mount.rotation.x=figure.rotation.x||0;
+        mount.rotation.y=figure.rotation.y||0;
+        mount.rotation.z=figure.rotation.z||0;
       };
       syncMount();
       const mountedGun=new THREE.Group();
