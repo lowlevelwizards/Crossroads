@@ -49,7 +49,7 @@
     }
     if(pose==="cover")state.crouch=.42,state.lean=.16;
     if(pose==="kneel"){
-      state.crouch=.69;state.lean=.12;state.aim=true;
+      state.crouch=.48;state.lean=.10;state.aim=true;
       state.forward=.06;
     }
     if(pose==="pinned")state.crouch=.47,
