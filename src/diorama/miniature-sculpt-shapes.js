@@ -13,7 +13,7 @@
       }
       return cache.get(key);
     };
-    const sphere=cached("sphere",()=>new THREE.SphereGeometry(1,20,14));
+    const sphere=cached("sphere",()=>new THREE.SphereGeometry(1,12,8));
     const boxCache=(x,y,z)=>cached(["box",x,y,z].join("/"),
       ()=>new THREE.BoxGeometry(x,y,z));
     function mesh(parent,geometry,material,position=[0,0,0]) {
@@ -32,7 +32,7 @@
     }
     // Profiles: [vertical position, X radius, Z radius, X offset, Z offset].
     // Contours are authored in the local segment's +/-0.5 vertical range.
-    function loftGeometry(profile,sides=16){
+    function loftGeometry(profile,sides=10){
       const verts=[],indices=[],uv=[];
       for(let j=0;j<profile.length;j++){
         const [y,rx,rz,cx=0,cz=0]=profile[j];
@@ -70,7 +70,7 @@
       g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
       return g;
     }
-    const loft=(parent,material,key,profile,p=[0,0,0],sides=16)=>{
+    const loft=(parent,material,key,profile,p=[0,0,0],sides=10)=>{
       const g=cached("loft:"+key,()=>loftGeometry(profile,sides));
       return mesh(parent,g,material,p);
     };
@@ -109,7 +109,7 @@
         [ .165,.083,.124,.060],
         [ .205,.071,.090,.057]
       ];
-      const verts=[],indices=[],sides=16;
+      const verts=[],indices=[],sides=10;
       for(const [z,rx,ry,cy] of rings){
         for(let i=0;i<=sides;i++){
           const a=i/sides*2*Math.PI;
@@ -130,13 +130,9 @@
       const root=new THREE.Group();root.position.set(side*.145,initialY,-.045);
       parent.add(root);
       const upper=mesh(root,cached("shaped-boot",bootGeometry),leather);
-      const sole=soft(root,soleMat,[0,.028,-.035],[.131,.031,.205]);
-      const heel=box(root,soleMat,[.125,.04,.072],[0,-.050,.118]);
-      const cuff=loft(root,leather,"boot-cuff",[
-        [-.5,.077,.081],[-.2,.096,.095],[.25,.090,.092],[.5,.078,.078]
-      ],[0,.17,.105]);
-      cuff.scale.y=.17;
-      return {root,upper,sole,heel,cuff};
+      // One coherent boot mesh. The toe, ankle and heel are all defined by
+      // its longitudinal silhouette—no floating sole, heel or cuff meshes.
+      return {root,upper};
     }
     const material=(hex,roughness=.94)=>new THREE.MeshStandardMaterial({
       color:hex,roughness,metalness:0,flatShading:false,side:THREE.DoubleSide
