@@ -31,6 +31,7 @@
       const g=new THREE.BufferGeometry();
       g.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
       g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
+      g.userData=g.userData||{};
       g.userData.sharedMiniatureGeometry=true;return g;
     }
     function mesh(parent,material,rings,{sides=8,cacheKey}={}){
