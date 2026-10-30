@@ -136,6 +136,19 @@
     const left=sectorScore(unit,enemies,(unit.mmgFacing+315)%360);
     const right=sectorScore(unit,enemies,(unit.mmgFacing+45)%360);
     const gain=Math.max(left,right)-current;
+    if(current===0&&left===0&&right===0){
+      // Long turn toward a target takes successive legal 45-degree steps.
+      // One-hop scoring alone cannot find targets more than 90 degrees away.
+      const targets=(enemies||[]).filter(e=>e.soldiers>0&&
+        e.visible!==false&&dist(unit,e)<36);
+      const priority=targets.slice().sort((a,b)=>
+        (dist(unit,a)-dist(unit,b))||a.id.localeCompare(b.id))[0];
+      if(!priority)return 0;
+      const bearing=(Math.atan2(priority.y-unit.y,
+        priority.x-unit.x)*180/Math.PI+360)%360;
+      const difference=((bearing-unit.mmgFacing+540)%360)-180;
+      return Math.abs(difference)>45?(difference>=0?45:-45):0;
+    }
     // At most one legal 45-degree turn. A hysteresis margin avoids the
     // aim left / aim right loop that previously ate successive AI actions.
     if(gain<=Math.max(.45,current*.18))return 0;

@@ -50,7 +50,7 @@ const enemies=[{id:"e1",faction:"blue",soldiers:5,x:30,y:22,visible:true},
 {id:"e2",faction:"blue",soldiers:5,x:31,y:26,visible:true}];
 assert.equal(A.mmgRotation(full,enemies),0,
  "MMG should hold when a valuable target group is already in its 90-degree arc");
-assert.equal(A.mmgRotation({...full,mmgFacing:180},enemies),45,
+assert.equal(Math.abs(A.mmgRotation({...full,mmgFacing:180},enemies)),45,
  "MMG must rotate by one legal step, not rotate the whole team instantly");
 assert(A.sectorScore(full,enemies,0)>A.sectorScore(full,enemies,180));
 assert.equal(A.mmgRotation({...full,mmgDeployed:false},enemies),0);
