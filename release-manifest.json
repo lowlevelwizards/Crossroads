@@ -127,5 +127,5 @@
     "src/diorama/miniature-workbench.js",
     "tests/3d-v142-miniature-workbench.test.js"
   ],
-  "threeDCacheVersion": "0.9.42"
+  "threeDCacheVersion": "0.9.43"
 }

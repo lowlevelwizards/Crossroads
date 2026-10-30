@@ -44,10 +44,8 @@
         mat.helmet,[0,.094,0]);
       const body=new THREE.Group();figure.add(body);
       const breathing=new THREE.Group();breathing.position.y=.90;body.add(breathing);
-      // Anatomical mannequin visible only during proportion inspection.
-      const anatomy=new THREE.Group();breathing.add(anatomy);anatomy.visible=false;
-      S.soft(anatomy,mat.skin,[0,.04,0],[.245,.29,.187]);
-      S.soft(anatomy,mat.skin,[0,-.23,.0],[.195,.135,.165]);
+      // The visible torso is the mannequin. No duplicate skin cylinders
+      // or auxiliary anatomical blobs are created beneath its clothing.
       const uniformGroup=new THREE.Group();breathing.add(uniformGroup);
       // Shaped tunic: five authored cross sections, collar flaps and hem.
       const torso=S.loft(uniformGroup,mat.uniform,"tunic-1939",[
@@ -55,62 +53,29 @@
         [.15,.286,.227],[.32,.228,.179],[.36,.165,.14]
       ],[0,.015,0]);
       const uniformParts=[torso];
-      const hem=S.loft(uniformGroup,mat.uniform,"tunic-hem",[
-        [-.5,.249,.202],[-.35,.257,.214],[.3,.260,.213],
-        [.5,.232,.185]
-      ],[0,-.262,.009]);
-      hem.scale.y=.075;uniformParts.push(hem);
-      const garmentDetails=new THREE.Group();uniformGroup.add(garmentDetails);
-      const waist=S.loft(garmentDetails,mat.straps,"belt-ring",[
-        [-.5,.246,.203],[.5,.247,.204]
-      ],[0,-.212,0]);
-      waist.scale.y=.058;
-      const collarLeft=S.box(garmentDetails,mat.uniform,[.154,.092,.112],
-        [-.103,.349,-.083]);
-      const collarRight=S.box(garmentDetails,mat.uniform,[.154,.092,.112],
-        [.103,.349,-.083]);
-      collarLeft.rotation.z=.16;collarRight.rotation.z=-.16;
-      collarLeft.rotation.x=-.17;collarRight.rotation.x=-.17;
-      S.soft(garmentDetails,mat.straps,[0,.28,.014],[.105,.026,.055]);
-      // Faction-distinct tunic construction: collar, pockets and seams.
-      // Small cues are understated at battle distance, visible in the lab.
-      for(const side of [-1,1]){
-        S.box(garmentDetails,mat.uniform,
-          faction==="germany"?[.118,.109,.019]:[.128,.125,.021],
-          [side*.153,.092,-.216]);
-        S.box(garmentDetails,mat.straps,[.114,.020,.018],
-          [side*.153,.143,-.228]);
-        if(faction==="poland"){
-          S.box(uniformGroup,mat.uniform,[.116,.090,.019],
-            [side*.156,-.150,-.206]);
-        }else{
-          S.box(garmentDetails,mat.hardware,[.032,.018,.013],
-            [side*.153,.110,-.233]);
-        }
-      }
-      // No separate giant spherical 'shoulder caps'. Sleeve contour meets
+      // The sculpted torso already defines the hem, shoulder width and
+      // waist. Extra collar blocks, belt rings, pockets and body fragments
+      // only obscure the silhouette at miniature scale.
+      // No separate shoulder caps. Sleeve contour meets
       // the chest; upper/lower segments form an actual bent elbow.
       const arms=[];
       for(const side of [-1,1]){
         const upper=S.loft(breathing,mat.uniform,"upper-sleeve",[
           [-.5,.074,.073],[-.38,.088,.084],[-.10,.094,.095],
           [.24,.099,.101],[.5,.082,.084]
-        ],[0,0,0],16);
+        ],[0,0,0],10);
         const lower=S.loft(breathing,mat.uniform,"lower-sleeve",[
           [-.5,.065,.067],[-.26,.072,.072],[.05,.087,.083],
           [.35,.092,.088],[.5,.076,.075]
         ]);
         const handGroup=new THREE.Group();breathing.add(handGroup);
         const hand=S.soft(handGroup,mat.skin,[0,0,0],[.083,.071,.076]);
-        const thumb=S.soft(handGroup,mat.skin,[side*.065,-.018,-.055],
-          [.031,.047,.035]);thumb.rotation.z=side*.23;
-        const cuff=S.loft(handGroup,mat.uniform,"sleeve-cuff",[
-          [-.5,.067,.069],[.5,.074,.071]
-        ],[0,.073,.02]);cuff.scale.y=.065;
+        // The single hand mesh is the entire mitten. No floating thumb
+        // sphere or separate wrist cuff.
         const shoulder=v(side*.252,.207,-.015);
         const elbow=v(side*.307,.015,-.135);
         const arm={side,upper,lower,hand:handGroup,shoulder,elbow,
-          thumb,cuff,skinHand:hand};
+          skinHand:hand};
         arms.push(arm);
       }
       // Separate, short thigh and trouser legs; no faceted armor-knee blobs.
@@ -133,19 +98,13 @@
       }
       const headGroup=new THREE.Group();
       headGroup.position.set(0,.406,-.004);breathing.add(headGroup);
-      // Head is shaped with a subtle jaw and little face, not protruding
-      // spherical ears and a bright button nose.
-      const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],[.216,.217,.190]);
-      S.soft(headGroup,mat.skin,[0,.020,-.037],[.171,.089,.151]);
-      S.soft(headGroup,mat.skin,[0,.063,-.191],[.047,.048,.034]);
-      for(const side of [-1,1]){
-        S.soft(headGroup,mat.skin,[side*.197,.090,.005],[.023,.048,.038]);
-        const eye=S.soft(headGroup,mat.eyes,[side*.078,.153,-.189],
-          [.019,.028,.007]);
-        eye.rotation.z=-side*.045;
-        const brow=S.soft(headGroup,mat.skin,[side*.079,.202,-.186],
-          [.067,.018,.022]);brow.rotation.z=-side*.09;
-      }
+      // One sculpted head and two discreet ears. No duplicate jaw,
+      // projecting nose, brows, eyes, or other stuck-on facial spheres.
+      const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],
+        [.216,.217,.190]);
+      for(const side of [-1,1])
+        S.soft(headGroup,mat.skin,[side*.194,.082,.004],
+          [.024,.043,.033]);
       const hat=new THREE.Group();headGroup.add(hat);
       let editableHelmet=null;
       if(role==="officer"){
@@ -156,7 +115,7 @@
         S.box(hat,mat.soles,[.44,.025,.19],[0,.282,-.140]);
       }else{
         const domeGeometry=S.cached("smooth-steel-helmet",()=>
-          new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI/2));
+          new THREE.SphereGeometry(1,18,10,0,Math.PI*2,0,Math.PI/2));
         const shell=S.mesh(hat,domeGeometry,mat.helmet,[0,.263,.009]);
         editableHelmet=shell;
         shell.scale.set(faction==="germany"?.259:.252,.251,
@@ -168,15 +127,8 @@
           [.4,.252,.242],[.5,.241,.235]
           ],[0,.267,.004]);
         brim.scale.y=.07;
-        if(faction==="germany")for(const side of [-1,1])
-          S.box(hat,mat.helmet,[.078,.068,.162],
-            [side*.266,.225,.038]);
+        // No loose helmet side blocks or chinstrap geometry.
       }
-      for(const side of [-1,1])
-        S.strap(headGroup,mat.straps,[
-          [side*.20,.220,.035],[side*.207,.100,.065],
-          [side*.170,-.024,-.045]
-        ],.018,.01);
       // Historical load-bearing kit. Straps follow chest curvature; bags are
       // mounted on the body or waist instead of world-space positions.
       // A visible, curved chest/neck transition (not a giant donut collar).
@@ -187,49 +139,11 @@
         [-.5,.163,.105],[-.4,.208,.126],[.28,.216,.138],
         [.42,.189,.11],[.5,.152,.094]
       ],[0,0,.037]);pack.scale.y=.52;
-      S.box(packGroup,mat.pack,[.356,.076,.171],[0,.226,.096]);
-      for(const side of [-1,1]){
-        S.strap(equipmentRoot,mat.straps,[
-          [side*.154,.365,-.135],[side*.208,.256,-.151],
-          [side*.232,.097,-.171],[side*.206,-.102,-.181],
-          [side*.168,-.210,-.180]
-        ],.043,.011);
-        S.strap(packGroup,mat.straps,[
-          [side*.123,.266,.149],[side*.127,.044,.184],
-          [side*.129,-.233,.149]
-        ],.029,.010);
-        const ammo=S.box(equipmentRoot,mat.straps,
-          [.137,.119,.096],[side*.18,-.190,-.210]);
-        S.box(equipmentRoot,mat.straps,[.144,.038,.100],
-          [side*.18,-.117,-.215]);
-      }
-      // Retaining straps go over the roll (no unexplained open cylinder).
-      const roll=S.loft(packGroup,mat.pack,"blanket-roll",[
-        [-.5,.096,.097],[-.44,.112,.111],[.44,.112,.111],[.5,.094,.096]
-      ],[0,.345,.021]);roll.rotation.z=Math.PI/2;roll.scale.y=.425;
+      // Retain only major readable loadout volumes for now. No bedroll
+      // cylinder, retaining rods, canteen spheres, belt clutter or flaps.
       for(const side of [-1,1])
-        S.box(packGroup,mat.straps,[.026,.237,.032],
-          [side*.145,.343,.021]);
-      const canteen=S.soft(equipmentRoot,mat.pack,[.276,-.235,.175],
-        [.083,.128,.072]);
-      S.box(equipmentRoot,mat.straps,[.056,.037,.059],
-        [.276,-.102,.175]);
-      const bag=S.loft(equipmentRoot,mat.pack,"bread-bag",[
-        [-.5,.080,.070],[-.27,.117,.087],[.32,.121,.086],
-        [.5,.082,.069]
-      ],[-.293,-.185,.120]);bag.scale.y=.28;
-      S.box(equipmentRoot,mat.straps,[.155,.040,.110],
-        [-.293,-.047,.121]);
-      if(role==="lmg"||role==="loader"||role==="mmg"){
-        // Extra ammunition for crew roles, carried at the belt.
-        S.box(equipmentRoot,mat.hardware,[.175,.167,.114],
-          [-.264,-.232,.140]);
-      }
-      if(role==="officer"){
-        S.box(equipmentRoot,mat.straps,[.190,.208,.075],
-          [.288,-.152,.088]);
-        packGroup.scale.setScalar(.70);
-      }
+        S.box(equipmentRoot,mat.straps,[.137,.119,.096],
+          [side*.18,-.190,-.210]);
       const armaments=W.build({figure,body,breathing,role,faction,
         mats:{steel:mat.steel,wood:mat.wood,strap:mat.straps,
           hardware:mat.hardware}});
@@ -277,12 +191,10 @@
       bindPart("thigh",legs.map(a=>a.mesh));
       bindPart("shin",legs.map(a=>a.shin));
       bindPart("boot",legs.map(a=>a.bootModel.upper));
+      soldier.mannequinActive=false;
       soldier.setMannequin=on=>{
-        garmentDetails.visible=!on;
-        hem.visible=!on;
-        equipmentRoot.visible=!on;
-        armaments.weapon.visible=!on&&!armaments.isDeployed();
-        armaments.mount.visible=!on&&armaments.isDeployed();
+        soldier.mannequinActive=!!on;
+        soldier.setInspectionMode(soldier.inspectionMode);
       };
       soldier.editableParts=editableParts;
       soldier.workbenchPelvis=pelvis;
@@ -314,15 +226,16 @@
         soldier.inspectionMode=mode;
         const naked=mode==="body",silhouette=mode==="silhouette";
         const equipped=mode==="equipped"||silhouette;
-        anatomy.visible=naked;uniformGroup.visible=!naked;
-        equipmentRoot.visible=equipped;
-        armaments.weapon.visible=equipped&&!armaments.isDeployed();
-        armaments.mount.visible=equipped&&armaments.isDeployed();
+        uniformGroup.visible=true;
+        torso.material=naked?mat.skin:mat.uniform;
+        pelvis.material=naked?mat.skin:mat.trousers;
+        equipmentRoot.visible=equipped&&!soldier.mannequinActive;
+        armaments.weapon.visible=equipped&&!soldier.mannequinActive&&!armaments.isDeployed();
+        armaments.mount.visible=equipped&&!soldier.mannequinActive&&armaments.isDeployed();
         hat.visible=!naked&&soldier.profile?.helmet!=="off";
         for(const arm of arms){
           arm.upper.material=naked?mat.skin:mat.uniform;
           arm.lower.material=naked?mat.skin:mat.uniform;
-          arm.cuff.visible=!naked;
         }
         for(const leg of legs){
           leg.mesh.material=naked?mat.skin:mat.trousers;
@@ -330,9 +243,6 @@
           // Keep natural feet visible in the bare-body comparison.
           leg.boot.visible=true;
           leg.bootModel.upper.material=naked?mat.skin:mat.boots;
-          leg.bootModel.cuff.visible=!naked;
-          leg.bootModel.sole.visible=!naked;
-          leg.bootModel.heel.visible=!naked;
         }
         if(silhouette){
           body.traverse(node=>{
@@ -386,7 +296,7 @@
         headGroup.rotation.y=action==="turn"?.16:0;
         // A clean model reference must not contain the weapon or dangling
         // field kit. Restore each when leaving the reference action.
-        const showKit=!reference&&
+        const showKit=!reference&&!soldier.mannequinActive&&
           (soldier.inspectionMode==="equipped"||
            soldier.inspectionMode==="silhouette");
         equipmentRoot.visible=showKit;

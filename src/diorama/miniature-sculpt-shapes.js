@@ -13,7 +13,7 @@
       }
       return cache.get(key);
     };
-    const sphere=cached("sphere",()=>new THREE.SphereGeometry(1,20,14));
+    const sphere=cached("sphere",()=>new THREE.SphereGeometry(1,12,8));
     const boxCache=(x,y,z)=>cached(["box",x,y,z].join("/"),
       ()=>new THREE.BoxGeometry(x,y,z));
     function mesh(parent,geometry,material,position=[0,0,0]) {
@@ -32,7 +32,7 @@
     }
     // Profiles: [vertical position, X radius, Z radius, X offset, Z offset].
     // Contours are authored in the local segment's +/-0.5 vertical range.
-    function loftGeometry(profile,sides=16){
+    function loftGeometry(profile,sides=10){
       const verts=[],indices=[],uv=[];
       for(let j=0;j<profile.length;j++){
         const [y,rx,rz,cx=0,cz=0]=profile[j];
@@ -70,7 +70,7 @@
       g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
       return g;
     }
-    const loft=(parent,material,key,profile,p=[0,0,0],sides=16)=>{
+    const loft=(parent,material,key,profile,p=[0,0,0],sides=10)=>{
       const g=cached("loft:"+key,()=>loftGeometry(profile,sides));
       return mesh(parent,g,material,p);
     };
@@ -102,14 +102,14 @@
     // Feet are shaped longitudinally, with a flattened sole, instep and toe.
     function bootGeometry(){
       const rings=[
-        [-.210,.075,.045,-.015], // toe: broad and low
-        [-.165,.132,.087,.005],
+        [-.210,.075,.045,-.040], // toe: broad and grounded
+        [-.165,.132,.087,-.003],
         [-.060,.124,.101,.029],
         [ .060,.109,.118,.047],
         [ .165,.083,.124,.060],
         [ .205,.071,.090,.057]
       ];
-      const verts=[],indices=[],sides=16;
+      const verts=[],indices=[],sides=10;
       for(const [z,rx,ry,cy] of rings){
         for(let i=0;i<=sides;i++){
           const a=i/sides*2*Math.PI;
@@ -121,6 +121,18 @@
           const a=k*(sides+1)+i,b=a+sides+1;
           indices.push(a,a+1,b,b,a+1,b+1);
         }
+      // Cap the heel and toe inside the same boot mesh so there are no
+      // detached sole plates, visible open ends or floating joint pieces.
+      for(const end of [0,rings.length-1]){
+        const ring=rings[end],center=verts.length/3;
+        verts.push(0,ring[3],ring[0]);
+        for(let i=0;i<sides;i++){
+          const a=end*(sides+1)+i;
+          const b=end*(sides+1)+(i+1)%sides;
+          if(end===0)indices.push(center,b,a);
+          else indices.push(center,a,b);
+        }
+      }
       const g=new THREE.BufferGeometry();
       g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
       g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
@@ -130,13 +142,9 @@
       const root=new THREE.Group();root.position.set(side*.145,initialY,-.045);
       parent.add(root);
       const upper=mesh(root,cached("shaped-boot",bootGeometry),leather);
-      const sole=soft(root,soleMat,[0,.028,-.035],[.131,.031,.205]);
-      const heel=box(root,soleMat,[.125,.04,.072],[0,-.050,.118]);
-      const cuff=loft(root,leather,"boot-cuff",[
-        [-.5,.077,.081],[-.2,.096,.095],[.25,.090,.092],[.5,.078,.078]
-      ],[0,.17,.105]);
-      cuff.scale.y=.17;
-      return {root,upper,sole,heel,cuff};
+      // One coherent boot mesh. The toe, ankle and heel are all defined by
+      // its longitudinal silhouette—no floating sole, heel or cuff meshes.
+      return {root,upper};
     }
     const material=(hex,roughness=.94)=>new THREE.MeshStandardMaterial({
       color:hex,roughness,metalness:0,flatShading:false,side:THREE.DoubleSide

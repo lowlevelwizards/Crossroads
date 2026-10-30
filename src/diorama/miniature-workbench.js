@@ -47,8 +47,14 @@
       const actor=getSoldier()?.figure;
       if(!actor||mode==="normal")return;
       const selected=new Set(partMeshes());
+      const base=getSoldier()?.base;
       actor.traverse(mesh=>{
         if(!mesh.isMesh||mesh.parent===handles)return;
+        // Keep the round miniature base visible for scale/grounding even
+        // while hiding the rest of the mannequin.
+        let parent=mesh.parent,onBase=false;
+        while(parent){if(parent===base){onBase=true;break}parent=parent.parent}
+        if(onBase)return;
         if(selected.has(mesh))return;
         visualOriginal.set(mesh,{visible:mesh.visible,material:mesh.material});
         if(mode==="isolate")mesh.visible=false;
@@ -272,6 +278,29 @@
       setStatus(r.persisted?
         "Approved on this device. Reload the battle to use the shape.":
         "Browser storage unavailable; export the shape instead.");
+    });
+    $("wbDiscardDraft").addEventListener("click",()=>{
+      if(!enabled||!history)return;
+      if(!window.confirm("Delete the saved draft for "+part+"?"))return;
+      history.commit();
+      if(!lib.clear(part,"draft")){
+        setStatus("Cannot update browser storage. Export your shape first.");
+        return;
+      }
+      selectPart(part);
+      setStatus("Draft deleted; built-in "+part+" shape restored in the editor.");
+    });
+    $("wbRevertPublished").addEventListener("click",()=>{
+      if(!enabled||!history)return;
+      if(!window.confirm("Delete local draft and approved "+part+
+        " shape, then reload to restore the original?"))return;
+      const draftCleared=lib.clear(part,"draft");
+      const approvedCleared=lib.clear(part,"approved");
+      if(!draftCleared||!approvedCleared){
+        setStatus("Unable to clear local shape storage.");
+        return;
+      }
+      window.location.reload();
     });
     $("wbExport").addEventListener("click",()=>{
       if(!history)return;
