@@ -9,7 +9,10 @@
     ["aim","Aiming / ADS"],["fire","Shooting"],["cycle","Cycle bolt"],
     ["recover","Lower after firing"],["scan","Scanning for threats"],
     ["transition","Custom posture transition"],
-    ["reload","Reloading"],["walk","Walking"],["run","Running"],
+    ["reload","Reloading"],["fire-sequence","Complete firing sequence"],
+    ["burst-sequence","Automatic burst / recoil"],
+    ["impact-sequence","Incoming fire / suppression"],
+    ["walk","Walking"],["run","Running"],
     ["turn","Turning / pivot"],["down","Down / low profile"],
     ["ambush","Ambush / ready"],["cover","In cover"],
     ["kneel","Kneeling / braced"],["pinned","Pinned / suppressed"],
@@ -21,11 +24,13 @@
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const cycle=(t,seconds=1)=>((t%seconds)+seconds)%seconds/seconds;
   function duration(pose){
-    return pose==="fire"?.62:pose==="reload"?2.2:
+    return pose==="fire-sequence"?2.4:pose==="burst-sequence"?2.4:
+      pose==="impact-sequence"?1.8:
+      pose==="fire"?.62:pose==="reload"?2.2:
       pose==="casualty"?2.1:pose==="hit"?1.3:
       pose==="deploy"||pose==="pack"?2:1.6;
   }
-  function frame(pose,t,motion){
+  function frame(pose,t,motion,role="rifle"){
     // A casualty is a one-shot transition with a persistent end pose.
     const q=pose==="casualty"?clamp(t/duration(pose),0,1):cycle(t,duration(pose));
     const state={bob:0,lean:0,roll:0,yaw:0,crouch:0,
@@ -45,6 +50,41 @@
       state.lean=gait.lean+(pose==="assault"?.12:0);
       state.footOffset=Math.sin(t*3)*.025;
       if(pose==="enter"||pose==="exit")state.yaw=Math.sin(t*.9)*.18;
+    }
+    if(pose==="fire-sequence"||pose==="burst-sequence"){
+      const weapon=window.Crossroads3DWeaponPresentation;
+      const actionRole=["rifle","officer","smg","lmg","mmg"].includes(role)?
+        role:"rifle";
+      const count=pose==="burst-sequence"?
+        (actionRole==="rifle"||actionRole==="officer"?2:5):
+        (actionRole==="rifle"||actionRole==="officer"?1:3);
+      const shots=weapon?.schedule([{key:actionRole,shots:count}],
+        [{role:actionRole}])||[];
+      const fireStart=.42;
+      const first=shots.filter(s=>q*duration(pose)>=fireStart+s.delay)
+        .slice(-1)[0];
+      const elapsed=q*duration(pose);
+      state.aim=true;state.lean=.08;state.weaponReadiness=1;
+      if(elapsed<fireStart){
+        state.weaponBlend=Math.min(1,elapsed/fireStart);
+      }else if(elapsed>duration(pose)-.65){
+        state.weaponBlend=Math.max(0,Math.min(1,
+          (duration(pose)-elapsed)/.65));
+      }else state.weaponBlend=1;
+      if(first){
+        const since=elapsed-fireStart-first.delay;
+        const action=weapon?.motionAt(actionRole,since)||{};
+        state.weaponCycle=action.weaponCycle||0;
+        state.recoil=action.recoil||0;
+        state.flash=shots.some(s=>elapsed>=fireStart+s.delay&&
+          elapsed<fireStart+s.delay+.065);
+      }
+    }
+    if(pose==="impact-sequence"){
+      state.headDuck=Math.sin(Math.PI*q)*.20;
+      state.roll=Math.sin(Math.PI*q)*.18;
+      state.crouch=q<.45?q*.95:Math.max(0,(1-q)*.78);
+      state.lean=Math.sin(Math.PI*q)*.21;
     }
     if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){
@@ -91,6 +131,10 @@
     if(pose==="cycle"){
       state.weaponReadiness=1;state.weaponBlend=.8;
       state.weaponCycle=Math.sin(q*Math.PI);
+    }
+    if(pose==="fire-sequence"||pose==="burst-sequence"){
+      state.weaponReadiness=1;
+      state.aim=true;
     }
     if(pose==="ambush"){state.weaponReadiness=.8;state.weaponBlend=0;}
     if(pose==="kneel")state.weaponReadiness=1;

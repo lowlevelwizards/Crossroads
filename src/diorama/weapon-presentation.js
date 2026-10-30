@@ -56,7 +56,7 @@
       Math.sin(Math.PI*(t-m.cycleStart)/(m.cycleEnd-m.cycleStart)):0;
     return Object.freeze({
       recoil:m.recoil*impulse,
-      weaponCycle:role==="rifle"?cycle:0,
+      weaponCycle:cycle,
       bolt:role==="rifle"?cycle:0,
       actionComplete:t>=1
     });

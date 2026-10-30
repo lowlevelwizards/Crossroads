@@ -478,7 +478,7 @@
   function renderPose(t){
     const soldier=activeSoldier;
     if(!soldier)return;
-    const pose=poses.frame(poseSelect.value,t,motion);
+    const pose=poses.frame(poseSelect.value,t,motion,soldier.role);
     const posture=window.Crossroads3DSoldierPose;
     if(poseSelect.value==="transition"&&posture){
       const q=Math.max(0,Math.min(1,
@@ -506,8 +506,10 @@
       soldier.figure.rotation.set(0,pose.yaw||0,0);
       soldier.figure.position.set(0,0,0);
       const posed={...pose,action:poseSelect.value,
-        aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
-        recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
+        aim:["aim","ambush","fire","reload","fire-sequence",
+          "burst-sequence"].includes(poseSelect.value),
+        recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:
+          (pose.recoil||0),
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0};
       soldier.applyPose(posed);
       if(compareSoldier){
