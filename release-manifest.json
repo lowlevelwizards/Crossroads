@@ -125,7 +125,8 @@
     "src/diorama/miniature-shape-geometry.js",
     "src/diorama/miniature-shape-history.js",
     "src/diorama/miniature-workbench.js",
-    "tests/3d-v142-miniature-workbench.test.js"
+    "tests/3d-v142-miniature-workbench.test.js",
+    "src/diorama/miniature-sdf-transitions.js"
   ],
-  "threeDCacheVersion": "0.9.43"
+  "threeDCacheVersion": "0.9.44"
 }
