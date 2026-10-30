@@ -1781,6 +1781,88 @@ function initialize(THREE) {
     footingCache.set(key,height);
     return height;
   }
+  // ?debugFootprints=1 shows the actual rules bases (gold) beside physical
+  // miniatures, with red tether lines for drift. Blue means garrison display
+  // is an intentional engine-level occupancy abstraction, not a model LOS.
+  const footprintDebugEnabled=
+    new URLSearchParams(location.search).get("debugFootprints")==="1";
+  const footprintDebugGroup=new THREE.Group();
+  if(footprintDebugEnabled)scene.add(footprintDebugGroup);
+  const footprintDebugText=footprintDebugEnabled?document.createElement("div"):null;
+  if(footprintDebugText){
+    footprintDebugText.style.cssText="position:fixed;bottom:12px;right:12px;"+
+      "z-index:50;max-width:min(82vw,320px);padding:8px 10px;"+
+      "font:12px/1.45 monospace;background:#15251fe8;color:#ffdf9c;"+
+      "border:1px solid #d9b977aa;border-radius:5px;pointer-events:none";
+    footprintDebugText.textContent="RULE BASES · initializing";
+    document.body.appendChild(footprintDebugText);
+  }
+  function updateFootprintDebug(){
+    if(!footprintDebugEnabled||!physicalFootprints)return;
+    let mismatched=0,count=0,garrisons=0,maxGap=0;
+    for(const squad of squads){
+      const rules=squad.unit.models||window.CrossroadsModelGeometry?.models(squad.unit)||[];
+      if(!squad.debugBases)squad.debugBases=[];
+      const walking=activeMovements.has(squad.unit.id);
+      for(let i=0;i<squad.soldiers.length;i++){
+        const model=rules[i],soldier=squad.soldiers[i];
+        let visual=squad.debugBases[i];
+        if(!visual){
+          const ring=new THREE.Mesh(
+            new THREE.RingGeometry(.13,.164,20),
+            new THREE.MeshBasicMaterial({color:0xe7c16b,side:THREE.DoubleSide,
+              transparent:true,opacity:.95,depthTest:false,depthWrite:false}));
+          ring.rotation.x=-Math.PI/2;
+          const line=new THREE.Mesh(new THREE.BoxGeometry(1,.018,.023),
+            new THREE.MeshBasicMaterial({color:0xec7669,
+              transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
+          ring.renderOrder=16;line.renderOrder=16;
+          footprintDebugGroup.add(ring,line);
+          visual={ring,line};squad.debugBases[i]=visual;
+        }
+        const visible=Boolean(model&&i<squad.unit.soldiers&&
+          soldier.figure.visible&&!soldier.pendingRemoval);
+        visual.ring.visible=visible;visual.line.visible=false;
+        if(!visible)continue;
+        const at=bridge.toWorld(model),other={
+          x:squad.root.position.x+soldier.figure.position.x,
+          z:squad.root.position.z+soldier.figure.position.z
+        };
+        const gap=Math.hypot(at.x-other.x,at.z-other.z);
+        const garrison=Boolean(squad.unit.inBuilding);
+        if(garrison)garrisons++;
+        if(!walking&&!garrison){
+          count++;maxGap=Math.max(maxGap,gap);
+          if(gap>.06)mismatched++;
+        }
+        visual.ring.material.color.setHex(garrison?0x80cae8:0xe7c16b);
+        const radius=(Number(model.radius)||.5)*
+          bridge.table.worldUnitsPerInch;
+        visual.ring.scale.setScalar(radius/.15);
+        visual.ring.position.set(at.x,terrainY(at.x,at.z)+.12,at.z);
+        if(gap>.04){
+          visual.line.visible=true;
+          visual.line.position.set((at.x+other.x)/2,
+            terrainY((at.x+other.x)/2,(at.z+other.z)/2)+.13,
+            (at.z+other.z)/2);
+          visual.line.scale.x=gap;
+          visual.line.rotation.y=-Math.atan2(other.z-at.z,other.x-at.x);
+          visual.line.material.color.setHex(garrison?0x80cae8:0xec7669);
+        }
+      }
+    }
+    footprintDebugText.textContent="MODEL BASE AUDIT · "+
+      mismatched+"/"+count+" drift over 0.2″ · max "+
+      (maxGap/bridge.table.worldUnitsPerInch).toFixed(2)+
+      "″ · garrison models "+garrisons+
+      " (blue = visual window / rules-building abstraction)";
+  }
+  window.Crossroads3DFootprintAudit=Object.freeze({
+    snapshot:()=>squads.map(squad=>({
+      unitId:squad.unit.id,
+      ...physicalFootprints?.compare(squad,squad.root.position,bridge.toWorld)
+    }))
+  });
   // Use ?perf3d=1 to inspect draw cost and ground-ray count in the console.
   const perfEnabled=new URLSearchParams(location.search).get("perf3d")==="1";
   let perfStart=performance.now(),perfFrames=0,perfDuration=0;
@@ -3001,6 +3083,7 @@ function initialize(THREE) {
       // always describe the same rendered figures, even after cover reflow.
       syncSquadVisualAnchor(squad);
     }
+    if(footprintDebugEnabled&&frameIndex%6===0)updateFootprintDebug();
     for(let i=delayedMuzzleBursts.length-1;i>=0;i--){
       const burst=delayedMuzzleBursts[i];
       burst.delay-=dt;
