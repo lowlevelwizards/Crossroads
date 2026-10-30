@@ -4408,7 +4408,10 @@
             inBuilding:unit.inBuilding,outcome:unit.outcome,
             commandBonus:commandBonus(unit),
             commandSource:commandSupport(unit)?.id||null,
-            weapons:{...unit.weapons}
+            weapons:{...unit.weapons},
+            // The exact tabletop-inch bases used by range / friendly-fire /
+            // unit separation. Scene consumers may read but never mutate them.
+            models:window.CrossroadsModelGeometry?.models(unit).map(m=>({...m}))||[]
           }))
         };
       },
@@ -4425,11 +4428,15 @@
         if(!analysis.legal&&analysis.kind==="allowance"){
           const fitted=fitMovementPathToAllowance(unit,path,chosenOrder,null);
           if(fitted)return {legal:true,path:fitted.path.map(p=>({x:p.x,y:p.y})),
-            shortened:true,cost:fitted.analysis.cost,allowance:fitted.analysis.allowance};
+            shortened:true,cost:fitted.analysis.cost,allowance:fitted.analysis.allowance,
+            models:window.CrossroadsModelGeometry?.models(unit,
+              fitted.path[fitted.path.length-1]).map(m=>({...m}))||[]};
         }
         return {legal:analysis.legal,kind:analysis.kind,
           reason:analysis.reason??null,cost:analysis.cost,allowance:analysis.allowance,
-          path:analysis.legal?path.map(p=>({x:p.x,y:p.y})):null};
+          path:analysis.legal?path.map(p=>({x:p.x,y:p.y})):null,
+          models:analysis.legal?
+            (window.CrossroadsModelGeometry?.models(unit,target).map(m=>({...m}))||[]):[]};
       },
       previewTarget(id) {
         if(!["choose-target","choose-assault-target"].includes(phase))
@@ -4456,7 +4463,10 @@
             (!weapons.length?"No weapon can fire on this order":null),
           distance:a.distance,inRange:a.inRange,blocked:a.blocked,
           insideArc:a.insideArc,mmgFacing:unit.mmgFacing??null,
-          cover:a.cover??null,weapons};
+          cover:a.cover??null,weapons,
+          // The same physical miniature bases used by the rules analysis.
+          shooterModels:window.CrossroadsModelGeometry?.models(unit).map(m=>({...m}))||[],
+          targetModels:window.CrossroadsModelGeometry?.models(target).map(m=>({...m}))||[]};
       },
       async command(action,payload={}) {
         const name=String(action||"");

@@ -15,8 +15,8 @@ const client=fs.readFileSync(path.join(root,"src/diorama/battle-client.js"),"utf
 assert(client.includes("u.mmgFacing,u.mmgDeployed"),
   "deployed gun facing must invalidate the 3D snapshot signature");
 const html=fs.readFileSync(path.join(root,"battle3d.html"),"utf8");
-assert(html.includes("classic-session.html?scenario=hold_the_farm&amp;v=0.9.72"));
+assert(html.includes("classic-session.html?scenario=hold_the_farm&amp;v=0.9.73"));
 const classic=fs.readFileSync(path.join(root,"classic-session.html"),"utf8");
-assert(classic.includes("src/engine.js?v=3d104"));
+assert(classic.includes("src/engine.js?v=3d107"));
 assert(classic.includes("src/rules/shooting.js?v=3d104"));
 console.log("PASS — updated 3D source parses and battle host cache references are fresh.");

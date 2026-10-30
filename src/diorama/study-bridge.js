@@ -136,19 +136,21 @@
     );
   }
 
-  // Original formation slot percentages now refer to physical inches rather
-  // than the CSS canvas. Six soldiers occupy a roughly 8x3-inch formation.
+  // Never reimplement the game model layout in the renderer: one source
+  // supplies exactly the same physical inch slots used by shooting, range,
+  // friendly separation and deployment checks.
   function slotsFor(unit) {
-    const definition = formations[unit.role] ??
-      (unit.role === "support" ? formations.supportPacked : formations.line);
-    return definition.slots.slice(0, unit.soldiers).map(([x, y], index) =>
-      Object.freeze({
-        index,
-        dx: (x - 50) / 100 * 2.50,
-        dz: (y - 50) / 100 * 1.35,
-        recipe: miniatures.resolveModelRecipe(unit, index)
-      })
-    );
+    const definition=unit.role==="support"?
+      (unit.mmgDeployed?formations.supportDeployed:formations.supportPacked):
+      formations[unit.role]||formations.line;
+    const canonical=window.CrossroadsModelGeometry?.slots(unit)||null;
+    return definition.slots.slice(0,unit.soldiers).map(([x,y],index)=>{
+      const p=canonical?.[index]||{x:(x-50)*.045,y:(y-50)*.035};
+      return Object.freeze({
+        index,dx:p.x*INCH,dz:p.y*INCH,
+        recipe:miniatures.resolveModelRecipe(unit,index)
+      });
+    });
   }
 
   // A semantic footprint for each actual 3D obstacle, in inches. It is built

@@ -48,6 +48,7 @@ const tests = [
   "3d-v170-identity-pose.test.js",
   "3d-v171-tactical-posture.test.js",
   "3d-v172-living-front.test.js",
+  "3d-v173-model-footprints.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",

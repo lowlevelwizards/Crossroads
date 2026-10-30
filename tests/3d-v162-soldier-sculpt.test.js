@@ -70,7 +70,7 @@ const renderer=read("src/diorama/miniature-studio.js");
 assert(!renderer.includes("new THREE.WebGLRenderer({canvas:preview"),
   "battle preview must not allocate second iPhone graphics context");
 for(const file of ["battle3d.html","miniature-studio.html"]){
-  assert(read(file).includes("miniature-faction-gear.js?v=0.9.72"));
+  assert(read(file).includes("miniature-faction-gear.js?v=0.9.73"));
 }
-assert(read("editor3d.html").includes("miniature-faction-gear.js?v=0.9.72"));
+assert(read("editor3d.html").includes("miniature-faction-gear.js?v=0.9.73"));
 console.log("PASS — v0.9.70 shaped helmet clearance, dynamic gear, unified legwear, saved canon comparison and studio presets");
