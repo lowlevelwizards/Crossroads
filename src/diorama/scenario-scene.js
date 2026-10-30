@@ -1034,6 +1034,17 @@ function initialize(THREE) {
     visualEffects.push({mesh,duration,age:0,initialOpacity:material.opacity,...extra});
     return mesh;
   }
+  function ejectCasing(soldier){
+    if(!soldier?.figure.visible)return;
+    soldier.breathing.updateWorldMatrix(true,false);
+    const from=soldier.breathing.localToWorld(
+      new THREE.Vector3(.12,.13,-.17));
+    const caseMesh=addShotEffect(new THREE.CylinderGeometry(.014,.016,.056,5),
+      0xcbb27d,from.x,from.y,from.z,.55,{
+        velocity:{x:.28,y:.36,z:.07},expansion:.9
+      });
+    if(caseMesh)caseMesh.rotation.z=Math.PI/2;
+  }
   function muzzleBurst(burst){
     const start=burst.origin,end=burst.target;
     const direction=new THREE.Vector3().subVectors(end,start);
@@ -1042,6 +1053,7 @@ function initialize(THREE) {
     direction.normalize();
     // A sound, flash and recoil are all emitted from the SAME event.
     window.Crossroads3DCombatAudio?.playShot?.(burst.role,start);
+    if(burst.role!=="rifle")ejectCasing(burst.soldier);
     const size=burst.heavy?.13:burst.role==="smg"?.10:.085;
     const flash=addShotEffect(new THREE.ConeGeometry(size,size*2.8,5),
       0xffcf75,start.x+direction.x*size,start.y+direction.y*size,
@@ -1279,7 +1291,19 @@ function initialize(THREE) {
         s.weaponMechanic=null;s.recoil=0;s.weaponShotPending=false;
         s.presentationAimUntil=0;
       });
-      if(e?.type==="shooting")beginCasualtyRemovals(unitLookup.get(e.targetId));
+      if(e?.type==="shooting"){
+        const target=unitLookup.get(e.targetId);
+        if(target){
+          for(const sol of target.soldiers){
+            if(!sol.pendingRemoval)continue;
+            sol.figure.visible=false;sol.pendingRemoval=false;
+            sol.casualtyAnimating=false;
+          }
+          for(let i=casualtyAnimations.length-1;i>=0;i--)
+            if(target.soldiers.includes(casualtyAnimations[i].soldier))
+              casualtyAnimations.splice(i,1);
+        }
+      }
       return;
     }
     if(stage.type==="ambush"){
@@ -3080,6 +3104,10 @@ function initialize(THREE) {
             mechanical.role,mechanical.age);
           if(action){
             posture.weaponCycle=action.weaponCycle;
+            if(mechanical.role==="rifle"&&!mechanical.spent&&
+               action.weaponCycle>.82){
+              ejectCasing(soldier);mechanical.spent=true;
+            }
             posture.weaponReadiness=1;
             posture.weaponBlend=Math.max(posture.weaponBlend||0,.84);
             if(action.actionComplete)soldier.weaponMechanic=null;
@@ -3120,11 +3148,12 @@ function initialize(THREE) {
       syncSquadVisualAnchor(squad);
     }
     if(footprintDebugEnabled&&frameIndex%6===0)updateFootprintDebug();
-    for(let i=delayedMuzzleBursts.length-1;i>=0;i--){
-      const burst=delayedMuzzleBursts[i];
-      const combatDt=dt*(battle?.presentationSpeed||1);
-      burst.delay-=combatDt;
-      if(burst.delay>0)continue;
+    const combatDt=dt*(battle?.presentationSpeed||1);
+    for(const burst of delayedMuzzleBursts)burst.delay-=combatDt;
+    // Late frames still dispatch in authored shot order, never reversed.
+    const due=delayedMuzzleBursts.filter(b=>b.delay<=0)
+      .sort((a,b)=>a.shotIndex-b.shotIndex);
+    for(const burst of due){
       const soldier=burst.soldier;
       if(soldier?.figure.visible&&!soldier.pendingRemoval){
         soldier.recoil=Math.max(soldier.recoil||0,burst.recoil);
@@ -3144,7 +3173,7 @@ function initialize(THREE) {
         }
         muzzleBurst(burst);
       }
-      delayedMuzzleBursts.splice(i,1);
+      delayedMuzzleBursts.splice(delayedMuzzleBursts.indexOf(burst),1);
     }
     for(let i=casualtyAnimations.length-1;i>=0;i--){
       const record=casualtyAnimations[i];
