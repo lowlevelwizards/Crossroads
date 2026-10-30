@@ -42,7 +42,7 @@ assert.notEqual(gear.torsoSurface(.16,.10,.78),
 const soldier=read("src/diorama/miniature-heroic-character.js");
 for(const term of ["shapeSource===","soldier.approvedShapesUsed",
   "gear.setBodyWidth?.","S.clothedShin(","setEquipmentPreset=",
-  "sdf?.joint","hat.position.set(0,-.054,-.026)",
+  "sdf?.joint","hat.position.set(0,-.055,-.006)",
   "head-silhouette-v6"]){
   assert(soldier.includes(term),term);
 }
@@ -70,6 +70,6 @@ const renderer=read("src/diorama/miniature-studio.js");
 assert(!renderer.includes("new THREE.WebGLRenderer({canvas:preview"),
   "battle preview must not allocate second iPhone graphics context");
 for(const file of ["battle3d.html","editor3d.html","miniature-studio.html"]){
-  assert(read(file).includes("miniature-faction-gear.js?v=0.9.69"));
+  assert(read(file).includes("miniature-faction-gear.js?v=0.9.70"));
 }
-console.log("PASS — v0.9.69 shaped helmet clearance, dynamic gear, unified legwear, saved canon comparison and studio presets");
+console.log("PASS — v0.9.70 shaped helmet clearance, dynamic gear, unified legwear, saved canon comparison and studio presets");
