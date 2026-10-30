@@ -269,6 +269,25 @@ const villageHoldout=Object.freeze({
   ])
 });
 
+// Curated compact matches reuse validated authored boards, objectives and units.
+const patrolClash=Object.freeze({
+  ...meetingEngagement,id:"patrol_clash",title:"Patrol Clash — Mill Road",
+  description:"Small infantry patrols compete to secure the crossing and northern copse.",
+  rounds:4,
+  forces:Object.freeze({
+    blue:freezeList(meetingEngagement.forces.blue.slice(0,3).map(u=>({...u}))),
+    red:freezeList(meetingEngagement.forces.red.slice(0,3).map(u=>({...u})))
+  })
+});
+const farmRaid=Object.freeze({
+  ...holdTheFarm,id:"farm_raid",title:"Farm Raid",
+  description:"A short infantry action around the farm with reduced force lists.",
+  rounds:4,
+  forces:Object.freeze({
+    blue:freezeList(holdTheFarm.forces.blue.slice(0,3).map(u=>({...u}))),
+    red:freezeList(holdTheFarm.forces.red.slice(0,3).map(u=>({...u})))
+  })
+});
 window.CROSSROADS_SCENARIOS = Object.freeze({
   take_the_crossroads: takeTheCrossroads,
   hold_the_farm: holdTheFarm,
@@ -276,5 +295,7 @@ window.CROSSROADS_SCENARIOS = Object.freeze({
   mokra,
   meeting_engagement:meetingEngagement,
   village_holdout:villageHoldout,
+  patrol_clash:patrolClash,
+  farm_raid:farmRaid,
   terrain_library: terrainLibrary
 });
