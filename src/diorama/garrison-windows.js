@@ -14,21 +14,28 @@
   function authoredSlots(sockets,threat,count){
     if(!Array.isArray(sockets)||!sockets.length||!count)return [];
     const target=threat||{x:0,z:-100};
-    const facing=sockets.map(socket=>{
+    const facing=sockets.filter(socket=>socket&&
+      Number.isFinite(socket.x)&&Number.isFinite(socket.z)&&
+      Number.isFinite(socket.normal?.x)&&
+      Number.isFinite(socket.normal?.z)).map(socket=>{
       const dx=target.x-socket.x,dz=target.z-socket.z;
       const dot=dx*socket.normal.x+dz*socket.normal.z;
       return {socket,dot};
     });
+    if(!facing.length)return [];
     const best=Math.max(...facing.map(s=>s.dot));
     // A figure may use a real window only on an exposed facade.
     const choices=facing.filter(s=>s.dot>=Math.max(.001,best*.3))
-      .sort((a,b)=>b.dot-a.dot).map(s=>s.socket);
+      .sort((a,b)=>b.dot-a.dot||a.socket.x-b.socket.x||
+        a.socket.z-b.socket.z).map(s=>s.socket);
     if(!choices.length)return [];
     const points=[];
     for(let i=0;i<count;i++){
       const socket=choices[i%choices.length];
       const row=Math.floor(i/choices.length);
-      const recess=.1+row*.32;
+      // Each additional rank goes deeper into the structure; the front
+      // window remains available to a single firing model.
+      const recess=.18+row*.43;
       const x=socket.x-socket.normal.x*recess;
       const z=socket.z-socket.normal.z*recess;
       points.push({x,z,kind:"building",frontRow:row===0,cover:true,
@@ -64,14 +71,20 @@
   function outlet(bounds,from,threat,sockets=null){
     if(Array.isArray(sockets)&&sockets.length){
       const target=threat||{x:bounds.x+1,z:bounds.z};
-      const visible=sockets.filter(socket=>
+      const usable=sockets.filter(socket=>socket&&
+        Number.isFinite(socket.x)&&Number.isFinite(socket.z)&&
+        Number.isFinite(socket.normal?.x)&&
+        Number.isFinite(socket.normal?.z)&&socket.outlet&&
+        Number.isFinite(socket.outlet.x)&&Number.isFinite(socket.outlet.z));
+      const visible=usable.filter(socket=>
         (target.x-socket.x)*socket.normal.x+
         (target.z-socket.z)*socket.normal.z>.01);
-      const candidates=visible.length?visible:sockets;
+      const candidates=visible.length?visible:usable;
       const nearest=candidates.slice().sort((a,b)=>
         Math.hypot(a.x-from.x,a.z-from.z)-
         Math.hypot(b.x-from.x,b.z-from.z))[0];
-      return {...nearest.outlet,facade:nearest.normal};
+      if(nearest)return {...nearest.outlet,facade:nearest.normal};
+      // Invalid sockets fall back to safe geometry-based facade bays.
     }
     const face=facade(bounds,threat);
     const inset=.08;
