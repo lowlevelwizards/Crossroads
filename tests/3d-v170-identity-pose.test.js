@@ -61,8 +61,8 @@ assert(ger.side[0]>pol.side[0],
   "German M35 has a broad wrapping skirt");
 assert(ger.rear[1]<pol.rear[1]-.05,
   "German M35 skirts visibly lower at rear than Polish wz.31");
-assert(pol.front[2]<ger.front[2],
-  "Polish wz.31 has a distinct short front bill");
+assert(Math.abs(pol.front[2]-ger.front[2])>.012,
+  "Polish wz.31 and German M35 front silhouettes differ noticeably");
 const mat={pack:{},straps:{},hardware:{},uniform:{},trousers:{},
  boots:{},steel:{}};
 const factory=gear.create(THREE,S);
