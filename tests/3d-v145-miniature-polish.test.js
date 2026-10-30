@@ -36,11 +36,11 @@ assert(position.every(Number.isFinite)&&normals.every(Number.isFinite));
 assert(normals.some((x,i)=>i%3===1&&Math.abs(x)>.2),
   "analytical normal gradients must preserve curvature");
 const model=read("src/diorama/miniature-heroic-character.js");
-assert(model.includes("hat.position.set(0,-.069,-.031)"));
+assert(model.includes("hat.position.set(0,-.054,-.026)"));
 assert(model.includes("Crossroads3DFactionGear?.create"));
 const kit=read("src/diorama/miniature-faction-gear.js");
-assert(kit.includes("polish-roll-1939")&&kit.includes("german-roll-1939"));
-assert(kit.includes("polish-puttee")&&kit.includes("german-marching-boot"));
+assert(kit.includes("wz33-blanket-roll")&&kit.includes("tornister-blanket-roll"));
+assert(kit.includes("surfaceRibbon")&&kit.includes("setBodyWidth"));
 assert(model.includes("mat.eyes,[side*.071,.163,-.184]"));
 const weapons=read("src/diorama/miniature-historical-weapons.js");
 assert(weapons.includes("window.Crossroads3DWeaponGeometry.create"));
