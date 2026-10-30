@@ -31,6 +31,17 @@ const left=api.create({faction:"poland",role:"rifle",index:2});
 assert.equal(right.step(.016,{walking:true}).weaponCarry,"german-side");
 assert.equal(left.step(.016,{walking:true}).weaponCarry,"polish-two");
 assert(api.stagger(0)!==api.stagger(1),"squad variation is stable");
+const waiting=api.create({faction:"poland",role:"rifle",index:3});
+for(let i=0;i<70;i++)waiting.step(.016,{order:"Fire"});
+assert(waiting.state.readiness>.5&&waiting.state.ads<.05,
+  "selecting Fire without a target raises the weapon to ready, not ADS");
+const ambush=api.create({faction:"poland",role:"rifle",index:2});
+let search;
+for(let i=0;i<70;i++)search=ambush.step(.016,{order:"Ambush"});
+assert(Math.abs(search.headYaw)>.01,
+  "Ambush scanning has an intentional but limited head motion");
+assert.equal(ambush.state.memoryYaw,null,
+  "non-omniscient scan does not synthesize hidden target positions");
 for(let i=0;i<275;i++)output=zero.step(.016,{order:null});
 assert(output.weaponBlend<.2,"canceled targeting lowers the weapon");
 assert.equal(output.hasKnownTarget,false,
