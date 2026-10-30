@@ -341,6 +341,10 @@
           weapon.position.set(.028,(pose.aim?.03:-.095)-
             (pose.recoil||0)*.05,-.32);
         }
+        // Only show a folded gunner bipod when the gun is being braced;
+        // don't leave two long sticks hanging from every walking LMG.
+        armaments.setBipod?.(!!pose.aim||
+          action==="ambush"||action==="fire");
         // In locomotion, each leg's foot contact is carried from the existing
         // distance-based gait; in cover, change leg stance and widen contact.
         for(const leg of legs){
