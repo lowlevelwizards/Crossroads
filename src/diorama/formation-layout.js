@@ -80,6 +80,17 @@
       return {...point,x:next.x-origin.x,z:next.z-origin.z};
     });
   }
+  // Quantify the distance between cosmetic placements and the base slots.
+  // This audit does not grant cover, change hit calculations or movement.
+  function deviation(points,slots){
+    const n=Math.min(points?.length||0,slots?.length||0);
+    let max=0,sum=0,over=0;
+    for(let i=0;i<n;i++){
+      const d=distance(points[i],slots[i]);
+      max=Math.max(max,d);sum+=d;if(d>.9)over++;
+    }
+    return Object.freeze({count:n,max,mean:n?sum/n:0,over});
+  }
   function resolve({origin,slots,living,segments=[],coverPositions=null,
      buildingBounds=null,buildingWindows=null,threat=null,cohesion=.57,move=null}={}){
     const count=Math.max(0,Math.min(slots?.length||0,
@@ -99,5 +110,7 @@
     return Object.freeze({source,
       points:capTravel(cohere(points,{maxNeighbor:cohesion}),origin,move)});
   }
-  window.Crossroads3DFormationLayout=Object.freeze({resolve,cohere,buildingSlots,capTravel});
+  window.Crossroads3DFormationLayout=Object.freeze({
+    resolve,cohere,buildingSlots,capTravel,deviation
+  });
 })();

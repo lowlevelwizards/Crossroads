@@ -2940,6 +2940,8 @@ function initialize(THREE) {
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
           soldier.weaponShotPending=false;
+          const contact=!isWalking&&squad.assaultVisual&&assaultMotion?
+            assaultMotion.individualPose(squad.assaultVisual,soldierIndex):null;
           soldier.applyPose({
             ...posture,
             action:isWalking?(moving.run?"run":"walk"):
@@ -2947,8 +2949,9 @@ function initialize(THREE) {
                 soldier.coverPose>.25?"cover":
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
                   "ambush":squad.unit.order==="Rally"?"rally":"idle"),
-            crouch:soldier.crouch||0,
-            lean:Math.max(0,-soldier.breathing.rotation.x),
+            crouch:Math.max(soldier.crouch||0,contact?.crouch||0),
+            lean:Math.max(0,-soldier.breathing.rotation.x,
+              contact?.lean||0),
             roll:soldier.breathing.rotation.z,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,

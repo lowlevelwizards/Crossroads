@@ -24,7 +24,42 @@
   function nearest(origin,things){
     return things?.slice().sort((a,b)=>dist(origin,a)-dist(origin,b))[0]||null;
   }
-  function chooseUnit(s,faction) {
+  // Round-scale intentions: distribute non-support units across objectives
+  // instead of treating every activation as an unrelated nearest-target move.
+  // The plan contains only current public snapshot data, never hidden rolls.
+  function makePlan(s,faction){
+    const allies=(s.units||[]).filter(u=>u.faction===faction&&u.soldiers>0)
+      .slice().sort((a,b)=>a.id.localeCompare(b.id));
+    const enemies=(s.units||[]).filter(u=>u.faction!==faction&&u.soldiers>0);
+    const goals=objectivePoint(s,faction)||[];
+    const assignments={};
+    const load={};
+    for(const unit of allies){
+      const pinned=unit.role==="officer"?
+        nearest(unit,allies.filter(u=>u.id!==unit.id&&u.pins>0)):null;
+      if(pinned&&dist(unit,pinned)>4.5){
+        assignments[unit.id]={task:"support",point:{x:pinned.x,y:pinned.y},
+          targetId:pinned.id};
+        continue;
+      }
+      const target=goals.slice().sort((a,b)=>
+        (dist(unit,a)+(load[a.id]||0)*15)-(dist(unit,b)+(load[b.id]||0)*15)||
+        String(a.id).localeCompare(String(b.id)))[0];
+      if(!target){
+        const enemy=nearest(unit,enemies);
+        assignments[unit.id]={task:unit.role==="support"?"establish":"engage",
+          point:enemy?{x:enemy.x,y:enemy.y}:null,targetId:enemy?.id||null};
+        continue;
+      }
+      load[target.id]=(load[target.id]||0)+
+        (unit.role==="support"?.4:1);
+      assignments[unit.id]={task:unit.role==="support"?"establish":
+        dist(unit,target)<3.5?"hold":"advance",
+        point:{x:target.x,y:target.y},targetId:target.id};
+    }
+    return Object.freeze({round:s.round,assignments});
+  }
+  function chooseUnit(s,faction,plan=null) {
     const ready=s.units.filter(u=>u.faction===faction&&u.soldiers>0&&!u.activated&&
       (!s.snap||s.snap.eligibleIds?.includes(u.id)));
     const enemies=s.units.filter(u=>u.faction!==faction&&u.soldiers>0);
@@ -39,12 +74,13 @@
           (u.pins>=2?-8:0)+(u.role==="officer"?
           4+allies.filter(v=>v.id!==u.id&&!v.activated&&v.pins>=1&&
             dist(v,u)<=6).length*3:0)+
-          (balance.advantage>0?2:0)+(u.down?-3:0);
+          (balance.advantage>0?2:0)+(u.down?-3:0)+
+          (plan?.assignments?.[u.id]?.task==="hold"?2.5:0);
       };
       return value(b)-value(a)||a.id.localeCompare(b.id);
     })[0]||null;
   }
-  function chooseOrder(s,unit,legal,previewTarget,failed) {
+  function chooseOrder(s,unit,legal,previewTarget,failed,plan=null) {
     const enemy=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     // During choose-order the engine intentionally disallows previewTarget;
     // choose likely firing ranges here, then confirm legal LOS in target phase.
@@ -66,7 +102,8 @@
     if(supportWeapon&&holding&&has("Ambush"))return "Ambush";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
       return "Fire";
-    if(holding&&has("Ambush"))return "Ambush";
+    if((holding||plan?.assignments?.[unit.id]?.task==="hold")&&
+      has("Ambush"))return "Ambush";
     if(has("Advance")&&!failed.move.has(unit.id))return "Advance";
     if(has("Run")&&!failed.move.has(unit.id))return "Run";
     if(has("Ambush")&&enemy.some(u=>dist(u,unit)<22))return "Ambush";
@@ -129,8 +166,9 @@
     }
     return benefit;
   }
-  function chooseMove(s,unit,previewMove,explain=false) {
+  function chooseMove(s,unit,previewMove,explain=false,plan=null) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
+    const assignment=plan?.assignments?.[unit.id]||null;
     const objective=nearest(unit,objectivePoint(s,unit.faction));
     const enemy=nearest(unit,enemies);
     const board=s.table||{width:72,height:48};
@@ -140,7 +178,8 @@
     // The legal preview decides where they may actually finish.
     const pinnedAlly=unit.role==="officer"?nearest(unit,friendly.filter(u=>
       u.pins>0&&!u.activated&&dist(u,unit)>5.5)):null;
-    const target=pinnedAlly||objective||enemy||{x:board.width/2,y:board.height/2};
+    const target=pinnedAlly||assignment?.point||objective||enemy||
+      {x:board.width/2,y:board.height/2};
     const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
     const theta=Math.atan2(target.y-unit.y,target.x-unit.x);
     const options=[];
@@ -165,8 +204,12 @@
         const outnumbered=balance.advantage< -4?
           (vulnerable?-6:-3):0;
         const support=Math.max(0,Math.min(3,balance.advantage*.25));
-        const objectiveRange=objective?dist(endpoint,objective):Infinity;
+        const objectiveRange=assignment?.point?
+          dist(endpoint,assignment.point):objective?dist(endpoint,objective):Infinity;
         const objectiveHold=objectiveRange<2.7?4:0;
+        const intentBenefit=assignment?.task==="hold"?
+          -Math.max(0,dist(endpoint,unit)-2)*1.1:
+          assignment?.task==="support"&&pinnedAlly?3:0;
         const coverBenefit=defensiveCover(endpoint,s.terrain,enemies)*
           ((unit.pins||0)>0||unit.soldiers<=3?1.9:1.15);
         const exposed=enemies.filter(e=>dist(e,endpoint)<18).length;
@@ -186,6 +229,7 @@
         const score=progress*4+(objective?4:0)+objectiveHold+
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
           commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
+          intentBenefit+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score,progress,cover:coverBenefit,
           exposure:exposurePenalty,command:commandBenefit,
@@ -200,6 +244,6 @@
   }
   window.Crossroads3DAITactics=Object.freeze({
     chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
-    defensiveCover
+    defensiveCover,makePlan
   });
 })();

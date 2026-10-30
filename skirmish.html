@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#273b31"><title>Crossroads — Quick Skirmish</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 35% 0%,#637766,#223329 80%);color:#f2e5c9;font:15px/1.5 system-ui,sans-serif;padding:28px 16px}
+main{max-width:580px;margin:auto}nav a{color:#e6d5a8}small{font-size:11px;letter-spacing:.18em;font-weight:800;color:#d9c597}
+h1{font-size:clamp(28px,8vw,44px);margin:6px 0}p{color:#cec7af}
+section{background:#202f29e8;border:1px solid #aa9b7666;padding:20px;border-radius:12px;display:grid;gap:14px}
+label{font-size:12px;font-weight:750;letter-spacing:.06em;display:grid;gap:6px}
+select,button,a.launch{font:inherit;border-radius:7px;padding:12px;background:#354b41;color:#f1e5ca;border:1px solid #ad9b7555;min-height:46px}
+button{cursor:pointer}a.launch{display:block;text-align:center;background:#e3c993;color:#263329;font-weight:850;text-decoration:none}
+.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1}.brief{padding:12px;background:#3e5043;border-radius:7px;color:#e5ddc6;font-size:13px}
+footer{font-size:12px;color:#d1c7af;margin-top:18px}
+</style></head><body><main><nav><a href="./index.html">← Main menu</a></nav>
+<small>THE LIVING TABLETOP</small><h1>QUICK SKIRMISH</h1>
+<p>Choose a proven battlefield and launch a fresh match.</p>
+<section><label for="mission">Battlefield / force preset<select id="mission"></select></label>
+<label for="mode">Opposition<select id="mode"><option value="solo">Solo — German AI</option>
+<option value="hotseat">Local hotseat — two players</option></select></label>
+<div id="brief" class="brief" aria-live="polite"></div>
+<div class="row"><button type="button" id="surprise">Surprise me</button>
+<a id="launch" class="launch" href="./battle3d.html?scenario=patrol_clash&amp;solo=1">START BATTLE</a></div></section>
+<footer>All matches retain the original rules engine and authored legal terrain. Procedural maps, custom army import and selectable AI difficulty are not yet supported.</footer>
+</main><script src="data/scenarios.js?v=s111h5"></script><script>
+"use strict";
+(() => {
+const ids=["patrol_clash","farm_raid","meeting_engagement","hold_the_farm",
+"village_holdout","take_the_crossroads","breakthrough","mokra"];
+const mission=document.getElementById("mission"),mode=document.getElementById("mode"),
+brief=document.getElementById("brief"),launch=document.getElementById("launch");
+for(const id of ids){
+ const s=window.CROSSROADS_SCENARIOS?.[id];if(!s)continue;
+ const opt=document.createElement("option");opt.value=id;opt.textContent=s.title;
+ mission.append(opt);
+}
+try{
+ const previous=JSON.parse(localStorage.getItem("crossroads-quick-skirmish")||"null");
+ if(ids.includes(previous?.mission))mission.value=previous.mission;
+ if(["solo","hotseat"].includes(previous?.mode))mode.value=previous.mode;
+}catch{}
+function update(){
+ const s=window.CROSSROADS_SCENARIOS?.[mission.value];if(!s)return;
+ brief.textContent=(s.description||"")+" · "+(s.rounds||4)+" rounds · "+
+ (s.forces?.blue?.length||0)+" Polish / "+(s.forces?.red?.length||0)+
+ " German units · "+(s.objectives?.length||0)+" objectives";
+ launch.href="./battle3d.html?scenario="+encodeURIComponent(mission.value)+
+ (mode.value==="solo"?"&solo=1":"");
+ try{localStorage.setItem("crossroads-quick-skirmish",JSON.stringify({
+ mission:mission.value,mode:mode.value}));}catch{}
+}
+mission.addEventListener("change",update);mode.addEventListener("change",update);
+document.getElementById("surprise").addEventListener("click",()=>{
+ const n=mission.options.length;
+ if(n){mission.selectedIndex=Math.floor(Math.random()*n);update();}
+});
+update();
+})();
+</script></body></html>

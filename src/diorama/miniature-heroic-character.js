@@ -436,9 +436,13 @@
         // distance-based gait; in cover, change leg stance and widen contact.
         for(const leg of legs){
           const side=leg.side;
-          const lift=(side<0?pose.leftLift:pose.rightLift)||0;
-          const reach=(side<0?pose.leftReach:pose.rightReach)||0;
-          const stride=moving?reach:0;
+          const rawLift=(side<0?pose.leftLift:pose.rightLift)||0;
+          const rawReach=(side<0?pose.leftReach:pose.rightReach)||0;
+          const envelope=window.Crossroads3DSoldierIK?.strideEnvelope?.(
+            rawReach,rawLift,action==="run"||action==="assault"
+          )||{reach:rawReach,lift:rawLift};
+          const lift=envelope.lift;
+          const stride=moving?envelope.reach:0;
           const stance=down?(side<0?-.22:.15):
             kneel?(side<0?-.19:.23):
             cover?(side<0?-.15:.10):
@@ -533,6 +537,10 @@
             const pole=v(side*.16,kneel?-.048:sight>.5?.025:-.105,
               sight>.5?-.035:.075);
             elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
+            // Maintain outward elbow pole even if a cross-body grip,
+            // aiming transition or saved proportion crosses the torso.
+            elbow.x=side*Math.max(.245,side*elbow.x);
+            elbow.y=clamp(elbow.y,-.30,.34);
           }
           // More natural compact arm bend, no straight blocky L-pose.
           S.segment(arm.upper,shoulder,elbow);

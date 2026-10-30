@@ -12,6 +12,7 @@
     "tests/startup-smoke.html",
     "battle3d.html",
     "scenarios3d.html",
+    "skirmish.html",
     "editor3d.html",
     "army3d.html",
     "miniature-studio.html",
@@ -146,5 +147,5 @@
     "src/diorama/soldier-pose-controller.js",
     "tests/3d-v171-tactical-posture.test.js"
   ],
-  "threeDCacheVersion": "0.9.71"
+  "threeDCacheVersion": "0.9.72"
 }

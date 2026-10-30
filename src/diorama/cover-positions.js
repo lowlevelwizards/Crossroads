@@ -13,14 +13,24 @@
     const closest={x:segment.a.x+t*ux,z:segment.a.z+t*uz};
     return {t,ux,uz,length,closest,distance:d(point,closest)};
   }
-  function findNearest(origin,segments,maxSnap=1.07){
+  function findNearest(origin,segments,maxSnap=1.07,threat=null){
     let best=null,bestScore=Infinity;
     for(const segment of segments||[]){
       const proj=projection(origin,segment);
       if(!proj||proj.distance>maxSnap)continue;
       // Favor nearby hard cover over hedges only when distances are similar.
-      const score=proj.distance+(segment.kind==="hedge"?.04:0)+
+      let score=proj.distance+(segment.kind==="hedge"?.04:0)+
         (segment.kind==="fence"?.08:0);
+      if(threat){
+        const normal={x:-proj.uz,z:proj.ux};
+        const own=(origin.x-proj.closest.x)*normal.x+
+          (origin.z-proj.closest.z)*normal.z;
+        const enemy=(threat.x-proj.closest.x)*normal.x+
+          (threat.z-proj.closest.z)*normal.z;
+        // Prefer a barrier BETWEEN the squad and a known enemy rather than
+        // the closest decorative wall on the wrong side.
+        score+=own*enemy<-.01?-.23:.60;
+      }
       if(score<bestScore){
         bestScore=score;best={segment,...proj};
       }
@@ -29,7 +39,7 @@
   }
   function arrange(origin,slots,segments,threat,{maxSnap=1.07,spacing=.37}={}){
     if(!Array.isArray(slots)||!slots.length)return null;
-    const cover=findNearest(origin,segments,maxSnap);
+    const cover=findNearest(origin,segments,maxSnap,threat);
     if(!cover)return null;
     const {segment,ux,uz,length,t,closest}=cover;
     // Stay on the same physical side as the authoritative unit center.
@@ -39,6 +49,7 @@
       (threat.x-closest.x)*nx+(threat.z-closest.z)*nz:0;
     const side=Math.abs(signed)>.04?Math.sign(signed):
       (Math.abs(opposite)>.02?-Math.sign(opposite):1);
+    const facingCover=!threat||opposite*side<-.01;
     const margin=Math.min(.24,length*.20);
     const capacity=Math.max(1,Math.floor(Math.max(.05,length-2*margin)/spacing)+1);
     const cols=Math.min(capacity,slots.length);
@@ -61,7 +72,7 @@
         continue;
       }
       points.push({x:world.x-origin.x,z:world.z-origin.z,
-        cover:true,kind:segment.kind,frontRow:row===0,
+        cover:facingCover,kind:segment.kind,frontRow:row===0,
         look:threat?{x:threat.x,z:threat.z}:
           {x:world.x-nx*side,z:world.z-nz*side}});
     }

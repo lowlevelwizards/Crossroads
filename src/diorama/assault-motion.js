@@ -28,7 +28,18 @@
     if(p<.56)return gesture.peak;
     return gesture.peak*(1-ease((p-.56)/.44));
   }
+  // Cosmetic upper-body bracing in the same clock as displacement. The
+  // authoritative assault event, dice and survivors are never re-resolved.
+  function individualPose(gesture,index=0){
+    if(!gesture)return {lean:0,crouch:0,brace:0};
+    const lead=Math.min(.24,index*.032);
+    const q=Math.max(0,Math.min(1,
+      (gesture.age-lead)/Math.max(.3,gesture.duration-lead)));
+    const push=q<.28?ease(q/.28):q<.58?1:1-ease((q-.58)/.42);
+    return {lean:push*(gesture.peak>.2?.20:.13),
+      crouch:push*.14,brace:push*(gesture.peak>.2?1:.6)};
+  }
   window.Crossroads3DAssaultMotion=Object.freeze({
-    create,displacement,individualDisplacement
+    create,displacement,individualDisplacement,individualPose
   });
 })();
