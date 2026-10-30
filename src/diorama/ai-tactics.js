@@ -99,6 +99,12 @@
     const supportWeapon=unit.role==="support"||/mmg|mortar|atgun/i.test(unit.type||"");
     if(supportWeapon&&!unit.mmgDeployed&&unit.weapons?.mmg&&has("Fire")&&
        (visible.length||holding))return "Fire";
+    if(supportWeapon&&unit.mmgDeployed&&
+       (shouldHoldSupport(unit,s)||holding)){
+      if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
+        return "Fire";
+      if(has("Ambush"))return "Ambush";
+    }
     if(supportWeapon&&holding&&has("Ambush"))return "Ambush";
     if(visible.length&&has("Fire")&&!failed.fire.has(unit.id))
       return "Fire";
@@ -110,17 +116,54 @@
     if(has("Down"))return "Down";
     return legal[0]||null;
   }
+  function sectorScore(unit,enemies,facing){
+    const targets=(enemies||[]).filter(e=>e.soldiers>0&&e.visible!==false);
+    return targets.reduce((total,e)=>{
+      const range=dist(unit,e);
+      if(range>36||range<.2)return total;
+      const bearing=(Math.atan2(e.y-unit.y,e.x-unit.x)*180/Math.PI+360)%360;
+      const deviation=Math.abs(((bearing-facing+540)%360)-180);
+      if(deviation>45+.001)return total;
+      // Broad sectors protect several approaches; stable neutral tie breaks.
+      return total+(1.4+Math.min(5,e.soldiers)*.28+
+        (e.role==="officer"?.6:0))*
+        Math.max(.2,1-range/44)*(1-deviation/160);
+    },0);
+  }
   function mmgRotation(unit,enemies){
     if(!unit?.mmgDeployed||!Number.isFinite(unit.mmgFacing))return 0;
-    const candidates=(enemies||[]).filter(u=>u.soldiers>0&&dist(u,unit)<36);
-    const nearestTarget=nearest(unit,candidates);
-    if(!nearestTarget)return 0;
-    const bearing=((Math.atan2(nearestTarget.y-unit.y,
-      nearestTarget.x-unit.x)*180/Math.PI)%360+360)%360;
-    const difference=((bearing-unit.mmgFacing+540)%360)-180;
-    // Rotate only when no longer inside the engine's 90-degree sector.
-    if(Math.abs(difference)<=44)return 0;
-    return difference>0?45:-45;
+    const current=sectorScore(unit,enemies,unit.mmgFacing);
+    const left=sectorScore(unit,enemies,(unit.mmgFacing+315)%360);
+    const right=sectorScore(unit,enemies,(unit.mmgFacing+45)%360);
+    const gain=Math.max(left,right)-current;
+    // At most one legal 45-degree turn. A hysteresis margin avoids the
+    // aim left / aim right loop that previously ate successive AI actions.
+    if(gain<=Math.max(.45,current*.18))return 0;
+    return right>=left?45:-45;
+  }
+  function supportPositionScore(point,unit,s){
+    const enemies=(s.units||[]).filter(e=>e.faction!==unit.faction&&
+      e.soldiers>0&&e.visible!==false);
+    const allies=(s.units||[]).filter(a=>a.faction===unit.faction&&
+      a.id!==unit.id&&a.soldiers>0);
+    const targets=enemies.filter(e=>dist(point,e)<=35);
+    const lanes=targets.reduce((n,e)=>{
+      const range=dist(point,e);
+      return n+Math.max(0,1-Math.abs(range-17)/26)*2.4;
+    },0);
+    const cover=defensiveCover(point,s.terrain,enemies);
+    const infantry=allies.some(a=>dist(a,point)<11)?2:0;
+    const objective=(s.objectives||[]).some(o=>
+      Number.isFinite(o.x)&&Number.isFinite(o.y)&&dist(point,o)<13)?3:0;
+    const exposed=enemies.filter(e=>dist(point,e)<6).length;
+    return lanes+cover*1.4+infantry+objective-exposed*5;
+  }
+  function shouldHoldSupport(unit,s){
+    if(!unit||!unit.mmgDeployed)return false;
+    const score=supportPositionScore(unit,unit,s);
+    const threats=(s.units||[]).filter(e=>e.faction!==unit.faction&&
+      e.soldiers>0&&e.visible!==false);
+    return score>=3.2||threats.some(e=>dist(unit,e)<31);
   }
   function chooseTarget(s,unit,previewTarget) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
@@ -226,10 +269,13 @@
         // An actual legal preview supplies all path costs. Never guess cover or LOS.
         const efficiency=Number.isFinite(preview.cost)?
           -Math.max(0,preview.cost-step)*.15:0;
+        const laneBenefit=supportWeapon?
+          supportPositionScore(endpoint,unit,s)-
+          supportPositionScore(unit,unit,s)*.65:0;
         const score=progress*4+(objective?4:0)+objectiveHold+
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
           commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
-          intentBenefit+
+          intentBenefit+laneBenefit+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score,progress,cover:coverBenefit,
           exposure:exposurePenalty,command:commandBenefit,
@@ -244,6 +290,6 @@
   }
   window.Crossroads3DAITactics=Object.freeze({
     chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
-    defensiveCover,makePlan
+    defensiveCover,makePlan,supportPositionScore,shouldHoldSupport,sectorScore
   });
 })();
