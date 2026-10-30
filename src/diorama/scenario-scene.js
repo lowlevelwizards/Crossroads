@@ -1397,11 +1397,16 @@ function initialize(THREE) {
       }
     }else if(stage.phase==="fire"&&shooter){
       const groups=e.groups||[];
-       shooter.soldiers.forEach((soldier,i)=>{
-         soldier.presentationAimUntil=performance.now()+950+i*45;
-       });
       const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
         ({role:s.role,visible:s.figure.visible})))||[];
+      // Keep the stock shouldered until the *last* scheduled muzzle event,
+      // including slower machine-gun volleys and staggered squad fire.
+      shooter.soldiers.forEach((soldier,i)=>{
+        const latest=firing.filter(shot=>shot.soldierIndex===i)
+          .reduce((max,shot)=>Math.max(max,shot.delay||0),0);
+        soldier.presentationAimUntil=performance.now()+
+          1050+Math.round(latest*1000)+i*45;
+      });
       shooter.root.updateMatrixWorld(true);
       for(const shot of firing){
         const soldier=shooter.soldiers[shot.soldierIndex];
@@ -2928,7 +2933,8 @@ function initialize(THREE) {
           const posture=soldier.poseState?.step(dt,{
             walking:isWalking,down:!!squad.unit.down,pins:squad.unit.pins||0,
             cover:soldier.coverPose||0,
-            order:previewing?"Fire":squad.unit.order,
+            order:(battle?.snapshot?.phase==="choose-target"&&
+              selectedSquad===squad)?"Fire":squad.unit.order,
             preview:previewing,firing,targetYaw:knownYaw,
             facing:soldier.figure.rotation.y,
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
@@ -2938,8 +2944,9 @@ function initialize(THREE) {
             ...posture,
             action:isWalking?(moving.run?"run":"walk"):
               (squad.unit.down?"down":squad.unit.pins>0?"pinned":
-                squad.unit.mmgDeployed?"ambush":
-                 soldier.coverPose>.25?"cover":"idle"),
+                soldier.coverPose>.25?"cover":
+                (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
+                  "ambush":squad.unit.order==="Rally"?"rally":"idle"),
             crouch:soldier.crouch||0,
             lean:Math.max(0,-soldier.breathing.rotation.x),
             roll:soldier.breathing.rotation.z,
