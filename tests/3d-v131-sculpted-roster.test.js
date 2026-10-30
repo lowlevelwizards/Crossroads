@@ -57,7 +57,8 @@ const win={
   })}
 };
 for(const name of ["miniature-sculpt-shapes.js",
-  "miniature-historical-weapons.js","miniature-heroic-character.js"]){
+  "miniature-historical-weapons.js","miniature-sdf-transitions.js",
+  "miniature-heroic-character.js"]){
   const script=read("src/diorama/"+name);
   new vm.Script(script,{filename:name}).runInNewContext({window:win});
 }
@@ -77,6 +78,21 @@ for(const faction of ["poland","germany"]){
     make(squad,0,0,0,{kit:{factionId:faction,id:kit},role},0,1);
     const s=squad.soldiers[0];
     assert.equal(s.modelVersion,3);
+    assert(s.arms.every(a=>a.seam&&a.seam.geometry.userData.sdfBaked),
+      "elbow transition sleeves must be SDF baked");
+    assert(s.legs.every(l=>l.seam&&l.seam.geometry.userData.sdfBaked),
+      "knee transition sleeves must be SDF baked");
+    assert(s.arms.every(a=>a.skinHand.scale.y<a.skinHand.scale.x),
+      "hands should be a single flat mitten rather than a sphere");
+    assert(s.headGroup.scale.x>1,
+      "default heroic head is visibly enlarged");
+    if(role!=="officer"){
+      const helmet=s.editableParts.get("helmet")[0];
+      assert(helmet?.geometry.userData?.sdfBaked,
+        "helmet shell and brim must share one SDF surface");
+      assert(helmet.geometry.attributes.normal.array.every(Number.isFinite),
+        "baked helmet normals must be finite");
+    }
     // Intentional low-mesh mannequin: no second jaw, eye spheres, helmet
     // chinstraps, loose thumbs/cuffs, or disconnected boot trim.
     assert.equal(s.headGroup.children.length,4,
@@ -118,7 +134,10 @@ for(const faction of ["poland","germany"]){
     s.applyPose({action:"idle"});
     assert.equal(s.equipmentRoot.visible,true,
       "battle-ready idle restores field kit");
-        s.applyPose({action:"walk",leftLift:.13,rightReach:.11,lean:.12});
+    s.applyPose({action:"idle"});
+    assert(s.legs[0].mesh.position.z<0,
+      "idle knee has a little natural forward bend");
+    s.applyPose({action:"walk",leftLift:.13,rightReach:.11,lean:.12});
     s.applyPose({action:"kneel",crouch:.69,aim:true});
     s.applyPose({action:"down",crouch:.84,lean:.24,forward:.08});
     s.applyPose({action:"casualty",fall:1});
@@ -126,9 +145,11 @@ for(const faction of ["poland","germany"]){
     assert(s.body.rotation.z<-.6);
     assert(Number.isFinite(s.muzzleLocal.z),"valid muzzle anchor");
     s.applyProfile({headSize:1.2,bodyWidth:1.02,bootSize:1.05});
-    assert.equal(s.torso.scale.x,1.02);
+    assert.equal(s.torso.scale.x,1.08*1.02);
+    assert.equal(s.torso.scale.y,.91);
+    assert(s.legs.every(l=>l.boot.scale.x<1));
     s.applyProfile({bodyWidth:1.12});
-    assert.equal(s.torso.scale.x,1.12,
+    assert.equal(s.torso.scale.x,1.08*1.12,
       "profiles are multipliers and must not accumulate");
     s.setInspectionMode("body");
     assert(s.uniformGroup.visible===true&&
@@ -146,6 +167,10 @@ for(const faction of ["poland","germany"]){
       s.setGunDeployed(false);
     }
     const before=s.figure.children.length;
+    for(const arm of s.arms)
+      assert(arm.seam?.position&&Number.isFinite(arm.seam.position.y));
+    for(const leg of s.legs)
+      assert(leg.seam?.position&&Number.isFinite(leg.seam.position.y));
     s.applyLook({uniform:"olive",helmet:"off",pack:"off"});
     assert(s.figure.children.length===before);
     s.figure.traverse(node=>{
@@ -169,7 +194,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.43"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.44"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }

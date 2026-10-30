@@ -8,6 +8,7 @@
     const weapons=window.Crossroads3DHistoricalWeapons;
     if(!sculpt||!weapons)return null;
     const S=sculpt.create(THREE),W=weapons.create(THREE,S),v=S.v;
+    const sdf=window.Crossroads3DSDFTransitions?.create(THREE,S)||null;
     const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
     const palette={
       poland:{coat:0x817f5e,pants:0x66674d,helmet:0x657058,
@@ -69,12 +70,15 @@
           [.35,.092,.088],[.5,.076,.075]
         ]);
         const handGroup=new THREE.Group();breathing.add(handGroup);
-        const hand=S.soft(handGroup,mat.skin,[0,0,0],[.083,.071,.076]);
+        // A single flattened palm: readable when carrying a weapon but not a ball.
+        const hand=S.soft(handGroup,mat.skin,[0,0,0],[.078,.048,.065]);
+        hand.rotation.z=side*.13;
         // The single hand mesh is the entire mitten. No floating thumb
         // sphere or separate wrist cuff.
         const shoulder=v(side*.252,.207,-.015);
         const elbow=v(side*.307,.015,-.135);
-        const arm={side,upper,lower,hand:handGroup,shoulder,elbow,
+        const seam=sdf?.joint(breathing,mat.uniform,"elbow")||null;
+        const arm={side,upper,lower,hand:handGroup,shoulder,elbow,seam,
           skinHand:hand};
         arms.push(arm);
       }
@@ -91,9 +95,10 @@
           [-.5,.085,.086],[-.28,.104,.104],[.12,.112,.113],
           [.35,.110,.111],[.5,.096,.094]
         ]);
-        const bootModel=S.boot(body,mat.boots,mat.soles,side,.18);
+        const bootModel=S.boot(body,mat.boots,mat.soles,side,.15);
         const boot=bootModel.root;
-        legs.push({side,mesh:thigh,shin,boot,bootModel,
+        const seam=sdf?.joint(body,mat.trousers,"knee")||null;
+        legs.push({side,mesh:thigh,shin,boot,bootModel,seam,
           hip:v(side*.146,.575,.018),knee:v(side*.153,.41,-.085)});
       }
       const headGroup=new THREE.Group();
@@ -101,11 +106,15 @@
       // One sculpted head and two discreet ears. No duplicate jaw,
       // projecting nose, brows, eyes, or other stuck-on facial spheres.
       const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],
-        [.216,.217,.190]);
+        [.218,.219,.192]);
       for(const side of [-1,1])
-        S.soft(headGroup,mat.skin,[side*.194,.082,.004],
-          [.024,.043,.033]);
-      const hat=new THREE.Group();headGroup.add(hat);
+        S.soft(headGroup,mat.skin,[side*.205,.085,.008],
+          [.034,.054,.039]);
+      const hat=new THREE.Group();
+      // Backward pitch raises the front rim; lower it to meet the forehead.
+      hat.position.y=-.045;
+      hat.rotation.x=.105;
+      headGroup.add(hat);
       let editableHelmet=null;
       if(role==="officer"){
         S.loft(hat,mat.helmet,"officer-cap",[
@@ -113,6 +122,8 @@
         ],[0,.340,.018]).scale.y=.16;
         S.soft(hat,mat.helmet,[0,.416,.017],[.202,.054,.172]);
         S.box(hat,mat.soles,[.44,.025,.19],[0,.282,-.140]);
+      }else if(sdf){
+        editableHelmet=sdf.helmet(hat,mat.helmet,faction);
       }else{
         const domeGeometry=S.cached("smooth-steel-helmet",()=>
           new THREE.SphereGeometry(1,18,10,0,Math.PI*2,0,Math.PI/2));
@@ -138,7 +149,21 @@
       const pack=S.loft(packGroup,mat.pack,"canvas-pack",[
         [-.5,.163,.105],[-.4,.208,.126],[.28,.216,.138],
         [.42,.189,.11],[.5,.152,.094]
-      ],[0,0,.037]);pack.scale.y=.52;
+      ],[0,0,.037]);pack.scale.y=.55;
+      // Two large, readable pack features; no buckles or tiny clutter.
+      S.box(packGroup,mat.pack,[.357,.061,.122],[0,.255,.083]);
+      S.strap(packGroup,mat.straps,[
+        [0,.267,-.013],[0,.271,.103],[0,.185,.187],
+        [0,-.185,.178]
+      ],.038,.014);
+      // Shoulder harness is meaningful equipment, hidden in mannequin mode.
+      for(const side of [-1,1])
+        S.strap(equipmentRoot,mat.straps,[
+          [side*.145,.352,-.083],
+          [side*.211,.234,-.143],
+          [side*.219,.050,-.191],
+          [side*.182,-.205,-.186]
+        ],.039,.012);
       // Retain only major readable loadout volumes for now. No bedroll
       // cylinder, retaining rods, canteen spheres, belt clutter or flaps.
       for(const side of [-1,1])
@@ -208,11 +233,12 @@
       soldier.updateMuzzle=()=>muzzleLocal.copy(armaments.muzzle());
       soldier.applyProfile=(raw={})=>{
         const p=window.Crossroads3DMiniatureProfiles?.normalize(raw)||raw;
-        headGroup.scale.setScalar(p.headSize||1);
+        headGroup.scale.setScalar(1.08*(p.headSize||1));
         // Author-calibrated multiplier, never overwrite a geometric radius.
-        torso.scale.x=p.bodyWidth||1;
-        packGroup.scale.setScalar((p.packSize||1)*(role==="officer"?.70:1));
-        for(const leg of legs)leg.boot.scale.setScalar(p.bootSize||1);
+        torso.scale.x=1.08*(p.bodyWidth||1);
+        torso.scale.y=.91;
+        packGroup.scale.setScalar(1.17*(p.packSize||1)*(role==="officer"?.70:1));
+        for(const leg of legs)leg.boot.scale.setScalar(.92*(p.bootSize||1));
         soldier.profile=p;
       };
       soldier.inspectionMode="equipped";
@@ -236,10 +262,12 @@
         for(const arm of arms){
           arm.upper.material=naked?mat.skin:mat.uniform;
           arm.lower.material=naked?mat.skin:mat.uniform;
+          if(arm.seam)arm.seam.material=naked?mat.skin:mat.uniform;
         }
         for(const leg of legs){
           leg.mesh.material=naked?mat.skin:mat.trousers;
           leg.shin.material=naked?mat.skin:mat.trousers;
+          if(leg.seam)leg.seam.material=naked?mat.skin:mat.trousers;
           // Keep natural feet visible in the bare-body comparison.
           leg.boot.visible=true;
           leg.bootModel.upper.material=naked?mat.skin:mat.boots;
@@ -286,7 +314,8 @@
         const compact=clamp(crouch*.14,0,.15);
         // The hips travel backward and downward during crouching, not merely
         // the torso sinking through both kneecaps.
-        breathing.position.set((down?.017:0),.90-compact-
+        breathing.position.set((down?.017:0),.90-
+          (action==="idle"?.024:0)-compact-
           crouch*.075+(pose.bob||0),
           reference?0:-(pose.forward||0)+(crouch*.042));
         breathing.rotation.set(reference?0:-(pose.lean||0)*.62,0,
@@ -312,6 +341,10 @@
           weapon.position.set(.028,(pose.aim?.03:-.095)-
             (pose.recoil||0)*.05,-.32);
         }
+        // Only show a folded gunner bipod when the gun is being braced;
+        // don't leave two long sticks hanging from every walking LMG.
+        armaments.setBipod?.(!!pose.aim||
+          action==="ambush"||action==="fire");
         // In locomotion, each leg's foot contact is carried from the existing
         // distance-based gait; in cover, change leg stance and widen contact.
         for(const leg of legs){
@@ -325,7 +358,7 @@
             (!moving&&action==="idle"?(side<0?-.018:.038):0);
           const foot=leg.boot;
           foot.position.set(side*(.145+crouch*.024),
-            .18+lift*(1-crouch*.3),-.045+stride+stance);
+            .15+lift*(1-crouch*.3),-.045+stride+stance);
           foot.rotation.set(0,side*(crouch*.11)+
             (!moving&&action==="idle"?(index%3-1)*.07:0),0);
           const solver=window.Crossroads3DSoldierIK;
@@ -338,17 +371,28 @@
           if(upright){
             // Long, almost vertical reference legs, with distinct knees.
             // The previous resting hip height (.586) made every soldier squat.
-            const hip=v(side*.146,.715,.010);
-            const knee=v(side*.150,.466,-.014);
-            const ankle=v(side*.145,.265,-.045);
+            const idle=action==="idle";
+            const hip=v(side*.146,idle?.696:.715,idle?.031:.010);
+            const knee=v(side*.150,idle?.459:.466,idle?-.069:-.014);
+            const ankle=v(side*.145,idle?.247:.265,-.045);
             S.segment(leg.mesh,hip,knee);
             S.segment(leg.shin,knee,ankle);
+            if(leg.seam){
+              leg.seam.position.copy(knee);
+              leg.seam.quaternion.setFromUnitVectors(v(0,1,0),
+                hip.clone().sub(ankle).normalize());
+            }
           }else if(k){
             const hip=v(side*.146,k.hip.y,k.hip.z);
             const knee=v(side*.146,k.knee.y,k.knee.z);
             const ankle=v(side*.145,k.ankle.y,k.ankle.z);
             S.segment(leg.mesh,hip,knee);
             S.segment(leg.shin,knee,ankle);
+            if(leg.seam){
+              leg.seam.position.copy(knee);
+              leg.seam.quaternion.setFromUnitVectors(v(0,1,0),
+                hip.clone().sub(ankle).normalize());
+            }
           }
         }
         const right=armaments.grip("primary"),left=armaments.grip("secondary");
@@ -376,6 +420,11 @@
           // More natural compact arm bend, no straight blocky L-pose.
           S.segment(arm.upper,shoulder,elbow);
           S.segment(arm.lower,elbow,wrist);
+          if(arm.seam){
+            arm.seam.position.copy(elbow);
+            arm.seam.quaternion.setFromUnitVectors(v(0,1,0),
+              shoulder.clone().sub(wrist).normalize());
+          }
           arm.hand.position.copy(wrist);
           arm.hand.rotation.y=reference?0:side*(pose.aim?.11:.23);
         }
