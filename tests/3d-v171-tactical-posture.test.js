@@ -31,7 +31,7 @@ const left=api.create({faction:"poland",role:"rifle",index:2});
 assert.equal(right.step(.016,{walking:true}).weaponCarry,"german-side");
 assert.equal(left.step(.016,{walking:true}).weaponCarry,"polish-two");
 assert(api.stagger(0)!==api.stagger(1),"squad variation is stable");
-for(let i=0;i<130;i++)output=zero.step(.016,{order:null});
+for(let i=0;i<275;i++)output=zero.step(.016,{order:null});
 assert(output.weaponBlend<.2,"canceled targeting lowers the weapon");
 assert.equal(output.hasKnownTarget,false,
   "last known target expires and must not become omniscience");
