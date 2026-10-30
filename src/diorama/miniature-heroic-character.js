@@ -352,11 +352,12 @@
           (action==="idle"?.024:0)-compact-
           crouch*.075+(pose.bob||0),
           reference?0:-(pose.forward||0)+(crouch*.042));
-        breathing.rotation.set(reference?0:-(pose.lean||0)*.62,0,
+        breathing.rotation.set(reference?0:-(pose.lean||0)*.62,
+          reference?0:(pose.torsoYaw||0),
           reference?0:(pose.roll||0)*(1-eased));
         headGroup.rotation.x=reference?0:(pose.headDuck||0)+crouch*.065;
         headGroup.rotation.z=reference?0:((index%3)-1)*.033*(1-eased);
-        headGroup.rotation.y=action==="turn"?.16:0;
+        headGroup.rotation.y=reference?0:(action==="turn"?.16:0)+(pose.headYaw||0);
         // A clean model reference must not contain the weapon or dangling
         // field kit. Restore each when leaving the reference action.
         const showKit=!reference&&!soldier.mannequinActive&&
@@ -377,40 +378,47 @@
         // The historical archetype's actual butt marker is the pivot
         // reference for every stance, so shorter SMGs and longer rifles
         // share coherent arm contact and ADS transitions.
-        const aim=!!pose.aim||["aim","ambush","fire"].includes(action);
-        const carry=moving?(faction==="germany"?"german-side":"polish-two"):
-          aim?"sighted":"ready";
+        // Separate readiness and sight alignment; grips follow the final gun.
+        const aim=!!pose.aim||["aim","fire"].includes(action);
+        const saturate=n=>Math.max(0,Math.min(1,n));
+        const lerp=(a,b,t)=>a+(b-a)*saturate(t);
+        const readiness=saturate(pose.weaponReadiness==null?
+          (aim?1:action==="ambush"?.84:moving?.53:.12):pose.weaponReadiness);
+        const sight=saturate(pose.weaponBlend==null?(aim?1:0):pose.weaponBlend);
+        const carry=pose.weaponCarry||
+          (moving?(faction==="germany"?"german-side":"polish-two"):
+          sight>.82?"sighted":readiness>.46?"ready":"relaxed");
         if(!armaments.isDeployed()){
           const officer=role==="officer";
           const sideCarry=carry==="german-side"&&!officer;
-          const sighted=carry==="sighted";
-          const pitch=sighted?-.015:sideCarry?-.21:-.082;
-          const yaw=sighted?.092:sideCarry?-.12:.27;
-          const roll=sighted?-.012:sideCarry?-.25:-.07;
+          const polishCarry=carry==="polish-two";
+          const low=sideCarry?v(.368,-.075,.020):
+            polishCarry?v(.286,.068,-.055):v(.267,-.072,.045);
+          const stockPocket=low.clone()
+            .lerp(v(.243,.127,-.012),readiness)
+            .lerp(v(.176,.353,-.020),sight);
+          const pitch=lerp(lerp(sideCarry?-.24:-.17,-.082,readiness),-.015,sight);
+          const yaw=lerp(lerp(sideCarry?-.12:.32,.27,readiness),.092,sight);
+          const roll=lerp(lerp(sideCarry?-.23:-.11,-.07,readiness),-.012,sight);
           weapon.rotation.set(pitch,yaw,roll);
           const buttZ=officer?armaments.anchors.receiverRear:
             armaments.anchors.butt;
-          // Euler XYZ applied to the stock's positive-Z axis. Expressed
-          // directly to work in both the real Three.js rig and the small
-          // headless geometry contract without allocating Euler objects.
           const butt=v(Math.sin(yaw)*buttZ,
             -Math.sin(pitch)*Math.cos(yaw)*buttZ,
             Math.cos(pitch)*Math.cos(yaw)*buttZ);
-          const stockPocket=sighted?
-            v(.176,.353,-.020):
-            sideCarry?v(.388,-.064,.016):
-            v(.243,.127,-.012);
-          if(carry==="polish-two")stockPocket.add(v(.028,.030,-.025));
-          // Do not snap the weapon out of the shoulder during recoil.
           stockPocket.z+=(pose.recoil||0)*.085;
           weapon.position.copy(stockPocket.sub(butt));
           weapon.userData.carryMode=carry;
+          weapon.userData.readiness=readiness;
+          weapon.userData.sightBlend=sight;
         }
-        headGroup.rotation.x-=aim?.11:0;
+        armaments.animateAction?.(pose.weaponCycle||0);
+        headGroup.rotation.x-=sight*.11;
         // Only show a folded gunner bipod when the gun is being braced;
         // don't leave two long sticks hanging from every walking LMG.
-        armaments.setBipod?.(!!pose.aim||
-          action==="ambush"||action==="fire");
+        armaments.setBipod?.(sight>.72&&
+          (role==="lmg"||role==="mmg")&&
+          ["kneel","down","cover","fire","aim","ambush"].includes(action));
         // In locomotion, each leg's foot contact is carried from the existing
         // distance-based gait; in cover, change leg stance and widen contact.
         for(const leg of legs){
@@ -480,6 +488,7 @@
           }
         }
         const right=armaments.grip("primary"),left=armaments.grip("secondary");
+        const sideCarryActive=carry==="german-side"&&!pose.aim;
         const unarmed=soldier.equipmentPreset==="reference";
         // The grip sockets are inherited from the historical weapon
         // archetype; the same points hold under proportion adjustments.
@@ -493,7 +502,7 @@
             (unarmed?v(side*.267,-.245,-.035):
               // German field carry deliberately leaves the off-hand free.
               // Polish locomotion keeps both hands on the weapon.
-              (moving&&faction==="germany"&&side===-1&&
+              (moving&&sideCarryActive&&side===-1&&
                role!=="officer"&&!armaments.isDeployed()?
                 v(-.264,-.184+Math.sin((pose.leftReach||0)*8)*.052,
                   -.028):
@@ -508,8 +517,8 @@
               v(side*.314,-.050,-.004)):
             shoulder.clone().lerp(wrist,.47);
           if(!reference){
-            const pole=v(side*.16,kneel?-.048:aim?.025:-.105,
-              aim?-.035:.075);
+            const pole=v(side*.16,kneel?-.048:sight>.5?.025:-.105,
+              sight>.5?-.035:.075);
             elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
           }
           // More natural compact arm bend, no straight blocky L-pose.
@@ -521,7 +530,7 @@
               shoulder.clone().sub(wrist).normalize());
           }
           arm.hand.position.copy(wrist);
-          arm.hand.rotation.y=reference?0:side*(aim?.08:.20);
+          arm.hand.rotation.y=reference?0:side*(sight>.5?.08:.20);
         }
         soldier.updateMuzzle();
       };
