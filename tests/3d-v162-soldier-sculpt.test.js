@@ -43,7 +43,7 @@ const soldier=read("src/diorama/miniature-heroic-character.js");
 for(const term of ["shapeSource===","soldier.approvedShapesUsed",
   "gear.setBodyWidth?.","S.clothedShin(","setEquipmentPreset=",
   "sdf?.joint","hat.position.set(0,-.054,-.026)",
-  "head-silhouette-v5"]){
+  "head-silhouette-v6"]){
   assert(soldier.includes(term),term);
 }
 assert(!soldier.includes('"polish-puttee-'));
