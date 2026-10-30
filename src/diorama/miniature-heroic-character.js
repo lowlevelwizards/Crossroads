@@ -75,7 +75,9 @@
         hand.rotation.z=side*.13;
         // The single hand mesh is the entire mitten. No floating thumb
         // sphere or separate wrist cuff.
-        const shoulder=v(side*.252,.207,-.015);
+        // Seat the sleeve root inside the chest instead of leaving a
+        // vertical gap above the upper arm.
+        const shoulder=v(side*.236,.207,-.012);
         const elbow=v(side*.307,.015,-.135);
         const seam=sdf?.joint(breathing,mat.uniform,"elbow")||null;
         const arm={side,upper,lower,hand:handGroup,shoulder,elbow,seam,
@@ -107,13 +109,18 @@
       // projecting nose, brows, eyes, or other stuck-on facial spheres.
       const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],
         [.218,.219,.192]);
-      for(const side of [-1,1])
+      for(const side of [-1,1]){
         S.soft(headGroup,mat.skin,[side*.205,.085,.008],
           [.034,.054,.039]);
+        // Flat eyes are the only facial details; no separate brows/nose.
+        S.soft(headGroup,mat.eyes,[side*.071,.163,-.184],
+          [.014,.019,.007]);
+      }
       const hat=new THREE.Group();
       // Backward pitch raises the front rim; lower it to meet the forehead.
-      hat.position.y=-.045;
-      hat.rotation.x=.105;
+      hat.position.set(0,-.069,-.031);
+      hat.rotation.x=.103;
+      hat.scale.setScalar(1.035);
       headGroup.add(hat);
       let editableHelmet=null;
       if(role==="officer"){
@@ -150,22 +157,29 @@
         [-.5,.163,.105],[-.4,.208,.126],[.28,.216,.138],
         [.42,.189,.11],[.5,.152,.094]
       ],[0,0,.037]);pack.scale.y=.55;
-      // Two large, readable pack features; no buckles or tiny clutter.
-      S.box(packGroup,mat.pack,[.357,.061,.122],[0,.255,.083]);
-      S.strap(packGroup,mat.straps,[
-        [0,.267,-.013],[0,.271,.103],[0,.185,.187],
-        [0,-.185,.178]
-      ],.038,.014);
+      // Historical field pack silhouette: flap, one compact blanket roll,
+      // and two visible leather retainers. No miniature-scale buckles.
+      S.box(packGroup,mat.pack,[.364,.076,.147],[0,.245,.101]);
+      const blanket=S.loft(packGroup,mat.pack,"field-blanket-v1",[
+        [-.5,.070,.070],[-.35,.083,.083],[.35,.083,.083],
+        [.5,.070,.070]
+      ],[0,.344,.045],10);
+      blanket.rotation.z=Math.PI/2;
+      blanket.scale.y=.366;
+      for(const side of [-1,1])
+        S.strap(packGroup,mat.straps,[
+          [side*.118,.355,.089],[side*.117,.266,.179],
+          [side*.118,.120,.188],[side*.117,-.22,.158]
+        ],.049,.014);
       // Shoulder harness is meaningful equipment, hidden in mannequin mode.
       for(const side of [-1,1])
         S.strap(equipmentRoot,mat.straps,[
-          [side*.145,.352,-.083],
-          [side*.211,.234,-.143],
-          [side*.219,.050,-.191],
-          [side*.182,-.205,-.186]
-        ],.039,.012);
-      // Retain only major readable loadout volumes for now. No bedroll
-      // cylinder, retaining rods, canteen spheres, belt clutter or flaps.
+          [side*.137,.352,-.103],
+          [side*.183,.245,-.155],
+          [side*.201,.060,-.197],
+          [side*.184,-.204,-.188]
+        ],.063,.016);
+      // The pouches remain large and sparse; avoid adding tiny metalwork.
       for(const side of [-1,1])
         S.box(equipmentRoot,mat.straps,[.137,.119,.096],
           [side*.18,-.190,-.210]);

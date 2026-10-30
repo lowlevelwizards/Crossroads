@@ -30,22 +30,25 @@
     const dome=ellipsoid(p,[0,.295,.016],domeRadius);
     // Trim the lower dome; otherwise an invisible sphere bottom overlaps
     // the face and makes a green bowl around the nose/ears.
-    const clipped=Math.max(dome,.232-p[1]);
-    const brim=ellipsoid(p,[0,.242,-.012],
-      german?[.293,.044,.299]:[.282,.037,.281]);
-    return smoothMin(clipped,brim,.027);
+    // A softened lower cut avoids the abrupt normal discontinuity that
+    // produced dark triangles and a serrated lip at close inspection.
+    const clipped=-smoothMin(-dome,p[1]-.228,.018);
+    const brim=ellipsoid(p,[0,.239,-.024],
+      german?[.294,.057,.298]:[.283,.050,.283]);
+    return smoothMin(clipped,brim,.043);
   };
   const jointField=(p,kind)=>{
-    const knee=kind==="knee",top=knee?[.114,.102,.115]:[.095,.094,.093],
-      low=knee?[.101,.099,.100]:[.079,.093,.080];
-    const upper=ellipsoid(p,[0,.052,0],top);
-    const lower=ellipsoid(p,[0,-.055,0],low);
-    return smoothMin(upper,lower,knee?.054:.045);
+    const knee=kind==="knee",
+      top=knee?[.114,.102,.115]:[.073,.081,.074],
+      low=knee?[.101,.099,.100]:[.069,.077,.069];
+    const upper=ellipsoid(p,[0,knee?.052:.041,0],top);
+    const lower=ellipsoid(p,[0,knee?-.055:-.042,0],low);
+    return smoothMin(upper,lower,knee?.054:.032);
   };
   function bake(THREE,field,bounds,resolution=16){
     // Marching tetrahedra. Resolution is intentionally bounded: these are
     // tiny tabletop parts, not heavy sculpting meshes.
-    resolution=clamp(Math.round(resolution),10,22);
+    resolution=clamp(Math.round(resolution),10,30);
     const [lo,hi]=bounds;
     const size=hi.map((v,i)=>v-lo[i]),max=Math.max(...size);
     const counts=size.map(v=>Math.max(3,Math.round(v/max*resolution)));
@@ -111,17 +114,17 @@
   }
   function create(THREE,S){
     const helmet=(parent,mat,faction)=>{
-      const geometry=S.cached("sdf-helmet-v2-"+faction,()=>
+      const geometry=S.cached("sdf-helmet-v3-"+faction,()=>
         bake(THREE,p=>helmetField(p,faction),
-          [[-.34,.177,-.355],[.34,.565,.345]],18));
+          [[-.325,.171,-.329],[.325,.563,.325]],28));
       return S.mesh(parent,geometry,mat);
     };
     const joint=(parent,mat,kind)=>{
-      const geometry=S.cached("sdf-seam-v2-"+kind,()=>
+      const geometry=S.cached("sdf-seam-v3-"+kind,()=>
         bake(THREE,p=>jointField(p,kind),
           kind==="knee"?
             [[-.153,-.19,-.16],[.153,.195,.16]]:
-            [[-.132,-.17,-.132],[.132,.17,.132]],13));
+            [[-.104,-.147,-.104],[.104,.147,.104]],kind==="knee"?13:15));
       return S.mesh(parent,geometry,mat);
     };
     return Object.freeze({helmet,joint});
