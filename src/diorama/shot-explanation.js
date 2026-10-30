@@ -25,6 +25,9 @@
     if(a.cover?.label)rows.push(a.cover.label);
     if(a.cover?.saveTarget!=null)rows.push("cover save "+a.cover.saveTarget+"+");
     if(a.cover?.label==null&&a.cover?.saveTarget==null)rows.push("open ground");
+    // Explain only confirmed coordinator values. Never infer a to-hit
+    // modifier from a 3D cosmetic stance or from its apparent geometry.
+    if(a.reason)rows.push(a.reason);
     return rows.join(" · ");
   }
   function summarize(a){

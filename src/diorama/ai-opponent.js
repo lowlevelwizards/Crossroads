@@ -10,7 +10,7 @@
       });
     let scheduled=false,acting=false,disposed=false;
     const failed={fire:new Set(),move:new Set()};
-    let lastRound=null;
+    let lastRound=null,plan=null;
     const isAI=s=>s&&!s.battleEnded&&(
       (s.phase==="deployment"&&s.deploymentFaction==="red")||
       (s.faction==="red"&&["choose-unit","choose-order","plan-movement",
@@ -22,8 +22,9 @@
       return response?.ok!==false;
     }
     async function act(s) {
-      if(s.round!==lastRound){
+      if(s.round!==lastRound||plan===null){
         lastRound=s.round;failed.fire.clear();failed.move.clear();
+        plan=tactical.makePlan?.(s,"red")||null;
       }
       if(s.phase==="ambush-reaction"){await command("reaction-fire");return}
       if(s.phase==="deployment"){
@@ -66,7 +67,7 @@
         return;
       }
       if(s.phase==="choose-unit"){
-        const candidate=tactical.chooseUnit(s,"red");
+        const candidate=tactical.chooseUnit(s,"red",plan);
         if(candidate){
           trace("ACTIVATION",candidate,"Selected",
             "Objective, command radius and local force balance");
@@ -96,7 +97,8 @@
           }
         }
         const legal=(s.orders||[]).filter(o=>o.available).map(o=>o.order);
-        const selected=tactical.chooseOrder(s,unit,legal,id=>client.previewTarget(id),failed);
+        const selected=tactical.chooseOrder(s,unit,legal,
+          id=>client.previewTarget(id),failed,plan);
         if(selected){
           trace("ORDER",unit,selected,(unit.pins||0)>=2?"Suppressed: rally":
             unit.role==="support"?"Support weapon: establish or hold firing lane":
@@ -104,12 +106,14 @@
           await command("order",{order:selected});
         }
       } else if(s.phase==="plan-movement"){
-        const decision=tactical.chooseMove(s,unit,p=>client.previewMove(p),true);
+        const decision=tactical.chooseMove(s,unit,
+          p=>client.previewMove(p),true,plan);
         const point=decision.point;
         if(point&&await command("move",{point})){
           const best=decision.candidates?.[0];
           trace("MOVE",unit,"To "+point.x.toFixed(1)+", "+point.y.toFixed(1),
-            best?"Score "+best.score.toFixed(1)+" · progress "+
+            best?"Intent "+(plan?.assignments?.[unit.id]?.task||"engage")+
+              " · Score "+best.score.toFixed(1)+" · progress "+
               best.progress.toFixed(1)+" · cover "+best.cover.toFixed(1)+
               " · exposure "+best.exposure.toFixed(1):"Legal move");
           return;
