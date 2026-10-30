@@ -14,7 +14,7 @@
       return faction==="germany"?"kar98k":"wz29";
     }
     function profile(root,mats,kind,values,{bipodEnabled=true}={}){
-      const def=A.defs[kind];if(!def)throw Error("Unknown weapon "+kind);
+      const def=A.defs[kind];if(!Object.prototype.hasOwnProperty.call(A.defs,kind))throw Error("Unknown weapon "+kind);
       const p=lib.parse(kind,values),hero=p.exaggeration;
       const parts={};
       for(const name of ["stock","receiver","foreEnd","barrel","magazine","grip","sights"]){
