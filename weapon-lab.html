@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Crossroads / Weapon Lab</title>
-<link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.47">
-<link rel="stylesheet" href="src/diorama/weapon-lab.css?v=0.9.47"></head>
+<link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.54">
+<link rel="stylesheet" href="src/diorama/weapon-lab.css?v=0.9.54"></head>
 <body>
 <div class="weapon-lab">
   <header class="weapon-header"><div><div class="eyebrow">CROSSROADS / MODEL WORKSHOP</div><h1>WEAPON LAB</h1></div>
@@ -27,20 +27,20 @@
       <label class="studio-check"><input type="checkbox" id="weaponCompare"> Compare with unmodified archetype</label>
       <label class="studio-check"><input type="checkbox" id="weaponMounted"> Show machine-gun tripod (MG34 / wz.28)</label>
     </section>
-    <section class="studio-section"><h2>02 / SILHOUETTE</h2>
-      <p class="field-note">Big readable forms, not micro-detail. Changes update the live preview.</p>
-      <label for="weaponLength">Overall barrel/stock length <output id="weaponLengthValue"></output></label>
-      <input id="weaponLength" type="range" min=".65" max="1.3" step=".01">
-      <label for="weaponStock">Stock thickness <output id="weaponStockValue"></output></label>
-      <input id="weaponStock" type="range" min=".7" max="1.65" step=".01">
-      <label for="weaponReceiver">Receiver mass <output id="weaponReceiverValue"></output></label>
-      <input id="weaponReceiver" type="range" min=".7" max="1.65" step=".01">
-      <label for="weaponBarrel">Barrel thickness <output id="weaponBarrelValue"></output></label>
-      <input id="weaponBarrel" type="range" min=".7" max="1.65" step=".01">
-      <label for="weaponMagazine">Magazine size <output id="weaponMagazineValue"></output></label>
-      <input id="weaponMagazine" type="range" min=".7" max="1.65" step=".01">
+    <section class="studio-section"><h2>02 / INSPECTION</h2>
+      <label for="weaponDisplayMode">Preview style</label>
+      <select id="weaponDisplayMode">
+        <option value="studio">Isolated weapon</option>
+        <option value="silhouette">Solid silhouette</option>
+        <option value="miniature">Held by a 28mm soldier</option>
+      </select>
+      <p class="field-note">Compare the gun's silhouette and its real readability in a soldier's hands. Switching modes does not save changes.</p>
     </section>
-    <section class="studio-section"><h2>03 / APPROVE</h2>
+    <section class="studio-section"><h2>03 / SHAPE &amp; PROPORTIONS</h2>
+      <p class="field-note">Controls rebuild connected stock, receiver and barrel profiles instead of pulling independent pieces apart.</p>
+      <div id="weaponFields"></div>
+    </section>
+    <section class="studio-section"><h2>04 / APPROVE</h2>
       <div class="weapon-actions">
         <button type="button" id="weaponSave">USE ON THIS DEVICE</button>
         <button type="button" id="weaponReset">RESET ARCHETYPE</button>
@@ -51,9 +51,16 @@
     </section>
   </aside>
 </div>
-<script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.47"></script>
-<script src="src/diorama/miniature-weapon-library.js?v=0.9.47"></script>
-<script src="src/diorama/miniature-historical-weapons.js?v=0.9.47"></script>
-<script src="src/diorama/weapon-lab-camera.js?v=0.9.47"></script>
-<script type="module" src="src/diorama/weapon-lab.js?v=0.9.47"></script>
+<script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.54"></script>
+<script src="src/diorama/weapon-archetypes.js?v=0.9.54"></script>
+<script src="src/diorama/weapon-geometry.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-weapon-library.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-sdf-transitions.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-faction-gear.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-profiles.js?v=0.9.54"></script>
+<script src="src/diorama/soldier-ik.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-heroic-character.js?v=0.9.54"></script>
+<script src="src/diorama/miniature-historical-weapons.js?v=0.9.54"></script>
+<script src="src/diorama/weapon-lab-camera.js?v=0.9.54"></script>
+<script type="module" src="src/diorama/weapon-lab.js?v=0.9.54"></script>
 </body></html>
