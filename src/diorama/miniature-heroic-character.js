@@ -160,6 +160,7 @@
       // The carrying kit is cosmetic; the same field equipment appears in
       // the independent lab and on live soldiers.
       const armaments=W.build({figure,body,breathing,role,faction,
+        settings:recipe.weaponSettings,
         mats:{steel:mat.steel,wood:mat.wood,strap:mat.straps,
           hardware:mat.hardware}});
       const weapon=armaments.weapon;
