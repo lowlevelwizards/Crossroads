@@ -87,7 +87,7 @@ for(const token of ["silhouette-helmet-v7","setPackPresent?.",
   'carry==="german-side"','carry==="polish-two"',
   "weapon.userData.carryMode=carry",
   "armaments.anchors.butt","stockPocket.sub(butt)",
-  "moving&&faction==="+"\"germany\"","headGroup.rotation.x-=aim?.11:0"]){
+  "moving&&faction==="+"\"germany\"","headGroup.rotation.x-=sight*.11"]){
  // The cache key is declared in the SDF builder, not the soldier module.
  if(token==="silhouette-helmet-v7"){
    assert(read("src/diorama/miniature-sdf-transitions.js").includes(token));
@@ -103,6 +103,7 @@ for(const js of ["src/diorama/miniature-sdf-transitions.js",
  "src/diorama/miniature-studio-poses.js",
  "src/diorama/miniature-historical-weapons.js"])
  new vm.Script(read(js),{filename:js});
-for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"])
- assert(read(page).includes("miniature-sdf-transitions.js?v=0.9.70"));
+for(const page of ["miniature-studio.html","battle3d.html"])
+ assert(read(page).includes("miniature-sdf-transitions.js?v=0.9.71"));
+assert(read("editor3d.html").includes("miniature-sdf-transitions.js?v=0.9.70"));
 console.log("PASS — v0.9.70 independent historical helmet contours, rear field harness and shoulder-first poses");
