@@ -391,7 +391,7 @@
           const butt=v(0,0,officer?armaments.anchors.receiverRear:
             armaments.anchors.butt).applyEuler(weapon.rotation);
           const stockPocket=sighted?
-            v(.176,.302,-.020):
+            v(.176,.353,-.020):
             sideCarry?v(.388,-.064,.016):
             v(.243,.127,-.012);
           if(carry==="polish-two")stockPocket.add(v(.028,.030,-.025));
@@ -400,7 +400,7 @@
           weapon.position.copy(stockPocket.sub(butt));
           weapon.userData.carryMode=carry;
         }
-        headGroup.rotation.x+=aim?.115:0;
+        headGroup.rotation.x-=aim?.11:0;
         // Only show a folded gunner bipod when the gun is being braced;
         // don't leave two long sticks hanging from every walking LMG.
         armaments.setBipod?.(!!pose.aim||
