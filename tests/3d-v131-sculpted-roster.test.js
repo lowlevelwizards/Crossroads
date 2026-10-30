@@ -94,17 +94,19 @@ for(const faction of ["poland","germany"]){
       "hands should be a single flat mitten rather than a sphere");
     assert(Math.abs(s.headGroup.position.y-.406)<.001);
     const hat=s.headGroup.children.find(n=>n.children?.length>0);
-    assert(hat?.position.y<-.045&&hat?.position.z<-.02,
-      "helmet must sit lower and forward on the skull");
+    assert(hat?.position.y<-.045&&hat?.position.z<.025,
+      "helmet should remain seated around the brow, not hover over the head");
     assert(hat.scale.x>1,"helmet shell is slightly larger");
     assert(s.headGroup.scale.x>1,
       "default heroic head is visibly enlarged");
     if(role!=="officer"){
       const helmet=s.editableParts.get("helmet")[0];
-      assert(helmet?.geometry.userData?.sdfBaked,
-        "helmet shell and brim must share one SDF surface");
-      assert(helmet.geometry.attributes.normal.array.every(Number.isFinite),
-        "baked helmet normals must be finite");
+      assert(helmet?.geometry.userData?.helmetPattern===faction,
+        "helmet must use the rebuilt country-specific continuous shell");
+      assert(helmet.geometry.userData.triangleCount<=700,
+        "helmet must remain lightweight enough for the battlefield");
+      assert(helmet.geometry.attributes.position.array.every(Number.isFinite),
+        "helmet contour vertices must all be finite");
     }
     // Intentional low-mesh mannequin: no second jaw, eye spheres, helmet
     // chinstraps, loose thumbs/cuffs, or disconnected boot trim.
