@@ -295,7 +295,7 @@
         }
         for(const leg of legs){
           leg.mesh.material=naked?mat.skin:mat.trousers;
-          leg.shin.material=naked?mat.skin:[mat.trousers,mat.boots];
+          leg.shin.material=naked?[mat.skin,mat.skin]:[mat.trousers,mat.boots];
           if(leg.seam)leg.seam.material=naked?mat.skin:mat.trousers;
           // Keep natural feet visible in the bare-body comparison.
           leg.boot.visible=true;
