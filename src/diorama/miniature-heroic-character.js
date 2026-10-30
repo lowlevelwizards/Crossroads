@@ -199,6 +199,19 @@
         windowArc:firingArc,role,modelVersion:3,phase:0,recoil:0,crouch:0,
         baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
+      soldier.weaponSocket=which=>armaments.grip(which);
+      soldier.stockSocket=()=>{
+        weapon.updateWorldMatrix(true,false);
+        breathing.updateWorldMatrix(true,false);
+        const point=v(0,0,armaments.anchors.butt);
+        return breathing.worldToLocal(weapon.localToWorld(point));
+      };
+      soldier.sightSocket=()=>{
+        weapon.updateWorldMatrix(true,false);
+        breathing.updateWorldMatrix(true,false);
+        return breathing.worldToLocal(weapon.localToWorld(
+          v(0,.07,armaments.anchors.receiverRear-.09)));
+      };
       // Each editable part is tagged with a stable logical ID. Runtime loads
       // only explicitly approved device assets; drafts live solely in the lab.
       const shapeLibrary=window.Crossroads3DShapeLibrary,
