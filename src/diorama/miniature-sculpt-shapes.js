@@ -107,7 +107,7 @@
       for(let i=0;i<nodes.length-1;i++){
         const a=i*2,b=a+2;indices.push(a,a+1,b,a+1,b+1,b);
       }
-      geometry.setAttribute("position",new THREE.BufferAttribute(positions,3));
+      geometry.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
       geometry.setIndex(indices);
       const item=mesh(parent,geometry,material);
       item.userData.refreshRibbon=(bodyWidth=1)=>{
@@ -137,17 +137,21 @@
       const key="clothed-shin-"+style;
       const geometry=cached(key,()=>{
         const g=loftGeometry(profile,10);
-        g.clearGroups();
+        if(g.clearGroups)g.clearGroups();else g.groups=[];
+        const add=(start,count,material)=>{
+          if(g.addGroup)g.addGroup(start,count,material);
+          else g.groups.push({start,count,materialIndex:material});
+        };
         for(let section=0;section<profile.length-1;section++){
           // Two broad puttee bands or a continuous lower German boot shaft.
           const isBoot=style==="germany"?section<5:
             section===1||section===3;
-          g.addGroup(section*10*6,10*6,isBoot?1:0);
+          add(section*10*6,10*6,isBoot?1:0);
         }
         // Cap faces use the material of their adjacent ring.
-        g.addGroup((profile.length-1)*10*6,10*3,
+        add((profile.length-1)*10*6,10*3,
           style==="germany"?1:0);
-        g.addGroup((profile.length-1)*10*6+10*3,10*3,0);
+        add((profile.length-1)*10*6+10*3,10*3,0);
         return g;
       });
       return mesh(parent,geometry,[trousers,leather]);
