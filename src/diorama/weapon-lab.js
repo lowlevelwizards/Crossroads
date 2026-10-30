@@ -41,7 +41,7 @@
   }
   const factionFor=kind=>["wz29","wz28","mors39"].includes(kind)?"poland":"germany";
   const roleFor=kind=>kind==="pistol"?"officer":
-    ["wz28","mg34"].includes(kind)?("weaponMounted".checked?"mmg":"lmg"):
+    ["wz28","mg34"].includes(kind)?($("weaponMounted").checked?"mmg":"lmg"):
     ["mors39","mp38"].includes(kind)?"smg":"rifle";
   // The group structure is shared with the game's live model builder.
   function makeWeapon(compare=false){
@@ -51,8 +51,9 @@
       faction:factionFor(kind),role:roleFor(kind),weaponKind:kind,mats:mat});
     gun.weapon.position.set(0,0,0);gun.weapon.rotation.set(0,0,0);
     gun.setDeployed($("weaponMounted").checked&&["wz28","mg34"].includes(kind));
-    if(compare)lib.apply(gun.sections,kind,lib.defaults[kind]);
-    else lib.apply(gun.sections,kind,settings);
+    const values=compare?lib.defaults[kind]:settings;
+    lib.apply(gun.sections,kind,values);
+    lib.apply(gun.deployedSections,kind,values);
     root.position.x=compare?.65:($("weaponCompare").checked?-.65:0);
     return {root,gun};
   }
@@ -85,6 +86,7 @@
       settings[field]=Number(e.target.value);
       $(id+"Value").textContent=settings[field].toFixed(2)+"×";
       lib.apply(primary?.gun.sections,kind,settings);
+      lib.apply(primary?.gun.deployedSections,kind,settings);
     });
   }
   $("weaponSave").addEventListener("click",()=>{
@@ -94,7 +96,8 @@
   });
   $("weaponReset").addEventListener("click",()=>{
     lib.reset(kind);settings={...lib.defaults[kind]};
-    lib.apply(primary?.gun.sections,kind,settings);sync();
+    lib.apply(primary?.gun.sections,kind,settings);
+    lib.apply(primary?.gun.deployedSections,kind,settings);sync();
     $("weaponStatus").textContent="Restored built-in archetype on this device.";
   });
   $("weaponExport").addEventListener("click",()=>{
