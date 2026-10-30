@@ -92,6 +92,36 @@
           [side*.117,.015],[side*.113,-.127],[side*.108,-.175]
         ],()=>z+.018,.054));
       }
+      // Faction-specific harness remains complete when the large marching
+      // pack is removed. Rear straps sit on the actual *back* of the tunic;
+      // they are hidden behind the pack in marching kit instead of sticking
+      // through it or leaving a bare torso in combat.
+      const rearHarness=new THREE.Group();webbing.add(rearHarness);
+      const rearRibbons=[];
+      const rearSurface=(x,y,width)=>-torsoSurface(x,y,width,faction)+.050;
+      for(const side of [-1,1]){
+        const nodes=polish?[
+          [side*.090,.288],[side*.117,.204],[side*.125,.087],
+          [side*.129,-.041],[side*.138,-.188]
+        ]:[
+          [side*.083,.297],[side*.119,.210],[side*.139,.105],
+          [side*.146,-.026],[side*.152,-.185]
+        ];
+        rearRibbons.push(S.surfaceRibbon(rearHarness,mat.straps,
+          nodes,rearSurface,polish?.058:.071));
+      }
+      if(!polish){
+        // German Y-straps meet at a broad central rear bridge.
+        rearRibbons.push(S.surfaceRibbon(rearHarness,mat.straps,
+          [[0,.245],[0,.135],[0,-.045]],rearSurface,.055));
+      }else{
+        // Polish field harness uses a broad transverse H-bridge.
+        const cross=[];
+        for(let i=0;i<5;i++)cross.push([-.121+i*.060,.086]);
+        rearRibbons.push(S.surfaceRibbon(rearHarness,mat.straps,
+          cross,rearSurface,.049));
+      }
+      const setPackPresent=present=>{rearHarness.visible=!present;};
       const belt=S.box(webbing,mat.straps,[.474,.037,.015],[0,-.240,-.155]);
       // A single large piece of issue kit sets the flank silhouette.
       if(polish){
@@ -109,7 +139,8 @@
         S.box(equipmentRoot,mat.pack,[.15,.14,.10],
           [polish?.258:-.261,-.257,.103]);
       function setBodyWidth(width=1){
-        for(const ribbon of ribbons)ribbon.userData.refreshRibbon(width);
+        for(const ribbon of [...ribbons,...rearRibbons])
+          ribbon.userData.refreshRibbon(width);
         for(const {side,group} of pouches){
           const px=side*(polish?.148:.144);
           group.position.set(px,cfg.pouchY,
@@ -149,7 +180,7 @@
       // No extra meshes parented under scaled shins. The character's new
       // single contiguous material-banded shin carries wrap or boot colors.
       return {webbing,pack,packGroup,gait:[],faction,config:cfg,
-        setBodyWidth,setDebug};
+        setBodyWidth,setDebug,setPackPresent,rearHarness};
     }
     return Object.freeze({outfit});
   }
