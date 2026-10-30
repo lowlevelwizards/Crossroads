@@ -205,7 +205,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.46"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.47"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }
