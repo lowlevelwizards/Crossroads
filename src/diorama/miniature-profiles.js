@@ -14,7 +14,7 @@
     leatherTint:["issue","dark","russet"]
   });
   const defaults=Object.freeze({
-    headSize:1,bodyWidth:1,packSize:1,bootSize:1,
+    headSize:1.25,bodyWidth:1,packSize:1,bootSize:.8,
     uniform:"field",helmet:"on",pack:"on",
     helmetTint:"issue",leatherTint:"issue"
   });
