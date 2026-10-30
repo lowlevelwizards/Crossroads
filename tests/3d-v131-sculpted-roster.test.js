@@ -84,6 +84,11 @@ for(const faction of ["poland","germany"]){
       "knee transition sleeves must be SDF baked");
     assert(s.arms.every(a=>a.skinHand.scale.y<a.skinHand.scale.x),
       "hands should be a single flat mitten rather than a sphere");
+    assert(Math.abs(s.headGroup.position.y-.406)<.001);
+    const hat=s.headGroup.children.find(n=>n.children?.length>0);
+    assert(hat?.position.y<-.06&&hat?.position.z<-.02,
+      "helmet must sit lower and forward on the skull");
+    assert(hat.scale.x>1,"helmet shell is slightly larger");
     assert(s.headGroup.scale.x>1,
       "default heroic head is visibly enlarged");
     if(role!=="officer"){
@@ -95,8 +100,8 @@ for(const faction of ["poland","germany"]){
     }
     // Intentional low-mesh mannequin: no second jaw, eye spheres, helmet
     // chinstraps, loose thumbs/cuffs, or disconnected boot trim.
-    assert.equal(s.headGroup.children.length,4,
-      "head consists of a single cranium, two ears and headwear group");
+    assert.equal(s.headGroup.children.length,6,
+      "one cranium, two ears, two flat eyes and the headwear group");
     assert(s.arms.every(a=>a.hand.children.length===1),
       "hands use one mesh, not floating thumb/cuff geometry");
     assert(s.legs.every(l=>l.boot.children.length===1),
