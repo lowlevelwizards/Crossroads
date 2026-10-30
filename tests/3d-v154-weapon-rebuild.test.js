@@ -144,4 +144,4 @@ assert(lab.includes('preview==="miniature"'));
 assert(lab.includes("weaponSettings:settings"));
 assert(lab.includes("cameraModel.fitBounds("));
 assert(lab.includes("scheduleRebuild"));
-console.log("PASS — v0.9.62 seven connected historical weapons, geometry, grip anchors, preset migration, camera and soldier-scale preview");
+console.log("PASS — v0.9.69 seven connected historical weapons, geometry, grip anchors, preset migration, camera and soldier-scale preview");
