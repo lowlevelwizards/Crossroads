@@ -9,6 +9,7 @@
   const motion=window.CrossroadsDioramaMotion;
   const ik=window.Crossroads3DSoldierIK;
   const poses=window.Crossroads3DStudioPoses;
+  const crewPresentation=window.Crossroads3DCrewPresentation;
   const catalogue=window.Crossroads3DStudioCatalog;
   const factory=window.Crossroads3DMiniatureModel;
   if(!canvas||!motion||!ik||!poses||!catalogue||!factory){
@@ -116,12 +117,15 @@
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
+  let crewActors=[];
   const compareRoot=new THREE.Group();scene.add(compareRoot);
   let compareSoldier=null;
   const compareCheckbox=$("studioCompareFaction");
   const shapeSource=$("studioShapeSource"),loadoutSelect=$("studioLoadout");
   const battleScale=$("studioBattleScale");
   const attachmentDebug=$("studioAttachmentDebug");
+  const crewMode=$("studioCrewMode"),crewCount=$("studioCrewCount");
+  const crewDebug=$("studioCrewDebug");
   let workbench=null;
   const rigMarkers=new THREE.Group();scene.add(rigMarkers);
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
@@ -165,6 +169,7 @@
       }
     });
     actorRoot.clear();activeFigure=null;activeSoldier=null;flash=null;
+    crewActors=[];
     compareRoot.traverse(node=>{
       if(!node.userData?.sharedMiniatureGeometry)node.geometry?.dispose?.();
       const list=Array.isArray(node.material)?node.material:
@@ -195,7 +200,10 @@
   const build=()=>{
     window.Crossroads3DForceClassicMiniature=!!classicCheckbox?.checked;
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
-    const index=Math.max(0,Math.min(unit.soldiers-1,Number(soldierSelect.value)||0));
+    const fullCrew=unit.type==="mmgTeam"&&crewMode?.checked;
+    const index=fullCrew?0:
+      Math.max(0,Math.min(unit.soldiers-1,Number(soldierSelect.value)||0));
+    if(fullCrew&&compareCheckbox)compareCheckbox.checked=false;
     if(workbench?.isEditing())workbench.leave();
     disposeActor();
     const recipe=catalogue.soldier(unit.type,unit.kitId,index);
@@ -205,6 +213,19 @@
     activeFigure=makeSoldier(squad,0,0,0,
       {...recipe,shapeSource:source==="canon"?"canon":"saved"},index,index);
     activeSoldier=squad.soldiers[0];
+    if(fullCrew){
+      const count=Math.max(1,Math.min(3,Number(crewCount?.value)||3));
+      const offsets=[{x:0,z:0},{x:-1.10,z:.29},{x:1.10,z:.31}];
+      for(let n=1;n<count;n++){
+        const supportRecipe=catalogue.soldier(unit.type,unit.kitId,n);
+        makeSoldier(squad,offsets[n].x,offsets[n].z,0,
+          {...supportRecipe,shapeSource:source==="canon"?"canon":"saved"},n,n);
+        const assistant=squad.soldiers[n];
+        assistant.setEquipmentPreset?.(loadoutSelect?.value||"combat");
+        assistant.setGunDeployed?.(false);
+        crewActors.push(assistant);
+      }
+    }
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
     activeSoldier.setEquipmentPreset?.(loadoutSelect?.value||"marching");
@@ -307,6 +328,9 @@
   kitSelect.addEventListener("change",refreshSoldierList);
   unitSelect.addEventListener("change",refreshSoldierList);
   soldierSelect.addEventListener("change",()=>{refreshPaintInputs();build()});
+  crewMode?.addEventListener("change",build);
+  crewCount?.addEventListener("change",build);
+  crewDebug?.addEventListener("change",()=>renderPose(elapsed));
   for(const [name,select] of Object.entries(fields)){
     select.addEventListener("change",()=>{
       const look={...readLook(),[name]:select.value};
@@ -479,6 +503,8 @@
     const soldier=activeSoldier;
     if(!soldier)return;
     const pose=poses.frame(poseSelect.value,t,motion,soldier.role);
+    const crewAction=poseSelect.value.startsWith("crew-");
+    const crewState=crewAction?poseSelect.value.slice(5):"ready";
     const posture=window.Crossroads3DSoldierPose;
     if(poseSelect.value==="transition"&&posture){
       const q=Math.max(0,Math.min(1,
@@ -512,6 +538,27 @@
           (pose.recoil||0),
         fall:isFall?Math.min(1,t/poses.duration("casualty")):0};
       soldier.applyPose(posed);
+      if(crewActors.length){
+        const count=crewActors.length+1;
+        const deployed=crewState==="pack"?t<.8:
+          crewState==="deploy"?t>.85:true;
+        soldier.setGunDeployed?.(deployed);
+        for(let i=0;i<crewActors.length;i++){
+          const assistant=crewActors[i];
+          const crew=crewPresentation?.frame({
+            type:"mmgTeam",soldiers:count,mmgDeployed:deployed
+          },crewState,t,i+1);
+          assistant.figure.rotation.y=0;
+          assistant.applyPose({
+            ...pose,action:"crew",aim:false,weaponReadiness:0,
+            weaponBlend:0,recoil:0,weaponCycle:0,
+            crouch:crew?.crouch||.34,lean:crew?.lean||.14,
+            headDuck:crewState==="pinned"?.14:0
+          });
+        }
+        // Inspect only while the selected model is a real squad MMG.
+        soldier.syncMount?.();
+      }
       if(compareSoldier){
         compareSoldier.figure.rotation.set(0,pose.yaw||0,0);
         compareSoldier.setGunDeployed?.(poseSelect.value==="deploy"?t>=.9:true);

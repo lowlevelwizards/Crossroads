@@ -137,6 +137,16 @@
         <select id="studioUnit"></select>
         <label for="studioSoldier">Individual soldier</label>
         <select id="studioSoldier"></select>
+        <label class="studio-check"><input type="checkbox" id="studioCrewMode">
+          CREW MODE · inspect full MMG team</label>
+        <label for="studioCrewCount">Crew survivors · studio only</label>
+        <select id="studioCrewCount">
+          <option value="3">3 · Full team</option>
+          <option value="2">2 · Reduced team</option>
+          <option value="1">1 · Unable to fire</option>
+        </select>
+        <label class="studio-check"><input type="checkbox" id="studioCrewDebug">
+          Crew socket / reach markers</label>
         <div id="studioRecipe" class="studio-meta" aria-live="polite">—</div>
         <label class="studio-check"><input type="checkbox" id="studioCompareFaction"> Side-by-side Poland / Germany 1939</label>
         <p class="field-note" id="studioCompareLabel" aria-live="polite" hidden>Same unit and pose; contrasting field equipment and helmets.</p>
