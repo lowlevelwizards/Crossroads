@@ -121,6 +121,7 @@
   const compareCheckbox=$("studioCompareFaction");
   const shapeSource=$("studioShapeSource"),loadoutSelect=$("studioLoadout");
   const battleScale=$("studioBattleScale");
+  const attachmentDebug=$("studioAttachmentDebug");
   let workbench=null;
   const rigMarkers=new THREE.Group();scene.add(rigMarkers);
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
@@ -195,6 +196,7 @@
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
     activeSoldier.setEquipmentPreset?.(loadoutSelect?.value||"marching");
+    activeSoldier.setAttachmentDebug?.(!!attachmentDebug?.checked);
     if(compareCheckbox?.checked||comparingSource){
       const currentKit=catalogue.kits().find(k=>k.id===kitSelect.value);
       const other=comparingSource?currentKit:
@@ -211,6 +213,7 @@
         compareSoldier.applyLook(comparingSource?readLook():
           profiles.read(other.id,unitSelect.value,otherIndex));
         compareSoldier.setEquipmentPreset?.(loadoutSelect?.value||"marching");
+        compareSoldier.setAttachmentDebug?.(!!attachmentDebug?.checked);
         compareSoldier.setInspectionMode?.(silhouetteMode?.value||"equipped");
         compareSoldier.inspectRing.visible=false;
         compareSoldier.windowArc.visible=false;
@@ -267,6 +270,10 @@
       poseSelect.value="reference";elapsed=0;
     }
     renderPose(elapsed);
+  });
+  attachmentDebug?.addEventListener("change",()=>{
+    activeSoldier?.setAttachmentDebug?.(attachmentDebug.checked);
+    compareSoldier?.setAttachmentDebug?.(attachmentDebug.checked);
   });
   battleScale?.addEventListener("change",()=>{
     $("studioBattleLabel").hidden=!battleScale.checked;
