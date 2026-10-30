@@ -388,8 +388,14 @@
           const yaw=sighted?.092:sideCarry?-.12:.27;
           const roll=sighted?-.012:sideCarry?-.25:-.07;
           weapon.rotation.set(pitch,yaw,roll);
-          const butt=v(0,0,officer?armaments.anchors.receiverRear:
-            armaments.anchors.butt).applyEuler(weapon.rotation);
+          const buttZ=officer?armaments.anchors.receiverRear:
+            armaments.anchors.butt;
+          // Euler XYZ applied to the stock's positive-Z axis. Expressed
+          // directly to work in both the real Three.js rig and the small
+          // headless geometry contract without allocating Euler objects.
+          const butt=v(Math.sin(yaw)*buttZ,
+            -Math.sin(pitch)*Math.cos(yaw)*buttZ,
+            Math.cos(pitch)*Math.cos(yaw)*buttZ);
           const stockPocket=sighted?
             v(.176,.353,-.020):
             sideCarry?v(.388,-.064,.016):
