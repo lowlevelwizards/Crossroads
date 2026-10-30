@@ -285,6 +285,7 @@
         equipmentRoot.visible=kitVisible;
         packGroup.visible=kitVisible&&
           soldier.equipmentPreset==="marching"&&soldier.profile?.pack!=="off";
+        gear.setPackPresent?.(packGroup.visible);
         for(const mesh of gear.gait||[])
           mesh.visible=!naked&&!soldier.mannequinActive;
         armaments.weapon.visible=kitVisible&&!armaments.isDeployed();
@@ -330,6 +331,7 @@
         soldier.setInspectionMode(soldier.inspectionMode);
         packGroup.visible=look.pack!=="off"&&soldier.equipmentPreset==="marching"&&
           (soldier.inspectionMode==="equipped"||soldier.inspectionMode==="silhouette");
+        gear.setPackPresent?.(packGroup.visible);
       };
       const poseDefaults={crouch:0,bob:0,lean:0,roll:0,forward:0,fall:0,
         leftLift:0,rightLift:0,leftReach:0,rightReach:0,aim:false};
@@ -364,6 +366,7 @@
         equipmentRoot.visible=showKit;
         packGroup.visible=showKit&&soldier.equipmentPreset==="marching"&&
           soldier.profile?.pack!=="off";
+        gear.setPackPresent?.(packGroup.visible);
         armaments.weapon.visible=showKit&&!armaments.isDeployed();
         armaments.mount.visible=showKit&&armaments.isDeployed();
         const fallAngle=eased*1.23;
