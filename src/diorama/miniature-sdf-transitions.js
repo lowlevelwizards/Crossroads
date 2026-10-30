@@ -33,21 +33,21 @@
     const rear=clamp((p[2]-.045)/.24,0,1);
     const side=clamp((Math.abs(p[0])-.12)/.16,0,1);
     const shellCenter=german?[0,.307,.024]:[0,.305,.015];
-    const shellSize=german?[.253,.251,.257]:[.250,.238,.260];
+    const shellSize=german?[.253,.251,.250]:[.250,.238,.249];
     const dome=ellipsoid(p,shellCenter,shellSize);
     const rimY=german?
-      .213+.063*front-.021*side*(1-front)-.018*rear*(1-front):
-      .226+.052*front-.003*side*(1-front)+.004*rear;
+      .215+.062*front-.022*side*(1-front)-.025*rear*(1-front):
+      .227+.051*front-.004*side*(1-front)+.003*rear;
     const shell=-smoothMin(-dome,p[1]-rimY,.013);
     // Keep forward brow broad but shallow. A low round ellipsoid lip was
     // occluding both eyes in the old marching-tetrahedra helmet bake.
     const brow=ellipsoid(p,
-      german?[0,.282,-.104]:[0,.287,-.083],
-      german?[.271,.030,.242]:[.268,.027,.253]);
+      german?[0,.283,-.085]:[0,.285,-.062],
+      german?[.269,.027,.223]:[.264,.026,.228]);
     if(!german)return smoothMin(shell,brow,.023);
     // German M35: longer ear protection and modestly flared rear skirt;
     // a raised front opening, not a huge level pancake brim.
-    const skirtOval=ellipsoid(p,[0,.224,.083],[.284,.073,.227]);
+    const skirtOval=ellipsoid(p,[0,.219,.095],[.280,.068,.231]);
     const guard=Math.max(skirtOval,p[1]-(.177+.087*front));
     const skirt=smoothMin(guard,brow,.025);
     return smoothMin(shell,skirt,.026);
@@ -129,7 +129,7 @@
   }
   function create(THREE,S){
     const helmet=(parent,mat,faction)=>{
-      const geometry=S.cached("sdf-helmet-v5-"+faction,()=>
+      const geometry=S.cached("sdf-helmet-v6-"+faction,()=>
         bake(THREE,p=>helmetField(p,faction),
           [[-.336,.137,-.359],[.336,.574,.362]],29));
       return S.mesh(parent,geometry,mat);

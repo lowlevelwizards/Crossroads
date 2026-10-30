@@ -102,56 +102,68 @@
     // Two-sided surface-conforming fabric ribbon; refreshed only when body
     // proportions change. Crosswise vertices follow the same tunic contour.
     function surfaceRibbon(parent,material,nodes,surface,width=.054){
+      // Create the attribute first, then mutate the ATTRIBUTE's array.
+      // Float32BufferAttribute copies input arrays: editing the original
+      // Float32Array left the GPU buffer unchanged and hid the webbing.
       const geometry=new THREE.BufferGeometry();
-      const positions=new Float32Array(nodes.length*6),indices=[];
+      const attribute=new THREE.Float32BufferAttribute(
+        new Float32Array(nodes.length*6),3);
+      geometry.setAttribute("position",attribute);
+      const indices=[];
       for(let i=0;i<nodes.length-1;i++){
-        const a=i*2,b=a+2;indices.push(a,a+1,b,a+1,b+1,b);
+        const a=i*2,b=a+2;
+        indices.push(a,a+1,b,a+1,b+1,b);
       }
-      geometry.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
       geometry.setIndex(indices);
       const item=mesh(parent,geometry,material);
-      item.userData.refreshRibbon=(bodyWidth=1)=>{
+      const refresh=(bodyWidth=1)=>{
+        const positions=attribute.array;
         for(let i=0;i<nodes.length;i++){
           const [x,y]=nodes[i];
           for(let side=0;side<2;side++){
-            const index=i*6+side*3,px=x+(side?width/2:-width/2);
-            positions[index]=px;
-            positions[index+1]=y;
-            positions[index+2]=surface(px,y,bodyWidth)-.009;
+            const at=i*6+side*3,px=x+(side?width/2:-width/2);
+            positions[at]=px;
+            positions[at+1]=y;
+            positions[at+2]=surface(px,y,bodyWidth)-.023;
           }
         }
-        geometry.attributes.position.needsUpdate=true;
-        geometry.computeVertexNormals();geometry.computeBoundingSphere();
+        attribute.needsUpdate=true;
+        geometry.computeVertexNormals();
+        geometry.computeBoundingSphere();
       };
-      item.userData.refreshRibbon(1);
+      item.userData.refreshRibbon=refresh;
+      item.userData.ribbonNodes=nodes;
+      refresh(1);
       return item;
     }
     // One skinned lower-leg surface, rather than independently animated rings
     // or a boot tube stuck to a scaled shin. Material bands share vertices.
     function clothedShin(parent,trousers,leather,style){
       const profile=[
-        [-.5,.086,.086],[-.40,.101,.101],[-.29,.105,.107],
-        [-.16,.108,.110],[-.04,.112,.111],[.11,.114,.110],
-        [.24,.112,.108],[.37,.110,.108],[.5,.097,.096]
+        [-.5,.088,.090],[-.37,.101,.102],[-.24,.105,.107],
+        [-.11,.110,.110],[.02,.113,.111],[.15,.112,.109],
+        [.28,.110,.105],[.40,.104,.100],[.5,.096,.094]
       ];
-      const key="clothed-shin-"+style;
+      const sides=12,key="clothed-shin-v2-"+style;
       const geometry=cached(key,()=>{
-        const g=loftGeometry(profile,10);
+        const g=loftGeometry(profile,sides);
         if(g.clearGroups)g.clearGroups();else g.groups=[];
         const add=(start,count,material)=>{
           if(g.addGroup)g.addGroup(start,count,material);
           else g.groups.push({start,count,materialIndex:material});
         };
+        // Segment runs from the knee at negative local Y to the ankle at
+        // positive local Y; German leather is therefore the LOWER half.
+        // Uniform shared vertices, uninterrupted surface, no jagged inserts.
         for(let section=0;section<profile.length-1;section++){
-          // Two broad puttee bands or a continuous lower German boot shaft.
-          const isBoot=style==="germany"?section<5:
-            section===1||section===3;
-          add(section*10*6,10*6,isBoot?1:0);
+          const boot=style==="germany"?section>=4:
+            section===4||section===6;
+          add(section*sides*6,sides*6,boot?1:0);
         }
-        // Cap faces use the material of their adjacent ring.
-        add((profile.length-1)*10*6,10*3,
+        const caps=(profile.length-1)*sides*6;
+        add(caps,sides*3,0);
+        add(caps+sides*3,sides*3,
           style==="germany"?1:0);
-        add((profile.length-1)*10*6+10*3,10*3,0);
         return g;
       });
       return mesh(parent,geometry,[trousers,leather]);
