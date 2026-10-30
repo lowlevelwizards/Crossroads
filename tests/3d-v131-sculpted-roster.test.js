@@ -176,9 +176,11 @@ for(const faction of ["poland","germany"]){
     assert(s.equipmentRoot.visible===true);
     if(role==="mmg"){
       s.setGunDeployed(true);
-      const mount=s.figure.children.find(c=>c!==s.base&&
-        c!==s.body&&c.visible&&c.children.some(n=>n.children?.length));
-      assert(mount,"mounted support weapon must remain a figure sibling");
+      const mount=squad.root.children.find(c=>c!==s.figure&&
+        c.visible&&c.children.some(n=>n.children?.length));
+      assert(mount,"mounted MMG must be anchored at the squad root");
+      assert(!s.figure.children.includes(mount),
+        "deployed heavy weapon must not rotate with the gunner torso");
       s.setGunDeployed(false);
     }
     const before=s.figure.children.length;
