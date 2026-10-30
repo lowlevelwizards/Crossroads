@@ -421,6 +421,7 @@
           }
         }
         const right=armaments.grip("primary"),left=armaments.grip("secondary");
+        const unarmed=soldier.equipmentPreset==="reference";
         // The grip sockets are inherited from the historical weapon
         // archetype; the same points hold under proportion adjustments.
         // Down and role-specific gestures keep elbows away from the torso;
@@ -430,7 +431,8 @@
           const wrist=reference?
             (tpose?v(side*.594,.210,-.015):
               v(side*.294,-.282,-.010)):
-            (side===1?right:left).clone();
+            (unarmed?v(side*.267,-.245,-.035):
+              (side===1?right:left).clone());
           if(gesture>0&&!reference&&side===1)
             wrist.set(.35,.24+gesture*.30,-.18);
           if(!reference&&role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)
