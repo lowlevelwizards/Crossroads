@@ -129,14 +129,16 @@
         S.soft(headGroup,mat.skin,[side*.205,.085,.008],
           [.038,.054,.040]);
         // Flat eyes are the only facial details; no separate brows/nose.
-        S.soft(headGroup,mat.eyes,[side*.071,.163,-.184],
+        S.soft(headGroup,mat.eyes,[side*.071,.132,-.184],
           [.014,.019,.007]);
       }
       const hat=new THREE.Group();
       // Backward pitch raises the front rim; lower it to meet the forehead.
-      hat.position.set(0,-.054,-.026);
-      hat.rotation.x=.098;
-      hat.scale.setScalar(1.024);
+      // The new self-contained helmet has its own brim/skirt contour; 
+      // keep the shell seated on the head instead of tilting it into a cap.
+      hat.position.set(0,-.055,-.006);
+      hat.rotation.x=.038;
+      hat.scale.setScalar(1.012);
       headGroup.add(hat);
       let editableHelmet=null;
       if(role==="officer"){
@@ -367,13 +369,35 @@
         const fallAngle=eased*1.23;
         body.rotation.set(-eased*.14,0,-fallAngle);
         body.position.set(.08*eased,-.015*eased,0);
-        // The support weapon is NOT a child of this rotating body.
+        // Seat the stock in a *fixed shoulder/underarm pocket* rather
+        // than placing the receiver at an arbitrary stomach coordinate.
+        // The historical archetype's actual butt marker is the pivot
+        // reference for every stance, so shorter SMGs and longer rifles
+        // share coherent arm contact and ADS transitions.
+        const aim=!!pose.aim||["aim","ambush","fire"].includes(action);
+        const carry=moving?(faction==="germany"?"german-side":"polish-two"):
+          aim?"sighted":"ready";
         if(!armaments.isDeployed()){
-          weapon.rotation.set(pose.aim?-.15:-.055,
-            pose.aim?-.04:.24,pose.aim?-.05:-.11);
-          weapon.position.set(.028,(pose.aim?.03:-.095)-
-            (pose.recoil||0)*.05,-.32);
+          const officer=role==="officer";
+          const sideCarry=carry==="german-side"&&!officer;
+          const sighted=carry==="sighted";
+          const pitch=sighted?-.015:sideCarry?-.21:-.082;
+          const yaw=sighted?.092:sideCarry?-.12:.27;
+          const roll=sighted?-.012:sideCarry?-.25:-.07;
+          weapon.rotation.set(pitch,yaw,roll);
+          const butt=v(0,0,officer?armaments.anchors.receiverRear:
+            armaments.anchors.butt).applyEuler(weapon.rotation);
+          const stockPocket=sighted?
+            v(.176,.302,-.020):
+            sideCarry?v(.388,-.064,.016):
+            v(.243,.127,-.012);
+          if(carry==="polish-two")stockPocket.add(v(.028,.030,-.025));
+          // Do not snap the weapon out of the shoulder during recoil.
+          stockPocket.z+=(pose.recoil||0)*.085;
+          weapon.position.copy(stockPocket.sub(butt));
+          weapon.userData.carryMode=carry;
         }
+        headGroup.rotation.x+=aim?.115:0;
         // Only show a folded gunner bipod when the gun is being braced;
         // don't leave two long sticks hanging from every walking LMG.
         armaments.setBipod?.(!!pose.aim||
@@ -458,7 +482,13 @@
             (tpose?v(side*.594,.210,-.015):
               v(side*.294,-.282,-.010)):
             (unarmed?v(side*.267,-.245,-.035):
-              (side===1?right:left).clone());
+              // German field carry deliberately leaves the off-hand free.
+              // Polish locomotion keeps both hands on the weapon.
+              (moving&&faction==="germany"&&side===-1&&
+               role!=="officer"&&!armaments.isDeployed()?
+                v(-.264,-.184+Math.sin((pose.leftReach||0)*8)*.052,
+                  -.028):
+                (side===1?right:left).clone()));
           if(gesture>0&&!reference&&side===1)
             wrist.set(.35,.24+gesture*.30,-.18);
           if(!reference&&role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)
@@ -469,7 +499,8 @@
               v(side*.314,-.050,-.004)):
             shoulder.clone().lerp(wrist,.47);
           if(!reference){
-            const pole=v(side*.16,kneel?-.048:-.115,pose.aim?.04:.09);
+            const pole=v(side*.16,kneel?-.048:aim?.025:-.105,
+              aim?-.035:.075);
             elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
           }
           // More natural compact arm bend, no straight blocky L-pose.
@@ -481,7 +512,7 @@
               shoulder.clone().sub(wrist).normalize());
           }
           arm.hand.position.copy(wrist);
-          arm.hand.rotation.y=reference?0:side*(pose.aim?.11:.23);
+          arm.hand.rotation.y=reference?0:side*(aim?.08:.20);
         }
         soldier.updateMuzzle();
       };
