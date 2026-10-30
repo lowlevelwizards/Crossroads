@@ -36,3 +36,13 @@ saves, or LOS from an interior facade.
   deploy/pack, firefights, casualty reflow, garrison entry/exit, and replay.
 - The release does **not** introduce independent soldier movement orders,
   physically traversed door/window firing legality, or procedural combat rules.
+
+## Base-spacing correction
+Existing formation percentage offsets were too small for the already-defined
+1-inch diameter base radius. The rules geometry now uses a physically viable
+spacing in both axes, and the 3D bridge consumes those canonical slots rather
+than duplicating the old percentages. This **does alter historical measured
+distances between some unit models and friendly-fire corridors**, so old
+saves/replays requiring exact pre-v0.9.73 geometry must not be treated as
+byte-for-byte rules-identical. The 2D and 3D pages share the corrected
+`src/rules/model-geometry.js` implementation.

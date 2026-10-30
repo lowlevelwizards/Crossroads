@@ -92,6 +92,8 @@ assert(scene.includes("models:plan.models||null"));
 assert(scene.includes('source:"authoritative-models"'));
 assert(scene.includes("physicalFootprints?.closestPair("));
 assert(scene.includes("debugFootprints"));
+assert(read("classic-session.html").includes("model-geometry.js?v=3d107"),
+ "the embedded coordinator must not reuse stale cached model geometry");
 for(const page of ["battle3d.html","editor3d.html"]){
  const html=read(page);
  assert(html.includes("physical-footprints.js?v=0.9.73"));
