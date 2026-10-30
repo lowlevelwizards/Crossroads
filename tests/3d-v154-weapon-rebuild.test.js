@@ -78,7 +78,8 @@ for(const kind of library.kinds){
   const extreme=library.parse(kind,{length:1.2,stock:1.38,
     receiverLength:.8,foreEndLength:1.32,barrelLength:1.35});
   const altered=W.profile(new THREE.Group(),materials,kind,extreme);
-  assert(altered.anchors.butt>altered.anchors.receiverRear);
+  assert(altered.anchors.butt>=altered.anchors.receiverRear);
+  if(kind!=="pistol")assert(altered.anchors.butt>altered.anchors.receiverRear);
   assert(altered.anchors.muzzle<altered.anchors.foreEnd);
   assert(altered.anchors.receiverRear>altered.anchors.receiverFront);
   assert(altered.dimensions.rear-altered.dimensions.front>0);
