@@ -1,0 +1,14 @@
+.weapon-lab{height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) 305px;grid-template-rows:66px minmax(0,1fr)}
+.weapon-header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:#f7f8f6;border-bottom:1px solid #d7dad6}
+.weapon-header h1{font-size:20px;letter-spacing:.11em;margin:0}
+.weapon-header .eyebrow{font-size:9px;letter-spacing:.2em;color:#7a827e;font-weight:800}
+.weapon-header nav{display:flex;gap:8px}.weapon-header nav a{border:1px solid #ccd3ce;padding:8px;text-decoration:none;color:#34443c;font-size:10px;font-weight:800;border-radius:5px}
+.weapon-stage{position:relative;min-width:0;min-height:0;overflow:hidden;touch-action:none;background:#e9ecea}
+#weaponCanvas{width:100%;height:100%;display:block;touch-action:none}
+.weapon-panel{overflow-y:auto;overscroll-behavior:contain;background:#f8f9f7;border-left:1px solid #d7dad6}
+.weapon-views{position:absolute;bottom:43px;left:50%;transform:translateX(-50%);display:flex;gap:2px;background:#fafbf7e8;border:1px solid #cdd4cf;border-radius:9px;padding:5px}
+.weapon-views button{min-width:48px;background:transparent;border:0;border-radius:5px;padding:9px;color:#57635c;letter-spacing:.07em;font-size:10px;font-weight:800}
+.weapon-views button.active{background:#394e43;color:white}.weapon-hint{position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:.1em;color:#7c8980;pointer-events:none}
+.weapon-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.weapon-actions button,.weapon-import{border:1px solid #cdd5ce;background:#eff2ef;border-radius:5px;padding:10px 5px;font-size:10px;text-align:center;font-weight:800;color:#34443c}
+.weapon-import input{position:absolute;width:1px;height:1px;opacity:0}
+@media(max-width:780px){.weapon-lab{display:flex;flex-direction:column;height:auto;min-height:100dvh}.weapon-header{min-height:64px}.weapon-stage{height:60dvh;min-height:390px}.weapon-panel{overflow:visible}.weapon-views button{min-width:45px;font-size:9px;padding:10px 6px}}
