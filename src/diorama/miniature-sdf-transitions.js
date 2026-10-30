@@ -127,11 +127,63 @@
       triangleCount:vertices.length/9};
     return geometry;
   }
+  // v7 silhouette-first helmets. Unlike the former smooth union of domes
+  // and ellipse lips these are a single watertight-edged contour surface.
+  // A few deliberate latitudinal rings give 28mm-scale readable skirt shapes
+  // without tetrahedral interpolation chatter or an overlapping brim.
+  function helmetPatternGeometry(THREE,faction){
+    const german=faction==="germany",sides=36;
+    // [height, half-width, half-depth]; crown to bottom shell.
+    const rings=german?[
+      [.539,.009,.010],[.524,.098,.098],[.486,.183,.180],
+      [.424,.228,.223],[.351,.247,.246],[.290,.256,.256],
+      [.244,.267,.267],[.209,.280,.284]
+    ]:[
+      [.550,.008,.009],[.530,.101,.103],[.493,.183,.182],
+      [.438,.224,.220],[.364,.246,.240],[.305,.251,.245],
+      [.267,.256,.248],[.254,.259,.254]
+    ];
+    const positions=[],indices=[];
+    const ringPoint=(r,angle,inner=false)=>{
+      const [y,rx,rz]=r,front=Math.max(0,-Math.sin(angle)),
+        rear=Math.max(0,Math.sin(angle)),side=Math.abs(Math.cos(angle));
+      const rim=inner?1:0;
+      const edgeY=german?
+        .051*front-.035*rear-.025*side*(1-front):
+        .016*front-.006*rear-.003*side;
+      // Only apply the field hem outline at the bottom two rings.
+      const amount=r===rings[rings.length-1]?1:
+        r===rings[rings.length-2]?.35:0;
+      const frontBill=german?.006:.015;
+      return [Math.cos(angle)*(rx-rim*.017),
+        y+edgeY*amount+(inner?.014:0),
+        Math.sin(angle)*(rz-rim*.017)-frontBill*front*amount];
+    };
+    for(const ring of rings){
+      for(let n=0;n<=sides;n++){
+        positions.push(...ringPoint(ring,2*Math.PI*n/sides));
+      }
+    }
+    // The inner curled lip is one extra ring, joined to the outer edge.
+    for(let n=0;n<=sides;n++)
+      positions.push(...ringPoint(rings[rings.length-1],2*Math.PI*n/sides,true));
+    for(let j=0;j<rings.length;j++){
+      for(let n=0;n<sides;n++){
+        const a=j*(sides+1)+n,b=a+sides+1;
+        indices.push(a,a+1,b,a+1,b+1,b);
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
+    g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
+    g.userData={sharedMiniatureGeometry:true,helmetPattern:faction,
+      ringCount:rings.length+1,triangleCount:indices.length/3};
+    return g;
+  }
   function create(THREE,S){
     const helmet=(parent,mat,faction)=>{
-      const geometry=S.cached("sdf-helmet-v6-"+faction,()=>
-        bake(THREE,p=>helmetField(p,faction),
-          [[-.336,.137,-.359],[.336,.574,.362]],29));
+      const geometry=S.cached("silhouette-helmet-v7-"+faction,()=>
+        helmetPatternGeometry(THREE,faction));
       return S.mesh(parent,geometry,mat);
     };
     const joint=(parent,mat,kind)=>{
@@ -145,6 +197,6 @@
     return Object.freeze({helmet,joint});
   }
   window.Crossroads3DSDFTransitions=Object.freeze({
-    create,helmetField,jointField,smoothMin,bake
+    create,helmetField,helmetPatternGeometry,jointField,smoothMin,bake
   });
 })();
