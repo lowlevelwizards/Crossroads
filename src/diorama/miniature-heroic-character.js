@@ -202,6 +202,7 @@
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
       soldier.weaponSocket=which=>armaments.grip(which);
       soldier.syncMount=()=>armaments.syncMount?.();
+      soldier.setGunTraverse=angle=>armaments.setTraverse?.(angle);
       soldier.crewSocketWorld=which=>armaments.worldSocket?.(which)||null;
       soldier.stockSocket=()=>{
         weapon.updateWorldMatrix(true,false);

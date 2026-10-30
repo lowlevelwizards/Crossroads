@@ -171,6 +171,11 @@
       syncMount();
       const mountedGun=new THREE.Group();
       mountedGun.position.set(0,.37,-.49);mount.add(mountedGun);
+      const setTraverse=radians=>{
+        if(!isMMG)return;
+        mountedGun.rotation.y=Math.max(-Math.PI/4,Math.min(Math.PI/4,
+          Number(radians)||0));
+      };
       let deployedGrips=null;
       if(isMMG){
         G.block(mount,mats.hardware,[.17,.056,.18],[0,.115,-.49]);
@@ -207,7 +212,7 @@
         deployedSections:deployedGrips?.parts||null,
         dimensions:grips.dimensions,anchors:grips.anchors,
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
-        setDeployed,isDeployed,setBipod,syncMount,
+        setDeployed,isDeployed,setBipod,syncMount,setTraverse,
         get worldSocket(){
           return which=>{
             syncMount();const node=current();

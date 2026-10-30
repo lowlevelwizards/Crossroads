@@ -45,6 +45,7 @@ function initialize(THREE) {
     });
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
+  const crewPresentation=window.Crossroads3DCrewPresentation;
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
@@ -1418,6 +1419,8 @@ function initialize(THREE) {
     const shooter=unitLookup.get(e.shooterId);
     const target=unitLookup.get(e.targetId);
     if(stage.phase==="aim"&&shooter&&target){
+      if(crewPresentation?.describe(shooter.unit).deployed)
+        shooter.crewTarget=target.unit.id;
       const facing=motion.heading(
         {x:shooter.root.position.x,z:shooter.root.position.z},
         {x:target.root.position.x,z:target.root.position.z});
@@ -1437,6 +1440,8 @@ function initialize(THREE) {
         focusZoom=zoom;
       }
     }else if(stage.phase==="fire"&&shooter){
+      if(crewPresentation?.describe(shooter.unit).deployed)
+        shooter.crewFireUntil=performance.now()+1750;
       const groups=e.groups||[];
       const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
         ({role:s.role,visible:s.figure.visible})))||[];
@@ -2305,7 +2310,7 @@ function initialize(THREE) {
         if(squad.unit.type==="mmgTeam"&&
           wasDeployed!==Boolean(squad.unit.mmgDeployed)){
           squad.gunTransition={
-            elapsed:0,duration:1.0,
+            elapsed:0,duration:1.15,
             mode:squad.unit.mmgDeployed?"deploy":"pack"
           };
         }
@@ -3099,6 +3104,30 @@ function initialize(THREE) {
           })||{};
           const posture={...postureBase};
           soldier.weaponShotPending=false;
+          const crew=crewPresentation?.describe(squad.unit);
+          const crewMode=squad.gunTransition?.mode||
+            (performance.now()<(squad.crewFireUntil||0)?"fire":"ready");
+          const crewTime=squad.gunTransition?.elapsed||
+            (crewMode==="fire"?(performance.now()-squad.crewFireUntil+1750)/1000:0);
+          const crewPose=crew?.isMMG&&!isWalking?
+            crewPresentation.frame(squad.unit,crewMode,crewTime,soldierIndex):null;
+          if(crewPose?.active&&!squad.unit.down&&!soldier.casualtyAnimating){
+            posture.weaponReadiness=soldierIndex===0?
+              Math.max(posture.weaponReadiness||0,crewPose.readiness):0;
+            posture.weaponBlend=soldierIndex===0?posture.weaponBlend:0;
+          }
+          if(soldierIndex===0&&crew?.deployed){
+            const target=unitLookup.get(squad.crewTarget);
+            const worldAt=squad.root.position;
+            const targetAt=target?.root.position;
+            const desiredYaw=targetAt?
+              -Math.PI/2-Math.atan2(targetAt.z-worldAt.z,
+                targetAt.x-worldAt.x):
+              -Math.PI/2-(squad.unit.mmgFacing||0)*Math.PI/180;
+            const baseYaw=-Math.PI/2-(squad.unit.mmgFacing||0)*Math.PI/180;
+            const offset=motion.shortestDelta(baseYaw,desiredYaw);
+            soldier.setGunTraverse?.(Math.max(-Math.PI/4,Math.min(Math.PI/4,offset)));
+          }else if(soldierIndex===0) soldier.setGunTraverse?.(0);
           const mechanical=soldier.weaponMechanic;
           const action=mechanical&&weaponPresentation?.motionAt(
             mechanical.role,mechanical.age);
@@ -3122,9 +3151,10 @@ function initialize(THREE) {
                 soldier.coverPose>.25?"cover":
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
                   "ambush":squad.unit.order==="Rally"?"rally":"idle"),
-            crouch:Math.max(soldier.crouch||0,contact?.crouch||0),
+            crouch:Math.max(soldier.crouch||0,contact?.crouch||0,
+              crewPose?.crouch||0),
             lean:Math.max(0,-soldier.breathing.rotation.x,
-              contact?.lean||0),
+              contact?.lean||0,crewPose?.lean||0),
             roll:soldier.breathing.rotation.z,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,
