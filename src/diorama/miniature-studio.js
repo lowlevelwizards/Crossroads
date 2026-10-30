@@ -116,6 +116,9 @@
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
+  const compareRoot=new THREE.Group();scene.add(compareRoot);
+  let compareSoldier=null;
+  const compareCheckbox=$("studioCompareFaction");
   let workbench=null;
   const rigMarkers=new THREE.Group();scene.add(rigMarkers);
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
@@ -147,6 +150,9 @@
       }
     });
     actorRoot.clear();activeFigure=null;activeSoldier=null;flash=null;
+    compareRoot.clear();compareSoldier=null;
+    actorRoot.position.x=0;compareRoot.position.x=0;
+    actorRoot.scale.setScalar(1);compareRoot.scale.setScalar(1);
   };
   const refreshPaintInputs=()=>{
     const look=readLook();
@@ -177,6 +183,25 @@
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
+    if(compareCheckbox?.checked){
+      const currentKit=catalogue.kits().find(k=>k.id===kitSelect.value);
+      const other=catalogue.kits().find(k=>k.faction!==currentKit?.faction);
+      if(other){
+        const otherUnit=catalogue.buildUnit(unitSelect.value,other.id);
+        const otherIndex=Math.min(index,otherUnit.soldiers-1);
+        const second=catalogue.soldier(otherUnit.type,other.id,otherIndex);
+        const secondarySquad={root:compareRoot,soldiers:[],unit:otherUnit,index:0};
+        makeSoldier(secondarySquad,0,0,0,second,otherIndex,otherIndex);
+        compareSoldier=secondarySquad.soldiers[0];
+        compareSoldier.applyLook(profiles.read(other.id,unitSelect.value,otherIndex));
+        compareSoldier.setInspectionMode?.(silhouetteMode?.value||"equipped");
+        compareSoldier.inspectRing.visible=false;
+        compareSoldier.windowArc.visible=false;
+        actorRoot.position.x=-.66;compareRoot.position.x=.66;
+        actorRoot.scale.setScalar(.90);compareRoot.scale.setScalar(.90);
+      }
+    }
+    $("studioCompareLabel").hidden=!compareSoldier;
     if(activeSoldier.modelVersion>=2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
@@ -196,7 +221,9 @@
     if(!activeSoldier||activeSoldier.modelVersion<2)return;
     const mode=silhouetteMode?.value||"equipped";
     activeSoldier.setInspectionMode?.(mode);
+    compareSoldier?.setInspectionMode?.(mode);
   }
+  compareCheckbox?.addEventListener("change",build);
   classicCheckbox?.addEventListener("change",build);
   silhouetteMode?.addEventListener("change",applyDisplayMode);
     const refreshSoldierList=()=>{
@@ -387,10 +414,16 @@
       const isFall=poseSelect.value==="casualty";
       soldier.figure.rotation.set(0,pose.yaw||0,0);
       soldier.figure.position.set(0,0,0);
-      soldier.applyPose({...pose,action:poseSelect.value,
+      const posed={...pose,action:poseSelect.value,
         aim:["aim","ambush","fire","reload"].includes(poseSelect.value),
         recoil:poseSelect.value==="fire"?Math.max(0,.18-(t%.62))/.18:0,
-        fall:isFall?Math.min(1,t/poses.duration("casualty")):0});
+        fall:isFall?Math.min(1,t/poses.duration("casualty")):0};
+      soldier.applyPose(posed);
+      if(compareSoldier){
+        compareSoldier.figure.rotation.set(0,pose.yaw||0,0);
+        compareSoldier.setGunDeployed?.(poseSelect.value==="deploy"?t>=.9:true);
+        compareSoldier.applyPose(posed);
+      }
       if(flash){
         // Muzzle moves with the sculpted weapon, including recoil and aims.
         flash.position.copy(soldier.muzzleLocal);

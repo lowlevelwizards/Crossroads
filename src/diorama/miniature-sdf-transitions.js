@@ -26,16 +26,22 @@
   // overlapping separate brim mesh with a different normal field.
   const helmetField=(p,faction)=>{
     const german=faction==="germany";
-    const domeRadius=german?[.256,.248,.273]:[.253,.245,.262];
-    const dome=ellipsoid(p,[0,.295,.016],domeRadius);
-    // Trim the lower dome; otherwise an invisible sphere bottom overlaps
-    // the face and makes a green bowl around the nose/ears.
-    // A softened lower cut avoids the abrupt normal discontinuity that
-    // produced dark triangles and a serrated lip at close inspection.
-    const clipped=-smoothMin(-dome,p[1]-.228,.018);
-    const brim=ellipsoid(p,[0,.239,-.024],
-      german?[.294,.057,.298]:[.283,.050,.283]);
-    return smoothMin(clipped,brim,.043);
+    // Polish wz.31: rounded shallow edge with a small forward brow.
+    // German M35: pronounced forward visor and deeper side/rear skirt.
+    const dome=german?
+      ellipsoid(p,[0,.304,.025],[.256,.259,.258]):
+      ellipsoid(p,[0,.302,.017],[.257,.247,.264]);
+    const cut=german?.209:.226;
+    const shell=-smoothMin(-dome,p[1]-cut,.016);
+    const brow=ellipsoid(p,[0,german?.230:.236,german?-.093:-.052],
+      german?[.267,.046,.260]:[.283,.045,.274]);
+    if(!german)return smoothMin(shell,brow,.038);
+    // Deep M35 skirt wrapping the ears and nape (not a second sphere).
+    // The high front opening remains clear around the wearer's eyes.
+    const sideOval=ellipsoid(p,[0,.228,.079],[.294,.083,.247]);
+    const sideAndRear=Math.max(sideOval,p[2]<-.11?.215-p[1]:.165-p[1]);
+    const skirt=smoothMin(sideAndRear,brow,.022);
+    return smoothMin(shell,skirt,.039);
   };
   const jointField=(p,kind)=>{
     const knee=kind==="knee",
@@ -114,9 +120,9 @@
   }
   function create(THREE,S){
     const helmet=(parent,mat,faction)=>{
-      const geometry=S.cached("sdf-helmet-v3-"+faction,()=>
+      const geometry=S.cached("sdf-helmet-v4-"+faction,()=>
         bake(THREE,p=>helmetField(p,faction),
-          [[-.325,.171,-.329],[.325,.563,.325]],28));
+          [[-.336,.137,-.359],[.336,.574,.362]],28));
       return S.mesh(parent,geometry,mat);
     };
     const joint=(parent,mat,kind)=>{

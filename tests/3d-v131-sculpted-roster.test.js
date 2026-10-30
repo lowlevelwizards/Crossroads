@@ -57,7 +57,8 @@ const win={
   })}
 };
 for(const name of ["miniature-sculpt-shapes.js",
-  "miniature-historical-weapons.js","miniature-sdf-transitions.js",
+  "miniature-weapon-library.js","miniature-historical-weapons.js",
+  "miniature-faction-gear.js","miniature-sdf-transitions.js",
   "miniature-heroic-character.js"]){
   const script=read("src/diorama/"+name);
   new vm.Script(script,{filename:name}).runInNewContext({window:win});
@@ -77,6 +78,11 @@ for(const faction of ["poland","germany"]){
     const kit=faction==="poland"?"poland_1939":"germany_1939";
     make(squad,0,0,0,{kit:{factionId:faction,id:kit},role},0,1);
     const s=squad.soldiers[0];
+    assert(s.gear&&s.gear.faction===faction,
+      "every sculpted soldier loads country-specific gear");
+    assert(s.gear.gait.length>0,"lower leg pattern must be visible");
+    assert(s.gear.webbing.children.length>=6,
+      "raised front ammunition pouches and thick pack supports visible");
     assert.equal(s.modelVersion,3);
     assert(s.arms.every(a=>a.seam&&a.seam.geometry.userData.sdfBaked),
       "elbow transition sleeves must be SDF baked");
@@ -199,7 +205,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.45"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.46"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }
