@@ -29,7 +29,7 @@ assert(battle.includes("if(record.soldier.applyPose)"));
 for(const [page,html] of Object.entries({
   "studio":studioPage,"battle":battlePage,"editor":editorPage
 })){
-  assert(html.includes("miniature-v2.js?v=0.9.73"),page+" missing V2 loader");
+  assert(html.includes("miniature-v2.js?v=0.9.74"),page+" missing V2 loader");
   assert(html.indexOf("miniature-v2.js")<html.indexOf("miniature-model.js"),
     page+" must load the new builder before its shared factory");
 }
@@ -42,7 +42,7 @@ assert.equal(poses.frame("casualty",100,{}).fall,1);
 assert.equal(poses.frame("casualty",1000,{}).fall,1);
 assert(poses.frame("fire",0,{}).aim);
 const manifest=JSON.parse(read("release-manifest.json"));
-assert.equal(manifest.threeDCacheVersion,"0.9.73");
+assert.equal(manifest.threeDCacheVersion,"0.9.74");
 assert(manifest.requiredFiles.includes("src/diorama/miniature-v2.js"));
 
 // Exercise every soldier role without depending on WebGL in the Node runner.
