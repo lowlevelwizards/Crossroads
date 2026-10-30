@@ -119,6 +119,8 @@
   const compareRoot=new THREE.Group();scene.add(compareRoot);
   let compareSoldier=null;
   const compareCheckbox=$("studioCompareFaction");
+  const shapeSource=$("studioShapeSource"),loadoutSelect=$("studioLoadout");
+  const battleScale=$("studioBattleScale");
   let workbench=null;
   const rigMarkers=new THREE.Group();scene.add(rigMarkers);
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
@@ -150,6 +152,12 @@
       }
     });
     actorRoot.clear();activeFigure=null;activeSoldier=null;flash=null;
+    compareRoot.traverse(node=>{
+      if(!node.userData?.sharedMiniatureGeometry)node.geometry?.dispose?.();
+      const list=Array.isArray(node.material)?node.material:
+        node.material?[node.material]:[];
+      for(const mat of list)if(mat!==sharedWood)mat.dispose?.();
+    });
     compareRoot.clear();compareSoldier=null;
     actorRoot.position.x=0;compareRoot.position.x=0;
     actorRoot.scale.setScalar(1);compareRoot.scale.setScalar(1);
@@ -178,22 +186,31 @@
     if(workbench?.isEditing())workbench.leave();
     disposeActor();
     const recipe=catalogue.soldier(unit.type,unit.kitId,index);
+    const source=shapeSource?.value||"saved";
+    const comparingSource=source==="compare";
     const squad={root:actorRoot,soldiers:[],unit,index:0};
-    activeFigure=makeSoldier(squad,0,0,0,recipe,index,index);
+    activeFigure=makeSoldier(squad,0,0,0,
+      {...recipe,shapeSource:source==="canon"?"canon":"saved"},index,index);
     activeSoldier=squad.soldiers[0];
     // The battlefield uses this figure's own world-space forward (-Z).
     activeSoldier.applyLook(readLook());
-    if(compareCheckbox?.checked){
+    activeSoldier.setEquipmentPreset?.(loadoutSelect?.value||"marching");
+    if(compareCheckbox?.checked||comparingSource){
       const currentKit=catalogue.kits().find(k=>k.id===kitSelect.value);
-      const other=catalogue.kits().find(k=>k.faction!==currentKit?.faction);
+      const other=comparingSource?currentKit:
+        catalogue.kits().find(k=>k.faction!==currentKit?.faction);
       if(other){
         const otherUnit=catalogue.buildUnit(unitSelect.value,other.id);
         const otherIndex=Math.min(index,otherUnit.soldiers-1);
         const second=catalogue.soldier(otherUnit.type,other.id,otherIndex);
         const secondarySquad={root:compareRoot,soldiers:[],unit:otherUnit,index:0};
-        makeSoldier(secondarySquad,0,0,0,second,otherIndex,otherIndex);
+        makeSoldier(secondarySquad,0,0,0,
+          {...second,shapeSource:comparingSource?"canon":
+            source==="canon"?"canon":"saved"},otherIndex,otherIndex);
         compareSoldier=secondarySquad.soldiers[0];
-        compareSoldier.applyLook(profiles.read(other.id,unitSelect.value,otherIndex));
+        compareSoldier.applyLook(comparingSource?readLook():
+          profiles.read(other.id,unitSelect.value,otherIndex));
+        compareSoldier.setEquipmentPreset?.(loadoutSelect?.value||"marching");
         compareSoldier.setInspectionMode?.(silhouetteMode?.value||"equipped");
         compareSoldier.inspectRing.visible=false;
         compareSoldier.windowArc.visible=false;
@@ -202,6 +219,17 @@
       }
     }
     $("studioCompareLabel").hidden=!compareSoldier;
+    $("studioCompareLabel").textContent=comparingSource?
+      "Left: your local shapes. Right: repository canon. Both remain unchanged.":
+      "Same unit and pose; contrasting Polish and German field equipment.";
+    const saved=activeSoldier.approvedShapesUsed||[];
+    $("studioShapeStatus").textContent=source==="canon"?
+      "Viewing repository canon. Your local approved shapes are untouched.":
+      comparingSource?
+      "Local overrides on left: "+(saved.join(", ")||"none")+
+        ". Canon source on right.":
+      "Local approved shapes: "+(saved.join(", ")||"none")+
+        ". Built-in geometry fills all other parts.";
     if(activeSoldier.modelVersion>=2)applyDisplayMode();
     activeSoldier.setGunDeployed?.(true);
     // The shared factory emits a selection ring, unused in the standalone lab.
@@ -223,7 +251,26 @@
     activeSoldier.setInspectionMode?.(mode);
     compareSoldier?.setInspectionMode?.(mode);
   }
-  compareCheckbox?.addEventListener("change",build);
+  compareCheckbox?.addEventListener("change",()=>{
+    if(compareCheckbox.checked&&shapeSource.value==="compare")
+      shapeSource.value="saved";
+    build();
+  });
+  shapeSource?.addEventListener("change",()=>{
+    if(shapeSource.value==="compare")compareCheckbox.checked=false;
+    build();
+  });
+  loadoutSelect?.addEventListener("change",()=>{
+    activeSoldier?.setEquipmentPreset?.(loadoutSelect.value);
+    compareSoldier?.setEquipmentPreset?.(loadoutSelect.value);
+    if(loadoutSelect.value==="reference"){
+      poseSelect.value="reference";elapsed=0;
+    }
+    renderPose(elapsed);
+  });
+  battleScale?.addEventListener("change",()=>{
+    $("studioBattleLabel").hidden=!battleScale.checked;
+  });
   classicCheckbox?.addEventListener("change",build);
   silhouetteMode?.addEventListener("change",applyDisplayMode);
     const refreshSoldierList=()=>{
@@ -529,6 +576,22 @@
     renderPose(elapsed);
     if(playing)syncTimeline();
     renderer.render(scene,currentCamera);
+    // Optional low-scale inspection uses the SAME WebGL context; never add a
+    // second expensive renderer on an iPhone.
+    if(battleScale?.checked){
+      const size=renderer.getDrawingBufferSize(new THREE.Vector2());
+      const w=Math.round(Math.min(size.x*.34,160*(window.devicePixelRatio||1))),
+        h=Math.round(w*.90),margin=Math.round(12*(window.devicePixelRatio||1));
+      const x=Math.max(0,size.x-w-margin),y=Math.max(0,size.y-h-margin);
+      const smallCamera=new THREE.PerspectiveCamera(39,w/h,.03,60);
+      smallCamera.position.set(2.8,4.4,7.8);
+      smallCamera.lookAt(0,.86,0);
+      renderer.setScissorTest(true);
+      renderer.setViewport(x,y,w,h);renderer.setScissor(x,y,w,h);
+      renderer.render(scene,smallCamera);
+      renderer.setScissorTest(false);
+      renderer.setViewport(0,0,size.x,size.y);
+    }
     requestAnimationFrame(animate);
   }
   requestAnimationFrame(animate);
