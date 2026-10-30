@@ -17,15 +17,15 @@
       }
       for(let i=0;i<rings.length-1;i++)for(let j=0;j<sides;j++){
         const a=i*(sides+1)+j,b=a+sides+1;
-        indices.push(a,b,a+1,a+1,b,b+1);
+        indices.push(a,a+1,b,a+1,b+1,b);
       }
       for(let side=0;side<2;side++){
         const ring=side===0?0:rings.length-1,point=rings[ring];
         const center=vertices.length/3;vertices.push(0,point[3]||0,point[0]);
         for(let j=0;j<sides;j++){
           const a=ring*(sides+1)+j,b=ring*(sides+1)+(j+1)%sides;
-          if(side===0)indices.push(center,a,b);
-          else indices.push(center,b,a);
+          if(side===0)indices.push(center,b,a);
+          else indices.push(center,a,b);
         }
       }
       const g=new THREE.BufferGeometry();
