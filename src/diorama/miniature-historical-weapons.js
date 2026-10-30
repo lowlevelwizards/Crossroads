@@ -1,138 +1,165 @@
 "use strict";
-// Silhouette-first early-war weapons: large identifiable features, no tiny
-// decorative assembly. This module is visual only; combat stats stay in rules.
+// Historical silhouettes built from connected axial landmarks. Visual-only:
+// Bolt Action ranges, shooting, recoil, and rules remain external.
 (() => {
   function create(THREE,S){
+    const G=window.Crossroads3DWeaponGeometry.create(THREE,S);
+    const A=window.Crossroads3DWeaponArchetypes;
+    const lib=window.Crossroads3DWeaponLibrary;
     const point=(x,y,z)=>S.v(x,y,z);
-    const barrel=(parent,mat,from,to,r=.020)=>{
-      const mesh=S.loft(parent,mat,"gun-barrel-"+r,[
-        [-.5,r,r],[.5,r,r]
-      ]);
-      S.segment(mesh,from,to);return mesh;
-    };
-    function stock(parent,mat,len=.76){
-      // Continuous tapered wooden butt with a recognizable shoulder end.
-      const m=S.loft(parent,mat,"rifle-stock-v45",[
-        [-.5,.079,.101],[-.35,.087,.110],[.03,.080,.105],
-        [.33,.056,.087],[.5,.049,.077]
-      ],[0,-.039,.217]);
-      m.rotation.x=Math.PI/2;m.scale.y=len;
-    }
-    const sections=root=>{
-      const parts={};
-      for(const name of ["stock","receiver","barrel","magazine"]){
-        parts[name]=new THREE.Group();root.add(parts[name]);
-      }
-      return parts;
-    };
-    function longGun(root,mats,kind,withBipod=true){
-      const {steel,wood,hardware}=mats,parts=sections(root);
-      const rifle=kind==="kar98k"||kind==="wz29",
-        polish=kind==="wz28",mg=kind==="mg34";
-      const end=rifle?-.88:mg?-.96:-.89;
-      stock(parts.stock,mg?hardware:wood,mg?.67:.77);
-      // Four strong shapes: stock, receiver, fore-end / jacket, barrel.
-      S.box(parts.receiver,steel,[.146,.112,rifle?.211:.256],[0,.010,-.129]);
-      if(mg){
-        // MG34 perforated jacket expressed as ONE dark cylindrical mass;
-        // no microscopic vents or metal tabs at tabletop scale.
-        barrel(parts.barrel,hardware,point(0,.018,-.283),
-          point(0,.018,-.815),.046);
-        S.box(parts.receiver,steel,[.134,.057,.103],[.084,.054,-.176]);
-      }else{
-        S.box(parts.stock,wood,[.138,.096,rifle?.352:.308],
-          [0,-.021,rifle?-.366:-.334]);
-      }
-      barrel(parts.barrel,steel,point(0,.018,mg?-.795:-.419),
-        point(0,.018,end),rifle?.026:.030);
-      // One oversized front sight is more useful than dozens of fittings.
-      S.box(parts.barrel,steel,[.035,.062,.034],[0,.059,end+.032]);
-      if(rifle){
-        // Recognizable long-stock Mauser-pattern rifle, minimal metalwork.
-        S.box(parts.receiver,steel,[.034,.025,.088],[0,.069,-.103]);
-      }else if(polish){
-        // Browning wz.28: distinctive downward-facing box magazine.
-        S.box(parts.magazine,steel,[.105,.180,.107],[0,-.132,-.183]);
-      }else{
-        // MG34: obvious receiver/feed box on the side of the gun.
-        S.box(parts.magazine,steel,[.165,.064,.120],[.091,.033,-.175]);
-      }
-      let bipod=null;
-      if(!rifle&&withBipod){
-        bipod=new THREE.Group();
-        bipod.position.set(0,-.009,end+.17);parts.barrel.add(bipod);
-        for(const side of [-1,1])
-          barrel(bipod,hardware,
-            point(side*.028,-.015,0),
-            point(side*.134,-.255,-.025),.013);
-        // Folded while carried; visible only when deliberately braced/aimed.
-        bipod.visible=false;
-      }
-      return {
-        muzzle:point(0,.018,end-.023),
-        // Grip targets intersect the wood/receiver volumes: the single
-        // mitten meshes now cradle them instead of hovering to either side.
-        primary:point(.047,-.091,-.041),
-        secondary:point(-.048,-.076,-.345),bipod,parts,
-        gripNodes:{primary:parts.stock,secondary:parts.stock,muzzle:parts.barrel}
-      };
-    }
-    function submachineGun(root,mats,kind){
-      const {steel,wood,hardware}=mats,parts=sections(root);
-      S.box(parts.receiver,steel,[.135,.117,.250],[0,.018,-.17]);
-      barrel(parts.barrel,steel,point(0,.018,-.280),
-        point(0,.018,kind==="mp38"?-.66:-.62),.031);
-      S.box(parts.magazine,steel,[.075,.195,.083],[0,-.151,-.171]);
-      // A single readable handle/stock rather than tiny wire pieces.
-      S.box(parts.stock,kind==="mp38"?hardware:wood,
-        [.083,.094,.260],[0,-.045,.105]);
-      return {muzzle:point(0,.018,kind==="mp38"?-.68:-.64),
-        primary:point(.036,-.113,-.006),
-        secondary:point(-.040,-.067,-.238),parts,
-        gripNodes:{primary:parts.stock,secondary:parts.receiver,muzzle:parts.barrel}};
-    }
-    function pistol(root,mats){
-      const {steel,wood}=mats,parts=sections(root);
-      S.box(parts.receiver,steel,[.108,.089,.225],[0,0,-.075]);
-      S.box(parts.stock,wood,[.075,.160,.078],[0,-.114,.013]).rotation.x=-.20;
-      return {muzzle:point(0,.013,-.198),
-        primary:point(.026,-.115,.014),
-        secondary:point(-.07,-.065,-.1),parts,
-        gripNodes:{primary:parts.stock,secondary:parts.receiver,muzzle:parts.receiver}};
-    }
     function kindFor(faction,role){
       if(role==="officer")return "pistol";
-      if(role==="mmg"||role==="lmg")
-        return faction==="germany"?"mg34":"wz28";
+      if(role==="mmg"||role==="lmg")return faction==="germany"?"mg34":"wz28";
       if(role==="smg")return faction==="germany"?"mp38":"mors39";
       return faction==="germany"?"kar98k":"wz29";
     }
-    function build({figure,breathing,role,faction,mats,weaponKind}){
+    function profile(root,mats,kind,values,{bipodEnabled=true}={}){
+      const def=A.defs[kind];if(!def)throw Error("Unknown weapon "+kind);
+      const p=lib.parse(kind,values),hero=p.exaggeration;
+      const parts={};
+      for(const name of ["stock","receiver","foreEnd","barrel","magazine","grip","sights"]){
+        parts[name]=new THREE.Group();root.add(parts[name]);
+      }
+      const d=def.receiver*p.receiverLength,
+        back=d/2,front=-d/2,
+        foreTip=front-def.fore*p.foreEndLength*p.length,
+        muzzle=foreTip-def.barrel*p.barrelLength*p.length,
+        butt=back+def.butt*p.stockLength*p.length;
+      const wood=mats.wood,steel=mats.steel,hardware=mats.hardware||steel;
+      const thick=p.stock*hero,metal=p.receiver*hero,
+        bore=p.barrel*hero;
+      let primary=point(.058,-.115,back+.045);
+      let secondary=point(-.07,-.086,foreTip+(front-foreTip)*.52);
+      let gunMuzzle=point(0,.025,muzzle-.023);
+      const bolt=def.family==="bolt";
+      if(bolt||def.family==="bar"||def.family==="mg"||def.family==="mors"){
+        G.stock(parts.stock,def.family==="mg"?hardware:wood,{
+          rear:butt,front:back-.018,thickness:thick,
+          style:def.family
+        });
+      }else if(def.family==="mp"){
+        // MP38 folded metal skeleton stock: not an enormous wooden block.
+        G.wire(parts.stock,hardware,[
+          [.078,-.035,back],[.096,-.06,butt-.04],
+          [.096,-.128,butt],[.096,-.149,butt-.012]
+        ],.021*hero);
+        G.wire(parts.stock,hardware,[
+          [-.078,-.035,back],[-.096,-.06,butt-.04],
+          [-.096,-.128,butt],[-.096,-.149,butt-.012]
+        ],.021*hero);
+        G.block(parts.stock,hardware,[.212,.036,.041],[0,-.132,butt-.015]);
+      }
+      if(def.family==="pistol"){
+        const slideBack=back+.013,slideFront=front-.03;
+        G.block(parts.receiver,steel,[.126*metal,.09*metal,slideBack-slideFront],
+          [0,.036,(slideBack+slideFront)/2]);
+        G.block(parts.grip,wood,[.096*hero,.185*hero,.100],
+          [0,-.117,back-.041]).rotation.x=-.25;
+        G.tube(parts.barrel,steel,slideFront-.085,slideFront,.037*bore);
+        primary=point(.043,-.136,back-.04);
+        secondary=point(-.043,-.044,front+.015);
+        gunMuzzle=point(0,.036,slideFront-.1);
+      }else{
+        const recWidth=(def.family==="mg"?.091:def.family==="bar"?.082:.075)*metal;
+        const recHeight=(def.family==="mp"?.074:.068)*metal;
+        if(def.family==="mp"||def.family==="mors"){
+          G.tube(parts.receiver,steel,front,back,recWidth,recHeight,.023,10);
+        }else{
+          G.block(parts.receiver,steel,[recWidth*2,recHeight*2,d+.036],
+            [0,.022,(back+front)/2]);
+        }
+        if(bolt){
+          // Long continuous wood below the receiver and fore-end; one
+          // purposeful bolt handle and front sight.
+          G.taperedFore(parts.foreEnd,wood,foreTip-.008,front+.025,
+            .091*thick,.068*thick);
+          G.tube(parts.barrel,steel,muzzle,foreTip+.045,.026*bore);
+          G.block(parts.sights,steel,[.034,.054,.034],
+            [0,.088,muzzle+.044]);
+          G.block(parts.sights,steel,[.029,.023,.078],
+            [.071,.079,back-.047]);
+          primary=point(.06,-.119,back+.032);
+        }else if(def.family==="bar"){
+          G.taperedFore(parts.foreEnd,wood,foreTip,front+.035,
+            .092*thick,.08*thick);
+          G.tube(parts.barrel,steel,muzzle,foreTip+.03,.034*bore);
+          G.tube(parts.barrel,hardware,muzzle+.08,front-.045,.022*bore,
+            .022*bore,-.082);
+          G.block(parts.magazine,steel,[.15*p.magazine*hero,.18*p.magazine*hero,.105],
+            [0,-.145,front+.045]);
+          G.block(parts.grip,wood,[.085,.158,.085],[0,-.137,back-.022])
+            .rotation.x=-.22;
+          G.block(parts.sights,steel,[.036,.066,.036],[0,.09,muzzle+.048]);
+        }else if(def.family==="mg"){
+          // MG34 has a metal jacket, distinct receiver/feed and short
+          // wooden butt; the bipod is NOT the magazine.
+          const jacketFront=muzzle+.103;
+          G.tube(parts.barrel,hardware,jacketFront,front+.016,
+            .065*bore,.061*bore,.026,12);
+          G.tube(parts.barrel,steel,muzzle,jacketFront+.022,.035*bore);
+          G.block(parts.magazine,steel,
+            [.145*p.magazine,.071*p.magazine,.135],
+            [.103,.057,front+.035]); // left-side feed
+          G.block(parts.grip,hardware,[.075,.142,.076],
+            [0,-.135,back-.015]).rotation.x=-.20;
+          G.block(parts.sights,steel,[.035,.066,.035],[0,.111,muzzle+.045]);
+          secondary=point(-.088,-.057,front-.23);
+        }else if(def.family==="mp"){
+          G.tube(parts.barrel,steel,muzzle,front+.025,.037*bore);
+          G.block(parts.grip,hardware,[.088,.182,.105],
+            [0,-.137,back-.06]).rotation.x=-.17;
+          G.block(parts.magazine,steel,
+            [.108*p.magazine,.24*p.magazine,.104],
+            [0,-.205,front+.052]);
+          G.block(parts.sights,steel,[.035,.07,.04],[0,.106,muzzle+.037]);
+          primary=point(.049,-.14,back-.045);
+          secondary=point(-.06,-.03,front-.06);
+        }else if(def.family==="mors"){
+          G.taperedFore(parts.foreEnd,wood,foreTip,front+.02,.079*thick,.079*thick);
+          G.tube(parts.barrel,steel,muzzle,foreTip+.025,.034*bore);
+          G.block(parts.grip,wood,[.092,.169,.097],
+            [0,-.145,back-.018]).rotation.x=-.19;
+          G.block(parts.magazine,steel,
+            [.113*p.magazine,.222*p.magazine,.106],
+            [0,-.192,front+.032]);
+          G.block(parts.sights,steel,[.035,.055,.034],[0,.09,muzzle+.035]);
+        }
+      }
+      let bipod=null;
+      if((def.family==="bar"||def.family==="mg")&&bipodEnabled){
+        bipod=new THREE.Group();root.add(bipod);
+        const z=muzzle+.18;
+        G.wire(bipod,hardware,[[0,-.03,z],[-.14,-.23,z-.06]],.018);
+        G.wire(bipod,hardware,[[0,-.03,z],[.14,-.23,z-.06]],.018);
+        bipod.visible=false;
+      }
+      return {parts,bipod,kind,params:p,
+        muzzle:gunMuzzle,primary,secondary,
+        anchors:{butt,receiverRear:back,receiverFront:front,foreEnd:foreTip,muzzle},
+        dimensions:{rear:butt,front:muzzle,stockLength:butt-back},
+        triangleTarget:500};
+    }
+    function build({figure,breathing,role,faction,mats,weaponKind,settings}){
       const kind=weaponKind||kindFor(faction,role),isMMG=role==="mmg";
+      const recipe=settings||lib.read(kind);
       const weapon=new THREE.Group();
       weapon.position.set(.045,-.095,-.335);
       weapon.rotation.set(-.08,.21,-.08);
       breathing.add(weapon);
-      const grips=kind==="pistol"?pistol(weapon,mats):
-        (kind==="mp38"||kind==="mors39")?
-          submachineGun(weapon,mats,kind):
-          longGun(weapon,mats,kind,true);
-      const presets=window.Crossroads3DWeaponLibrary;
-      presets?.apply(grips.parts,kind);
-      // An MMG tripod lives on the figure, not inside the animated torso.
-      const mount=new THREE.Group();figure.add(mount);
-      mount.visible=false;
+      const grips=profile(weapon,mats,kind,recipe);
+      // A deployed MMG stays on the figure (outside the animated body).
+      const mount=new THREE.Group();figure.add(mount);mount.visible=false;
       const mountedGun=new THREE.Group();
       mountedGun.position.set(0,.37,-.49);mount.add(mountedGun);
       let deployedGrips=null;
       if(isMMG){
-        S.box(mount,mats.hardware,[.18,.055,.20],[0,.116,-.50]);
-        S.box(mount,mats.steel,[.067,.23,.070],[0,.251,-.49]);
+        G.block(mount,mats.hardware,[.17,.056,.18],[0,.115,-.49]);
+        G.block(mount,mats.steel,[.066,.216,.066],[0,.244,-.49]);
         for(const side of [-1,0,1])
-          barrel(mount,mats.steel,point(0,.244,-.49),
-            point(side*.31,.105,side===0?-.86:-.32),.020);
-        deployedGrips=longGun(mountedGun,mats,kind,false);
-        presets?.apply(deployedGrips.parts,kind);
+          G.wire(mount,mats.steel,[
+            [0,.244,-.49],[side*.28,.098,side===0?-.81:-.33]
+          ],.023);
+        deployedGrips=profile(mountedGun,mats,kind,recipe,{bipodEnabled:false});
       }
       let deployed=false;
       const setDeployed=value=>{
@@ -145,22 +172,22 @@
       };
       const current=()=>deployed?mountedGun:weapon;
       const local=which=>{
-        const target=deployed?deployedGrips:grips;
-        return target?.[which]?.clone()||point(0,0,0);
+        const set=deployed?deployedGrips:grips;
+        return set?.[which]?.clone()||point(0,0,0);
       };
       const getInTorso=which=>{
-        const node=current(),target=deployed?deployedGrips:grips;
+        const node=current();
         node.updateWorldMatrix(true,true);
         breathing.updateWorldMatrix(true,false);
-        const part=target?.gripNodes?.[which]||node;
-        return breathing.worldToLocal(part.localToWorld(local(which)));
+        return breathing.worldToLocal(node.localToWorld(local(which)));
       };
       return {kind,weapon,mount,grips,sections:grips.parts,
         deployedSections:deployedGrips?.parts||null,
+        dimensions:grips.dimensions,anchors:grips.anchors,
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
         setDeployed,isDeployed,setBipod};
     }
-    return Object.freeze({build,kindFor});
+    return Object.freeze({build,kindFor,profile});
   }
   window.Crossroads3DHistoricalWeapons=Object.freeze({create});
 })();
