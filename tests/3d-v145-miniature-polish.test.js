@@ -54,4 +54,4 @@ assert.equal(p.normalize().headSize,1.25);
 assert.equal(p.normalize().bootSize,.8);
 assert.equal(p.normalize({headSize:1.18,bootSize:.93}).headSize,1.18,
   "existing explicit profile scales must not be overridden");
-console.log("PASS — v0.9.46 SDF lip, reduced elbows, historical kit, grips and profile defaults");
+console.log("PASS — v0.9.47 SDF lip, reduced elbows, historical kit, grips and profile defaults");
