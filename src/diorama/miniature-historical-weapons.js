@@ -48,6 +48,10 @@
           [-.096,-.128,butt],[-.096,-.149,butt-.012]
         ],.021*hero);
         G.block(parts.stock,hardware,[.212,.036,.041],[0,-.132,butt-.015]);
+        // One broad silhouette cue for the MP38's folding metal shoulder
+        // rest, rather than four disconnected wire ends at game distance.
+        G.block(parts.stock,hardware,[.214,.086,.029],
+          [0,-.134,butt+.016]);
       }
       if(def.family==="pistol"){
         const slideBack=back+.013,slideFront=front-.03;
@@ -86,7 +90,7 @@
           // Omit the underslung floating gas tube at 28mm miniature scale;
           // the Browning feed and profile remain recognizable without it.
           G.block(parts.magazine,steel,[.15*p.magazine*hero,.18*p.magazine*hero,.105],
-            [0,-.145,front+.045]);
+            [0,-.122,front+.045]);
           G.block(parts.grip,wood,[.085,.158,.085],[0,-.137,back-.022])
             .rotation.x=-.22;
           G.block(parts.sights,steel,[.036,.066,.036],[0,.063,muzzle+.048]);
@@ -110,7 +114,7 @@
             [0,-.137,back-.06]).rotation.x=-.17;
           G.block(parts.magazine,steel,
             [.108*p.magazine,.24*p.magazine,.104],
-            [0,-.205,front+.052]);
+            [0,-.144,front+.052]);
           G.block(parts.sights,steel,[.035,.07,.04],[0,.058,muzzle+.037]);
           primary=point(.049,-.14,back-.045);
           secondary=point(-.06,-.03,front-.06);
@@ -121,7 +125,7 @@
             [0,-.145,back-.018]).rotation.x=-.19;
           G.block(parts.magazine,steel,
             [.113*p.magazine,.222*p.magazine,.106],
-            [0,-.192,front+.032]);
+            [0,-.145,front+.032]);
           G.block(parts.sights,steel,[.035,.055,.034],[0,.054,muzzle+.035]);
         }
       }

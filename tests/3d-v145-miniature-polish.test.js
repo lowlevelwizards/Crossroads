@@ -36,12 +36,12 @@ assert(position.every(Number.isFinite)&&normals.every(Number.isFinite));
 assert(normals.some((x,i)=>i%3===1&&Math.abs(x)>.2),
   "analytical normal gradients must preserve curvature");
 const model=read("src/diorama/miniature-heroic-character.js");
-assert(model.includes("hat.position.set(0,-.054,-.026)"));
+assert(model.includes("hat.position.set(0,-.055,-.006)"));
 assert(model.includes("Crossroads3DFactionGear?.create"));
 const kit=read("src/diorama/miniature-faction-gear.js");
 assert(kit.includes("wz33-blanket-roll")&&kit.includes("tornister-blanket-roll"));
 assert(kit.includes("surfaceRibbon")&&kit.includes("setBodyWidth"));
-assert(model.includes("mat.eyes,[side*.071,.163,-.184]"));
+assert(model.includes("mat.eyes,[side*.071,.132,-.184]"));
 const weapons=read("src/diorama/miniature-historical-weapons.js");
 assert(weapons.includes("window.Crossroads3DWeaponGeometry.create"));
 assert(weapons.includes('def.family==="bolt"'));
@@ -54,4 +54,4 @@ assert.equal(p.normalize().headSize,1.25);
 assert.equal(p.normalize().bootSize,.8);
 assert.equal(p.normalize({headSize:1.18,bootSize:.93}).headSize,1.18,
   "existing explicit profile scales must not be overridden");
-console.log("PASS — v0.9.69 SDF lip, reduced elbows, historical kit, grips and profile defaults");
+console.log("PASS — v0.9.70 SDF lip, reduced elbows, historical kit, grips and profile defaults");

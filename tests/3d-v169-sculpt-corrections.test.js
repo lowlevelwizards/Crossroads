@@ -90,9 +90,9 @@ assert(!weapon.includes(".022*bore,-.082"),"floating gas tube removed");
 assert(weapon.includes("G.block(bipod,hardware,[.073,.062,.080]"),
  "bipod hinge should visibly connect to gun");
 for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"])
- assert(read(page).includes("miniature-sculpt-shapes.js?v=0.9.69"));
+ assert(read(page).includes("miniature-sculpt-shapes.js?v=0.9.70"));
 assert(read("miniature-studio.html").includes('id="studioAttachmentDebug"'));
 assert(read("src/diorama/miniature-studio.js").includes("setAttachmentDebug?."));
 const poses=window.Crossroads3DStudioPoses;
 assert(poses.frame("kneel",0,{gaitPose(){}}).crouch<.6);
-console.log("PASS — v0.9.69 live webbing buffers, faction legwear, debug markers, kneel and attached weapon parts");
+console.log("PASS — v0.9.70 live webbing buffers, faction legwear, debug markers, kneel and attached weapon parts");

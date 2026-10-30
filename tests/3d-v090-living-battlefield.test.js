@@ -57,10 +57,10 @@ for(const x of ["coverSegments.push(", "formationLayout.resolve(", "resolveSquad
  assert(scene.includes(x),"3D scene missing "+x);
 for(const page of ["battle3d.html","diorama.html"]){
  const html=read(page);
- const version=page==="diorama.html"?"0.9.4a":"0.9.69";
+ const version=page==="diorama.html"?"0.9.4a":"0.9.70";
  for(const script of ["cover-positions.js","building-visuals.js","tabletop-dice.js"])
    assert(html.includes(script+"?v="+version),page+" must load "+script);
  assert(html.includes("scenario-scene.js?v="+version));
 }
-assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.69");
+assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.70");
 console.log("PASS — cover spacing, same-side stance, building door routes, engine dice mapping, individual assault and v0.9 wiring");
