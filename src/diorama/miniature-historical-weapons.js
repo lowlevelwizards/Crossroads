@@ -156,6 +156,7 @@
         return breathing.worldToLocal(part.localToWorld(local(which)));
       };
       return {kind,weapon,mount,grips,sections:grips.parts,
+        deployedSections:deployedGrips?.parts||null,
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
         setDeployed,isDeployed,setBipod};
     }
