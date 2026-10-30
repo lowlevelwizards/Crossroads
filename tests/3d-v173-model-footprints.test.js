@@ -97,13 +97,13 @@ assert(read("classic-session.html").includes("model-geometry.js?v=3d107"),
  "the embedded coordinator must not reuse stale cached model geometry");
 for(const page of ["battle3d.html","editor3d.html"]){
  const html=read(page);
- assert(html.includes("physical-footprints.js?v=0.9.74"));
+ assert(html.includes("physical-footprints.js?v=0.9.75"));
  assert(html.indexOf("formation-layout.js")<html.indexOf("physical-footprints.js"));
  assert(html.indexOf("physical-footprints.js")<html.indexOf("scenario-scene.js"));
 }
 assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,
- "0.9.74");
+ "0.9.75");
 for(const file of ["src/diorama/scenario-scene.js",
  "src/diorama/physical-footprints.js","src/engine.js"])
  assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}));
-console.log("PASS — v0.9.74 model-base parity, movement ghost, aim lanes, gun deployment, casualty and garrison audits");
+console.log("PASS — v0.9.75 model-base parity, movement ghost, aim lanes, gun deployment, casualty and garrison audits");
