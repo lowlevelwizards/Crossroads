@@ -107,6 +107,7 @@ for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"]){
 }
 for(const id of ["wbPart","wbToggle","wbBlend","wbBlendStrength",
   "wbExportGLB","wbImportGLB","wbClearGLB","wbBlendRx","wbBlendRy","wbBlendRz",
+  "wbDiscardDraft","wbRevertPublished",
   "wbImport","wbExport","wbUndo","wbRedo","wbPublish"]){
   assert(read("miniature-studio.html").includes('id="'+id+'"'));
 }
@@ -119,6 +120,11 @@ const studio=read("src/diorama/miniature-studio.js");
 assert(studio.includes("workbench?.pointerDown(event)"));
 assert(studio.includes("workbench?.pointerMove(event)"));
 assert(studio.includes("workbench?.pointerUp(e)"));
+const workbenchScript=read("src/diorama/miniature-workbench.js");
+assert(workbenchScript.includes('lib.clear(part,"draft")'));
+assert(workbenchScript.includes('lib.clear(part,"approved")'));
+assert(workbenchScript.includes('if(onBase)return'),
+  "editing isolation must preserve the miniature base");
 const manifest=JSON.parse(read("release-manifest.json"));
 assert.equal(manifest.threeDCacheVersion,"0.9.43");
 console.log("PASS — versioned shapes, contour loft, cached meshes, SDF blend, history, persistence, runtime and studio integration");
