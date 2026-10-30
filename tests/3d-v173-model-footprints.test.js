@@ -91,6 +91,7 @@ assert(scene.includes("physicalFootprints?.project(authority"));
 assert(scene.includes("models:plan.models||null"));
 assert(scene.includes('source:"authoritative-models"'));
 assert(scene.includes("physicalFootprints?.closestPair("));
+assert(scene.includes("GARRISON: BUILDING-LEVEL FIRE"));
 assert(scene.includes("debugFootprints"));
 assert(read("classic-session.html").includes("model-geometry.js?v=3d107"),
  "the embedded coordinator must not reuse stale cached model geometry");

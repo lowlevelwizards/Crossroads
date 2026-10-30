@@ -1490,9 +1490,12 @@ function initialize(THREE) {
         soldier.aimDelay=i*.045;
       });
     }
-    fireTag.textContent=shotExplanation?
+    const garrisonNotice=selectedSquad.unit.inBuilding||squad.unit.inBuilding?
+      " · GARRISON: BUILDING-LEVEL FIRE":"";
+    fireTag.textContent=(shotExplanation?
       shotExplanation.summarize(assessment):
-      (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot"));
+      (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot")))+
+      garrisonNotice;
     fireTag.classList.toggle("blocked",!assessment.legal);
     fireTag.hidden=false;
     // Preview the closest actual model-base firing lane; no invisible
