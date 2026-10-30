@@ -116,6 +116,7 @@
     between:(a,b)=>(a+b)/2,miniatureLab:null});
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
+  let workbench=null;
   const rigMarkers=new THREE.Group();scene.add(rigMarkers);
   const jointMaterials=[0x486f66,0x8b6e51].map(color=>
     new THREE.MeshBasicMaterial({color,depthTest:false}));
@@ -168,6 +169,7 @@
     window.Crossroads3DForceClassicMiniature=!!classicCheckbox?.checked;
     const unit=catalogue.buildUnit(unitSelect.value,kitSelect.value);
     const index=Math.max(0,Math.min(unit.soldiers-1,Number(soldierSelect.value)||0));
+    if(workbench?.isEditing())workbench.leave();
     disposeActor();
     const recipe=catalogue.soldier(unit.type,unit.kitId,index);
     const squad={root:actorRoot,soldiers:[],unit,index:0};
@@ -306,12 +308,14 @@
 
   const pointers=new Map();
   canvas.addEventListener("pointerdown",event=>{
+    if(workbench?.pointerDown(event))return;
     if(event.pointerType==="mouse"&&event.button!==0&&event.button!==1&&event.button!==2)return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
     pointers.set(event.pointerId,{x:event.clientX,y:event.clientY,button:event.button});
   });
   canvas.addEventListener("pointermove",event=>{
+    if(workbench?.pointerMove(event))return;
     const previous=pointers.get(event.pointerId);
     if(!previous)return;
     const before=[...pointers.values()];
@@ -335,7 +339,10 @@
         ((b[0].y+b[1].y)-(a[0].y+a[1].y))/2);
     }
   },{passive:false});
-  const clearPointer=e=>pointers.delete(e.pointerId);
+  const clearPointer=e=>{
+    workbench?.pointerUp(e);
+    pointers.delete(e.pointerId);
+  };
   for(const name of ["pointerup","pointercancel","lostpointercapture"])
     canvas.addEventListener(name,clearPointer);
   canvas.addEventListener("wheel",event=>{
@@ -464,6 +471,21 @@
     $("studioSpeedValue").textContent=playSpeed.toFixed(2).replace(/\.?0+$/,"")+"×";
   });
 
+  workbench=window.Crossroads3DMiniatureWorkbench?.create({
+    THREE,canvas,scene,
+    getSoldier:()=>activeSoldier,
+    getCamera:()=>currentCamera,
+    enterPose:()=>{
+      playing=false;elapsed=0;poseSelect.value="tpose";
+      playButton.textContent="▶ PLAY";
+      playButton.setAttribute("aria-pressed","false");
+      renderPose(0);syncTimeline();
+      $("studioShowJoints").checked=false;rigMarkers.visible=false;
+    },
+    exitPose:()=>{
+      poseSelect.value="reference";renderPose(0);syncTimeline();
+    }
+  })||null;
   refreshSoldierList();
   loading.hidden=true;
   let last=performance.now();

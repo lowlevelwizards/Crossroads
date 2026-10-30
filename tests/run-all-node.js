@@ -38,6 +38,7 @@ const tests = [
   "3d-v120-release-contract.test.js",
   "3d-v121-sculpted-miniatures.test.js",
   "3d-v131-sculpted-roster.test.js",
+  "3d-v142-miniature-workbench.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
