@@ -178,6 +178,7 @@
       // The carrying kit is cosmetic; the same field equipment appears in
       // the independent lab and on live soldiers.
       const armaments=W.build({figure,body,breathing,role,faction,
+        mountParent:role==="mmg"?squad.root:null,
         settings:recipe.weaponSettings,
         mats:{steel:mat.steel,wood:mat.wood,strap:mat.straps,
           hardware:mat.hardware}});
@@ -200,6 +201,8 @@
         baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
       soldier.weaponSocket=which=>armaments.grip(which);
+      soldier.syncMount=()=>armaments.syncMount?.();
+      soldier.crewSocketWorld=which=>armaments.worldSocket?.(which)||null;
       soldier.stockSocket=()=>{
         weapon.updateWorldMatrix(true,false);
         breathing.updateWorldMatrix(true,false);
