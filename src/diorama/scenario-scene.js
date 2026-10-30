@@ -78,6 +78,7 @@ function initialize(THREE) {
   }
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
+  const terrainInteractions=window.Crossroads3DTerrainInteractions;
   const formationLayout=window.Crossroads3DFormationLayout;
   const physicalFootprints=window.Crossroads3DPhysicalFootprints;
   const visualAnchor=window.Crossroads3DVisualAnchor;
@@ -2284,6 +2285,7 @@ function initialize(THREE) {
           soldier.figure.scale.setScalar(MINIATURE_SCALE);
           soldier.breathing.rotation.set(0,0,0);
           soldier.crouch=0;soldier.coverPose=0;
+          soldier.terrainCover=null;soldier.terrainTraverse=null;
           soldier.hitShock=0;soldier.recoil=0;
           soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
           soldier.aimTarget=null;soldier.grounded=false;
@@ -2873,6 +2875,15 @@ function initialize(THREE) {
     for(const squad of squads) {
       const moving=activeMovements.get(squad.unit.id);
       const isWalking=Boolean(moving&&moving.phase==="travel");
+      if(isWalking&&!moving.terrainCrossings&&terrainInteractions){
+        // Model-base positions and path are sourced from the rules-approved
+        // move preview; a missing path never authorizes a cosmetic vault.
+        const rulesPath=moving.plan?.path;
+        const points=Array.isArray(rulesPath)&&rulesPath.length>1?
+          rulesPath.map(p=>bridge.toWorld(p)):null;
+        moving.terrainCrossings=points?
+          terrainInteractions.crossings(points,coverSegments):[];
+      }
       if(squad.alertUntil&&performance.now()>=squad.alertUntil){
         squad.alertUntil=0;
         squad.eligibleRing.visible=false;
@@ -2939,9 +2950,18 @@ function initialize(THREE) {
             x=at.x;z=at.z;
             soldier.entryStep=progress>0&&progress<1?Math.sin(progress*Math.PI):0;
           }else soldier.entryStep=0;
+          const footWorld={x:squad.root.position.x+x,
+            z:squad.root.position.z+z};
+          const coverProbe=!entry&&slot?.look&&terrainInteractions?
+            terrainInteractions.cover(footWorld,coverSegments,slot.look):null;
+          const windowProbe=terrainInteractions?.windowPosture(
+            Boolean(squad.unit.inBuilding),slot,slot?.look);
+          soldier.terrainCover=coverProbe?.active?coverProbe:null;
+          soldier.windowPosture=windowProbe?.active?windowProbe:null;
           soldier.coverPose=squad.unit.type==="mmgTeam"?
             (soldierIndex===0?.34:.23):
-            slot?.cover?(slot.frontRow?.19:.32):0;
+            Math.max(coverProbe?.crouch||0,windowProbe?.crouch||0,
+              slot?.cover?(slot.frontRow?.19:.32):0);
           // The selected unit's occupied window shows the active firing facade.
           if(soldier.windowArc){
             soldier.windowArc.visible=Boolean(slot?.kind==="building"&&
@@ -2978,7 +2998,11 @@ function initialize(THREE) {
           soldier.figure.position.x=soldier.slotX+dx*delta-dz/length*lateral;
           soldier.figure.position.z=soldier.slotZ+dz*delta+dx/length*lateral;
           soldier.coverPose=0;
+          soldier.terrainCover=null;soldier.windowPosture=null;
         }
+        soldier.terrainTraverse=isWalking?
+          terrainInteractions?.traverse(ownProgress,
+            moving.terrainCrossings||[],{run:moving.run,reducedMotion}):null;
         if(soldier.crossingLift){
           soldier.figure.position.y-=soldier.crossingLift;
           soldier.crossingLift=0;
@@ -2993,11 +3017,10 @@ function initialize(THREE) {
           soldier.grounded=!isWalking;
           soldier.lastFootingFrame=frameIndex;
         }
-        if(isWalking&&soldierIK&&!reducedMotion){
-          const lift=soldierIK.crossingLift({
-            x:squad.root.position.x+soldier.figure.position.x,
-            z:squad.root.position.z+soldier.figure.position.z
-          },moving.start,moving.end,coverSegments);
+        if(isWalking&&!reducedMotion){
+          const lift=soldier.terrainTraverse?.lift||0;
+          // A rules-authorized crossing produces a small visual body lift.
+          // The physical base must settle back to terrain by the final frame.
           soldier.figure.position.y+=lift;
           soldier.crossingLift=lift;
         }
@@ -3030,10 +3053,13 @@ function initialize(THREE) {
           const texture=terrainContact?.contact({
             x:squad.root.position.x+soldier.figure.position.x,
             z:squad.root.position.z+soldier.figure.position.z
-          },roughRegions,feet,moving.run);
+          },roughRegions,feet,moving.run,{
+            crossing:soldier.terrainTraverse
+          });
           soldier.breathing.position.y+=pose.bob*soldier.gait.bob*
             (texture?.bobScale||1);
-          soldier.breathing.rotation.x=-pose.lean;
+          soldier.breathing.rotation.x=-pose.lean-
+            (texture?.lean||0);
           soldier.breathing.rotation.z=(texture?.sway||0)*
             Math.sin(totalDistance*7+soldierIndex);
           for(const leg of soldier.legs){
@@ -3136,6 +3162,9 @@ function initialize(THREE) {
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
           const posture={...postureBase};
+          if(soldier.terrainTraverse?.active){
+            posture.headDuck=Math.max(posture.headDuck||0,.035);
+          }
           const moraleDesired=suppressionPosture?.evaluate({
             pins:squad.unit.pins||0,down:!!squad.unit.down,
             walking:isWalking,firing,casualty:soldier.pendingRemoval,
@@ -3200,14 +3229,19 @@ function initialize(THREE) {
             ...posture,
             action:isWalking?(moving.run?"run":"walk"):
               (squad.unit.down?"down":squad.unit.pins>0?"pinned":
+                soldier.terrainCover?.stance==="kneel"?"kneel":
                 soldier.coverPose>.25?"cover":
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
                   "ambush":squad.unit.order==="Rally"?"rally":"idle"),
             crouch:Math.max(soldier.crouch||0,contact?.crouch||0,
-              crewPose?.crouch||0,soldier.moralePose?.crouch||0),
+              crewPose?.crouch||0,soldier.moralePose?.crouch||0,
+              soldier.terrainTraverse?.crouch||0,
+              soldier.windowPosture?.crouch||0),
             lean:Math.max(0,-soldier.breathing.rotation.x,
               contact?.lean||0,crewPose?.lean||0,
-              soldier.moralePose?.lean||0),
+              soldier.moralePose?.lean||0,
+              soldier.terrainCover?.lean||0,
+              soldier.windowPosture?.lean||0),
             roll:soldier.breathing.rotation.z,
             crewFeed:crewPose?.feed||0,
             crewHandTarget:crewPose?.role==="loader"?
