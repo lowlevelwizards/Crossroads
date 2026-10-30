@@ -57,6 +57,7 @@ const win={
   })}
 };
 for(const name of ["miniature-sculpt-shapes.js",
+  "weapon-archetypes.js","weapon-geometry.js",
   "miniature-weapon-library.js","miniature-historical-weapons.js",
   "miniature-faction-gear.js","miniature-sdf-transitions.js",
   "miniature-heroic-character.js"]){
