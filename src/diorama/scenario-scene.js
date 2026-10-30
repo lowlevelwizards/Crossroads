@@ -46,6 +46,7 @@ function initialize(THREE) {
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const crewPresentation=window.Crossroads3DCrewPresentation;
+  const suppressionPosture=window.Crossroads3DSuppressionPosture;
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
@@ -1332,6 +1333,7 @@ function initialize(THREE) {
       if(stage.phase==="recover"){
         const recovering=unitLookup.get(e.unitId);
         if(recovering){
+          recovering.moraleRecoverUntil=performance.now()+1000;
           spawnBriefFlash(recovering.root.position.x,.64,
             recovering.root.position.z,0xa8cf9e,.30,.70);
           showStatus(recovering,"RALLY · "+(e.removedPins||0)+
@@ -1353,6 +1355,7 @@ function initialize(THREE) {
             "ORDER PASSED · "+e.total+"/"+e.target:
             "ORDER FAILED · DOWN",""+(e.passed?"rally":"failed"),2000);
           if(!e.passed){
+            u.moraleShockUntil=performance.now()+850;
             u.suppressionImpulse=1;
             u.soldiers.forEach(sol=>sol.hitShock=.5);
           }
@@ -2257,7 +2260,8 @@ function initialize(THREE) {
           soldier.aimTarget=null;soldier.grounded=false;
           soldier.previewFacing=null;soldier.presentationFacing=null;
           soldier.presentationAimUntil=0;soldier.weaponShotPending=false;
-          soldier.weaponMechanic=null;
+          soldier.weaponMechanic=null;soldier.moralePose=null;
+          soldier.applyGesture?.(0);
           soldier.poseState?.reset();
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
@@ -3103,6 +3107,25 @@ function initialize(THREE) {
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
           const posture={...postureBase};
+          const moraleDesired=suppressionPosture?.evaluate({
+            pins:squad.unit.pins||0,down:!!squad.unit.down,
+            walking:isWalking,firing,casualty:soldier.pendingRemoval,
+            recentHit:Math.max(soldier.hitShock||0,
+              performance.now()<(squad.moraleShockUntil||0)?.55:0),
+            recovery:Math.max(0,Math.min(1,
+              ((squad.moraleRecoverUntil||0)-performance.now())/1000)),
+            officer:soldier.role==="officer"
+          });
+          if(moraleDesired){
+            soldier.moralePose=suppressionPosture.transition(
+              soldier.moralePose,moraleDesired,dt);
+            posture.headDuck=Math.max(posture.headDuck||0,
+              soldier.moralePose.headDuck);
+            if(!isWalking&&!firing&&!squad.unit.down)
+              posture.weaponReadiness=Math.min(posture.weaponReadiness||0,
+                soldier.moralePose.readiness);
+            soldier.applyGesture?.(soldier.moralePose.gesture);
+          }
           soldier.weaponShotPending=false;
           const crew=crewPresentation?.describe(squad.unit);
           const crewMode=squad.gunTransition?.mode||
@@ -3152,9 +3175,10 @@ function initialize(THREE) {
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
                   "ambush":squad.unit.order==="Rally"?"rally":"idle"),
             crouch:Math.max(soldier.crouch||0,contact?.crouch||0,
-              crewPose?.crouch||0),
+              crewPose?.crouch||0,soldier.moralePose?.crouch||0),
             lean:Math.max(0,-soldier.breathing.rotation.x,
-              contact?.lean||0,crewPose?.lean||0),
+              contact?.lean||0,crewPose?.lean||0,
+              soldier.moralePose?.lean||0),
             roll:soldier.breathing.rotation.z,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,
