@@ -3209,6 +3209,9 @@ function initialize(THREE) {
               contact?.lean||0,crewPose?.lean||0,
               soldier.moralePose?.lean||0),
             roll:soldier.breathing.rotation.z,
+            crewFeed:crewPose?.feed||0,
+            crewHandTarget:crewPose?.role==="loader"?
+              squad.soldiers[0]?.crewSocketWorld?.("feed"):null,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,
             leftLift:Math.max(0,(left?.boot.position.y??.17)-.17),

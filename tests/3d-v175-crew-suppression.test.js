@@ -31,6 +31,8 @@ assert(loader.feed>.5);
 assert.equal(C.frame({...full,soldiers:1},"fire",.25,1).active,false);
 assert(C.reach({x:0,z:0},{x:.2,z:.1}).reachable);
 assert(!C.reach({x:0,z:0},{x:2,z:0}).reachable);
+assert(read("src/diorama/miniature-heroic-character.js").includes(
+  "near<.53"),"loader feed attachment must be physically reach-limited");
 assert(C.sector(full,{x:30,y:24}).inside);
 assert(!C.sector(full,{x:0,y:24}).inside);
 assert(C.sector(full,{x:30,y:30}).inside);

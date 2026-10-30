@@ -512,6 +512,11 @@
     const soldier=activeSoldier;
     if(!soldier)return;
     const pose=poses.frame(poseSelect.value,t,motion,soldier.role);
+    const labDisabledCrew=Boolean(crewMode?.checked&&
+      unitSelect.value==="mmgTeam"&&Number(crewCount?.value)===1);
+    if(labDisabledCrew&&poseSelect.value==="crew-fire"){
+      pose.recoil=0;pose.flash=false;pose.weaponCycle=0;
+    }
     const crewAction=poseSelect.value.startsWith("crew-");
     const crewState=crewAction?poseSelect.value.slice(5):"ready";
     const posture=window.Crossroads3DSoldierPose;
@@ -562,6 +567,9 @@
             ...pose,action:"crew",aim:false,weaponReadiness:0,
             weaponBlend:0,recoil:0,weaponCycle:0,
             crouch:crew?.crouch||.34,lean:crew?.lean||.14,
+            crewFeed:crew?.feed||0,
+            crewHandTarget:crew?.feed?
+              soldier.crewSocketWorld?.("feed"):null,
             headDuck:crewState==="pinned"?.14:0
           });
         }
