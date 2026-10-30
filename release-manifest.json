@@ -128,5 +128,5 @@
     "tests/3d-v142-miniature-workbench.test.js",
     "src/diorama/miniature-sdf-transitions.js"
   ],
-  "threeDCacheVersion": "0.9.44"
+  "threeDCacheVersion": "0.9.45"
 }
