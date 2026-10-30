@@ -47,6 +47,35 @@ function initialize(THREE) {
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
   const crewPresentation=window.Crossroads3DCrewPresentation;
   const suppressionPosture=window.Crossroads3DSuppressionPosture;
+  const debugCrewEnabled=new URLSearchParams(location.search).get("debugCrew")==="1";
+  const crewDebugObjects=new Map();
+  function updateCrewDebug(){
+    if(!debugCrewEnabled)return;
+    for(const squad of squads){
+      const crew=crewPresentation?.describe(squad.unit);
+      if(!crew?.isMMG)continue;
+      let group=crewDebugObjects.get(squad.unit.id);
+      if(!group){
+        group=new THREE.Group();scene.add(group);
+        for(let i=0;i<5;i++){
+          const dot=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),
+            new THREE.MeshBasicMaterial({color:[0xc0dd9b,0xe4b87b,
+              0x8fbfbf,0xb7a4da,0xf6d37a][i],depthTest:false,
+              depthWrite:false}));
+          group.add(dot);
+        }
+        crewDebugObjects.set(squad.unit.id,group);
+      }
+      group.visible=Boolean(crew.deployed&&squad.soldiers[0]?.figure.visible);
+      if(!group.visible)continue;
+      const gunner=squad.soldiers[0];
+      for(let i=0;i<group.children.length;i++){
+        const point=gunner.crewSocketWorld?.(crewPresentation.socketLabels[i]);
+        group.children[i].visible=Boolean(point);
+        if(point)group.children[i].position.copy(point);
+      }
+    }
+  }
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
@@ -3202,6 +3231,7 @@ function initialize(THREE) {
       syncSquadVisualAnchor(squad);
     }
     if(footprintDebugEnabled&&frameIndex%6===0)updateFootprintDebug();
+    if(debugCrewEnabled&&frameIndex%4===0)updateCrewDebug();
     const combatDt=dt*(battle?.presentationSpeed||1);
     for(const burst of delayedMuzzleBursts)burst.delay-=combatDt;
     // Late frames still dispatch in authored shot order, never reversed.

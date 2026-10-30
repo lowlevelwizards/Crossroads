@@ -118,6 +118,15 @@
   const actorRoot=new THREE.Group();scene.add(actorRoot);
   let activeFigure=null,activeSoldier=null,flash=null;
   let crewActors=[];
+  const crewSockets=new THREE.Group();scene.add(crewSockets);
+  const crewSocketDots=[];
+  for(let n=0;n<5;n++){
+    const dot=new THREE.Mesh(new THREE.SphereGeometry(.036,8,6),
+      new THREE.MeshBasicMaterial({color:[0xd9c48c,0xa5bbd1,
+        0x7db7a0,0xdc8a62,0xffdb72][n],depthTest:false}));
+    crewSockets.add(dot);crewSocketDots.push(dot);
+  }
+  crewSockets.visible=false;
   const compareRoot=new THREE.Group();scene.add(compareRoot);
   let compareSoldier=null;
   const compareCheckbox=$("studioCompareFaction");
@@ -633,6 +642,15 @@
       joints[base+2].position.set(side*.125,solved.ankle.y,solved.ankle.z);
     }
     if(flash)flash.visible=pose.flash;
+    crewSockets.visible=Boolean(crewActors.length&&crewDebug?.checked);
+    if(crewSockets.visible){
+      const names=crewPresentation?.socketLabels||[];
+      for(let i=0;i<crewSocketDots.length;i++){
+        const pos=activeSoldier.crewSocketWorld?.(names[i]);
+        crewSocketDots[i].visible=Boolean(pos);
+        if(pos)crewSocketDots[i].position.copy(pos);
+      }
+    }
     rigMarkers.position.copy(figure.position);
     rigMarkers.rotation.copy(figure.rotation);
   }

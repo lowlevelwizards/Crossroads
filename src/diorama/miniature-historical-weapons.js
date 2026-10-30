@@ -199,7 +199,9 @@
       const current=()=>deployed?mountedGun:weapon;
       const local=which=>{
         const set=deployed?deployedGrips:grips;
-        return set?.[which]?.clone()||point(0,0,0);
+        const resolved={stock:"primary",trigger:"primary",feed:"secondary",
+          support:"secondary"}[which]||which;
+        return set?.[resolved]?.clone()||point(0,0,0);
       };
       const getInTorso=which=>{
         syncMount();
