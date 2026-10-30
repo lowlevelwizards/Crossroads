@@ -73,7 +73,7 @@ for(const role of ["rifle","smg","lmg","mmg","officer"]){
  assert(frame.weaponReadiness>.9);
  assert(Number.isFinite(frame.weaponCycle||0));
  assert.deepEqual(JSON.parse(JSON.stringify(frame)),
-  JSON.parse(JSON.stringify(poses.frame("fire-sequence",.53,motion,role)));
+  JSON.parse(JSON.stringify(poses.frame("fire-sequence",.53,motion,role))));
 }
 assert(poses.ACTIONS.some(x=>x[0]==="fire-sequence"));
 assert(poses.ACTIONS.some(x=>x[0]==="burst-sequence"));
