@@ -45,6 +45,17 @@
       radius=comparison?3.55:mounted?2.95:2.65;
       target=[...center];
     }
+    function fitBounds({center:mid=[0,0,0],size=[1,1,1],aspect=1}={}){
+      if(!mid.every(Number.isFinite)||!size.every(Number.isFinite))return;
+      center=[...mid];target=[...center];
+      const width=Math.max(.1,size[0]),height=Math.max(.1,size[1]),
+        depth=Math.max(.1,size[2]),fovRad=fov*Math.PI/180;
+      // Account for portrait devices: horizontal framing matters most for
+      // long rifles. Include perspective depth and a legible 16% margin.
+      const required=Math.max(height/2,width/(2*Math.max(.3,aspect)),
+        depth/2)/Math.tan(fovRad/2);
+      radius=clamp(required*1.16+depth*.4,.67,12);
+    }
     function setContext({compare=false,mount=false}={}){
       comparison=!!compare;mounted=!!mount;
       focus();
@@ -105,7 +116,7 @@
         position:cameraPosition(),activeView,pointerCount:pointers.size};
     }
     return Object.freeze({
-      pan,zoom,view,reset,setContext,pointerDown,pointerMove,pointerUp,
+      pan,zoom,view,reset,setContext,fitBounds,pointerDown,pointerMove,pointerUp,
       clearPointers,snapshot,setViewportHeight:h=>{viewHeight=Math.max(1,h)}
     });
   }

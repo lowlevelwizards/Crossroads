@@ -1,58 +1,78 @@
 "use strict";
-// Cosmetic weapon silhouettes shared by the standalone lab and active battles.
-// Local approved recipes affect this browser; exports can be committed to ship.
+// v2: parameter recipes, not independent Mesh group scales. Safely migrate
+// the previous device-only v1 settings into bounded starter dimensions.
 (() => {
-  const KEY="crossroads-weapon-recipes-v1";
-  const defaults=Object.freeze({
-    wz29:{length:.91,stock:1.18,receiver:1.16,barrel:1.32,magazine:1},
-    kar98k:{length:.91,stock:1.20,receiver:1.15,barrel:1.28,magazine:1},
-    wz28:{length:.88,stock:1.18,receiver:1.23,barrel:1.38,magazine:1.17},
-    mg34:{length:.90,stock:1.14,receiver:1.26,barrel:1.38,magazine:1.15},
-    mors39:{length:.88,stock:1.18,receiver:1.20,barrel:1.32,magazine:1.18},
-    mp38:{length:.89,stock:1.16,receiver:1.22,barrel:1.30,magazine:1.19},
-    pistol:{length:.93,stock:1.15,receiver:1.17,barrel:1.22,magazine:1}
-  });
+  const schema=window.Crossroads3DWeaponArchetypes;
+  const KEY="crossroads-weapon-recipes-v2";
+  const LEGACY_KEY="crossroads-weapon-recipes-v1";
+  const defaults=Object.freeze(Object.fromEntries(schema.kinds.map(kind=>
+    [kind,Object.freeze(Object.fromEntries(
+      Object.entries(schema.fields).map(([key,field])=>[key,field.default])))])));
   const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
-  const parse=(kind,raw={})=>{
-    if(!Object.prototype.hasOwnProperty.call(defaults,kind))
-      throw Error("Unknown weapon kind");
+  function parse(kind,raw={}){
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))throw Error("Unknown weapon kind");
+    if(!raw||typeof raw!=="object"||Array.isArray(raw))raw={};
     const out={...defaults[kind]};
-    for(const name of Object.keys(out)){
-      const n=Number(raw[name]);
-      if(raw[name]!==undefined&&Number.isFinite(n))
-        out[name]=clamp(n,name==="length"?.65:.70,name==="length"?1.30:1.65);
+    for(const [name,spec] of Object.entries(schema.fields)){
+      if(!Object.prototype.hasOwnProperty.call(raw,name))continue;
+      const value=Number(raw[name]);
+      if(Number.isFinite(value))out[name]=clamp(value,spec.min,spec.max);
     }
     return out;
-  };
-  function saved(){
-    try{return JSON.parse(window.localStorage.getItem(KEY)||"{}")||{}}
-    catch(_){return {}}
   }
-  function read(kind){return parse(kind,saved()[kind])}
+  function store(key){
+    try{
+      const value=window.localStorage?.getItem(key);
+      const result=value?JSON.parse(value):{};
+      return result&&typeof result==="object"&&!Array.isArray(result)?result:{};
+    }catch(_){return {}}
+  }
+  // Preserve the user's v1 data; new v2 names are separately persisted.
+  // Do not multiply old absolute group scales into the new generated geometry.
+  function migrate(kind,old){
+    const out={...defaults[kind]};
+    for(const key of ["length","stock","receiver","barrel","magazine"]){
+      const v=Number(old?.[key]);
+      if(!Number.isFinite(v))continue;
+      const baseline={length:.91,stock:1.18,receiver:1.16,barrel:1.32,magazine:1}[key];
+      const f=schema.fields[key];
+      out[key]=clamp(f.default*(v/baseline),f.min,f.max);
+    }
+    return out;
+  }
+  function read(kind){
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))throw Error("Unknown weapon kind");
+    const saved=store(KEY);
+    if(saved[kind])return parse(kind,saved[kind]);
+    const legacy=store(LEGACY_KEY);
+    return legacy[kind]?migrate(kind,legacy[kind]):parse(kind);
+  }
   function write(kind,values){
-    const all=saved(),v=parse(kind,values);
-    all[kind]=v;
-    try{window.localStorage.setItem(KEY,JSON.stringify(all));return true}
+    const all=store(KEY);all[kind]=parse(kind,values);
+    try{window.localStorage?.setItem(KEY,JSON.stringify(all));return true}
     catch(_){return false}
   }
   function reset(kind){
-    const all=saved();delete all[kind];
-    try{window.localStorage.setItem(KEY,JSON.stringify(all));return true}
-    catch(_){return false}
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))return false;
+    const all=store(KEY);delete all[kind];
+    try{window.localStorage?.setItem(KEY,JSON.stringify(all));
+      // Also suppress legacy settings for explicitly reset archetypes.
+      const legacy=store(LEGACY_KEY);
+      if(legacy[kind]){
+        delete legacy[kind];
+        window.localStorage?.setItem(LEGACY_KEY,JSON.stringify(legacy));
+      }
+      return true;
+    }catch(_){return false}
   }
+  // Kept as compatibility facade for earlier lab/tests. It must NOT scale
+  // independent physical parts: doing so disconnects wood/steel surfaces.
   function apply(parts,kind,values=read(kind)){
-    const p=parse(kind,values);
-    for(const [name,group] of Object.entries(parts||{})){
-      if(!group)continue;
-      const amount=p[name]||1;
-      if(name==="barrel")group.scale.set(p.barrel,p.barrel,p.length);
-      else if(name==="stock")group.scale.set(amount,amount,p.length);
-      else if(name==="receiver")group.scale.set(amount,amount,1);
-      else if(name==="magazine")group.scale.set(amount,amount,1);
-    }
-    return p;
+    return parse(kind,values);
   }
+  const kinds=Object.freeze([...schema.kinds]);
   window.Crossroads3DWeaponLibrary=Object.freeze({
-    KEY,defaults,parse,read,write,reset,apply,kinds:Object.keys(defaults)
+    KEY,LEGACY_KEY,version:2,defaults,fields:schema.fields,
+    controls:schema.controls,kinds,parse,read,write,reset,migrate,apply
   });
 })();

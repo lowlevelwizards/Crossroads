@@ -136,7 +136,10 @@
     "src/diorama/miniature-faction-gear.js",
     "tests/3d-v146-faction-weapon-labs.test.js",
     "src/diorama/weapon-lab-camera.js",
-    "tests/3d-v147-weapon-camera.test.js"
+    "tests/3d-v147-weapon-camera.test.js",
+    "src/diorama/weapon-archetypes.js",
+    "src/diorama/weapon-geometry.js",
+    "tests/3d-v154-weapon-rebuild.test.js"
   ],
-  "threeDCacheVersion": "0.9.47"
+  "threeDCacheVersion": "0.9.54"
 }

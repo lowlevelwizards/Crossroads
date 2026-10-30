@@ -57,6 +57,7 @@ const win={
   })}
 };
 for(const name of ["miniature-sculpt-shapes.js",
+  "weapon-archetypes.js","weapon-geometry.js",
   "miniature-weapon-library.js","miniature-historical-weapons.js",
   "miniature-faction-gear.js","miniature-sdf-transitions.js",
   "miniature-heroic-character.js"]){
@@ -205,7 +206,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.47"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.54"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }

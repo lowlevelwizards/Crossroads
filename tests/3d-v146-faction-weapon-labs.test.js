@@ -8,7 +8,7 @@ const window={localStorage:{
   setItem:(key,value)=>{values[key]=value},
   removeItem:key=>{delete values[key]}
 }};
-for(const file of ["miniature-weapon-library.js","miniature-faction-gear.js",
+for(const file of ["weapon-archetypes.js","miniature-weapon-library.js","miniature-faction-gear.js",
   "miniature-sdf-transitions.js"]){
   new vm.Script(read("src/diorama/"+file),{filename:file})
     .runInNewContext({window});
@@ -22,15 +22,9 @@ for(const kind of weapons.kinds){
   assert(p.length<1,"new guns should be slightly shorter");
   assert(p.stock>1&&p.barrel>1,
     "wood and steel must be bolder than the bare reference");
-  assert.deepEqual(Object.keys(p).sort(),
-    ["length","stock","receiver","barrel","magazine"].sort());
-  const sections={};
-  for(const part of ["stock","receiver","barrel","magazine"]){
-    sections[part]={scale:{set(x,y,z){this.x=x;this.y=y;this.z=z}}};
-  }
-  weapons.apply(sections,kind);
-  assert.equal(sections.barrel.scale.x,p.barrel);
-  assert.equal(sections.barrel.scale.z,p.length);
+  assert(Object.keys(p).length>=10,"parametric recipes expose named connected dimensions");
+  assert(weapons.apply(null,kind).length>0,
+    "legacy apply facade must not scale disconnected part groups");
 }
 assert(weapons.write("wz29",{length:.81,stock:1.45}));
 assert.equal(weapons.read("wz29").length,.81);
@@ -58,7 +52,7 @@ assert(model.includes("gearFactory?.outfit"));
 assert(model.includes("for(const mesh of gear.gait||[])"));
 const historical=read("src/diorama/miniature-historical-weapons.js");
 assert(historical.includes("weaponKind||kindFor"));
-assert(historical.includes("presets?.apply(grips.parts,kind)"));
+assert(historical.includes("const recipe=settings||lib.read(kind)"));
 assert(historical.includes("deployedSections:deployedGrips?.parts"));
 const studio=read("src/diorama/miniature-studio.js");
 assert(studio.includes('compareCheckbox?.addEventListener("change",build)'));
@@ -72,17 +66,16 @@ assert(lab.includes("weaponMounted"));
 for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const source=read(page);
   for(const file of ["miniature-faction-gear.js","miniature-weapon-library.js"])
-    assert(source.includes(file+"?v=0.9.47"),"missing "+file+" from "+page);
+    assert(source.includes(file+"?v=0.9.54"),"missing "+file+" from "+page);
   assert(source.indexOf("miniature-faction-gear.js")<
     source.indexOf("miniature-heroic-character.js"));
 }
 const html=read("weapon-lab.html");
 for(const id of ["weaponKind","weaponCompare","weaponMounted","weaponSave",
-  "weaponExport","weaponImport","weaponLength","weaponStock",
-  "weaponReceiver","weaponBarrel","weaponMagazine"])
+  "weaponExport","weaponImport","weaponDisplayMode","weaponFields"])
   assert(html.includes('id="'+id+'"'));
 const release=JSON.parse(read("release-manifest.json"));
-assert.equal(release.threeDCacheVersion,"0.9.47");
+assert.equal(release.threeDCacheVersion,"0.9.54");
 for(const file of ["weapon-lab.html","src/diorama/weapon-lab.js",
   "src/diorama/miniature-weapon-library.js",
   "src/diorama/miniature-faction-gear.js"])

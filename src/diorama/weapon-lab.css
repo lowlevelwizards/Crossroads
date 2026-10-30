@@ -12,3 +12,11 @@
 .weapon-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.weapon-actions button,.weapon-import{border:1px solid #cdd5ce;background:#eff2ef;border-radius:5px;padding:10px 5px;font-size:10px;text-align:center;font-weight:800;color:#34443c}
 .weapon-import input{position:absolute;width:1px;height:1px;opacity:0}
 @media(max-width:780px){.weapon-lab{display:flex;flex-direction:column;height:auto;min-height:100dvh}.weapon-header{min-height:64px}.weapon-stage{height:60dvh;min-height:390px}.weapon-panel{overflow:visible}.weapon-views button{min-width:45px;font-size:9px;padding:10px 6px}}
+
+.weapon-control{padding:10px 0 12px;border-bottom:1px solid #e2e6e1}
+.weapon-control label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#37483f;font-weight:700}
+.weapon-control output{font-variant-numeric:tabular-nums;color:#586d5f;font-weight:800}
+.weapon-control input[type=range]{width:100%;min-height:35px;accent-color:#486759;touch-action:pan-y}
+#weaponDisplayMode{width:100%;padding:10px;min-height:42px}
+.weapon-stage:focus-within{outline:none}
+@media(max-width:780px){.weapon-control{padding:12px 0 15px}.weapon-views{width:max-content;max-width:calc(100% - 12px)}.weapon-views button{min-width:43px}}
