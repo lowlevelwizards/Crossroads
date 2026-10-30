@@ -1018,9 +1018,12 @@ function initialize(THREE) {
   }
   // Small shared visual budgets protect mobile WebGL when a whole squad fires.
   const MAX_PARTICLES=84;
-  function scheduleFire(origin,target,role="rifle",index=0,soldier=null,recoil=.18){
-    delayedMuzzleBursts.push({origin,target,role,soldier,recoil,
-      heavy:role==="lmg"||role==="mmg",delay:index*.052});
+  function scheduleFire(origin,target,role="rifle",delay=0,soldier=null,recoil=.18,
+     shooter=null,opponent=null,shotIndex=0){
+    // The origin and target are evaluated again at emission time because
+    // live bodies have moved since the director staged this shot.
+    delayedMuzzleBursts.push({origin,target,role,soldier,recoil,shooter,opponent,
+      shotIndex,heavy:role==="lmg"||role==="mmg",delay:Math.max(0,delay)});
   }
   function addShotEffect(geometry,color,x,y,z,duration,extra={}){
     if(visualEffects.length>=MAX_PARTICLES)return;
@@ -1031,12 +1034,26 @@ function initialize(THREE) {
     visualEffects.push({mesh,duration,age:0,initialOpacity:material.opacity,...extra});
     return mesh;
   }
+  function ejectCasing(soldier){
+    if(!soldier?.figure.visible)return;
+    soldier.breathing.updateWorldMatrix(true,false);
+    const from=soldier.breathing.localToWorld(
+      new THREE.Vector3(.12,.13,-.17));
+    const caseMesh=addShotEffect(new THREE.CylinderGeometry(.014,.016,.056,5),
+      0xcbb27d,from.x,from.y,from.z,.55,{
+        velocity:{x:.28,y:.36,z:.07},expansion:.9
+      });
+    if(caseMesh)caseMesh.rotation.z=Math.PI/2;
+  }
   function muzzleBurst(burst){
     const start=burst.origin,end=burst.target;
     const direction=new THREE.Vector3().subVectors(end,start);
     const distance=direction.length();
     if(distance<.05)return;
     direction.normalize();
+    // A sound, flash and recoil are all emitted from the SAME event.
+    window.Crossroads3DCombatAudio?.playShot?.(burst.role,start);
+    if(burst.role!=="rifle")ejectCasing(burst.soldier);
     const size=burst.heavy?.13:burst.role==="smg"?.10:.085;
     const flash=addShotEffect(new THREE.ConeGeometry(size,size*2.8,5),
       0xffcf75,start.x+direction.x*size,start.y+direction.y*size,
@@ -1266,6 +1283,29 @@ function initialize(THREE) {
   function showCombatStage(stage) {
     showPhysicalDice(stage);
     const e=stage.event;
+    if(stage.phase==="settle"&&stage.skipped){
+      // No orphan flashes or late audio after a user skips the timeline.
+      delayedMuzzleBursts.length=0;
+      const shooter=unitLookup.get(e?.shooterId);
+      shooter?.soldiers.forEach(s=>{
+        s.weaponMechanic=null;s.recoil=0;s.weaponShotPending=false;
+        s.presentationAimUntil=0;
+      });
+      if(e?.type==="shooting"){
+        const target=unitLookup.get(e.targetId);
+        if(target){
+          for(const sol of target.soldiers){
+            if(!sol.pendingRemoval)continue;
+            sol.figure.visible=false;sol.pendingRemoval=false;
+            sol.casualtyAnimating=false;
+          }
+          for(let i=casualtyAnimations.length-1;i>=0;i--)
+            if(target.soldiers.includes(casualtyAnimations[i].soldier))
+              casualtyAnimations.splice(i,1);
+        }
+      }
+      return;
+    }
     if(stage.type==="ambush"){
       const squad=unitLookup.get(e.ambusherId);
       if(squad&&stage.phase==="alert"){
@@ -1419,26 +1459,31 @@ function initialize(THREE) {
         end.x+=Math.sin(shot.soldierIndex*2.37)*.16;
         end.z+=Math.cos(shot.soldierIndex*1.91)*.13;
         end.y=terrainY(end.x,end.z)+.53;
-        scheduleFire(origin,end,shot.role,shot.delay/.052,soldier,shot.recoil);
+        scheduleFire(origin,end,shot.role,shot.delay,soldier,shot.recoil,
+          shooter,target,shot.shotIndex);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
-      if(e.hits>0)target.soldiers.forEach((soldier,index)=>{
-        if(soldier.figure.visible)
-          soldier.hitShock=Math.max(soldier.hitShock||0,
-            index%3===0?.40:.22);
-      });
-      if(e.hits>0){
-        const impactKind=e.saved>0?"cover":e.casualties>0?"casualty":"dirt";
-        const count=Math.min(5,Math.max(1,e.hits));
-        for(let n=0;n<count;n++){
-          const dx=Math.sin((n+1)*2.81)*.43;
-          const dz=Math.cos((n+1)*2.81)*.39;
-          const x=target.root.position.x+dx,z=target.root.position.z+dz;
-          impactDust(x,terrainY(x,z),z,impactKind,.8+(n%2)*.3);
-        }
-        showOutcome(target,e);
+      const plan=weaponPresentation?.impactPlan(e,target.unit.soldiers)||[];
+      const casualties=target.soldiers.filter(s=>s.pendingRemoval);
+      const survivors=target.soldiers.filter(s=>s.figure.visible&&!s.pendingRemoval);
+      for(const hit of plan){
+        // Location is cosmetic, but the number and kind of effects are
+        // bounded by confirmed engine hit/save/casualty rolls.
+        const soldier=hit.kind==="casualty"&&casualties.length?
+          casualties[hit.index%casualties.length]:
+          survivors.length?survivors[hit.modelIndex%survivors.length]:
+          target.soldiers[hit.modelIndex];
+        if(!soldier)continue;
+        soldier.figure.updateWorldMatrix(true,false);
+        const at=new THREE.Vector3();
+        soldier.figure.getWorldPosition(at);
+        if(hit.kind==="casualty"||hit.kind==="dirt")
+          soldier.hitShock=Math.max(soldier.hitShock||0,.34);
+        impactDust(at.x,terrainY(at.x,at.z),at.z,
+          hit.kind,hit.intensity);
       }
+      if(e.hits>0)showOutcome(target,e);
       if(e.pinDelta>0){
         target.suppressionImpulse=.85;
         spawnBriefFlash(target.root.position.x,.77,target.root.position.z,
@@ -2207,6 +2252,7 @@ function initialize(THREE) {
           soldier.aimTarget=null;soldier.grounded=false;
           soldier.previewFacing=null;soldier.presentationFacing=null;
           soldier.presentationAimUntil=0;soldier.weaponShotPending=false;
+          soldier.weaponMechanic=null;
           soldier.poseState?.reset();
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
@@ -3042,7 +3088,7 @@ function initialize(THREE) {
           const firing=now<(soldier.presentationAimUntil||0);
           const knownYaw=previewing?soldier.previewFacing:
             firing?soldier.presentationFacing:null;
-          const posture=soldier.poseState?.step(dt,{
+          const postureBase=soldier.poseState?.step(dt,{
             walking:isWalking,down:!!squad.unit.down,pins:squad.unit.pins||0,
             cover:soldier.coverPose||0,
             order:(battle?.snapshot?.phase==="choose-target"&&
@@ -3051,7 +3097,22 @@ function initialize(THREE) {
             facing:soldier.figure.rotation.y,
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
+          const posture={...postureBase};
           soldier.weaponShotPending=false;
+          const mechanical=soldier.weaponMechanic;
+          const action=mechanical&&weaponPresentation?.motionAt(
+            mechanical.role,mechanical.age);
+          if(action){
+            posture.weaponCycle=action.weaponCycle;
+            if(mechanical.role==="rifle"&&!mechanical.spent&&
+               action.weaponCycle>.82){
+              ejectCasing(soldier);mechanical.spent=true;
+            }
+            posture.weaponReadiness=1;
+            posture.weaponBlend=Math.max(posture.weaponBlend||0,.84);
+            if(action.actionComplete)soldier.weaponMechanic=null;
+            else mechanical.age+=dt*(battle?.presentationSpeed||1);
+          }
           const contact=!isWalking&&squad.assaultVisual&&assaultMotion?
             assaultMotion.individualPose(squad.assaultVisual,soldierIndex):null;
           soldier.applyPose({
@@ -3072,7 +3133,7 @@ function initialize(THREE) {
             leftReach:(left?.boot.position.z??-.055)+.055,
             rightReach:(right?.boot.position.z??-.055)+.055,
             aim:posture.weaponBlend>.85,
-            recoil:soldier.recoil||0
+            recoil:Math.max(soldier.recoil||0,action?.recoil||0)
           });
         }
       }
@@ -3087,17 +3148,32 @@ function initialize(THREE) {
       syncSquadVisualAnchor(squad);
     }
     if(footprintDebugEnabled&&frameIndex%6===0)updateFootprintDebug();
-    for(let i=delayedMuzzleBursts.length-1;i>=0;i--){
-      const burst=delayedMuzzleBursts[i];
-      burst.delay-=dt;
-      if(burst.delay>0)continue;
-      if(burst.soldier){
-         burst.soldier.recoil=Math.max(
-           burst.soldier.recoil||0,burst.recoil);
-         burst.soldier.weaponShotPending=true;
-       }
-      muzzleBurst(burst);
-      delayedMuzzleBursts.splice(i,1);
+    const combatDt=dt*(battle?.presentationSpeed||1);
+    for(const burst of delayedMuzzleBursts)burst.delay-=combatDt;
+    // Late frames still dispatch in authored shot order, never reversed.
+    const due=delayedMuzzleBursts.filter(b=>b.delay<=0)
+      .sort((a,b)=>a.shotIndex-b.shotIndex);
+    for(const burst of due){
+      const soldier=burst.soldier;
+      if(soldier?.figure.visible&&!soldier.pendingRemoval){
+        soldier.recoil=Math.max(soldier.recoil||0,burst.recoil);
+        soldier.weaponShotPending=true;
+        soldier.weaponMechanic={age:0,role:burst.role};
+        soldier.breathing.updateWorldMatrix(true,true);
+        burst.origin=garrisonFiringOutlet(burst.shooter,soldier,
+          burst.opponent?.root.position)||
+          soldier.breathing.localToWorld(soldier.muzzleLocal.clone());
+        const living=burst.opponent?.soldiers.filter(s=>
+          s.figure.visible&&!s.pendingRemoval)||[];
+        if(living.length){
+          const target=living[(burst.shotIndex||0)%living.length];
+          target.figure.updateWorldMatrix(true,false);
+          burst.target=target.figure.getWorldPosition(new THREE.Vector3());
+          burst.target.y+=.48;
+        }
+        muzzleBurst(burst);
+      }
+      delayedMuzzleBursts.splice(delayedMuzzleBursts.indexOf(burst),1);
     }
     for(let i=casualtyAnimations.length-1;i>=0;i--){
       const record=casualtyAnimations[i];

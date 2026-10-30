@@ -56,4 +56,4 @@ for(const file of ["src/diorama/miniature-heroic-character.js",
  "src/diorama/scenario-scene.js","src/diorama/ai-opponent.js",
  "src/diorama/combat-presentation.js"])
  new vm.Script(read(file),{filename:file});
-console.log("PASS — v0.9.73 soldier IK, AI goals, cover, garrison, assaults, skirmishes.");
+console.log("PASS — v0.9.74 soldier IK, AI goals, cover, garrison, assaults, skirmishes.");

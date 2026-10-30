@@ -190,10 +190,8 @@
   }
   stageListeners.add(onDiceStage);
   const audio=window.Crossroads3DCombatAudio;
-  stageListeners.add(stage=>{
-    if(stage.type==="shooting"&&stage.phase==="fire")
-      audio?.playShooting(stage.event);
-  });
+  // The scene emits exactly one sound per physical muzzle discharge.
+  // Do not play an additional whole-squad volley on the "fire" stage.
   let audioEnabled=false;
   let fastPresentation=false;
   const actionIcons={Advance:"➜",Run:"»",Fire:"✦",Ambush:"◈",Down:"⌄",Rally:"✚",Assault:"⚑"};
@@ -562,6 +560,7 @@
     get snapshot(){return state},
     skipPresentation(){director.skip();diceOverlay.hidden=true;},
     setPresentationSpeed(value){director.setSpeed(value);},
+    get presentationSpeed(){return fastPresentation?2.8:1;},
     get ready(){return Boolean(session)},
     get error(){return error},
     send,subscribe(callback){
