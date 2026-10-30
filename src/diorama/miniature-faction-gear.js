@@ -84,6 +84,11 @@
           ],[.277,-.244,.158],8);
         canister.scale.y=.235;
       }
+      // Role variation without multiplying tiny details: crew carry extra
+      // ammunition, officers keep a lighter profile, riflemen remain lean.
+      if(role==="lmg"||role==="mmg"||role==="loader"||role==="crew")
+        S.box(equipmentRoot,mat.pack,[.17,.16,.11],
+          [faction==="germany"?-.266:.267,-.248,.105]);
       const gait=[];
       for(const leg of legs){
         const shin=leg.shin;
