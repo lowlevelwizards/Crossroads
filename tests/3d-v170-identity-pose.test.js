@@ -87,7 +87,7 @@ for(const token of ["silhouette-helmet-v7","setPackPresent?.",
   'carry==="german-side"','carry==="polish-two"',
   "weapon.userData.carryMode=carry",
   "armaments.anchors.butt","stockPocket.sub(butt)",
-  "moving&&faction==="+"\"germany\"","headGroup.rotation.x-=sight*.11"]){
+  "moving&&sideCarryActive","headGroup.rotation.x-=sight*.11"]){
  // The cache key is declared in the SDF builder, not the soldier module.
  if(token==="silhouette-helmet-v7"){
    assert(read("src/diorama/miniature-sdf-transitions.js").includes(token));
