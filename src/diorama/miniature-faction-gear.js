@@ -129,7 +129,9 @@
             depthTest:false});
           const geometry=S.cached("strap-debug-pin",()=>
             new THREE.SphereGeometry(.019,8,6));
-          for(const ribbon of ribbons.slice(0,2))
+          // Even indices are the two chest ribbons. Odd indices belong
+          // to packGroup and use a different local coordinate system.
+          for(const ribbon of ribbons.filter((_,i)=>i%2===0))
             for(let i=0;i<ribbon.userData.ribbonNodes.length;i++){
               const marker=S.mesh(debugRoot,geometry,material);
               marker.userData.sourceRibbon=ribbon;
