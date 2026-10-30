@@ -143,10 +143,10 @@
         const lift=Math.sin(Math.PI*phase);
         state.crouch=.10*lift;
         state.lean=.13*lift;
-        state.leftLift=Math.sin(Math.PI*clamp(phase*2))*.15;
-        state.rightLift=Math.sin(Math.PI*clamp((phase-.5)*2))*.15;
-        state.leftReach=-Math.cos(Math.PI*clamp(phase*2))*.16;
-        state.rightReach=-Math.cos(Math.PI*clamp((phase-.5)*2))*.16;
+        state.leftLift=Math.sin(Math.PI*clamp(phase*2,0,1))*.15;
+        state.rightLift=Math.sin(Math.PI*clamp((phase-.5)*2,0,1))*.15;
+        state.leftReach=-Math.cos(Math.PI*clamp(phase*2,0,1))*.16;
+        state.rightReach=-Math.cos(Math.PI*clamp((phase-.5)*2,0,1))*.16;
         state.bob=Math.min(.20,kind==="cross-hedge"?.08:.16)*lift;
       }
       if(kind==="door-enter"||kind==="door-exit"){
