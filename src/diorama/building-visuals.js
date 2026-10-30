@@ -27,5 +27,27 @@
     const u=ease((p-.53)/.47);
     return {x:door.x+(to.x-door.x)*u,z:door.z+(to.z-door.z)*u};
   }
-  window.Crossroads3DBuildingVisuals=Object.freeze({doorFor,at});
+  // The rules change building-level occupancy immediately. This only drives
+  // the two-legged approach/threshold animation for the visible miniature.
+  function threshold(progress,entering=true){
+    const q=clamp(progress),near=1-Math.abs(q-.53)/.53;
+    const move=Math.max(0,near);
+    const first=clamp((q-.08)/.39),second=clamp((q-.49)/.41);
+    return Object.freeze({
+      action:entering?"enter":"exit",
+      crouch:.12*move,lean:.12*move,
+      headDuck:.08*move,
+      leftLift:Math.sin(first*Math.PI)*.075,
+      rightLift:Math.sin(second*Math.PI)*.075,
+      doorway:move>.20,
+      // Occupancy and line of sight are not evaluated here.
+      authoritative:false
+    });
+  }
+  function roofOpacity(occupied,focused){
+    return occupied?(focused?.09:.23):1;
+  }
+  window.Crossroads3DBuildingVisuals=Object.freeze({
+    doorFor,at,threshold,roofOpacity
+  });
 })();

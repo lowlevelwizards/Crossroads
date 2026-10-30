@@ -15,6 +15,6 @@ assert(ik.crossingLift({x:0,z:0},{x:-2,z:0},{x:2,z:0},wall)>.15);
 assert.equal(ik.crossingLift({x:0,z:0},{x:-2,z:2},{x:2,z:2},wall),0);
 assert.equal(ik.crossingLift({x:0,z:0},{x:0,z:-2},{x:0,z:2},wall),0);
 const scene=read("src/diorama/scenario-scene.js");
-for(const marker of ["soldierIK.solve","soldierIK.crossingLift","soldier.crossingLift=0","leg.shin"])
+for(const marker of ["soldierIK.solve","terrainInteractions?.traverse","soldier.crossingLift=0","leg.shin"])
  assert(scene.includes(marker));
 console.log("PASS — two-bone soldier IK and crossing-specific step-up.");

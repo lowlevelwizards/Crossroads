@@ -222,6 +222,14 @@
     }
     return benefit;
   }
+  // Score existing terrain's directional shelter without claiming a legal
+  // cover-save or authority to occupy an unsanctioned point.
+  function tacticalShelter(point,terrain=[],enemies=[]){
+    const covered=defensiveCover(point,terrain,enemies);
+    const nearestEnemy=nearest(point,enemies);
+    const range=nearestEnemy?dist(point,nearestEnemy):Infinity;
+    return covered*1.25-(range<5?Math.max(0,5-range)*1.6:0);
+  }
   function chooseMove(s,unit,previewMove,explain=false,plan=null) {
     const enemies=s.units.filter(u=>u.faction!==unit.faction&&u.soldiers>0);
     const assignment=plan?.assignments?.[unit.id]||null;
@@ -266,8 +274,10 @@
         const intentBenefit=assignment?.task==="hold"?
           -Math.max(0,dist(endpoint,unit)-2)*1.1:
           assignment?.task==="support"&&pinnedAlly?3:0;
-        const coverBenefit=defensiveCover(endpoint,s.terrain,enemies)*
+        const coverBenefit=tacticalShelter(endpoint,s.terrain,enemies)*
           ((unit.pins||0)>0||unit.soldiers<=3?1.9:1.15);
+        const coverGain=coverBenefit-
+          tacticalShelter(unit,s.terrain,enemies)*.64;
         const exposed=enemies.filter(e=>dist(e,endpoint)<18).length;
         const exposurePenalty=Math.min(6,exposed*1.1)*
           (coverBenefit>2?.36:1);
@@ -288,7 +298,7 @@
         const score=progress*4+(objective?4:0)+objectiveHold+
           threat+outnumbered+support+efficiency-supportPenalty-retreatPenalty+
           commandBenefit-crowdPenalty+coverBenefit-exposurePenalty+
-          intentBenefit+laneBenefit+
+          intentBenefit+laneBenefit+coverGain*.65+
           (preview.shortened?-1.5:0)+Math.min(.5,step*.03);
         options.push({point:endpoint,score,progress,cover:coverBenefit,
           exposure:exposurePenalty,command:commandBenefit,
@@ -303,6 +313,7 @@
   }
   window.Crossroads3DAITactics=Object.freeze({
     chooseUnit,chooseOrder,chooseTarget,chooseMove,forceBalance,mmgRotation,
-    defensiveCover,makePlan,supportPositionScore,shouldHoldSupport,sectorScore
+    defensiveCover,tacticalShelter,makePlan,supportPositionScore,
+    shouldHoldSupport,sectorScore
   });
 })();

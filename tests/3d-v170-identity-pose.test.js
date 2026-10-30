@@ -104,6 +104,6 @@ for(const js of ["src/diorama/miniature-sdf-transitions.js",
  "src/diorama/miniature-historical-weapons.js"])
  new vm.Script(read(js),{filename:js});
 for(const page of ["miniature-studio.html","battle3d.html"])
- assert(read(page).includes("miniature-sdf-transitions.js?v=0.9.75"));
-assert(read("editor3d.html").includes("miniature-sdf-transitions.js?v=0.9.75"));
+ assert(read(page).includes("miniature-sdf-transitions.js?v=0.9.76"));
+assert(read("editor3d.html").includes("miniature-sdf-transitions.js?v=0.9.76"));
 console.log("PASS — v0.9.70 independent historical helmet contours, rear field harness and shoulder-first poses");

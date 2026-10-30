@@ -97,10 +97,10 @@ for(const file of ["src/diorama/scenario-scene.js",
  "src/diorama/battle-client.js"])
  assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}));
 const html=read("battle3d.html"),lab=read("miniature-studio.html");
-assert(html.includes("weapon-presentation.js?v=0.9.75"));
-assert(lab.includes("weapon-presentation.js?v=0.9.75"));
+assert(html.includes("weapon-presentation.js?v=0.9.76"));
+assert(lab.includes("weapon-presentation.js?v=0.9.76"));
 assert(lab.indexOf("weapon-presentation.js")<
  lab.indexOf("miniature-studio-poses.js"));
 assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,
- "0.9.75");
-console.log("PASS — v0.9.75 deterministic firing, mechanical weapon loops, impacts, skip, Lab previews and cache discipline");
+ "0.9.76");
+console.log("PASS — v0.9.76 deterministic firing, mechanical weapon loops, impacts, skip, Lab previews and cache discipline");

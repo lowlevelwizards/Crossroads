@@ -52,7 +52,7 @@ const acquire=api.lab("acquire",1),recovery=api.lab("recover",1);
 assert.equal(acquire.weaponBlend,1);assert.equal(recovery.weaponBlend,0);
 for(const file of ["battle3d.html","miniature-studio.html"]){
   const html=read(file);
-  assert(html.includes("soldier-pose-controller.js?v=0.9.75"),
+  assert(html.includes("soldier-pose-controller.js?v=0.9.76"),
     file+" must load the controller with a fresh cache key");
 }
 const scene=read("src/diorama/scenario-scene.js");
@@ -73,4 +73,4 @@ for(const file of ["src/diorama/miniature-heroic-character.js",
   "src/diorama/miniature-studio-poses.js",
   "src/diorama/miniature-historical-weapons.js"])
  new vm.Script(read(file),{filename:file});
-console.log("PASS — v0.9.75 layered soldier posture, weapon ADS, preview and lab regression");
+console.log("PASS — v0.9.76 layered soldier posture, weapon ADS, preview and lab regression");

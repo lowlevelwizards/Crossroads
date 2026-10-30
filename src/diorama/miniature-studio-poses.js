@@ -19,6 +19,15 @@
     ["rally","Rally / recovering"],["assault","Assault / charge"],
     ["hit","Hit reaction"],["casualty","Casualty / fall"],
     ["enter","Entering building"],["exit","Exiting building"],
+    ["terrain-brace","Wall · braced aim"],
+    ["terrain-kneel","Cover · kneeling behind hedge"],
+    ["terrain-cross-wall","Obstacle · low wall crossing"],
+    ["terrain-cross-fence","Obstacle · fence crossing"],
+    ["terrain-cross-hedge","Obstacle · pushing through hedge"],
+    ["terrain-rough","Terrain · careful foot placement"],
+    ["terrain-window","Building · active window"],
+    ["terrain-door-enter","Building · enter through door"],
+    ["terrain-door-exit","Building · exit through door"],
     ["deploy","Deploying gun"],["pack","Packing gun"],
     ["crew-deploy","Crew · complete deployment"],
     ["crew-ready","Crew · mounted and ready"],
@@ -31,7 +40,8 @@
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const cycle=(t,seconds=1)=>((t%seconds)+seconds)%seconds/seconds;
   function duration(pose){
-    return pose.startsWith("crew-")?
+    return pose.startsWith("terrain-")?2.0:
+      pose.startsWith("crew-")?
       (pose==="crew-deploy"||pose==="crew-pack"?1.15:2.0):
       pose==="fire-sequence"?2.4:pose==="burst-sequence"?2.4:
       pose==="impact-sequence"?1.8:
@@ -110,6 +120,44 @@
       if(mode==="traverse")state.yaw=(q-.5)*Math.PI/2;
       if(mode==="pinned"){state.crouch=.48;state.headDuck=.16;}
       if(mode==="rally"){state.crouch=.38*(1-q);state.gesture=Math.sin(q*Math.PI);}
+    }
+    if(pose.startsWith("terrain-")){
+      const kind=pose.slice(8);
+      if(kind==="brace"||kind==="kneel"||kind==="window"){
+        state.crouch=kind==="kneel"?.47:kind==="brace"?.21:.16;
+        state.lean=kind==="brace"?.12:.14;
+        state.headDuck=kind==="kneel"?.08:.035;
+        state.aim=true;state.weaponReadiness=1;state.weaponBlend=.91;
+      }
+      if(kind==="rough"){
+        const gait=motion.plantedGait?.(t*.92,.47,1,0,false)||
+          motion.gaitPose(t*.92,.47,1,0,false);
+        state.leftLift=(gait.leftLift||0)*1.3;
+        state.rightLift=(gait.rightLift||0)*1.3;
+        state.leftReach=gait.leftReach||0;
+        state.rightReach=gait.rightReach||0;
+        state.lean=.09;state.bob=(gait.bob||0)*.055;
+      }
+      if(kind.startsWith("cross-")){
+        const phase=q;
+        const lift=Math.sin(Math.PI*phase);
+        state.crouch=.10*lift;
+        state.lean=.13*lift;
+        state.leftLift=Math.sin(Math.PI*clamp(phase*2,0,1))*.15;
+        state.rightLift=Math.sin(Math.PI*clamp((phase-.5)*2,0,1))*.15;
+        state.leftReach=-Math.cos(Math.PI*clamp(phase*2,0,1))*.16;
+        state.rightReach=-Math.cos(Math.PI*clamp((phase-.5)*2,0,1))*.16;
+        state.bob=Math.min(.20,kind==="cross-hedge"?.08:.16)*lift;
+      }
+      if(kind==="door-enter"||kind==="door-exit"){
+        const building=window.Crossroads3DBuildingVisuals;
+        const step=building?.threshold(q,kind==="door-enter");
+        state.crouch=step?.crouch||.07;
+        state.lean=step?.lean||.06;
+        state.headDuck=step?.headDuck||0;
+        state.leftLift=step?.leftLift||0;
+        state.rightLift=step?.rightLift||0;
+      }
     }
     if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){

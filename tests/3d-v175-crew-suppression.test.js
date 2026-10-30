@@ -84,14 +84,14 @@ assert(lab.includes("crewActors.push(assistant)"));
 assert(lab.includes("studioCrewCount")&&lab.includes("studioCrewMode"));
 for(const page of ["battle3d.html","editor3d.html","miniature-studio.html"]){
  const html=read(page);
- assert(html.includes("crew-presentation.js?v=0.9.75"));
- assert(html.includes("suppression-posture.js?v=0.9.75"));
+ assert(html.includes("crew-presentation.js?v=0.9.76"));
+ assert(html.includes("suppression-posture.js?v=0.9.76"));
  assert(html.indexOf("crew-presentation.js")<html.indexOf("miniature-heroic-character.js"));
 }
-assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.75");
+assert.equal(JSON.parse(read("release-manifest.json")).threeDCacheVersion,"0.9.76");
 for(const f of ["src/diorama/scenario-scene.js",
  "src/diorama/miniature-historical-weapons.js",
  "src/diorama/miniature-heroic-character.js",
  "src/diorama/miniature-studio.js","src/diorama/ai-opponent.js"])
  assert.doesNotThrow(()=>new vm.Script(read(f),{filename:f}));
-console.log("PASS — v0.9.75 crew authority, mounted arcs, morale, support AI and 3-soldier Lab contract");
+console.log("PASS — v0.9.76 crew authority, mounted arcs, morale, support AI and 3-soldier Lab contract");
