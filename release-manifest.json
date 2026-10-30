@@ -72,6 +72,8 @@
     "src/diorama/tabletop-dice.js",
     "tests/3d-v090-living-battlefield.test.js",
     "src/diorama/formation-layout.js",
+    "src/diorama/physical-footprints.js",
+    "tests/3d-v173-model-footprints.test.js",
     "editor3d.html",
     "src/diorama/editor3d-ui.js",
     "src/diorama/editor3d.css",
@@ -147,5 +149,5 @@
     "src/diorama/soldier-pose-controller.js",
     "tests/3d-v171-tactical-posture.test.js"
   ],
-  "threeDCacheVersion": "0.9.72"
+  "threeDCacheVersion": "0.9.73"
 }
