@@ -48,6 +48,7 @@ function initialize(THREE) {
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
+  const physicalFootprints=window.Crossroads3DPhysicalFootprints;
   const visualAnchor=window.Crossroads3DVisualAnchor;
   if(!visualAnchor)throw new Error("3D visual formation anchor missing.");
   const tabletopDice=window.Crossroads3DTabletopDice;
@@ -1476,10 +1477,14 @@ function initialize(THREE) {
     if(!selectedSquad)return;
     previewUnit=squad;
     pendingTargetId=squad.unit.id;pendingTargetAssessment=assessment;
+    const pair=physicalFootprints?.closestPair(
+      assessment?.shooterModels||selectedSquad.unit.models,
+      assessment?.targetModels||squad.unit.models);
+    const rulesFrom=pair?bridge.toWorld(pair.shooter):selectedSquad.root.position;
+    const rulesTo=pair?bridge.toWorld(pair.target):squad.root.position;
     if(battle?.snapshot?.phase==="choose-target"&&assessment.legal){
-      const source=selectedSquad.root.position,dest=squad.root.position;
       const facing=motion.heading(
-        {x:source.x,z:source.z},{x:dest.x,z:dest.z});
+        {x:rulesFrom.x,z:rulesFrom.z},{x:rulesTo.x,z:rulesTo.z});
       selectedSquad.soldiers.forEach((soldier,i)=>{
         soldier.previewFacing=facing;soldier.aimTarget=facing;
         soldier.aimDelay=i*.045;
@@ -1490,7 +1495,9 @@ function initialize(THREE) {
       (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot"));
     fireTag.classList.toggle("blocked",!assessment.legal);
     fireTag.hidden=false;
-    const a=selectedSquad.root.position,b=squad.root.position;
+    // Preview the closest actual model-base firing lane; no invisible
+    // unit-center ray that implies a shot the rules never measured.
+    const a=rulesFrom,b=rulesTo;
     const distance=Math.hypot(b.x-a.x,b.z-a.z);
     const color=!assessment.legal?0xc37b65:
       assessment.cover?.saveTarget!=null?0xd2ae64:0xe7c16b;
@@ -1508,8 +1515,9 @@ function initialize(THREE) {
       line.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);
       line.renderOrder=14;firePreview.add(line);
     }
-    const r=squad.unit.role==="officer"?.49:.98;
-    const circle=new THREE.Mesh(new THREE.RingGeometry(r,r+.18,44),material.clone());
+    const r=pair?(Number(pair.target.radius)||.5)*
+      bridge.table.worldUnitsPerInch:(squad.unit.role==="officer"?.49:.98);
+    const circle=new THREE.Mesh(new THREE.RingGeometry(r,r+.08,44),material.clone());
     circle.rotation.x=-Math.PI/2;
     circle.position.set(b.x,terrainY(b.x,b.z)+.13,b.z);
     circle.renderOrder=14;firePreview.add(circle);
@@ -1559,6 +1567,11 @@ function initialize(THREE) {
   }
   function visualEndpointClearance(squad,plan){
     if(!squad||!plan?.path?.length)return {legal:true};
+    // InfantryCore has already checked its exact model bases and legal
+    // separation in previewMove. Cosmetic cover/window positions must NEVER
+    // veto a legal move or silently add an alternate collision rule.
+    if(Array.isArray(plan.models)&&plan.models.length)
+      return {legal:true,source:"authoritative-models"};
     const end=bridge.toWorld(plan.path[plan.path.length-1]);
     const inch=bridge.table.worldUnitsPerInch,origin=squad.root.position;
     const proposed=resolveSquadFormation(squad,end,false,{
@@ -1718,6 +1731,7 @@ function initialize(THREE) {
     ring.renderOrder=14;movePreviewLine.add(ring);
     const inch=bridge.table.worldUnitsPerInch;
     const prediction={
+      models:plan.models||null,
       startOrigin:{x:from.x,z:from.z},
       startPoints:selectedSquad.soldiers.map(sol=>({
         x:sol.figure.position.x,z:sol.figure.position.z
@@ -1776,7 +1790,8 @@ function initialize(THREE) {
   }
   function syncSquadVisualAnchor(squad){
     // The authoritative unit center is never moved. Selection and picking
-    // instead follow the actual visible miniature bases.
+    // follow the authenticated bases; staged garrison facades remain
+    // presentation-only until per-window rules exist.
     const anchor=visualAnchor.resolve(squad.soldiers,squad.unit.soldiers,{
       minRadius:squad.unit.role==="officer"?.50:.58,margin:.31
     });
@@ -1868,6 +1883,18 @@ function initialize(THREE) {
   });
   if(!makeSoldier)throw Error("Shared Crossroads 3D miniature model builder missing.");
 
+  // Rules bases are expressed in tabletop inches. Every real model slot in
+  // the 3D scene is projected from the same InfantryCore geometry.
+  function rulesModelsAt(squad,world,plannedMove=null){
+    if(Array.isArray(plannedMove?.models)&&plannedMove.models.length)
+      return plannedMove.models;
+    const worldAtUnit=bridge.toWorld(squad.unit);
+    if(Math.hypot(world.x-worldAtUnit.x,world.z-worldAtUnit.z)<.035&&
+       Array.isArray(squad.unit.models)&&squad.unit.models.length)
+      return squad.unit.models;
+    return window.CrossroadsModelGeometry?.models(squad.unit,
+      bridge.toTable({x:world.x,z:world.z}))||[];
+  }
   // Shared output is used by both the ghost preview and settled soldiers.
   function resolveSquadFormation(squad,world,allowCache=true,plannedMove=null){
     if(!formationLayout)return {points:squad.soldiers.map(s=>
@@ -1892,14 +1919,13 @@ function initialize(THREE) {
     const movement=plannedMove||squad.lastMoveConstraints;
     const move=movement&&Math.hypot(world.x-movement.end.x,
       world.z-movement.end.z)<.08?movement:null;
+    const authority=rulesModelsAt(squad,world,plannedMove);
+    const modelPoints=physicalFootprints?.project(authority,
+      {x:world.x,z:world.z},bridge.toWorld)||null;
     const value=formationLayout.resolve({
       origin:{x:world.x,z:world.z},
-      slots:squad.unit.type==="mmgTeam"?
-        squad.soldiers.map((s,i)=>[
-          {x:0,z:-.16},{x:-.39,z:.22},{x:.42,z:.23}
-        ][i]||{x:s.slotX,z:s.slotZ}):
-        squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
-      living,
+      slots:squad.soldiers.map(s=>({x:s.slotX,z:s.slotZ})),
+      modelPoints,living,
       segments:coverSegments,coverPositions,
       buildingBounds:roof?.bounds||null,
       buildingWindows:building?physicalWindowSockets.get(building)||null:null,threat,
@@ -2140,7 +2166,8 @@ function initialize(THREE) {
             from:squad.soldiers.map(sol=>({x:sol.figure.position.x,z:sol.figure.position.z}))}:null;
         }
         if(squad.unit.soldiers!==stateUnit.soldiers||
-           previousBuilding!==(stateUnit.inBuilding||null))
+           previousBuilding!==(stateUnit.inBuilding||null)||
+           Boolean(squad.unit.mmgDeployed)!==Boolean(stateUnit.mmgDeployed))
           squad.formationCache=null;
         const wasDeployed=Boolean(squad.unit.mmgDeployed);
         Object.assign(squad.unit,stateUnit);
