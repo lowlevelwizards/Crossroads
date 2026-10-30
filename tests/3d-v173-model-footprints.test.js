@@ -13,6 +13,18 @@ const inch=.30,toWorld=p=>({x:(p.x-36)*inch,z:(p.y-24)*inch});
 const unit={id:"squad",role:"line",soldiers:6,x:12,y:20};
 const models=G.models(unit),origin=toWorld(unit);
 assert.equal(models.length,6);
+// Canonical 1-inch bases must never intersect each other. Unlike the old
+// percentage layout this is true for all current infantry archetypes.
+for(const role of ["line","assault","officer","support"]){
+ const count=role==="officer"?2:role==="support"?3:6;
+ for(const deployed of [false,true]){
+  const u={...unit,role,soldiers:count,mmgDeployed:deployed};
+  const points=G.models(u);
+  for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++)
+   assert(G.edgeGap(points[i],points[j])>=-.001,
+    role+" has overlapping authoritative bases ("+i+", "+j+")");
+ }
+}
 const world=P.project(models,origin,toWorld);
 const slots=world.map(m=>({x:m.x,z:m.z}));
 const wall={id:"wall",kind:"wall",a:{x:origin.x-2,z:origin.z+.15},

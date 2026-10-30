@@ -11,7 +11,11 @@
       f[unit?.role]||f.line;
     if(!preset)return [{x:0,y:0}];
     return preset.slots.slice(0,Math.max(0,unit?.soldiers||0))
-      .map(([x,y])=>({x:(x-50)*.025,y:(y-50)*.0135}));
+      // Physical 1-inch bases require a center-to-center distance of at
+      // least 1 inch. The previous .025/.0135 factors overlapped bases.
+      // Shared layout is intentionally wide enough for every 1939 infantry
+      // formation, including packed and deployed MG crews.
+      .map(([x,y])=>({x:(x-50)*.045,y:(y-50)*.035}));
   }
   function models(unit,center=unit){
     return slots(unit).map((p,index)=>({
