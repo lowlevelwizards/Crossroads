@@ -26,30 +26,39 @@
   // overlapping separate brim mesh with a different normal field.
   const helmetField=(p,faction)=>{
     const german=faction==="germany";
-    // Polish wz.31: rounded shallow edge with a small forward brow.
-    // German M35: pronounced forward visor and deeper side/rear skirt.
-    const dome=german?
-      ellipsoid(p,[0,.304,.025],[.256,.259,.258]):
-      ellipsoid(p,[0,.302,.017],[.257,.247,.264]);
-    const cut=german?.209:.226;
-    const shell=-smoothMin(-dome,p[1]-cut,.016);
-    const brow=ellipsoid(p,[0,german?.230:.236,german?-.093:-.052],
-      german?[.267,.046,.260]:[.283,.045,.274]);
-    if(!german)return smoothMin(shell,brow,.038);
-    // Deep M35 skirt wrapping the ears and nape (not a second sphere).
-    // The high front opening remains clear around the wearer's eyes.
-    const sideOval=ellipsoid(p,[0,.228,.079],[.294,.083,.247]);
-    const sideAndRear=Math.max(sideOval,p[2]<-.11?.215-p[1]:.165-p[1]);
-    const skirt=smoothMin(sideAndRear,brow,.022);
-    return smoothMin(shell,skirt,.039);
+    // Both helmets are sculpted from one continuous field. The lower
+    // opening varies around the circumference: high at the brow for eye
+    // clearance, lower over German ears and nape.
+    const front=clamp((-p[2]-.055)/.19,0,1);
+    const rear=clamp((p[2]-.045)/.24,0,1);
+    const side=clamp((Math.abs(p[0])-.12)/.16,0,1);
+    const shellCenter=german?[0,.307,.024]:[0,.305,.015];
+    const shellSize=german?[.253,.251,.257]:[.250,.238,.260];
+    const dome=ellipsoid(p,shellCenter,shellSize);
+    const rimY=german?
+      .213+.063*front-.021*side*(1-front)-.018*rear*(1-front):
+      .226+.052*front-.003*side*(1-front)+.004*rear;
+    const shell=-smoothMin(-dome,p[1]-rimY,.013);
+    // Keep forward brow broad but shallow. A low round ellipsoid lip was
+    // occluding both eyes in the old marching-tetrahedra helmet bake.
+    const brow=ellipsoid(p,
+      german?[0,.282,-.104]:[0,.287,-.083],
+      german?[.271,.030,.242]:[.268,.027,.253]);
+    if(!german)return smoothMin(shell,brow,.023);
+    // German M35: longer ear protection and modestly flared rear skirt;
+    // a raised front opening, not a huge level pancake brim.
+    const skirtOval=ellipsoid(p,[0,.224,.083],[.284,.073,.227]);
+    const guard=Math.max(skirtOval,p[1]-(.177+.087*front));
+    const skirt=smoothMin(guard,brow,.025);
+    return smoothMin(shell,skirt,.026);
   };
   const jointField=(p,kind)=>{
     const knee=kind==="knee",
-      top=knee?[.114,.102,.115]:[.073,.081,.074],
-      low=knee?[.101,.099,.100]:[.069,.077,.069];
+      top=knee?[.105,.091,.107]:[.062,.063,.064],
+      low=knee?[.097,.088,.095]:[.057,.062,.060];
     const upper=ellipsoid(p,[0,knee?.052:.041,0],top);
     const lower=ellipsoid(p,[0,knee?-.055:-.042,0],low);
-    return smoothMin(upper,lower,knee?.054:.032);
+    return smoothMin(upper,lower,knee?.036:.026);
   };
   function bake(THREE,field,bounds,resolution=16){
     // Marching tetrahedra. Resolution is intentionally bounded: these are
@@ -120,13 +129,13 @@
   }
   function create(THREE,S){
     const helmet=(parent,mat,faction)=>{
-      const geometry=S.cached("sdf-helmet-v4-"+faction,()=>
+      const geometry=S.cached("sdf-helmet-v5-"+faction,()=>
         bake(THREE,p=>helmetField(p,faction),
-          [[-.336,.137,-.359],[.336,.574,.362]],28));
+          [[-.336,.137,-.359],[.336,.574,.362]],29));
       return S.mesh(parent,geometry,mat);
     };
     const joint=(parent,mat,kind)=>{
-      const geometry=S.cached("sdf-seam-v3-"+kind,()=>
+      const geometry=S.cached("sdf-seam-v4-"+kind,()=>
         bake(THREE,p=>jointField(p,kind),
           kind==="knee"?
             [[-.153,-.19,-.16],[.153,.195,.16]]:
