@@ -1383,8 +1383,8 @@ function initialize(THREE) {
       shooter.soldiers.forEach((soldier,i)=>{
         if(soldier.figure.visible){
           soldier.aimTarget=facing;
-           soldier.presentationFacing=facing;
-           soldier.presentationAimUntil=performance.now()+1550+i*55;
+          soldier.presentationFacing=facing;
+          soldier.presentationAimUntil=performance.now()+1550+i*55;
           soldier.aimDelay=i*.020;
         }
       });
@@ -1456,7 +1456,10 @@ function initialize(THREE) {
   let previewUnit=null;
   function clearFirePreview(){
     previewUnit=null;pendingTargetAssessment=null;pendingTargetId=null;
-    selectedSquad?.soldiers?.forEach(soldier=>{soldier.previewFacing=null});
+    selectedSquad?.soldiers?.forEach(soldier=>{
+      if(Number.isFinite(soldier.previewFacing))soldier.aimTarget=null;
+      soldier.previewFacing=null;
+    });
     fireTag.hidden=true;
     firePreview.visible=false;
     for(const m of [...firePreview.children]){
@@ -2965,8 +2968,11 @@ function initialize(THREE) {
       const burst=delayedMuzzleBursts[i];
       burst.delay-=dt;
       if(burst.delay>0)continue;
-      if(burst.soldier)burst.soldier.recoil=Math.max(
-        burst.soldier.recoil||0,burst.recoil);
+      if(burst.soldier){
+         burst.soldier.recoil=Math.max(
+           burst.soldier.recoil||0,burst.recoil);
+         burst.soldier.weaponShotPending=true;
+       }
       muzzleBurst(burst);
       delayedMuzzleBursts.splice(i,1);
     }
