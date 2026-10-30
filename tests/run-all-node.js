@@ -43,6 +43,7 @@ const tests = [
   "3d-v146-faction-weapon-labs.test.js",
   "3d-v147-weapon-camera.test.js",
   "3d-v154-weapon-rebuild.test.js",
+  "3d-v162-soldier-sculpt.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
