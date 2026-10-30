@@ -10,7 +10,7 @@
       Object.entries(schema.fields).map(([key,field])=>[key,field.default])))])));
   const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
   function parse(kind,raw={}){
-    if(!schema.defs[kind])throw Error("Unknown weapon kind");
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))throw Error("Unknown weapon kind");
     if(!raw||typeof raw!=="object"||Array.isArray(raw))raw={};
     const out={...defaults[kind]};
     for(const [name,spec] of Object.entries(schema.fields)){
@@ -41,7 +41,7 @@
     return out;
   }
   function read(kind){
-    if(!schema.defs[kind])throw Error("Unknown weapon kind");
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))throw Error("Unknown weapon kind");
     const saved=store(KEY);
     if(saved[kind])return parse(kind,saved[kind]);
     const legacy=store(LEGACY_KEY);
@@ -53,7 +53,7 @@
     catch(_){return false}
   }
   function reset(kind){
-    if(!schema.defs[kind])return false;
+    if(!Object.prototype.hasOwnProperty.call(schema.defs,kind))return false;
     const all=store(KEY);delete all[kind];
     try{window.localStorage?.setItem(KEY,JSON.stringify(all));
       // Also suppress legacy settings for explicitly reset archetypes.
