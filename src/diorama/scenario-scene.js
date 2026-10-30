@@ -428,7 +428,8 @@ function initialize(THREE) {
       if(inside===roof.occupied&&focused===roof.focused)continue;
       roof.occupied=inside;roof.focused=focused;
       roof.material.transparent=inside;
-      roof.material.opacity=inside?(focused?.09:.22):1;
+      roof.material.opacity=buildingVisuals?.roofOpacity(inside,focused) ??
+        (inside?(focused?.09:.22):1);
       roof.material.depthWrite=!inside;
       roof.material.needsUpdate=true;
     }
@@ -2286,6 +2287,7 @@ function initialize(THREE) {
           soldier.breathing.rotation.set(0,0,0);
           soldier.crouch=0;soldier.coverPose=0;
           soldier.terrainCover=null;soldier.terrainTraverse=null;
+          soldier.entryPose=null;soldier.windowPosture=null;
           soldier.hitShock=0;soldier.recoil=0;
           soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
           soldier.aimTarget=null;soldier.grounded=false;
@@ -2949,12 +2951,14 @@ function initialize(THREE) {
               entry.door,{x,z},progress);
             x=at.x;z=at.z;
             soldier.entryStep=progress>0&&progress<1?Math.sin(progress*Math.PI):0;
-          }else soldier.entryStep=0;
+            soldier.entryPose=buildingVisuals.threshold(
+              progress,entry.entering);
+          }else{soldier.entryStep=0;soldier.entryPose=null;}
           const footWorld={x:squad.root.position.x+x,
             z:squad.root.position.z+z};
           const coverProbe=!entry&&slot?.look&&terrainInteractions?
             terrainInteractions.cover(footWorld,coverSegments,slot.look):null;
-          const windowProbe=terrainInteractions?.windowPosture(
+          const windowProbe=!entry&&terrainInteractions?.windowPosture(
             Boolean(squad.unit.inBuilding),slot,slot?.look);
           soldier.terrainCover=coverProbe?.active?coverProbe:null;
           soldier.windowPosture=windowProbe?.active?windowProbe:null;
@@ -3228,28 +3232,33 @@ function initialize(THREE) {
           soldier.applyPose({
             ...posture,
             action:isWalking?(moving.run?"run":"walk"):
-              (squad.unit.down?"down":squad.unit.pins>0?"pinned":
+              (squad.unit.down?"down":soldier.entryPose?.action||
+                (squad.unit.pins>0?"pinned":
                 soldier.terrainCover?.stance==="kneel"?"kneel":
                 soldier.coverPose>.25?"cover":
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
-                  "ambush":squad.unit.order==="Rally"?"rally":"idle"),
+                  "ambush":squad.unit.order==="Rally"?"rally":"idle")),
             crouch:Math.max(soldier.crouch||0,contact?.crouch||0,
               crewPose?.crouch||0,soldier.moralePose?.crouch||0,
               soldier.terrainTraverse?.crouch||0,
-              soldier.windowPosture?.crouch||0),
+              soldier.windowPosture?.crouch||0,
+              soldier.entryPose?.crouch||0),
             lean:Math.max(0,-soldier.breathing.rotation.x,
               contact?.lean||0,crewPose?.lean||0,
               soldier.moralePose?.lean||0,
               soldier.terrainCover?.lean||0,
-              soldier.windowPosture?.lean||0),
+              soldier.windowPosture?.lean||0,
+              soldier.entryPose?.lean||0),
             roll:soldier.breathing.rotation.z,
             crewFeed:crewPose?.feed||0,
             crewHandTarget:crewPose?.role==="loader"?
               squad.soldiers[0]?.crewSocketWorld?.("feed"):null,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,
-            leftLift:Math.max(0,(left?.boot.position.y??.17)-.17),
-            rightLift:Math.max(0,(right?.boot.position.y??.17)-.17),
+            leftLift:Math.max(0,(left?.boot.position.y??.17)-.17,
+              soldier.entryPose?.leftLift||0),
+            rightLift:Math.max(0,(right?.boot.position.y??.17)-.17,
+              soldier.entryPose?.rightLift||0),
             leftReach:(left?.boot.position.z??-.055)+.055,
             rightReach:(right?.boot.position.z??-.055)+.055,
             aim:posture.weaponBlend>.85,
