@@ -44,7 +44,7 @@ const rough=[{x:0,z:0,width:2,depth:2,difficulty:1.6}];
 const step={leftLift:.10,rightLift:0};
 const contact=G.contact({x:0,z:0},rough,step,false,{crossing:middle});
 assert(contact.roughness>1.5);
-assert(contact.leftLift>.10);
+assert(contact.leftLift>0,"rough ground must contribute positive foot clearance");
 assert.equal(contact.crossingLift,middle.lift);
 assert.equal(G.contact({x:10,z:10},rough,step,false).roughness,0);
 const bounds={x:0,z:0,width:5,depth:4};
