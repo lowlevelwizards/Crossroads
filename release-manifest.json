@@ -14,7 +14,8 @@
     "scenarios3d.html",
     "editor3d.html",
     "army3d.html",
-    "miniature-studio.html"
+    "miniature-studio.html",
+    "weapon-lab.html"
   ],
   "requiredFiles": [
     "data/build-info.js",
@@ -127,7 +128,13 @@
     "src/diorama/miniature-workbench.js",
     "tests/3d-v142-miniature-workbench.test.js",
     "src/diorama/miniature-sdf-transitions.js",
-    "tests/3d-v145-miniature-polish.test.js"
+    "tests/3d-v145-miniature-polish.test.js",
+    "weapon-lab.html",
+    "src/diorama/weapon-lab.js",
+    "src/diorama/weapon-lab.css",
+    "src/diorama/miniature-weapon-library.js",
+    "src/diorama/miniature-faction-gear.js",
+    "tests/3d-v146-faction-weapon-labs.test.js"
   ],
-  "threeDCacheVersion": "0.9.45"
+  "threeDCacheVersion": "0.9.46"
 }
