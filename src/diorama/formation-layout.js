@@ -92,12 +92,36 @@
     return Object.freeze({count:n,max,mean:n?sum/n:0,over});
   }
   function resolve({origin,slots,living,segments=[],coverPositions=null,
-     buildingBounds=null,buildingWindows=null,threat=null,cohesion=.57,move=null}={}){
+     buildingBounds=null,buildingWindows=null,threat=null,cohesion=.57,move=null,
+     modelPoints=null}={}){
     const count=Math.max(0,Math.min(slots?.length||0,
       Number.isFinite(living)?Math.floor(living):slots?.length||0));
     const originals=(slots||[]).slice(0,count)
       .map(p=>({x:p.x,z:p.z,cover:false}));
     let points=originals,source="open";
+    if(Array.isArray(modelPoints)&&modelPoints.length===count){
+      // Exact InfantryCore model footprints. Never cohere or cover-snap
+      // model coordinates; doing so would create a second combat geometry.
+      points=modelPoints.map((model,i)=>{
+        const anchor={x:model.x,z:model.z};
+        const stance=coverPositions?.assess?.({
+          x:origin.x+anchor.x,z:origin.z+anchor.z
+        },segments,threat)||{cover:false};
+        return {...anchor,...stance,index:i,authoritative:true};
+      });
+      if(buildingBounds){
+        // InfantryCore currently treats a garrison as an occupied building,
+        // not per-window firing coordinates. Keep that display-only staging
+        // explicitly separate from the authenticated model bases.
+        const presentation=buildingSlots(origin,originals,buildingBounds,
+          threat,buildingWindows);
+        points=presentation.map((point,i)=>({
+          ...point,index:i,authoritative:false,rulesPoint:points[i]
+        }));
+        source="garrison-display";
+      }else source="rules-models";
+      return Object.freeze({source,points});
+    }
     if(buildingBounds){
       points=buildingSlots(origin,originals,buildingBounds,threat,buildingWindows);
       source="building";

@@ -37,6 +37,20 @@
     }
     return best;
   }
+  // Descriptive stance for an AUTHORIZED model base; this does not move it
+  // behind the nearest wall or claim a rules cover save.
+  function assess(point,segments,threat,{maxDistance=.48}={}){
+    const found=findNearest(point,segments,maxDistance,threat);
+    if(!found)return {cover:false};
+    const {segment,closest,ux,uz}=found;
+    const nx=-uz,nz=ux;
+    const own=(point.x-closest.x)*nx+(point.z-closest.z)*nz;
+    const enemy=threat?
+      (threat.x-closest.x)*nx+(threat.z-closest.z)*nz:null;
+    const protective=enemy==null?false:own*enemy<-.01;
+    return protective?{cover:true,kind:segment.kind,frontRow:true,
+      look:{x:threat.x,z:threat.z}}:{cover:false};
+  }
   function arrange(origin,slots,segments,threat,{maxSnap=1.07,spacing=.37}={}){
     if(!Array.isArray(slots)||!slots.length)return null;
     const cover=findNearest(origin,segments,maxSnap,threat);
@@ -78,5 +92,7 @@
     }
     return {segmentId:segment.id,points};
   }
-  window.Crossroads3DCoverPositions=Object.freeze({projection,findNearest,arrange});
+  window.Crossroads3DCoverPositions=Object.freeze({
+    projection,findNearest,assess,arrange
+  });
 })();
