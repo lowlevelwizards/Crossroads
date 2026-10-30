@@ -45,6 +45,37 @@ function initialize(THREE) {
     });
   const squadMotion=window.Crossroads3DSquadMotion;
   const weaponPresentation=window.Crossroads3DWeaponPresentation;
+  const crewPresentation=window.Crossroads3DCrewPresentation;
+  const suppressionPosture=window.Crossroads3DSuppressionPosture;
+  const debugCrewEnabled=new URLSearchParams(location.search).get("debugCrew")==="1";
+  const crewDebugObjects=new Map();
+  function updateCrewDebug(){
+    if(!debugCrewEnabled)return;
+    for(const squad of squads){
+      const crew=crewPresentation?.describe(squad.unit);
+      if(!crew?.isMMG)continue;
+      let group=crewDebugObjects.get(squad.unit.id);
+      if(!group){
+        group=new THREE.Group();scene.add(group);
+        for(let i=0;i<5;i++){
+          const dot=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),
+            new THREE.MeshBasicMaterial({color:[0xc0dd9b,0xe4b87b,
+              0x8fbfbf,0xb7a4da,0xf6d37a][i],depthTest:false,
+              depthWrite:false}));
+          group.add(dot);
+        }
+        crewDebugObjects.set(squad.unit.id,group);
+      }
+      group.visible=Boolean(crew.deployed&&squad.soldiers[0]?.figure.visible);
+      if(!group.visible)continue;
+      const gunner=squad.soldiers[0];
+      for(let i=0;i<group.children.length;i++){
+        const point=gunner.crewSocketWorld?.(crewPresentation.socketLabels[i]);
+        group.children[i].visible=Boolean(point);
+        if(point)group.children[i].position.copy(point);
+      }
+    }
+  }
   const assaultMotion=window.Crossroads3DAssaultMotion;
   const coverPositions=window.Crossroads3DCoverPositions;
   const formationLayout=window.Crossroads3DFormationLayout;
@@ -1331,6 +1362,7 @@ function initialize(THREE) {
       if(stage.phase==="recover"){
         const recovering=unitLookup.get(e.unitId);
         if(recovering){
+          recovering.moraleRecoverUntil=performance.now()+1000;
           spawnBriefFlash(recovering.root.position.x,.64,
             recovering.root.position.z,0xa8cf9e,.30,.70);
           showStatus(recovering,"RALLY · "+(e.removedPins||0)+
@@ -1352,6 +1384,7 @@ function initialize(THREE) {
             "ORDER PASSED · "+e.total+"/"+e.target:
             "ORDER FAILED · DOWN",""+(e.passed?"rally":"failed"),2000);
           if(!e.passed){
+            u.moraleShockUntil=performance.now()+850;
             u.suppressionImpulse=1;
             u.soldiers.forEach(sol=>sol.hitShock=.5);
           }
@@ -1418,6 +1451,8 @@ function initialize(THREE) {
     const shooter=unitLookup.get(e.shooterId);
     const target=unitLookup.get(e.targetId);
     if(stage.phase==="aim"&&shooter&&target){
+      if(crewPresentation?.describe(shooter.unit).deployed)
+        shooter.crewTarget=target.unit.id;
       const facing=motion.heading(
         {x:shooter.root.position.x,z:shooter.root.position.z},
         {x:target.root.position.x,z:target.root.position.z});
@@ -1437,6 +1472,8 @@ function initialize(THREE) {
         focusZoom=zoom;
       }
     }else if(stage.phase==="fire"&&shooter){
+      if(crewPresentation?.describe(shooter.unit).deployed)
+        shooter.crewFireUntil=performance.now()+1750;
       const groups=e.groups||[];
       const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
         ({role:s.role,visible:s.figure.visible})))||[];
@@ -2252,7 +2289,8 @@ function initialize(THREE) {
           soldier.aimTarget=null;soldier.grounded=false;
           soldier.previewFacing=null;soldier.presentationFacing=null;
           soldier.presentationAimUntil=0;soldier.weaponShotPending=false;
-          soldier.weaponMechanic=null;
+          soldier.weaponMechanic=null;soldier.moralePose=null;
+          soldier.applyGesture?.(0);
           soldier.poseState?.reset();
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
@@ -2305,7 +2343,7 @@ function initialize(THREE) {
         if(squad.unit.type==="mmgTeam"&&
           wasDeployed!==Boolean(squad.unit.mmgDeployed)){
           squad.gunTransition={
-            elapsed:0,duration:1.0,
+            elapsed:0,duration:1.15,
             mode:squad.unit.mmgDeployed?"deploy":"pack"
           };
         }
@@ -3098,7 +3136,50 @@ function initialize(THREE) {
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
           const posture={...postureBase};
+          const moraleDesired=suppressionPosture?.evaluate({
+            pins:squad.unit.pins||0,down:!!squad.unit.down,
+            walking:isWalking,firing,casualty:soldier.pendingRemoval,
+            recentHit:Math.max(soldier.hitShock||0,
+              performance.now()<(squad.moraleShockUntil||0)?.55:0),
+            recovery:Math.max(0,Math.min(1,
+              ((squad.moraleRecoverUntil||0)-performance.now())/1000)),
+            officer:soldier.role==="officer"
+          });
+          if(moraleDesired){
+            soldier.moralePose=suppressionPosture.transition(
+              soldier.moralePose,moraleDesired,dt);
+            posture.headDuck=Math.max(posture.headDuck||0,
+              soldier.moralePose.headDuck);
+            if(!isWalking&&!firing&&!squad.unit.down)
+              posture.weaponReadiness=Math.min(posture.weaponReadiness||0,
+                soldier.moralePose.readiness);
+            soldier.applyGesture?.(soldier.moralePose.gesture);
+          }
           soldier.weaponShotPending=false;
+          const crew=crewPresentation?.describe(squad.unit);
+          const crewMode=squad.gunTransition?.mode||
+            (performance.now()<(squad.crewFireUntil||0)?"fire":"ready");
+          const crewTime=squad.gunTransition?.elapsed||
+            (crewMode==="fire"?(performance.now()-squad.crewFireUntil+1750)/1000:0);
+          const crewPose=crew?.isMMG&&!isWalking?
+            crewPresentation.frame(squad.unit,crewMode,crewTime,soldierIndex):null;
+          if(crewPose?.active&&!squad.unit.down&&!soldier.casualtyAnimating){
+            posture.weaponReadiness=soldierIndex===0?
+              Math.max(posture.weaponReadiness||0,crewPose.readiness):0;
+            posture.weaponBlend=soldierIndex===0?posture.weaponBlend:0;
+          }
+          if(soldierIndex===0&&crew?.deployed){
+            const target=unitLookup.get(squad.crewTarget);
+            const worldAt=squad.root.position;
+            const targetAt=target?.root.position;
+            const desiredYaw=targetAt?
+              -Math.PI/2-Math.atan2(targetAt.z-worldAt.z,
+                targetAt.x-worldAt.x):
+              -Math.PI/2-(squad.unit.mmgFacing||0)*Math.PI/180;
+            const baseYaw=-Math.PI/2-(squad.unit.mmgFacing||0)*Math.PI/180;
+            const offset=motion.shortestDelta(baseYaw,desiredYaw);
+            soldier.setGunTraverse?.(Math.max(-Math.PI/4,Math.min(Math.PI/4,offset)));
+          }else if(soldierIndex===0) soldier.setGunTraverse?.(0);
           const mechanical=soldier.weaponMechanic;
           const action=mechanical&&weaponPresentation?.motionAt(
             mechanical.role,mechanical.age);
@@ -3122,10 +3203,15 @@ function initialize(THREE) {
                 soldier.coverPose>.25?"cover":
                 (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
                   "ambush":squad.unit.order==="Rally"?"rally":"idle"),
-            crouch:Math.max(soldier.crouch||0,contact?.crouch||0),
+            crouch:Math.max(soldier.crouch||0,contact?.crouch||0,
+              crewPose?.crouch||0,soldier.moralePose?.crouch||0),
             lean:Math.max(0,-soldier.breathing.rotation.x,
-              contact?.lean||0),
+              contact?.lean||0,crewPose?.lean||0,
+              soldier.moralePose?.lean||0),
             roll:soldier.breathing.rotation.z,
+            crewFeed:crewPose?.feed||0,
+            crewHandTarget:crewPose?.role==="loader"?
+              squad.soldiers[0]?.crewSocketWorld?.("feed"):null,
             forward:Math.max(0,-soldier.breathing.position.z),
             bob:soldier.breathing.position.y-baseLift,
             leftLift:Math.max(0,(left?.boot.position.y??.17)-.17),
@@ -3148,6 +3234,7 @@ function initialize(THREE) {
       syncSquadVisualAnchor(squad);
     }
     if(footprintDebugEnabled&&frameIndex%6===0)updateFootprintDebug();
+    if(debugCrewEnabled&&frameIndex%4===0)updateCrewDebug();
     const combatDt=dt*(battle?.presentationSpeed||1);
     for(const burst of delayedMuzzleBursts)burst.delay-=combatDt;
     // Late frames still dispatch in authored shot order, never reversed.

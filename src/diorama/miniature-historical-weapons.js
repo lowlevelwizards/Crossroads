@@ -148,7 +148,8 @@
         dimensions:{rear:butt,front:muzzle,stockLength:butt-back},
         triangleTarget:500};
     }
-    function build({figure,breathing,role,faction,mats,weaponKind,settings}){
+    function build({figure,breathing,role,faction,mats,weaponKind,settings,
+      mountParent=null}){
       const kind=weaponKind||kindFor(faction,role),isMMG=role==="mmg";
       const recipe=settings||lib.read(kind);
       const weapon=new THREE.Group();
@@ -157,9 +158,28 @@
       breathing.add(weapon);
       const grips=profile(weapon,mats,kind,recipe);
       // A deployed MMG stays on the figure (outside the animated body).
-      const mount=new THREE.Group();figure.add(mount);mount.visible=false;
+      const mount=new THREE.Group();
+      // One squad-level physical mount; the gunner remains an independent
+      // miniature whose real model base never changes.
+      (isMMG&&mountParent?mountParent:figure).add(mount);
+      mount.visible=false;
+      const syncMount=()=>{
+        if(!isMMG||!mountParent)return;
+        mount.position.copy(figure.position);
+        // Direct Euler components also support the lightweight Node model
+        // harness (its mock Group does not implement Euler.copy).
+        mount.rotation.x=figure.rotation.x||0;
+        mount.rotation.y=figure.rotation.y||0;
+        mount.rotation.z=figure.rotation.z||0;
+      };
+      syncMount();
       const mountedGun=new THREE.Group();
       mountedGun.position.set(0,.37,-.49);mount.add(mountedGun);
+      const setTraverse=radians=>{
+        if(!isMMG)return;
+        mountedGun.rotation.y=Math.max(-Math.PI/4,Math.min(Math.PI/4,
+          Number(radians)||0));
+      };
       let deployedGrips=null;
       if(isMMG){
         G.block(mount,mats.hardware,[.17,.056,.18],[0,.115,-.49]);
@@ -173,6 +193,7 @@
       let deployed=false;
       const setDeployed=value=>{
         deployed=!!value&&isMMG;
+        syncMount();
         mount.visible=deployed;weapon.visible=!deployed;
       };
       const isDeployed=()=>deployed;
@@ -182,9 +203,12 @@
       const current=()=>deployed?mountedGun:weapon;
       const local=which=>{
         const set=deployed?deployedGrips:grips;
-        return set?.[which]?.clone()||point(0,0,0);
+        const resolved={stock:"primary",trigger:"primary",feed:"secondary",
+          support:"secondary"}[which]||which;
+        return set?.[resolved]?.clone()||point(0,0,0);
       };
       const getInTorso=which=>{
+        syncMount();
         const node=current();
         node.updateWorldMatrix(true,true);
         breathing.updateWorldMatrix(true,false);
@@ -194,7 +218,14 @@
         deployedSections:deployedGrips?.parts||null,
         dimensions:grips.dimensions,anchors:grips.anchors,
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
-        setDeployed,isDeployed,setBipod,
+        setDeployed,isDeployed,setBipod,syncMount,setTraverse,
+        get worldSocket(){
+          return which=>{
+            syncMount();const node=current();
+            node.updateWorldMatrix(true,false);
+            return node.localToWorld(local(which));
+          };
+        },
         animateAction:phase=>{
           const value=Math.max(0,Math.min(1,phase||0));
           for(const group of [grips,deployedGrips]){

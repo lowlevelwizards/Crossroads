@@ -19,12 +19,21 @@
     ["rally","Rally / recovering"],["assault","Assault / charge"],
     ["hit","Hit reaction"],["casualty","Casualty / fall"],
     ["enter","Entering building"],["exit","Exiting building"],
-    ["deploy","Deploying gun"],["pack","Packing gun"]
+    ["deploy","Deploying gun"],["pack","Packing gun"],
+    ["crew-deploy","Crew · complete deployment"],
+    ["crew-ready","Crew · mounted and ready"],
+    ["crew-traverse","Crew · traverse 90° sector"],
+    ["crew-fire","Crew · fire and feed"],
+    ["crew-pack","Crew · pack and leave"],
+    ["crew-pinned","Crew · suppressed"],
+    ["crew-rally","Crew · morale recovery"]
   ]);
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const cycle=(t,seconds=1)=>((t%seconds)+seconds)%seconds/seconds;
   function duration(pose){
-    return pose==="fire-sequence"?2.4:pose==="burst-sequence"?2.4:
+    return pose.startsWith("crew-")?
+      (pose==="crew-deploy"||pose==="crew-pack"?1.15:2.0):
+      pose==="fire-sequence"?2.4:pose==="burst-sequence"?2.4:
       pose==="impact-sequence"?1.8:
       pose==="fire"?.62:pose==="reload"?2.2:
       pose==="casualty"?2.1:pose==="hit"?1.3:
@@ -85,6 +94,22 @@
       state.roll=Math.sin(Math.PI*q)*.18;
       state.crouch=q<.45?q*.95:Math.max(0,(1-q)*.78);
       state.lean=Math.sin(Math.PI*q)*.21;
+    }
+    if(pose.startsWith("crew-")){
+      const mode=pose.slice(5);
+      const crew=window.Crossroads3DCrewPresentation;
+      const unit={type:"mmgTeam",soldiers:3,mmgDeployed:mode!=="pack"};
+      const data=crew?.frame(unit,
+        mode==="pinned"||mode==="rally"?"ready":mode,t,0);
+      state.crouch=data?.crouch||0;
+      state.lean=data?.lean||0;
+      state.weaponReadiness=data?.readiness||0;
+      state.weaponBlend=mode==="fire"?1:mode==="ready"?.7:0;
+      state.aim=mode==="fire"||mode==="traverse";
+      state.recoil=mode==="fire"?(data?.activity||0)*.15:0;
+      if(mode==="traverse")state.yaw=(q-.5)*Math.PI/2;
+      if(mode==="pinned"){state.crouch=.48;state.headDuck=.16;}
+      if(mode==="rally"){state.crouch=.38*(1-q);state.gesture=Math.sin(q*Math.PI);}
     }
     if(pose==="aim"||pose==="ambush"){state.lean=.08;state.aim=true;}
     if(pose==="down"){

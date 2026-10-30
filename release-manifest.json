@@ -64,6 +64,9 @@
     "battle3d-v071.html",
     "src/diorama/squad-motion.js",
     "src/diorama/weapon-presentation.js",
+    "src/diorama/crew-presentation.js",
+    "src/diorama/suppression-posture.js",
+    "tests/3d-v175-crew-suppression.test.js",
     "tests/3d-v080-living-infantry.test.js",
     "src/diorama/assault-motion.js",
     "tests/3d-v081-interaction-and-firefight.test.js",
@@ -150,5 +153,5 @@
     "src/diorama/soldier-pose-controller.js",
     "tests/3d-v171-tactical-posture.test.js"
   ],
-  "threeDCacheVersion": "0.9.74"
+  "threeDCacheVersion": "0.9.75"
 }

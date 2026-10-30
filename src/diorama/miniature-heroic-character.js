@@ -178,6 +178,7 @@
       // The carrying kit is cosmetic; the same field equipment appears in
       // the independent lab and on live soldiers.
       const armaments=W.build({figure,body,breathing,role,faction,
+        mountParent:role==="mmg"?squad.root:null,
         settings:recipe.weaponSettings,
         mats:{steel:mat.steel,wood:mat.wood,strap:mat.straps,
           hardware:mat.hardware}});
@@ -200,6 +201,9 @@
         baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
       soldier.weaponSocket=which=>armaments.grip(which);
+      soldier.syncMount=()=>armaments.syncMount?.();
+      soldier.setGunTraverse=angle=>armaments.setTraverse?.(angle);
+      soldier.crewSocketWorld=which=>armaments.worldSocket?.(which)||null;
       soldier.stockSocket=()=>{
         weapon.updateWorldMatrix(true,false);
         breathing.updateWorldMatrix(true,false);
@@ -381,7 +385,8 @@
         packGroup.visible=showKit&&soldier.equipmentPreset==="marching"&&
           soldier.profile?.pack!=="off";
         gear.setPackPresent?.(packGroup.visible);
-        armaments.weapon.visible=showKit&&!armaments.isDeployed();
+        armaments.weapon.visible=showKit&&!armaments.isDeployed()&&
+          !(pose.crewFeed>.15);
         armaments.mount.visible=showKit&&armaments.isDeployed();
         const fallAngle=eased*1.23;
         body.rotation.set(-eased*.14,0,-fallAngle);
@@ -524,6 +529,23 @@
                 v(-.264,-.184+Math.sin((pose.leftReach||0)*8)*.052,
                   -.028):
                 (side===1?right:left).clone()));
+          if(pose.crewFeed>.15&&pose.crewHandTarget&&!reference&&
+             !moving&&(role==="crew"||role==="loader")){
+            breathing.updateWorldMatrix(true,false);
+            const target=breathing.worldToLocal(pose.crewHandTarget.clone());
+            const near=Math.hypot(target.x-shoulder.x,
+              target.y-shoulder.y,target.z-shoulder.z);
+            // Only extend the nearer hand, and only if an arm can
+            // physically reach the mounted receiver from its real base.
+            if(Math.sign(target.x||side)===side&&
+               near<.53&&target.z<.16&&target.y>-.33){
+              wrist.lerp(target,Math.min(.85,pose.crewFeed*.83));
+            }else{
+              // No stretching across a distant base: rest the free hand
+              // near the ammunition pouch instead.
+              wrist.set(side*.27,-.19,-.18);
+            }
+          }
           if(gesture>0&&!reference&&side===1)
             wrist.set(.35,.24+gesture*.30,-.18);
           if(!reference&&role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)

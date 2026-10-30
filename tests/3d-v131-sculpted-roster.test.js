@@ -176,9 +176,11 @@ for(const faction of ["poland","germany"]){
     assert(s.equipmentRoot.visible===true);
     if(role==="mmg"){
       s.setGunDeployed(true);
-      const mount=s.figure.children.find(c=>c!==s.base&&
-        c!==s.body&&c.visible&&c.children.some(n=>n.children?.length));
-      assert(mount,"mounted support weapon must remain a figure sibling");
+      const mount=squad.root.children.find(c=>c!==s.figure&&
+        c.visible&&c.children.some(n=>n.children?.length));
+      assert(mount,"mounted MMG must be anchored at the squad root");
+      assert(!s.figure.children.includes(mount),
+        "deployed heavy weapon must not rotate with the gunner torso");
       s.setGunDeployed(false);
     }
     const before=s.figure.children.length;
@@ -209,7 +211,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.74"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.75"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }
