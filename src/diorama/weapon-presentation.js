@@ -63,7 +63,12 @@
   }
   function duration(groups,soldiers){
     const shots=schedule(groups,soldiers);
-    return shots.length?Math.max(.42,shots[shots.length-1].delay+.25):.42;
+    if(shots.length)return Math.max(.42,shots[shots.length-1].delay+.25);
+    // Battle timeline only receives adjudicated event metadata, not the
+    // physical model roster. Never shorten it merely for lack of a roster.
+    const count=(groups||[]).reduce((n,g)=>
+      n+Math.max(0,Math.floor(g?.shots||0)),0);
+    return Math.max(.42,Math.min(96,count)*.12+.25);
   }
   // Decorative results originate strictly from adjudicated results.
   function impactPlan(event,visibleCount=6){
