@@ -106,7 +106,7 @@
       state.weaponReadiness=data?.readiness||0;
       state.weaponBlend=mode==="fire"?1:mode==="ready"?.7:0;
       state.aim=mode==="fire"||mode==="traverse";
-      state.recoil=mode==="fire"?data?.activity*.15:0;
+      state.recoil=mode==="fire"?(data?.activity||0)*.15:0;
       if(mode==="traverse")state.yaw=(q-.5)*Math.PI/2;
       if(mode==="pinned"){state.crouch=.48;state.headDuck=.16;}
       if(mode==="rally"){state.crouch=.38*(1-q);state.gesture=Math.sin(q*Math.PI);}
