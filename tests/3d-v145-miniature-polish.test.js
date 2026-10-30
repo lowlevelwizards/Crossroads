@@ -39,7 +39,7 @@ const model=read("src/diorama/miniature-heroic-character.js");
 assert(model.includes("hat.position.set(0,-.069,-.031)"));
 assert(model.includes('S.strap(equipmentRoot,mat.straps'));
 assert(model.includes("field-blanket-v1"));
-assert(model.includes("skin,[side*.071,.163,-.184]"));
+assert(model.includes("mat.eyes,[side*.071,.163,-.184]"));
 const weapons=read("src/diorama/miniature-historical-weapons.js");
 assert(weapons.includes("gun-barrel-"));
 assert(weapons.includes("rifle?.026:.030"));
