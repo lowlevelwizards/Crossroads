@@ -49,10 +49,22 @@
       // or auxiliary anatomical blobs are created beneath its clothing.
       const uniformGroup=new THREE.Group();breathing.add(uniformGroup);
       // Shaped tunic: five authored cross sections, collar flaps and hem.
-      const torso=S.loft(uniformGroup,mat.uniform,"tunic-1939",[
-        [-.32,.195,.185],[-.23,.249,.201],[-.07,.256,.218],
-        [.15,.286,.227],[.32,.228,.179],[.36,.165,.14]
-      ],[0,.015,0]);
+      const torso=S.loft(uniformGroup,mat.uniform,"tunic-1939-"+faction,
+        faction==="poland"?[
+          [-.32,.195,.185],[-.23,.249,.201],[-.07,.256,.218],
+          [.15,.286,.227],[.32,.228,.179],[.36,.165,.14]
+        ]:[
+          [-.32,.185,.182],[-.23,.232,.197],[-.07,.252,.210],
+          [.15,.276,.220],[.32,.231,.187],[.36,.164,.142]
+        ],[0,.015,0]);
+      // A pair of crisp collar tabs provides uniform character without
+      // tiny buttons or another torus-like scarf over the chest.
+      for(const side of [-1,1]){
+        const collar=S.box(uniformGroup,mat.uniform,
+          [faction==="poland"?.091:.083,.034,.056],
+          [side*.109,.334,-.130]);
+        collar.rotation.z=side*(faction==="poland"?.21:.12);
+      }
       const uniformParts=[torso];
       // The sculpted torso already defines the hem, shoulder width and
       // waist. Extra collar blocks, belt rings, pockets and body fragments
@@ -93,10 +105,9 @@
           [-.5,.102,.103],[-.28,.124,.121],[.10,.132,.125],
           [.40,.135,.12],[.5,.107,.105]
         ]);
-        const shin=S.loft(body,mat.trousers,"lower-trouser",[
-          [-.5,.085,.086],[-.28,.104,.104],[.12,.112,.113],
-          [.35,.110,.111],[.5,.096,.094]
-        ]);
+        // Shared vertices for lower trouser, puttees or marching boots:
+        // color bands cannot float, separate, or double-scale with movement.
+        const shin=S.clothedShin(body,mat.trousers,mat.boots,faction);
         const bootModel=S.boot(body,mat.boots,mat.soles,side,.15);
         const boot=bootModel.root;
         const seam=sdf?.joint(body,mat.trousers,"knee")||null;
@@ -105,22 +116,27 @@
       }
       const headGroup=new THREE.Group();
       headGroup.position.set(0,.406,-.004);breathing.add(headGroup);
-      // One sculpted head and two discreet ears. No duplicate jaw,
-      // projecting nose, brows, eyes, or other stuck-on facial spheres.
-      const editableHead=S.soft(headGroup,mat.skin,[0,.132,-.005],
-        [.218,.219,.192]);
+      // Slightly squared heroic head with broad cheeks and a restrained
+      // chin. One main volume, no projecting nose or brows.
+      const editableHead=S.loft(headGroup,mat.skin,"head-silhouette-v5",[
+        [-1,.44,.58],[-.76,.75,.81],[-.34,.93,.96],
+        [.24,1,1],[.78,.945,.97],[1,.72,.78]
+      ],[0,.132,-.002],12);
+      // Keep historical approved Workbench head contours in their original
+      // normalized coordinate space: switching shape sources stays safe.
+      editableHead.scale.set(.218,.219,.192);
       for(const side of [-1,1]){
         S.soft(headGroup,mat.skin,[side*.205,.085,.008],
-          [.034,.054,.039]);
+          [.038,.054,.040]);
         // Flat eyes are the only facial details; no separate brows/nose.
         S.soft(headGroup,mat.eyes,[side*.071,.163,-.184],
           [.014,.019,.007]);
       }
       const hat=new THREE.Group();
       // Backward pitch raises the front rim; lower it to meet the forehead.
-      hat.position.set(0,-.069,-.031);
-      hat.rotation.x=.103;
-      hat.scale.setScalar(1.035);
+      hat.position.set(0,-.054,-.026);
+      hat.rotation.x=.098;
+      hat.scale.setScalar(1.024);
       headGroup.add(hat);
       let editableHelmet=null;
       if(role==="officer"){
@@ -186,11 +202,14 @@
       const shapeLibrary=window.Crossroads3DShapeLibrary,
         shapeGeometry=window.Crossroads3DShapeGeometry;
       const editableParts=new Map();
+      soldier.approvedShapesUsed=[];
       const bindPart=(id,meshes)=>{
         const list=meshes.filter(Boolean);
         editableParts.set(id,list);
         for(const mesh of list)mesh.userData.workbenchPart=id;
-        const doc=shapeLibrary?.approved(id);
+        const doc=recipe.shapeSource==="canon"?null:
+          shapeLibrary?.approved(id);
+        if(doc) soldier.approvedShapesUsed.push(id);
         if(!doc||!shapeGeometry)return;
         const geometry=shapeGeometry.make(THREE,doc,{published:true});
         for(const mesh of list){
@@ -228,11 +247,18 @@
         // Author-calibrated multiplier, never overwrite a geometric radius.
         torso.scale.x=1.08*(p.bodyWidth||1);
         torso.scale.y=.91;
-        packGroup.scale.setScalar(1.17*(p.packSize||1)*(role==="officer"?.70:1));
+        gear.setBodyWidth?.(p.bodyWidth||1);
+        packGroup.scale.setScalar(1.13*(p.packSize||1)*(role==="officer"?.70:1));
         for(const leg of legs)leg.boot.scale.setScalar(.92*(p.bootSize||1));
         soldier.profile=p;
       };
       soldier.inspectionMode="equipped";
+      soldier.equipmentPreset="marching";
+      soldier.setEquipmentPreset=preset=>{
+        soldier.equipmentPreset=["reference","combat","marching"].includes(preset)?
+          preset:"marching";
+        soldier.setInspectionMode(soldier.inspectionMode);
+      };
       const silhouetteMat=S.material(0x303834,.96);
       const originalMaterials=new Map();
       soldier.setInspectionMode=(mode="equipped")=>{
@@ -246,11 +272,15 @@
         uniformGroup.visible=true;
         torso.material=naked?mat.skin:mat.uniform;
         pelvis.material=naked?mat.skin:mat.trousers;
-        equipmentRoot.visible=equipped&&!soldier.mannequinActive;
+        const kitVisible=equipped&&!soldier.mannequinActive&&
+          soldier.equipmentPreset!=="reference";
+        equipmentRoot.visible=kitVisible;
+        packGroup.visible=kitVisible&&
+          soldier.equipmentPreset==="marching"&&soldier.profile?.pack!=="off";
         for(const mesh of gear.gait||[])
           mesh.visible=!naked&&!soldier.mannequinActive;
-        armaments.weapon.visible=equipped&&!soldier.mannequinActive&&!armaments.isDeployed();
-        armaments.mount.visible=equipped&&!soldier.mannequinActive&&armaments.isDeployed();
+        armaments.weapon.visible=kitVisible&&!armaments.isDeployed();
+        armaments.mount.visible=kitVisible&&armaments.isDeployed();
         hat.visible=!naked&&soldier.profile?.helmet!=="off";
         for(const arm of arms){
           arm.upper.material=naked?mat.skin:mat.uniform;
@@ -259,7 +289,7 @@
         }
         for(const leg of legs){
           leg.mesh.material=naked?mat.skin:mat.trousers;
-          leg.shin.material=naked?mat.skin:mat.trousers;
+          leg.shin.material=naked?mat.skin:[mat.trousers,mat.boots];
           if(leg.seam)leg.seam.material=naked?mat.skin:mat.trousers;
           // Keep natural feet visible in the bare-body comparison.
           leg.boot.visible=true;
@@ -290,7 +320,7 @@
           look.leatherTint==="russet"?0x794e34:col.straps);
         soldier.applyProfile(look);
         soldier.setInspectionMode(soldier.inspectionMode);
-        packGroup.visible=look.pack!=="off"&&
+        packGroup.visible=look.pack!=="off"&&soldier.equipmentPreset==="marching"&&
           (soldier.inspectionMode==="equipped"||soldier.inspectionMode==="silhouette");
       };
       const poseDefaults={crouch:0,bob:0,lean:0,roll:0,forward:0,fall:0,
@@ -320,9 +350,12 @@
         // A clean model reference must not contain the weapon or dangling
         // field kit. Restore each when leaving the reference action.
         const showKit=!reference&&!soldier.mannequinActive&&
+          soldier.equipmentPreset!=="reference"&&
           (soldier.inspectionMode==="equipped"||
            soldier.inspectionMode==="silhouette");
         equipmentRoot.visible=showKit;
+        packGroup.visible=showKit&&soldier.equipmentPreset==="marching"&&
+          soldier.profile?.pack!=="off";
         armaments.weapon.visible=showKit&&!armaments.isDeployed();
         armaments.mount.visible=showKit&&armaments.isDeployed();
         const fallAngle=eased*1.23;
@@ -390,6 +423,9 @@
           }
         }
         const right=armaments.grip("primary"),left=armaments.grip("secondary");
+        const unarmed=soldier.equipmentPreset==="reference";
+        // The grip sockets are inherited from the historical weapon
+        // archetype; the same points hold under proportion adjustments.
         // Down and role-specific gestures keep elbows away from the torso;
         // the weapon is held in actual contact with both hands.
         for(const arm of arms){
@@ -397,7 +433,8 @@
           const wrist=reference?
             (tpose?v(side*.594,.210,-.015):
               v(side*.294,-.282,-.010)):
-            (side===1?right:left).clone();
+            (unarmed?v(side*.267,-.245,-.035):
+              (side===1?right:left).clone());
           if(gesture>0&&!reference&&side===1)
             wrist.set(.35,.24+gesture*.30,-.18);
           if(!reference&&role==="officer"&&!pose.aim&&!armaments.isDeployed()&&side===-1)
@@ -408,7 +445,7 @@
               v(side*.314,-.050,-.004)):
             shoulder.clone().lerp(wrist,.47);
           if(!reference){
-            const pole=v(side*.18,-.13,pose.aim?.06:.11);
+            const pole=v(side*.16,-.115,pose.aim?.04:.09);
             elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
           }
           // More natural compact arm bend, no straight blocky L-pose.

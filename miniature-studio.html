@@ -7,7 +7,7 @@
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
   <meta name="description" content="Inspect every Crossroads tabletop miniature, pose, and animation in a neutral 3D studio.">
   <title>Crossroads — Miniature Lab</title>
-  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.54">
+  <link rel="stylesheet" href="src/diorama/miniature-studio.css?v=0.9.62">
 </head>
 <body>
   <main class="studio">
@@ -28,6 +28,7 @@
         <button type="button" data-view="left">LEFT</button>
         <button type="button" data-view="top">TOP</button>
       </div>
+      <span id="studioBattleLabel" class="studio-battle-label" hidden>BATTLE SCALE</span>
       <p class="gesture-hint">DRAG ORBIT <span>·</span> PINCH ZOOM <span>·</span> TWO FINGERS PAN</p>
     </div>
     <aside class="studio-panel" aria-label="Miniature controls">
@@ -139,6 +140,20 @@
         <div id="studioRecipe" class="studio-meta" aria-live="polite">—</div>
         <label class="studio-check"><input type="checkbox" id="studioCompareFaction"> Side-by-side Poland / Germany 1939</label>
         <p class="field-note" id="studioCompareLabel" aria-live="polite" hidden>Same unit and pose; contrasting field equipment and helmets.</p>
+        <label for="studioShapeSource">Shape source</label>
+        <select id="studioShapeSource">
+          <option value="saved">My saved shapes (when available)</option>
+          <option value="canon">Repository canon · ignore saved shapes</option>
+          <option value="compare">Canon vs my saved shapes · side by side</option>
+        </select>
+        <div class="studio-meta" id="studioShapeStatus" aria-live="polite">Built-in geometry. Saved personal shapes remain on this device.</div>
+        <label for="studioLoadout">Equipment loadout · studio only</label>
+        <select id="studioLoadout">
+          <option value="marching">Marching · full pack and webbing</option>
+          <option value="combat">Combat · essential field equipment</option>
+          <option value="reference">Reference · uniform and headwear</option>
+        </select>
+        <label class="studio-check"><input type="checkbox" id="studioBattleScale"> Show battle-scale readability preview</label>
         <details class="studio-comparison">
           <summary>MODEL COMPARISON</summary>
           <label class="studio-check"><input type="checkbox" id="studioClassicModel"> Show original block model</label>
@@ -214,28 +229,28 @@
       </details>
     </aside>
   </main>
-  <script src="data/unit-types.js?v=0.9.54"></script>
-  <script src="data/faction-kits.js?v=0.9.54"></script>
-  <script src="src/presentation/miniatures.js?v=0.9.54"></script>
-  <script src="src/diorama/study-motion.js?v=0.9.54"></script>
-  <script src="src/diorama/soldier-ik.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-profiles.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.54"></script>
-  <script src="src/diorama/weapon-archetypes.js?v=0.9.54"></script>
-  <script src="src/diorama/weapon-geometry.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-weapon-library.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-faction-gear.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-historical-weapons.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-shape-library.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-shape-geometry.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-shape-history.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-workbench.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-sdf-transitions.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-heroic-character.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-v2.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-model.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-studio-data.js?v=0.9.54"></script>
-  <script src="src/diorama/miniature-studio-poses.js?v=0.9.54"></script>
-  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.54"></script>
+  <script src="data/unit-types.js?v=0.9.62"></script>
+  <script src="data/faction-kits.js?v=0.9.62"></script>
+  <script src="src/presentation/miniatures.js?v=0.9.62"></script>
+  <script src="src/diorama/study-motion.js?v=0.9.62"></script>
+  <script src="src/diorama/soldier-ik.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-profiles.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-sculpt-shapes.js?v=0.9.62"></script>
+  <script src="src/diorama/weapon-archetypes.js?v=0.9.62"></script>
+  <script src="src/diorama/weapon-geometry.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-weapon-library.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-faction-gear.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-historical-weapons.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-shape-library.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-shape-geometry.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-shape-history.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-workbench.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-sdf-transitions.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-heroic-character.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-v2.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-model.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-studio-data.js?v=0.9.62"></script>
+  <script src="src/diorama/miniature-studio-poses.js?v=0.9.62"></script>
+  <script type="module" src="src/diorama/miniature-studio.js?v=0.9.62"></script>
 </body>
 </html>

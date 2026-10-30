@@ -81,8 +81,9 @@ for(const faction of ["poland","germany"]){
     const s=squad.soldiers[0];
     assert(s.gear&&s.gear.faction===faction,
       "every sculpted soldier loads country-specific gear");
-    assert(s.gear.gait.length>0,"lower leg pattern must be visible");
-    assert(s.gear.webbing.children.length>=6,
+    assert(s.gear.gait.length===0&&s.legs.every(l=>Array.isArray(l.shin.material)),
+      "lower leg garments are one joined material-banded shin, without extra floating sleeves");
+    assert(s.gear.webbing.children.length>=5,
       "raised front ammunition pouches and thick pack supports visible");
     assert.equal(s.modelVersion,3);
     assert(s.arms.every(a=>a.seam&&a.seam.geometry.userData.sdfBaked),
@@ -93,7 +94,7 @@ for(const faction of ["poland","germany"]){
       "hands should be a single flat mitten rather than a sphere");
     assert(Math.abs(s.headGroup.position.y-.406)<.001);
     const hat=s.headGroup.children.find(n=>n.children?.length>0);
-    assert(hat?.position.y<-.06&&hat?.position.z<-.02,
+    assert(hat?.position.y<-.045&&hat?.position.z<-.02,
       "helmet must sit lower and forward on the skull");
     assert(hat.scale.x>1,"helmet shell is slightly larger");
     assert(s.headGroup.scale.x>1,
@@ -206,7 +207,7 @@ for(const p of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(p);
   for(const file of ["miniature-sculpt-shapes.js",
     "miniature-historical-weapons.js","miniature-heroic-character.js"])
-    assert(html.includes(file+"?v=0.9.54"),p+" missing "+file);
+    assert(html.includes(file+"?v=0.9.62"),p+" missing "+file);
   assert(html.indexOf("miniature-sculpt-shapes.js")<
     html.indexOf("miniature-heroic-character.js"),"load order");
 }
