@@ -10,12 +10,12 @@
       ]);
       S.segment(mesh,from,to);return mesh;
     };
-    function stock(parent,mat,len=.67){
+    function stock(parent,mat,len=.76){
       // Continuous tapered wooden butt with a recognizable shoulder end.
-      const m=S.loft(parent,mat,"rifle-stock-primary",[
-        [-.5,.064,.093],[-.35,.073,.101],[.03,.068,.095],
-        [.33,.046,.078],[.5,.042,.070]
-      ],[0,-.038,.204]);
+      const m=S.loft(parent,mat,"rifle-stock-v45",[
+        [-.5,.079,.101],[-.35,.087,.110],[.03,.080,.105],
+        [.33,.056,.087],[.5,.049,.077]
+      ],[0,-.039,.217]);
       m.rotation.x=Math.PI/2;m.scale.y=len;
     }
     function longGun(root,mats,kind,withBipod=true){
@@ -23,21 +23,21 @@
       const rifle=kind==="kar98k"||kind==="wz29",
         polish=kind==="wz28",mg=kind==="mg34";
       const end=rifle?-.88:mg?-.96:-.89;
-      stock(root,mg?hardware:wood,mg?.59:.70);
+      stock(root,mg?hardware:wood,mg?.67:.77);
       // Four strong shapes: stock, receiver, fore-end / jacket, barrel.
-      S.box(root,steel,[.126,.099,rifle?.208:.250],[0,.010,-.129]);
+      S.box(root,steel,[.146,.112,rifle?.211:.256],[0,.010,-.129]);
       if(mg){
         // MG34 perforated jacket expressed as ONE dark cylindrical mass;
         // no microscopic vents or metal tabs at tabletop scale.
         barrel(root,hardware,point(0,.018,-.283),
-          point(0,.018,-.815),.040);
+          point(0,.018,-.815),.046);
         S.box(root,steel,[.134,.057,.103],[.084,.054,-.176]);
       }else{
-        S.box(root,wood,[.106,.075,rifle?.337:.293],
-          [0,-.020,rifle?-.366:-.334]);
+        S.box(root,wood,[.138,.096,rifle?.352:.308],
+          [0,-.021,rifle?-.366:-.334]);
       }
       barrel(root,steel,point(0,.018,mg?-.795:-.419),
-        point(0,.018,end),rifle?.017:.021);
+        point(0,.018,end),rifle?.026:.030);
       // One oversized front sight is more useful than dozens of fittings.
       S.box(root,steel,[.025,.058,.022],[0,.059,end+.032]);
       if(rifle){
@@ -45,7 +45,7 @@
         S.box(root,steel,[.034,.025,.088],[0,.069,-.103]);
       }else if(polish){
         // Browning wz.28: distinctive downward-facing box magazine.
-        S.box(root,steel,[.083,.178,.090],[0,-.132,-.183]);
+        S.box(root,steel,[.105,.180,.107],[0,-.132,-.183]);
       }else{
         // MG34: obvious receiver/feed box on the side of the gun.
         S.box(root,steel,[.165,.064,.120],[.091,.033,-.175]);
@@ -63,26 +63,28 @@
       }
       return {
         muzzle:point(0,.018,end-.023),
-        primary:point(.067,-.082,.040),
-        secondary:point(-.072,-.057,-.322),bipod
+        // Grip targets intersect the wood/receiver volumes: the single
+        // mitten meshes now cradle them instead of hovering to either side.
+        primary:point(.047,-.091,-.041),
+        secondary:point(-.048,-.076,-.345),bipod
       };
     }
     function submachineGun(root,mats,kind){
       const {steel,wood,hardware}=mats;
-      S.box(root,steel,[.118,.110,.245],[0,.018,-.17]);
+      S.box(root,steel,[.135,.117,.250],[0,.018,-.17]);
       barrel(root,steel,point(0,.018,-.280),
-        point(0,.018,kind==="mp38"?-.66:-.62),.024);
+        point(0,.018,kind==="mp38"?-.66:-.62),.031);
       S.box(root,steel,[.075,.195,.083],[0,-.151,-.171]);
       // A single readable handle/stock rather than tiny wire pieces.
       S.box(root,kind==="mp38"?hardware:wood,
         [.083,.094,.260],[0,-.045,.105]);
       return {muzzle:point(0,.018,kind==="mp38"?-.68:-.64),
-        primary:point(.030,-.116,.014),
-        secondary:point(-.057,-.045,-.238)};
+        primary:point(.036,-.113,-.006),
+        secondary:point(-.040,-.067,-.238)};
     }
     function pistol(root,mats){
       const {steel,wood}=mats;
-      S.box(root,steel,[.095,.082,.225],[0,0,-.075]);
+      S.box(root,steel,[.108,.089,.225],[0,0,-.075]);
       S.box(root,wood,[.075,.160,.078],[0,-.114,.013]).rotation.x=-.20;
       return {muzzle:point(0,.013,-.198),
         primary:point(.026,-.115,.014),
