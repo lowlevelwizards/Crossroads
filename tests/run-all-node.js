@@ -51,6 +51,7 @@ const tests = [
   "3d-v173-model-footprints.test.js",
   "3d-v174-living-firefight.test.js",
   "3d-v175-crew-suppression.test.js",
+  "3d-v176-terrain-interactions.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
