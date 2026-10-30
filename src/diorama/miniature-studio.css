@@ -82,3 +82,12 @@ button,select,input{font:inherit}button,select{cursor:pointer}
  .workbench-shell{padding:11px 9px}
  .wb-toolbar button{min-height:40px}
 }
+
+/* Studio-only inspection tools. The battle-scale corner shares the renderer. */
+.studio-battle-label{position:absolute;top:12px;right:12px;z-index:4;
+  pointer-events:none;padding:5px 8px;border-radius:5px;
+  background:#34483f;color:#f0f1e8;font-size:9px;font-weight:800;
+  letter-spacing:.12em}
+.studio-battle-label[hidden]{display:none}
+#studioShapeStatus{font-size:12px;line-height:1.5}
+#studioShapeSource,#studioLoadout{width:100%}
