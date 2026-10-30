@@ -105,6 +105,16 @@
             <label class="wb-import">IMPORT JSON<input type="file" id="wbImport" accept=".json,application/json"></label>
           </div>
           <details class="wb-advanced">
+            <summary>REMOVE SAVED SHAPE</summary>
+            <div class="wb-toolbar">
+              <button type="button" id="wbDiscardDraft">DELETE DRAFT</button>
+              <button type="button" id="wbRevertPublished">RESTORE ORIGINAL</button>
+            </div>
+            <p class="field-note">Delete Draft discards your edits for this part.
+            Restore Original also removes the approved shape on this device
+            and reloads the model. Built-in body parts cannot be deleted.</p>
+          </details>
+          <details class="wb-advanced">
             <summary>GLB INTERCHANGE (ADVANCED)</summary>
             <div class="wb-toolbar">
               <button type="button" id="wbExportGLB">EXPORT PART GLB</button>
