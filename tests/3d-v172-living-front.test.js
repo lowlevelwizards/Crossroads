@@ -27,6 +27,10 @@ assert.equal(audit.over,1);
 const socket={x:1,z:0,normal:{x:1,z:0},outlet:{x:1.1,z:0}};
 const inside=w.Crossroads3DGarrisonWindows.authoredSlots([socket],{x:4,z:0},2);
 assert(inside.length===2&&inside[1].x<inside[0].x);
+const fallback=w.Crossroads3DGarrisonWindows.slots(
+ {x:0,z:0,width:5,depth:4},{x:-10,z:0},3,[socket]);
+assert.equal(fallback.length,3,
+ "unusable authored windows must fall back to safe facade placement");
 const assault=w.Crossroads3DAssaultMotion;
 const g=assault.create({x:0,z:0},{x:4,z:0});g.age=.35;
 assert(assault.individualPose(g,0).lean>0);

@@ -44,8 +44,12 @@
     return points;
   }
   function slots(bounds,threat,count,sockets=null){
-    if(Array.isArray(sockets)&&sockets.length)
-      return authoredSlots(sockets,threat,count);
+    if(Array.isArray(sockets)&&sockets.length){
+      const authored=authoredSlots(sockets,threat,count);
+      if(authored.length)return authored;
+      // A valid building must never lose its soldiers when its authored
+      // windows face away from the threat or contain incomplete metadata.
+    }
     const face=facade(bounds,threat);
     const alongLength=face.axis==="x"?bounds.depth:bounds.width;
     // Use actual facade bays; never place a figure in the wall corner.
