@@ -102,8 +102,8 @@
     // Feet are shaped longitudinally, with a flattened sole, instep and toe.
     function bootGeometry(){
       const rings=[
-        [-.210,.075,.045,-.015], // toe: broad and low
-        [-.165,.132,.087,.005],
+        [-.210,.075,.045,-.040], // toe: broad and grounded
+        [-.165,.132,.087,-.003],
         [-.060,.124,.101,.029],
         [ .060,.109,.118,.047],
         [ .165,.083,.124,.060],
@@ -121,6 +121,18 @@
           const a=k*(sides+1)+i,b=a+sides+1;
           indices.push(a,a+1,b,b,a+1,b+1);
         }
+      // Cap the heel and toe inside the same boot mesh so there are no
+      // detached sole plates, visible open ends or floating joint pieces.
+      for(const end of [0,rings.length-1]){
+        const ring=rings[end],center=verts.length/3;
+        verts.push(0,ring[3],ring[0]);
+        for(let i=0;i<sides;i++){
+          const a=end*(sides+1)+i;
+          const b=end*(sides+1)+(i+1)%sides;
+          if(end===0)indices.push(center,b,a);
+          else indices.push(center,a,b);
+        }
+      }
       const g=new THREE.BufferGeometry();
       g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
       g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
