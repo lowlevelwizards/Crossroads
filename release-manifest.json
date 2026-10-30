@@ -142,7 +142,9 @@
     "tests/3d-v154-weapon-rebuild.test.js",
     "tests/3d-v162-soldier-sculpt.test.js",
     "tests/3d-v169-sculpt-corrections.test.js",
-    "tests/3d-v170-identity-pose.test.js"
+    "tests/3d-v170-identity-pose.test.js",
+    "src/diorama/soldier-pose-controller.js",
+    "tests/3d-v171-tactical-posture.test.js"
   ],
-  "threeDCacheVersion": "0.9.70"
+  "threeDCacheVersion": "0.9.71"
 }
