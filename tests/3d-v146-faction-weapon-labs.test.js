@@ -35,17 +35,17 @@ assert.equal(weapons.read("wz29").length,weapons.defaults.wz29.length);
 assert.throws(()=>weapons.parse("unknown",{}));
 assert.equal(gear.specs.poland.helmet,"wz31");
 assert.equal(gear.specs.germany.helmet,"m35");
-assert.equal(gear.specs.poland.lower,"wraps");
-assert.equal(gear.specs.germany.lower,"marching-boots");
+assert.equal(gear.specs.poland.lower,"ankle-boots-puttees");
+assert.equal(gear.specs.germany.lower,"jackboots");
 assert(gear.specs.poland.pouchY>-.14);
 assert(gear.specs.germany.pouchY>-.14);
 assert(sdf.helmetField([.268,.23,.12],"germany")!==
   sdf.helmetField([.268,.23,.12],"poland"),
   "M35 and wz31 shells must differ geometrically, not just paint");
 const gearCode=read("src/diorama/miniature-faction-gear.js");
-for(const term of ["polish-puttee","german-marching-boot",
-  "german-gasmask-canister-1939","polish-roll-1939","german-roll-1939",
-  "pouchHeight","role==="])assert(gearCode.includes(term));
+for(const term of ["surfaceRibbon","setBodyWidth",
+  "m35-gasmask-1939","wz33-blanket-roll","tornister-blanket-roll",
+  "pouchHeight","role"])assert(gearCode.includes(term));
 const model=read("src/diorama/miniature-heroic-character.js");
 assert(model.includes("Crossroads3DFactionGear?.create"));
 assert(model.includes("gearFactory?.outfit"));
@@ -55,7 +55,7 @@ assert(historical.includes("weaponKind||kindFor"));
 assert(historical.includes("const recipe=settings||lib.read(kind)"));
 assert(historical.includes("deployedSections:deployedGrips?.parts"));
 const studio=read("src/diorama/miniature-studio.js");
-assert(studio.includes('compareCheckbox?.addEventListener("change",build)'));
+assert(studio.includes('compareCheckbox?.addEventListener("change",()=>{'));
 assert(studio.includes("compareSoldier.applyPose(posed)"));
 const lab=read("src/diorama/weapon-lab.js");
 new vm.Script(lab,{filename:"weapon-lab.js"});
