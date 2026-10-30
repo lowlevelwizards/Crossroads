@@ -43,7 +43,7 @@
         continue;
       }
       const target=goals.slice().sort((a,b)=>
-        (dist(unit,a)+(load[a.id]||0)*6)-(dist(unit,b)+(load[b.id]||0)*6)||
+        (dist(unit,a)+(load[a.id]||0)*15)-(dist(unit,b)+(load[b.id]||0)*15)||
         String(a.id).localeCompare(String(b.id)))[0];
       if(!target){
         const enemy=nearest(unit,enemies);
