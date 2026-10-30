@@ -89,8 +89,9 @@ const weapon=read("src/diorama/miniature-historical-weapons.js");
 assert(!weapon.includes(".022*bore,-.082"),"floating gas tube removed");
 assert(weapon.includes("G.block(bipod,hardware,[.073,.062,.080]"),
  "bipod hinge should visibly connect to gun");
-for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"])
- assert(read(page).includes("miniature-sculpt-shapes.js?v=0.9.70"));
+for(const page of ["miniature-studio.html","battle3d.html"])
+ assert(read(page).includes("miniature-sculpt-shapes.js?v=0.9.71"));
+assert(read("editor3d.html").includes("miniature-sculpt-shapes.js?v=0.9.71"));
 assert(read("miniature-studio.html").includes('id="studioAttachmentDebug"'));
 assert(read("src/diorama/miniature-studio.js").includes("setAttachmentDebug?."));
 const poses=window.Crossroads3DStudioPoses;

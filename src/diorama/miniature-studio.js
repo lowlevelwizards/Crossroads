@@ -133,6 +133,18 @@
     marker.renderOrder=100;rigMarkers.add(marker);joints.push(marker);
   }
   rigMarkers.visible=false;
+  // Independent colored weapon contacts: stock, sight, firing grip, support grip.
+  const gripMarkers=new THREE.Group();scene.add(gripMarkers);
+  const contactColors=[0xd37b5b,0x69b8ca,0xe0b258,0x89a18c];
+  const contactGeometry=new THREE.SphereGeometry(.043,10,8);
+  const contactDots=contactColors.map(color=>{
+    const marker=new THREE.Mesh(contactGeometry,
+      new THREE.MeshBasicMaterial({color,depthTest:false}));
+    marker.renderOrder=105;gripMarkers.add(marker);return marker;
+  });
+  gripMarkers.visible=false;
+  const transitionFrom=$("studioTransitionFrom"),transitionTo=$("studioTransitionTo");
+  const aimDirection=$("studioAimDirection"),gripDebug=$("studioGripDebug");
   function refreshWireframe(){
     if(!activeFigure)return;
     const checked=$("studioWireframe").checked;
@@ -456,10 +468,35 @@
     rigMarkers.visible=$("studioShowJoints").checked;
   });
   $("studioWireframe").addEventListener("change",refreshWireframe);
+  gripDebug?.addEventListener("change",()=>{gripMarkers.visible=gripDebug.checked;});
+  aimDirection?.addEventListener("input",()=>{
+    $("studioAimDirectionValue").textContent=aimDirection.value+"°";
+    renderPose(elapsed);
+  });
+  for(const select of [transitionFrom,transitionTo])
+    select?.addEventListener("change",()=>renderPose(elapsed));
   function renderPose(t){
     const soldier=activeSoldier;
     if(!soldier)return;
     const pose=poses.frame(poseSelect.value,t,motion);
+    const posture=window.Crossroads3DSoldierPose;
+    if(poseSelect.value==="transition"&&posture){
+      const q=Math.max(0,Math.min(1,
+        ((t%poses.duration("transition"))+poses.duration("transition"))%
+        poses.duration("transition")/poses.duration("transition")));
+      const from=posture.lab(transitionFrom.value,1);
+      const to=posture.lab(transitionTo.value,1);
+      const ease=q*q*(3-2*q);
+      pose.weaponReadiness=(from.weaponReadiness||0)*(1-ease)+
+        (to.weaponReadiness||0)*ease;
+      pose.weaponBlend=(from.weaponBlend||0)*(1-ease)+
+        (to.weaponBlend||0)*ease;
+    }
+    if(poseSelect.value!=="reference"&&poseSelect.value!=="tpose"){
+      const radians=(Number(aimDirection?.value)||0)*Math.PI/180;
+      pose.headYaw=(pose.headYaw||0)+radians*.62;
+      pose.torsoYaw=(pose.torsoYaw||0)+radians*.30;
+    }
     if(soldier.setGunDeployed)
       soldier.setGunDeployed(poseSelect.value==="pack"?t<.9:
         poseSelect.value==="deploy"?t>=.9:true);
@@ -507,6 +544,17 @@
         joints[8+i*3].position.copy(markerAt(soldier.breathing,arm.hand.position));
       }
       for(let i=6;i<12;i++)joints[i].visible=true;
+      gripMarkers.visible=!!gripDebug?.checked&&!!soldier.weaponSocket;
+      if(gripMarkers.visible){
+        const locations=[
+          soldier.stockSocket?.(),soldier.sightSocket?.(),
+          soldier.weaponSocket("primary"),soldier.weaponSocket("secondary")
+        ];
+        for(let i=0;i<contactDots.length;i++){
+          contactDots[i].position.copy(markerAt(
+            soldier.breathing,locations[i]||new THREE.Vector3()));
+        }
+      }
       return;
     }
     for(let i=6;i<12;i++)joints[i].visible=false;

@@ -4,7 +4,11 @@
 (() => {
   const ACTIONS=Object.freeze([
     ["reference","Standing / unarmed"],["tpose","T-pose / unarmed"],
-    ["idle","Standing / equipped"],["aim","Aiming"],["fire","Shooting"],
+    ["idle","Standing / equipped"],["relaxed","Relaxed carry"],
+    ["ready","Alert / ready"],["acquire","Raise to iron sights"],
+    ["aim","Aiming / ADS"],["fire","Shooting"],["cycle","Cycle bolt"],
+    ["recover","Lower after firing"],["scan","Scanning for threats"],
+    ["transition","Custom posture transition"],
     ["reload","Reloading"],["walk","Walking"],["run","Running"],
     ["turn","Turning / pivot"],["down","Down / low profile"],
     ["ambush","Ambush / ready"],["cover","In cover"],
@@ -80,6 +84,16 @@
       state.lean=u*.35;
       state.yaw=Math.sin(q*Math.PI)*.11;
     }
+    // Same pure posture definitions are inspected without mutable battle state.
+    Object.assign(state,window.Crossroads3DSoldierPose?.lab(pose,q)||{});
+    if(pose==="aim"){state.weaponReadiness=1;state.weaponBlend=1;}
+    if(pose==="fire"){state.weaponReadiness=1;state.weaponBlend=1;}
+    if(pose==="cycle"){
+      state.weaponReadiness=1;state.weaponBlend=.8;
+      state.weaponCycle=Math.sin(q*Math.PI);
+    }
+    if(pose==="ambush"){state.weaponReadiness=.8;state.weaponBlend=0;}
+    if(pose==="kneel")state.weaponReadiness=1;
     if(pose==="casualty"){
       state.fall=clamp(q*1.15,0,1);
       state.roll=state.fall*1.25; // classic-model compatibility

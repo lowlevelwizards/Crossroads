@@ -17,7 +17,7 @@
       const def=A.defs[kind];if(!Object.prototype.hasOwnProperty.call(A.defs,kind))throw Error("Unknown weapon "+kind);
       const p=lib.parse(kind,values),hero=p.exaggeration;
       const parts={};
-      for(const name of ["stock","receiver","foreEnd","barrel","magazine","grip","sights"]){
+      for(const name of ["stock","receiver","foreEnd","barrel","magazine","grip","sights","bolt"]){
         parts[name]=new THREE.Group();root.add(parts[name]);
       }
       const d=def.receiver*p.receiverLength,
@@ -82,6 +82,10 @@
             [0,.055,muzzle+.044]);
           G.block(parts.sights,steel,[.029,.023,.078],
             [.045,.079,back-.047]);
+          // Single tiny moving bolt is enough to read cycling at model scale.
+          const boltHandle=G.block(parts.bolt,steel,
+            [.047,.035,.081],[.082,.09,back-.045]);
+          boltHandle.userData.cycleRest=boltHandle.position.z;
           primary=point(.06,-.119,back+.032);
         }else if(def.family==="bar"){
           G.taperedFore(parts.foreEnd,wood,foreTip,front+.035,
@@ -190,7 +194,17 @@
         deployedSections:deployedGrips?.parts||null,
         dimensions:grips.dimensions,anchors:grips.anchors,
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
-        setDeployed,isDeployed,setBipod};
+        setDeployed,isDeployed,setBipod,
+        animateAction:phase=>{
+          const value=Math.max(0,Math.min(1,phase||0));
+          // Manual bolt cycling only for actual bolt-action weapon families.
+          const handle=grips.parts.bolt?.children?.[0];
+          if(handle&&Number.isFinite(handle.userData.cycleRest)){
+            handle.position.z=handle.userData.cycleRest-
+              Math.sin(value*Math.PI)*.095;
+            handle.rotation.z=Math.sin(value*Math.PI)*.23;
+          }
+        }};
     }
     return Object.freeze({build,kindFor,profile});
   }

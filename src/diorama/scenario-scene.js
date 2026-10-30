@@ -34,6 +34,7 @@ function initialize(THREE) {
   const authoredTerrain=layout.entries;
   const motion = window.CrossroadsDioramaMotion;
   const soldierActions=window.Crossroads3DSoldierActions;
+  const poseController=window.Crossroads3DSoldierPose;
   const soldierIK=window.Crossroads3DSoldierIK;
   const terrainContact=window.Crossroads3DTerrainContact;
   const roughRegions=authoredTerrain.filter(e=>e.rules?.movement==="rough")
@@ -1382,6 +1383,8 @@ function initialize(THREE) {
       shooter.soldiers.forEach((soldier,i)=>{
         if(soldier.figure.visible){
           soldier.aimTarget=facing;
+          soldier.presentationFacing=facing;
+          soldier.presentationAimUntil=performance.now()+1550+i*55;
           soldier.aimDelay=i*.020;
         }
       });
@@ -1396,6 +1399,14 @@ function initialize(THREE) {
       const groups=e.groups||[];
       const firing=weaponPresentation?.schedule(groups,shooter.soldiers.map(s=>
         ({role:s.role,visible:s.figure.visible})))||[];
+      // Keep the stock shouldered until the *last* scheduled muzzle event,
+      // including slower machine-gun volleys and staggered squad fire.
+      shooter.soldiers.forEach((soldier,i)=>{
+        const latest=firing.filter(shot=>shot.soldierIndex===i)
+          .reduce((max,shot)=>Math.max(max,shot.delay||0),0);
+        soldier.presentationAimUntil=performance.now()+
+          1050+Math.round(latest*1000)+i*45;
+      });
       shooter.root.updateMatrixWorld(true);
       for(const shot of firing){
         const soldier=shooter.soldiers[shot.soldierIndex];
@@ -1450,6 +1461,10 @@ function initialize(THREE) {
   let previewUnit=null;
   function clearFirePreview(){
     previewUnit=null;pendingTargetAssessment=null;pendingTargetId=null;
+    selectedSquad?.soldiers?.forEach(soldier=>{
+      if(Number.isFinite(soldier.previewFacing))soldier.aimTarget=null;
+      soldier.previewFacing=null;
+    });
     fireTag.hidden=true;
     firePreview.visible=false;
     for(const m of [...firePreview.children]){
@@ -1461,6 +1476,15 @@ function initialize(THREE) {
     if(!selectedSquad)return;
     previewUnit=squad;
     pendingTargetId=squad.unit.id;pendingTargetAssessment=assessment;
+    if(battle?.snapshot?.phase==="choose-target"&&assessment.legal){
+      const source=selectedSquad.root.position,dest=squad.root.position;
+      const facing=motion.heading(
+        {x:source.x,z:source.z},{x:dest.x,z:dest.z});
+      selectedSquad.soldiers.forEach((soldier,i)=>{
+        soldier.previewFacing=facing;soldier.aimTarget=facing;
+        soldier.aimDelay=i*.045;
+      });
+    }
     fireTag.textContent=shotExplanation?
       shotExplanation.summarize(assessment):
       (assessment.legal?"Legal target":"BLOCKED · "+(assessment.reason||"No legal shot"));
@@ -1895,9 +1919,18 @@ function initialize(THREE) {
       coverCache:null,garrisonCache:null,formationCache:null,
       lastMoveConstraints:null,entrySequence:null,
       controller:bridge.createMovementController(unit,scenarioTerrain,getLivingUnits)};
-    for(const slot of bridge.slotsFor(unit))
+    const soldierSlots=bridge.slotsFor(unit);
+    for(const slot of soldierSlots)
       makeSoldier(squad,slot.dx,slot.dz,(unit.faction==="red"?Math.PI/2:-Math.PI/2)+.045*(slot.index-2),
         slot.recipe,slot.index,slot.index);
+    squad.soldiers.forEach((soldier,i)=>{
+      soldier.poseState=poseController?.create({
+        faction:soldierSlots[i]?.recipe?.kit?.factionId||"poland",
+        role:soldier.role||"rifle",index:i
+      })||null;
+      soldier.previewFacing=null;soldier.presentationFacing=null;
+      soldier.presentationAimUntil=0;soldier.weaponShotPending=false;
+    });
     const radius=unit.role==="officer"?.53:1.27;
     squad.ringBaseRadius=radius;
     if(unit.role==="officer"){
@@ -2061,6 +2094,9 @@ function initialize(THREE) {
           soldier.hitShock=0;soldier.recoil=0;
           soldier.pendingRemoval=false;soldier.casualtyAnimating=false;
           soldier.aimTarget=null;soldier.grounded=false;
+          soldier.previewFacing=null;soldier.presentationFacing=null;
+          soldier.presentationAimUntil=0;soldier.weaponShotPending=false;
+          soldier.poseState?.reset();
           for(const leg of soldier.legs){
           leg.mesh.rotation.x=leg.side*.08;
           leg.boot.position.y=.17;leg.boot.position.z=-.055;
@@ -2670,10 +2706,13 @@ function initialize(THREE) {
         soldier.figure.scale.setScalar(MINIATURE_SCALE*
           (1+(selection>0?Math.sin((1-selection)*Math.PI)*.095:0)));
         if(!soldier.casualtyAnimating)soldier.figure.rotation.z=wiggle;
-        if(Number.isFinite(soldier.aimTarget)&&!isWalking){
+        if((Number.isFinite(soldier.aimTarget)||
+             Number.isFinite(soldier.previewFacing))&&!isWalking){
           if(soldier.aimDelay>0)soldier.aimDelay-=dt;
           else{
-            const difference=motion.shortestDelta(soldier.figure.rotation.y,soldier.aimTarget);
+            const difference=motion.shortestDelta(soldier.figure.rotation.y,
+              Number.isFinite(soldier.previewFacing)?
+                soldier.previewFacing:soldier.aimTarget);
             soldier.figure.rotation.y+=difference*Math.min(1,dt*(5.6+soldierIndex%3));
             if(Math.abs(difference)<.014)soldier.aimTarget=null;
           }
@@ -2720,7 +2759,8 @@ function initialize(THREE) {
                 {x:wx,z:wz},slot.look);
             }
           }
-          if(slot?.look&&!assault&&soldier.aimTarget==null&&soldier.recoil<.02){
+          if(slot?.look&&!assault&&soldier.aimTarget==null&&!Number.isFinite(soldier.previewFacing)&&
+             performance.now()>(soldier.presentationAimUntil||0)&&soldier.recoil<.02){
             const at={x:squad.root.position.x+soldier.figure.position.x,
               z:squad.root.position.z+soldier.figure.position.z};
             const facing=motion.heading(at,slot.look);
@@ -2884,10 +2924,29 @@ function initialize(THREE) {
           const left=soldier.legs.find(leg=>leg.side===-1);
           const right=soldier.legs.find(leg=>leg.side===1);
           const baseLift=soldier.baseY-(soldier.crouch||0)*.31;
+          const now=performance.now();
+          const previewing=Number.isFinite(soldier.previewFacing)&&
+            battle?.snapshot?.phase==="choose-target";
+          const firing=now<(soldier.presentationAimUntil||0);
+          const knownYaw=previewing?soldier.previewFacing:
+            firing?soldier.presentationFacing:null;
+          const posture=soldier.poseState?.step(dt,{
+            walking:isWalking,down:!!squad.unit.down,pins:squad.unit.pins||0,
+            cover:soldier.coverPose||0,
+            order:(battle?.snapshot?.phase==="choose-target"&&
+              selectedSquad===squad)?"Fire":squad.unit.order,
+            preview:previewing,firing,targetYaw:knownYaw,
+            facing:soldier.figure.rotation.y,
+            recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
+          })||{};
+          soldier.weaponShotPending=false;
           soldier.applyPose({
+            ...posture,
             action:isWalking?(moving.run?"run":"walk"):
               (squad.unit.down?"down":squad.unit.pins>0?"pinned":
-                squad.unit.mmgDeployed?"ambush":"idle"),
+                soldier.coverPose>.25?"cover":
+                (squad.unit.mmgDeployed||squad.unit.order==="Ambush")?
+                  "ambush":squad.unit.order==="Rally"?"rally":"idle"),
             crouch:soldier.crouch||0,
             lean:Math.max(0,-soldier.breathing.rotation.x),
             roll:soldier.breathing.rotation.z,
@@ -2897,7 +2956,7 @@ function initialize(THREE) {
             rightLift:Math.max(0,(right?.boot.position.y??.17)-.17),
             leftReach:(left?.boot.position.z??-.055)+.055,
             rightReach:(right?.boot.position.z??-.055)+.055,
-            aim:!!soldier.aimTarget||squad.unit.order==="Fire",
+            aim:posture.weaponBlend>.85,
             recoil:soldier.recoil||0
           });
         }
@@ -2916,8 +2975,11 @@ function initialize(THREE) {
       const burst=delayedMuzzleBursts[i];
       burst.delay-=dt;
       if(burst.delay>0)continue;
-      if(burst.soldier)burst.soldier.recoil=Math.max(
-        burst.soldier.recoil||0,burst.recoil);
+      if(burst.soldier){
+         burst.soldier.recoil=Math.max(
+           burst.soldier.recoil||0,burst.recoil);
+         burst.soldier.weaponShotPending=true;
+       }
       muzzleBurst(burst);
       delayedMuzzleBursts.splice(i,1);
     }
