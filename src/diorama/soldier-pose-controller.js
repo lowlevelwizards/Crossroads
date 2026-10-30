@@ -17,14 +17,15 @@
   function create({faction="poland",role="rifle",index=0}={}){
     const tune=profile(role);
     let readiness=0,ads=0,head=0,torso=0,linger=0;
-    let memoryYaw=null,reaction=0,cycle=0;
+    let memoryYaw=null,reaction=0,cycle=0,time=0;
     const offset=stagger(index);
     function reset(){
       readiness=0;ads=0;head=0;torso=0;linger=0;
-      memoryYaw=null;reaction=0;cycle=0;
+      memoryYaw=null;reaction=0;cycle=0;time=0;
     }
     function step(dt,input={}){
       const d=clamp(Number(dt)||0,0,.1);
+      time+=d;
       const walking=!!input.walking,down=!!input.down,casualty=!!input.casualty;
       const pinned=Number(input.pins)||0;
       const engaged=!!input.preview||!!input.firing;
@@ -51,8 +52,15 @@
       if(input.shot&&tune.cycle>.16)cycle=1;
       cycle=Math.max(0,cycle-d/Math.max(.12,tune.cycle));
       const turn=attention?angle(memoryYaw-(Number(input.facing)||0)):0;
-      const desiredHead=attention?clamp(turn,-.42,.42):0;
-      const desiredTorso=attention?clamp(turn*.48,-.22,.22):0;
+      // Ambush scans an empty assigned sector. It NEVER samples hidden
+      // enemies: attention always originates from a known target yaw.
+      const scanning=input.order==="Ambush"&&!attention&&!walking&&
+        !down&&!casualty;
+      const phase=time*1.15+index*.63;
+      const desiredHead=attention?clamp(turn,-.42,.42):
+        scanning?Math.sin(phase)*.14:0;
+      const desiredTorso=attention?clamp(turn*.48,-.22,.22):
+        scanning?Math.sin(phase*.65)*.045:0;
       head=mix(head,desiredHead,Math.min(1,d*8.0));
       torso=mix(torso,desiredTorso,Math.min(1,d*4.8));
       const sideCarry=walking&&faction==="germany"&&
