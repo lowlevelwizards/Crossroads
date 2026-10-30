@@ -119,10 +119,12 @@
       // Slightly squared heroic head with broad cheeks and a restrained
       // chin. One main volume, no projecting nose or brows.
       const editableHead=S.loft(headGroup,mat.skin,"head-silhouette-v5",[
-        [-.5,.096,.112],[-.38,.163,.158],[-.17,.202,.185],
-        [.12,.218,.194],[.39,.206,.186],[.5,.158,.150]
+        [-1,.44,.58],[-.76,.75,.81],[-.34,.93,.96],
+        [.24,1,1],[.78,.945,.97],[1,.72,.78]
       ],[0,.132,-.002],12);
-      editableHead.scale.y=.435;
+      // Keep historical approved Workbench head contours in their original
+      // normalized coordinate space: switching shape sources stays safe.
+      editableHead.scale.set(.218,.219,.192);
       for(const side of [-1,1]){
         S.soft(headGroup,mat.skin,[side*.205,.085,.008],
           [.038,.054,.040]);
