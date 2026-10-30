@@ -118,10 +118,10 @@
       headGroup.position.set(0,.406,-.004);breathing.add(headGroup);
       // Slightly squared heroic head with broad cheeks and a restrained
       // chin. One main volume, no projecting nose or brows.
-      const editableHead=S.loft(headGroup,mat.skin,"head-silhouette-v5",[
-        [-1,.44,.58],[-.76,.75,.81],[-.34,.93,.96],
-        [.24,1,1],[.78,.945,.97],[1,.72,.78]
-      ],[0,.132,-.002],12);
+      const editableHead=S.loft(headGroup,mat.skin,"head-silhouette-v6",[
+        [-1,.64,.68],[-.79,.79,.83],[-.37,.95,.96],
+        [.13,1,1],[.68,.95,.96],[1,.73,.79]
+      ],[0,.132,-.002],16);
       // Keep historical approved Workbench head contours in their original
       // normalized coordinate space: switching shape sources stays safe.
       editableHead.scale.set(.218,.219,.192);
@@ -241,6 +241,10 @@
       };
       soldier.setGunDeployed(squad.unit.mmgDeployed??true);
       soldier.updateMuzzle=()=>muzzleLocal.copy(armaments.muzzle());
+      soldier.setAttachmentDebug=enabled=>{
+        soldier.attachmentsDebug=!!enabled;
+        gear.setDebug?.(!!enabled);
+      };
       soldier.applyProfile=(raw={})=>{
         const p=window.Crossroads3DMiniatureProfiles?.normalize(raw)||raw;
         headGroup.scale.setScalar(1.08*(p.headSize||1));
@@ -248,6 +252,8 @@
         torso.scale.x=1.08*(p.bodyWidth||1);
         torso.scale.y=.91;
         gear.setBodyWidth?.(p.bodyWidth||1);
+        // When attachments are being inspected, reflow debug pins as well.
+        if(soldier.attachmentsDebug)gear.setDebug?.(true);
         packGroup.scale.setScalar(1.13*(p.packSize||1)*(role==="officer"?.70:1));
         for(const leg of legs)leg.boot.scale.setScalar(.92*(p.bootSize||1));
         soldier.profile=p;
@@ -384,6 +390,24 @@
             cover?(side<0?-.15:.10):
             (!moving&&action==="idle"?(side<0?-.018:.038):0);
           const foot=leg.boot;
+          if(kneel){
+            // True braced kneel: rear knee touches the base, front boot is
+            // forward and supports the torso. We retain articulated shins.
+            const rear=side<0;
+            const hip=v(side*.146,.555,rear?.094:.025);
+            const knee=v(side*.150,rear?.199:.410,rear?.145:-.176);
+            const ankle=v(side*.145,rear?.242:.245,rear?.309:-.245);
+            foot.position.set(side*.145,.15,rear?.309:-.245);
+            foot.rotation.set(rear?-.14:.05,side*.045,0);
+            S.segment(leg.mesh,hip,knee);
+            S.segment(leg.shin,knee,ankle);
+            if(leg.seam){
+              leg.seam.position.copy(knee);
+              leg.seam.quaternion.setFromUnitVectors(v(0,1,0),
+                hip.clone().sub(ankle).normalize());
+            }
+            continue;
+          }
           foot.position.set(side*(.145+crouch*.024),
             .15+lift*(1-crouch*.3),-.045+stride+stance);
           foot.rotation.set(0,side*(crouch*.11)+
@@ -445,7 +469,7 @@
               v(side*.314,-.050,-.004)):
             shoulder.clone().lerp(wrist,.47);
           if(!reference){
-            const pole=v(side*.16,-.115,pose.aim?.04:.09);
+            const pole=v(side*.16,kneel?-.048:-.115,pose.aim?.04:.09);
             elbow.add(pole.multiplyScalar(clamp(distance/.44,.7,1.25)));
           }
           // More natural compact arm bend, no straight blocky L-pose.
