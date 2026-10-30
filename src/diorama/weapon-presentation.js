@@ -68,7 +68,7 @@
     // physical model roster. Never shorten it merely for lack of a roster.
     const count=(groups||[]).reduce((n,g)=>
       n+Math.max(0,Math.floor(g?.shots||0)),0);
-    return Math.max(.42,Math.min(96,count)*.12+.25);
+    return Math.max(.42,Math.min(96,count)*.19+.25);
   }
   // Decorative results originate strictly from adjudicated results.
   function impactPlan(event,visibleCount=6){

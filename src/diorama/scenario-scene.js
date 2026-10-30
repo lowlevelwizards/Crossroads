@@ -1019,11 +1019,11 @@ function initialize(THREE) {
   // Small shared visual budgets protect mobile WebGL when a whole squad fires.
   const MAX_PARTICLES=84;
   function scheduleFire(origin,target,role="rifle",delay=0,soldier=null,recoil=.18,
-     shooter=null,opponent=null){
+     shooter=null,opponent=null,shotIndex=0){
     // The origin and target are evaluated again at emission time because
     // live bodies have moved since the director staged this shot.
     delayedMuzzleBursts.push({origin,target,role,soldier,recoil,shooter,opponent,
-      heavy:role==="lmg"||role==="mmg",delay:Math.max(0,delay)});
+      shotIndex,heavy:role==="lmg"||role==="mmg",delay:Math.max(0,delay)});
   }
   function addShotEffect(geometry,color,x,y,z,duration,extra={}){
     if(visualEffects.length>=MAX_PARTICLES)return;
@@ -1436,7 +1436,7 @@ function initialize(THREE) {
         end.z+=Math.cos(shot.soldierIndex*1.91)*.13;
         end.y=terrainY(end.x,end.z)+.53;
         scheduleFire(origin,end,shot.role,shot.delay,soldier,shot.recoil,
-          shooter,target);
+          shooter,target,shot.shotIndex);
       }
     }else if(stage.phase==="impact"&&target){
       beginCasualtyRemovals(target);
@@ -3064,7 +3064,7 @@ function initialize(THREE) {
           const firing=now<(soldier.presentationAimUntil||0);
           const knownYaw=previewing?soldier.previewFacing:
             firing?soldier.presentationFacing:null;
-          const posture=soldier.poseState?.step(dt,{
+          const postureBase=soldier.poseState?.step(dt,{
             walking:isWalking,down:!!squad.unit.down,pins:squad.unit.pins||0,
             cover:soldier.coverPose||0,
             order:(battle?.snapshot?.phase==="choose-target"&&
@@ -3073,6 +3073,7 @@ function initialize(THREE) {
             facing:soldier.figure.rotation.y,
             recoil:soldier.recoil||0,shot:!!soldier.weaponShotPending
           })||{};
+          const posture={...postureBase};
           soldier.weaponShotPending=false;
           const mechanical=soldier.weaponMechanic;
           const action=mechanical&&weaponPresentation?.motionAt(

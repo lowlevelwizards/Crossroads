@@ -197,12 +197,22 @@
         setDeployed,isDeployed,setBipod,
         animateAction:phase=>{
           const value=Math.max(0,Math.min(1,phase||0));
-          // Manual bolt cycling only for actual bolt-action weapon families.
-          const handle=grips.parts.bolt?.children?.[0];
-          if(handle&&Number.isFinite(handle.userData.cycleRest)){
-            handle.position.z=handle.userData.cycleRest-
-              Math.sin(value*Math.PI)*.095;
-            handle.rotation.z=Math.sin(value*Math.PI)*.23;
+          for(const group of [grips,deployedGrips]){
+            if(!group)continue;
+            const handle=group.parts.bolt?.children?.[0];
+            if(handle&&Number.isFinite(handle.userData.cycleRest)){
+              handle.position.z=handle.userData.cycleRest-value*.095;
+              handle.rotation.z=value*.23;
+            }
+            // Pistol slide movement is a restrained mechanical action.
+            // It does not represent extra rounds or a detachable magazine.
+            if(group.kind==="pistol"){
+              const slide=group.parts.receiver;
+              slide.position.z=-value*.047;
+            }else if(["mp38","mors39","mg34","wz28"].includes(group.kind)){
+              // A small action flutter, not a floating receiver or weapon.
+              group.parts.bolt.rotation.x=value*.032;
+            }
           }
         }};
     }
