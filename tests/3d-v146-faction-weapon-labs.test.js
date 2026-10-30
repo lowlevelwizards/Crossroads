@@ -66,7 +66,7 @@ assert(lab.includes("weaponMounted"));
 for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const source=read(page);
   for(const file of ["miniature-faction-gear.js","miniature-weapon-library.js"])
-    assert(source.includes(file+"?v=0.9.47"),"missing "+file+" from "+page);
+    assert(source.includes(file+"?v=0.9.54"),"missing "+file+" from "+page);
   assert(source.indexOf("miniature-faction-gear.js")<
     source.indexOf("miniature-heroic-character.js"));
 }
@@ -75,7 +75,7 @@ for(const id of ["weaponKind","weaponCompare","weaponMounted","weaponSave",
   "weaponExport","weaponImport","weaponDisplayMode","weaponFields"])
   assert(html.includes('id="'+id+'"'));
 const release=JSON.parse(read("release-manifest.json"));
-assert.equal(release.threeDCacheVersion,"0.9.47");
+assert.equal(release.threeDCacheVersion,"0.9.54");
 for(const file of ["weapon-lab.html","src/diorama/weapon-lab.js",
   "src/diorama/miniature-weapon-library.js",
   "src/diorama/miniature-faction-gear.js"])
