@@ -77,6 +77,24 @@ for(const faction of ["poland","germany"]){
     make(squad,0,0,0,{kit:{factionId:faction,id:kit},role},0,1);
     const s=squad.soldiers[0];
     assert.equal(s.modelVersion,3);
+    // Intentional low-mesh mannequin: no second jaw, eye spheres, helmet
+    // chinstraps, loose thumbs/cuffs, or disconnected boot trim.
+    assert.equal(s.headGroup.children.length,4,
+      "head consists of a single cranium, two ears and headwear group");
+    assert(s.arms.every(a=>a.hand.children.length===1),
+      "hands use one mesh, not floating thumb/cuff geometry");
+    assert(s.legs.every(l=>l.boot.children.length===1),
+      "boots have a single contiguous mesh, no extra soles/heels/cuffs");
+    assert(s.legs.every(l=>l.bootModel.upper.geometry.index.length<=400),
+      "simple boot geometry stays under the triangle budget");
+    s.setMannequin(true);
+    s.applyPose({action:"idle"});
+    assert.equal(s.equipmentRoot.visible,false,
+      "editor mannequin must stay stripped across animation frames");
+    s.setMannequin(false);
+    s.applyPose({action:"idle"});
+    assert.equal(s.equipmentRoot.visible,true,
+      "equipped figure returns without hidden-kit leakage");
     assert(s.base.parent===s.figure&&s.body.parent===s.figure,
       "miniature base is separate from animated body");
     assert.equal(s.torso.geometry.attributes.position.itemSize,3);
@@ -113,8 +131,9 @@ for(const faction of ["poland","germany"]){
     assert.equal(s.torso.scale.x,1.12,
       "profiles are multipliers and must not accumulate");
     s.setInspectionMode("body");
-    assert(s.uniformGroup.visible===false&&
-      s.equipmentRoot.visible===false);
+    assert(s.uniformGroup.visible===true&&
+      s.equipmentRoot.visible===false,
+      "body inspection uses the real torso, not duplicate mannequin blobs");
     s.setInspectionMode("silhouette");
     assert(s.equipmentRoot.visible===true);
     s.setInspectionMode("equipped");
