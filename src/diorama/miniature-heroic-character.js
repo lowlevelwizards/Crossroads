@@ -153,36 +153,12 @@
       const equipmentRoot=new THREE.Group();breathing.add(equipmentRoot);
       const packGroup=new THREE.Group();
       packGroup.position.set(0,-.010,.230);equipmentRoot.add(packGroup);
-      const pack=S.loft(packGroup,mat.pack,"canvas-pack",[
-        [-.5,.163,.105],[-.4,.208,.126],[.28,.216,.138],
-        [.42,.189,.11],[.5,.152,.094]
-      ],[0,0,.037]);pack.scale.y=.55;
-      // Historical field pack silhouette: flap, one compact blanket roll,
-      // and two visible leather retainers. No miniature-scale buckles.
-      S.box(packGroup,mat.pack,[.364,.076,.147],[0,.245,.101]);
-      const blanket=S.loft(packGroup,mat.pack,"field-blanket-v1",[
-        [-.5,.070,.070],[-.35,.083,.083],[.35,.083,.083],
-        [.5,.070,.070]
-      ],[0,.344,.045],10);
-      blanket.rotation.z=Math.PI/2;
-      blanket.scale.y=.366;
-      for(const side of [-1,1])
-        S.strap(packGroup,mat.straps,[
-          [side*.118,.355,.089],[side*.117,.266,.179],
-          [side*.118,.120,.188],[side*.117,-.22,.158]
-        ],.049,.014);
-      // Shoulder harness is meaningful equipment, hidden in mannequin mode.
-      for(const side of [-1,1])
-        S.strap(equipmentRoot,mat.straps,[
-          [side*.137,.352,-.103],
-          [side*.183,.245,-.155],
-          [side*.201,.060,-.197],
-          [side*.184,-.204,-.188]
-        ],.063,.016);
-      // The pouches remain large and sparse; avoid adding tiny metalwork.
-      for(const side of [-1,1])
-        S.box(equipmentRoot,mat.straps,[.137,.119,.096],
-          [side*.18,-.190,-.210]);
+      const gearFactory=window.Crossroads3DFactionGear?.create(THREE,S);
+      const gear=gearFactory?.outfit({
+        faction,role,mat,equipmentRoot,packGroup,legs
+      })||{gait:[]};
+      // The carrying kit is cosmetic; the same field equipment appears in
+      // the independent lab and on live soldiers.
       const armaments=W.build({figure,body,breathing,role,faction,
         mats:{steel:mat.steel,wood:mat.wood,strap:mat.straps,
           hardware:mat.hardware}});
@@ -200,7 +176,7 @@
       wedge.rotation.x=-Math.PI/2;firingArc.visible=false;
       const muzzleLocal=v(0,0,0);
       const soldier={figure,base,body,breathing,legs,arms,headGroup,weapon,
-        torso,uniformGroup,uniformParts,equipmentRoot,packGroup,inspectRing,
+        torso,uniformGroup,uniformParts,equipmentRoot,packGroup,gear,inspectRing,
         windowArc:firingArc,role,modelVersion:3,phase:0,recoil:0,crouch:0,
         baseY:.90,grounded:false,lastFootingFrame:-100,slotX:x,slotZ:z,
         gait:motion.gaitFor(squad.index,index),muzzleLocal,rigMarkers:[]};
@@ -270,6 +246,8 @@
         torso.material=naked?mat.skin:mat.uniform;
         pelvis.material=naked?mat.skin:mat.trousers;
         equipmentRoot.visible=equipped&&!soldier.mannequinActive;
+        for(const mesh of gear.gait||[])
+          mesh.visible=!naked&&!soldier.mannequinActive;
         armaments.weapon.visible=equipped&&!soldier.mannequinActive&&!armaments.isDeployed();
         armaments.mount.visible=equipped&&!soldier.mannequinActive&&armaments.isDeployed();
         hat.visible=!naked&&soldier.profile?.helmet!=="off";
@@ -311,7 +289,8 @@
           look.leatherTint==="russet"?0x794e34:col.straps);
         soldier.applyProfile(look);
         soldier.setInspectionMode(soldier.inspectionMode);
-        packGroup.visible=look.pack!=="off"&&soldier.inspectionMode==="equipped";
+        packGroup.visible=look.pack!=="off"&&
+          (soldier.inspectionMode==="equipped"||soldier.inspectionMode==="silhouette");
       };
       const poseDefaults={crouch:0,bob:0,lean:0,roll:0,forward:0,fall:0,
         leftLift:0,rightLift:0,leftReach:0,rightReach:0,aim:false};
