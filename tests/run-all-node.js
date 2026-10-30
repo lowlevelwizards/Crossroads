@@ -40,6 +40,7 @@ const tests = [
   "3d-v131-sculpted-roster.test.js",
   "3d-v142-miniature-workbench.test.js",
   "3d-v145-miniature-polish.test.js",
+  "3d-v146-faction-weapon-labs.test.js",
   "engine-startup-order.test.js",
   "viewport-interactions-s111.test.js",
   "run-combat-rules-node.js",
