@@ -10,19 +10,20 @@
       lower:"jackboots",strapWidth:.074,pouchHeight:.157,
       pouchY:-.065,packWidth:.335,packHeight:.425})
   });
-  // Matches the heroic tunic's authored six section loft. All webbing is
-  // recomputed on profile width changes, not baked into world-space bars.
-  const tunic=[
-    [-.32,.195,.185],[-.23,.249,.201],[-.07,.256,.218],
-    [.15,.286,.227],[.32,.228,.179],[.36,.165,.14]
-  ];
+  // Use the actual faction tunic contour and authored vertical scaling.
+  const tunics={
+    poland:[[-.32,.195,.185],[-.23,.249,.201],[-.07,.256,.218],
+      [.15,.286,.227],[.32,.228,.179],[.36,.165,.14]],
+    germany:[[-.32,.185,.182],[-.23,.232,.197],[-.07,.252,.210],
+      [.15,.276,.220],[.32,.231,.187],[.36,.164,.142]]
+  };
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-  function torsoSurface(x,y,width=1){
-    const h=clamp(y-.015,tunic[0][0],tunic[tunic.length-1][0]);
-    let lo=tunic[0],hi=tunic[tunic.length-1];
-    for(let i=1;i<tunic.length;i++){
-      if(h<=tunic[i][0]){lo=tunic[i-1];hi=tunic[i];break}
-    }
+  function torsoSurface(x,y,width=1,faction="poland"){
+    const profile=tunics[faction]||tunics.poland;
+    const h=clamp((y-.015)/.91,profile[0][0],profile[profile.length-1][0]);
+    let lo=profile[0],hi=profile[profile.length-1];
+    for(let i=1;i<profile.length;i++)
+      if(h<=profile[i][0]){lo=profile[i-1];hi=profile[i];break}
     const t=clamp((h-lo[0])/(hi[0]-lo[0]),0,1);
     const rx=(lo[1]+(hi[1]-lo[1])*t)*1.08*width,
       rz=lo[2]+(hi[2]-lo[2])*t;
@@ -50,11 +51,13 @@
           [.5,.067,.068]
         ],[0,.277,.063],8);
         roll.rotation.z=Math.PI/2;roll.scale.y=.33;
-        S.box(packGroup,mat.pack,[.102,.112,.095],[.223,-.125,.084]);
+        S.box(packGroup,mat.pack,[.109,.128,.094],[.213,-.132,.085]);
+        S.box(packGroup,mat.straps,[.29,.036,.025],[0,.115,-.087]);
       }else{
         // Compact structured Tornister: square flap plus horizontal roll.
         S.box(packGroup,mat.pack,[.314,.078,.147],[0,.185,.120]);
-        S.box(packGroup,mat.pack,[.277,.065,.137],[0,-.150,.130]);
+        S.box(packGroup,mat.pack,[.267,.060,.117],[0,-.145,.119]);
+        S.box(packGroup,mat.straps,[.225,.026,.025],[0,.121,-.091]);
         const roll=S.loft(packGroup,mat.pack,"tornister-blanket-roll",[
           [-.5,.063,.070],[-.30,.076,.080],[.30,.076,.080],
           [.5,.063,.070]
@@ -72,7 +75,7 @@
           [side*.162,.095],[side*.161,-.013],[side*.148,-.099]
         ];
         ribbons.push(S.surfaceRibbon(webbing,mat.straps,path,
-          torsoSurface,cfg.strapWidth));
+          (x,y,width)=>torsoSurface(x,y,width,faction),cfg.strapWidth));
         // Fixed width pouches *sit ahead* of the curved chest, never at its
         // intersecting center. Keep one bold flap rather than fine details.
         const group=new THREE.Group();webbing.add(group);
@@ -85,9 +88,9 @@
         // Pack straps follow the rear pack volume; no hanging straight ends.
         const z=polish?.192:.190;
         ribbons.push(S.surfaceRibbon(packGroup,mat.straps,[
-          [side*.104,.208],[side*.117,.142],
-          [side*.117,.015],[side*.113,-.129],[side*.108,-.206]
-        ],()=>z,.049));
+          [side*.104,.183],[side*.117,.133],
+          [side*.117,.015],[side*.113,-.127],[side*.108,-.175]
+        ],()=>z+.018,.054));
       }
       const belt=S.box(webbing,mat.straps,[.474,.037,.015],[0,-.240,-.155]);
       // A single large piece of issue kit sets the flank silhouette.
@@ -110,15 +113,41 @@
         for(const {side,group} of pouches){
           const px=side*(polish?.148:.144);
           group.position.set(px,cfg.pouchY,
-            torsoSurface(px,cfg.pouchY,width)-.054);
+            torsoSurface(px,cfg.pouchY,width,faction)-.066);
         }
-        belt.position.z=torsoSurface(0,-.240,width)-.010;
+        belt.position.z=torsoSurface(0,-.240,width,faction)-.022;
       }
       setBodyWidth(1);
+      // Debug anchors allocated lazily in the Lab; no extra per-soldier
+      // scene objects in a normal battle.
+      let debugRoot=null;
+      function setDebug(enabled){
+        if(!enabled){if(debugRoot)debugRoot.visible=false;return}
+        if(!debugRoot){
+          debugRoot=new THREE.Group();webbing.add(debugRoot);
+          const material=new THREE.MeshBasicMaterial({color:0xffcb66,
+            depthTest:false});
+          const geometry=S.cached("strap-debug-pin",()=>
+            new THREE.SphereGeometry(.019,8,6));
+          for(const ribbon of ribbons.slice(0,2))
+            for(let i=0;i<ribbon.userData.ribbonNodes.length;i++){
+              const marker=S.mesh(debugRoot,geometry,material);
+              marker.userData.sourceRibbon=ribbon;
+              marker.userData.sourceNode=i;
+            }
+        }
+        debugRoot.visible=true;
+        for(const pin of debugRoot.children){
+          const data=pin.userData.sourceRibbon.geometry.attributes.position.array;
+          const i=pin.userData.sourceNode*6;
+          pin.position.set((data[i]+data[i+3])/2,data[i+1],
+            (data[i+2]+data[i+5])/2-.01);
+        }
+      }
       // No extra meshes parented under scaled shins. The character's new
       // single contiguous material-banded shin carries wrap or boot colors.
       return {webbing,pack,packGroup,gait:[],faction,config:cfg,
-        setBodyWidth};
+        setBodyWidth,setDebug};
     }
     return Object.freeze({outfit});
   }
