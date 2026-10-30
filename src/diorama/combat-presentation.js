@@ -25,8 +25,18 @@
       if(!event||!Number.isInteger(event.id)||seen.has(event.id))return false;
       seen.add(event.id);order.push(event.id);
       if(order.length>256)seen.delete(order.shift());
-      const sequence=SEQUENCES[event.type];
-      if(!sequence)return false;
+      const standard=SEQUENCES[event.type];
+      if(!standard)return false;
+      let sequence=standard;
+      if(event.type==="shooting"){
+        const fireDuration=window.Crossroads3DWeaponPresentation?.duration(
+          event.groups||[],event.shooterRoster||[])||.42;
+        // An empty roster is possible in legacy events. The scene assigns
+        // actual visible gunners; the engine never invents additional shots.
+        sequence=standard.map(([phase,seconds])=>[
+          phase,phase==="fire"?Math.max(.42,fireDuration):seconds
+        ]);
+      }
       queue.push({event,sequence});
       return true;
     }
@@ -54,7 +64,8 @@
       return Boolean(active||queue.length);
     }
     function skip(){
-      if(active)onStage({type:active.event.type,phase:"settle",event:active.event});
+      if(active)onStage({type:active.event.type,phase:"settle",
+        event:active.event,skipped:true});
       active=null;queue.length=0;stage=-1;elapsed=0;
     }
     function reset(){
