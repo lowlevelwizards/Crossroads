@@ -100,8 +100,8 @@ assert.notEqual(geometry.make(THREE,changed2,{published:true}),
   "altered shape content must not return a stale geometry");
 for(const page of ["miniature-studio.html","battle3d.html","editor3d.html"]){
   const html=read(page);
-  assert(html.includes("miniature-shape-library.js?v=0.9.42"));
-  assert(html.includes("miniature-shape-geometry.js?v=0.9.42"));
+  assert(html.includes("miniature-shape-library.js?v=0.9.43"));
+  assert(html.includes("miniature-shape-geometry.js?v=0.9.43"));
   assert(html.indexOf("miniature-shape-library.js")<
     html.indexOf("miniature-model.js"),"shape library must precede factory usage");
 }
@@ -120,5 +120,5 @@ assert(studio.includes("workbench?.pointerDown(event)"));
 assert(studio.includes("workbench?.pointerMove(event)"));
 assert(studio.includes("workbench?.pointerUp(e)"));
 const manifest=JSON.parse(read("release-manifest.json"));
-assert.equal(manifest.threeDCacheVersion,"0.9.42");
+assert.equal(manifest.threeDCacheVersion,"0.9.43");
 console.log("PASS — versioned shapes, contour loft, cached meshes, SDF blend, history, persistence, runtime and studio integration");
