@@ -74,6 +74,7 @@
     primary=makeWeapon(false);
     comparison=$("weaponCompare").checked?makeWeapon(true):null;
     updateInfo();sync();
+    if(typeof frameWeapon==="function")frameWeapon();
   }
   $("weaponKind").addEventListener("change",e=>{
     kind=e.target.value;settings=lib.read(kind);rebuild();
@@ -120,58 +121,74 @@
     e.target.value="";
   });
   const camera=new THREE.PerspectiveCamera(35,1,.04,30);
-  let theta=1.0,polar=1.32,radius=2.6;
-  const target=new THREE.Vector3(0,-.02,-.25);
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-  function setCamera(){
-    camera.position.set(target.x+radius*Math.sin(polar)*Math.sin(theta),
-      target.y+radius*Math.cos(polar),
-      target.z+radius*Math.sin(polar)*Math.cos(theta));
-    camera.lookAt(target);
+  const cameraModel=window.Crossroads3DWeaponCameraControls?.create({
+    fov:camera.fov,height:Math.max(1,stage.clientHeight)
+  });
+  if(!cameraModel){
+    $("weaponLoading").textContent="Weapon Lab camera controls missing.";
+    return;
   }
-  const views={
-    side:[Math.PI/2,Math.PI/2],front:[Math.PI,Math.PI/2],
-    rear:[0,Math.PI/2],three:[Math.PI+.55,1.28],top:[Math.PI,.12]
-  };
+  function setCamera(){
+    const state=cameraModel.snapshot();
+    camera.position.set(...state.position);
+    camera.lookAt(...state.target);
+    for(const button of document.querySelectorAll("[data-weapon-view]")){
+      const active=button.dataset.weaponView===state.activeView;
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-pressed",String(active));
+    }
+  }
+  function frameWeapon(){
+    cameraModel.setContext({
+      compare:$("weaponCompare").checked,
+      mount:$("weaponMounted").checked&&["wz28","mg34"].includes(kind)
+    });
+    setCamera();
+  }
   for(const button of document.querySelectorAll("[data-weapon-view]")){
     button.addEventListener("click",()=>{
-      [theta,polar]=views[button.dataset.weaponView];
+      cameraModel.view(button.dataset.weaponView);
       setCamera();
-      for(const b of document.querySelectorAll("[data-weapon-view]"))
-        b.classList.toggle("active",b===button);
     });
   }
-  const pointers=new Map();
+  $("weaponFit").addEventListener("click",()=>{
+    cameraModel.reset();
+    frameWeapon();
+  });
   canvas.addEventListener("pointerdown",e=>{
-    e.preventDefault();canvas.setPointerCapture(e.pointerId);
-    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(e.pointerType==="mouse"&&![0,1,2].includes(e.button))return;
+    if(!cameraModel.pointerDown(e.pointerId,e.clientX,e.clientY,e.button))return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove",e=>{
-    const before=pointers.get(e.pointerId);if(!before)return;
-    const previous=[...pointers.values()];
-    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    const next=[...pointers.values()];
-    if(next.length===1){
-      theta-=(e.clientX-before.x)*.008;
-      polar=clamp(polar-(e.clientY-before.y)*.007,.08,Math.PI-.08);
-    }else{
-      const length=a=>Math.hypot(a[1].x-a[0].x,a[1].y-a[0].y);
-      const p=length(previous.slice(0,2)),n=length(next.slice(0,2));
-      if(p>2&&n>2)radius=clamp(radius*p/n,.7,9);
-      target.x-=(next[0].x-before.x)*.002;
-    }
-    setCamera();e.preventDefault();
+    if(!cameraModel.pointerMove(e.pointerId,e.clientX,e.clientY,e.buttons))return;
+    e.preventDefault();
+    setCamera();
   },{passive:false});
-  for(const name of ["pointerup","pointercancel","lostpointercapture"])
-    canvas.addEventListener(name,e=>pointers.delete(e.pointerId));
+  const release=e=>{
+    cameraModel.pointerUp(e.pointerId);
+    if(e.type!=="lostpointercapture"&&canvas.hasPointerCapture(e.pointerId))
+      canvas.releasePointerCapture(e.pointerId);
+  };
+  for(const type of ["pointerup","pointercancel","lostpointercapture"])
+    canvas.addEventListener(type,release);
   canvas.addEventListener("wheel",e=>{
-    e.preventDefault();radius=clamp(radius*Math.exp(e.deltaY*.001),.7,9);
+    e.preventDefault();
+    cameraModel.zoom(Math.exp(e.deltaY*.0013));
     setCamera();
   },{passive:false});
   canvas.addEventListener("contextmenu",e=>e.preventDefault());
+  canvas.addEventListener("dblclick",()=>{
+    cameraModel.reset();frameWeapon();
+  });
+  window.addEventListener("blur",()=>cameraModel.clearPointers());
   function resize(){
     const w=Math.max(stage.clientWidth,1),h=Math.max(stage.clientHeight,1);
-    renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h;camera.updateProjectionMatrix();
+    cameraModel.setViewportHeight(h);
+    setCamera();
   }
   window.addEventListener("resize",resize);
   if(typeof ResizeObserver!=="undefined")new ResizeObserver(resize).observe(stage);
