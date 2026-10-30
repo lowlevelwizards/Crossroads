@@ -143,7 +143,7 @@
         grip:which=>getInTorso(which),muzzle:()=>getInTorso("muzzle"),
         setDeployed,isDeployed,setBipod};
     }
-    return Object.freeze({create:build,kindFor});
+    return Object.freeze({build,kindFor});
   }
   window.Crossroads3DHistoricalWeapons=Object.freeze({create});
 })();
