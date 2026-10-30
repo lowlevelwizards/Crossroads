@@ -75,21 +75,21 @@
             .091*thick,.068*thick);
           G.tube(parts.barrel,steel,muzzle,foreTip+.045,.026*bore);
           G.block(parts.sights,steel,[.034,.054,.034],
-            [0,.088,muzzle+.044]);
+            [0,.055,muzzle+.044]);
           G.block(parts.sights,steel,[.029,.023,.078],
-            [.071,.079,back-.047]);
+            [.045,.079,back-.047]);
           primary=point(.06,-.119,back+.032);
         }else if(def.family==="bar"){
           G.taperedFore(parts.foreEnd,wood,foreTip,front+.035,
             .092*thick,.08*thick);
           G.tube(parts.barrel,steel,muzzle,foreTip+.03,.034*bore);
-          G.tube(parts.barrel,hardware,muzzle+.08,front-.045,.022*bore,
-            .022*bore,-.082);
+          // Omit the underslung floating gas tube at 28mm miniature scale;
+          // the Browning feed and profile remain recognizable without it.
           G.block(parts.magazine,steel,[.15*p.magazine*hero,.18*p.magazine*hero,.105],
             [0,-.145,front+.045]);
           G.block(parts.grip,wood,[.085,.158,.085],[0,-.137,back-.022])
             .rotation.x=-.22;
-          G.block(parts.sights,steel,[.036,.066,.036],[0,.09,muzzle+.048]);
+          G.block(parts.sights,steel,[.036,.066,.036],[0,.063,muzzle+.048]);
         }else if(def.family==="mg"){
           // MG34 has a metal jacket, distinct receiver/feed and short
           // wooden butt; the bipod is NOT the magazine.
@@ -102,7 +102,7 @@
             [.103,.057,front+.035]); // left-side feed
           G.block(parts.grip,hardware,[.075,.142,.076],
             [0,-.135,back-.015]).rotation.x=-.20;
-          G.block(parts.sights,steel,[.035,.066,.035],[0,.111,muzzle+.045]);
+          G.block(parts.sights,steel,[.035,.066,.035],[0,.073,muzzle+.045]);
           secondary=point(-.088,-.057,front-.23);
         }else if(def.family==="mp"){
           G.tube(parts.barrel,steel,muzzle,front+.025,.037*bore);
@@ -111,7 +111,7 @@
           G.block(parts.magazine,steel,
             [.108*p.magazine,.24*p.magazine,.104],
             [0,-.205,front+.052]);
-          G.block(parts.sights,steel,[.035,.07,.04],[0,.106,muzzle+.037]);
+          G.block(parts.sights,steel,[.035,.07,.04],[0,.058,muzzle+.037]);
           primary=point(.049,-.14,back-.045);
           secondary=point(-.06,-.03,front-.06);
         }else if(def.family==="mors"){
@@ -122,15 +122,16 @@
           G.block(parts.magazine,steel,
             [.113*p.magazine,.222*p.magazine,.106],
             [0,-.192,front+.032]);
-          G.block(parts.sights,steel,[.035,.055,.034],[0,.09,muzzle+.035]);
+          G.block(parts.sights,steel,[.035,.055,.034],[0,.054,muzzle+.035]);
         }
       }
       let bipod=null;
       if((def.family==="bar"||def.family==="mg")&&bipodEnabled){
         bipod=new THREE.Group();root.add(bipod);
         const z=muzzle+.18;
-        G.wire(bipod,hardware,[[0,-.03,z],[-.14,-.23,z-.06]],.018);
-        G.wire(bipod,hardware,[[0,-.03,z],[.14,-.23,z-.06]],.018);
+        G.block(bipod,hardware,[.073,.062,.080],[0,-.019,z]);
+        G.wire(bipod,hardware,[[0,-.03,z],[-.14,-.23,z-.06]],.020);
+        G.wire(bipod,hardware,[[0,-.03,z],[.14,-.23,z-.06]],.020);
         bipod.visible=false;
       }
       return {parts,bipod,kind,params:p,
