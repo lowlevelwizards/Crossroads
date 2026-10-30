@@ -134,7 +134,9 @@
     "src/diorama/weapon-lab.css",
     "src/diorama/miniature-weapon-library.js",
     "src/diorama/miniature-faction-gear.js",
-    "tests/3d-v146-faction-weapon-labs.test.js"
+    "tests/3d-v146-faction-weapon-labs.test.js",
+    "src/diorama/weapon-lab-camera.js",
+    "tests/3d-v147-weapon-camera.test.js"
   ],
-  "threeDCacheVersion": "0.9.46"
+  "threeDCacheVersion": "0.9.47"
 }
