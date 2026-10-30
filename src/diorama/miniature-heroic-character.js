@@ -438,7 +438,7 @@
           const side=leg.side;
           const rawLift=(side<0?pose.leftLift:pose.rightLift)||0;
           const rawReach=(side<0?pose.leftReach:pose.rightReach)||0;
-          const envelope=window.Crossroads3DSoldierIK?.strideEnvelope(
+          const envelope=window.Crossroads3DSoldierIK?.strideEnvelope?.(
             rawReach,rawLift,action==="run"||action==="assault"
           )||{reach:rawReach,lift:rawLift};
           const lift=envelope.lift;
